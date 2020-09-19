@@ -3,6 +3,39 @@ package config
 type ViperProvider struct {
 }
 
+//////// ENDURE //////////
+func (v *ViperProvider) Init() error {
+	return nil
+}
+
+func (v *ViperProvider) Configure() error {
+	return nil
+}
+
+func (v *ViperProvider) Close() error {
+	return nil
+}
+
+func (v *ViperProvider) Provides() []interface{} {
+	return []interface{}{
+		v.Logger,
+	}
+}
+
+func (v *ViperProvider) Logger() (*ViperProvider, error) {
+	return v, nil
+}
+
+func (v *ViperProvider) Serve() chan error {
+	return nil
+}
+
+func (v *ViperProvider) Stop() error {
+	return nil
+}
+
+///////////// VIPER ///////////////
+
 func (v *ViperProvider) SetPath(name string) error {
 	return nil
 }
