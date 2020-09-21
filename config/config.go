@@ -5,19 +5,16 @@ type Provider interface {
 	//
 	// func (h *HttpService) Init(cp config.Provider) error {
 	//     h.config := &HttpConfig{}
-	//     if err := configProvider.Unmarshal("http", h.config); err != nil {
+	//     if err := configProvider.UnmarshalKey("http", h.config); err != nil {
 	//         return err
 	//     }
 	// }
-	Unmarshal(name string, out interface{}) error
-
+	UnmarshalKey(name string, out interface{}) error
+	// SetPath sets search path for the config
+	SetPath(name string) error
 	// Get raw config in a form of config section.
-	Get(name string) (Section, error)
-}
-
-type Section interface {
-	Keys() []string
-	Get(name string) (interface{}, error)
+	// TODO first candidate to delete
+	Get(name string) interface{}
 }
 
 // todo: implement service based on viper config
