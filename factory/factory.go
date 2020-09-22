@@ -4,6 +4,10 @@ type PoolOptions struct {
 	NumWorkers int
 	MaxJobs    int
 
+	MaxMemory int
+
+	// todo: execution timeouts must go here
+
 	// connect timeouts to the app?
 	// destroy timeouts to the app?
 }
