@@ -7,9 +7,6 @@ type PoolOptions struct {
 	MaxMemory int
 
 	// todo: execution timeouts must go here
-
-	// connect timeouts to the app?
-	// destroy timeouts to the app?
 }
 
 type WorkerFactory interface {
