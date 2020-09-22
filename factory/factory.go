@@ -6,6 +6,8 @@ type PoolOptions struct {
 
 	MaxMemory int
 
+	// todo: controller goes here
+
 	// todo: execution timeouts must go here
 }
 

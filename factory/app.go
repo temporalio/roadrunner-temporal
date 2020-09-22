@@ -22,6 +22,7 @@ type AppConfig struct {
 
 	// RelayTimeout defines for how long socket factory will be waiting for worker connection. This config section
 	// must not change on re-configuration.
+
 	RelayTimeout time.Duration
 
 	// todo: connect timeouts to the app?
