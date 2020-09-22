@@ -3,14 +3,26 @@ package factory
 import (
 	"github.com/temporalio/roadrunner-temporal/config"
 	"os/exec"
+	"time"
 )
 
 // AppConfig config combines factory, pool and cmd configurations.
 type AppConfig struct {
 	Command string
-	User    string
-	Group   string
-	Env     Env
+
+	User  string
+	Group string
+
+	Env Env
+
+	// Relay defines connection method and factory to be used to connect to workers:
+	// "pipes", "tcp://:6001", "unix://rr.sock"
+	// This config section must not change on re-configuration.
+	Relay string
+
+	// RelayTimeout defines for how long socket factory will be waiting for worker connection. This config section
+	// must not change on re-configuration.
+	RelayTimeout time.Duration
 }
 
 type App struct {
