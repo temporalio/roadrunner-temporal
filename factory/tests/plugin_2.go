@@ -8,18 +8,18 @@ import (
 	"github.com/temporalio/roadrunner-temporal/factory"
 )
 
-type Foo struct {
+type Foo2 struct {
 	configProvider  config.Provider
 	factoryProvider factory.Provider
 }
 
-func (f *Foo) Init(p config.Provider, app factory.Provider) error {
+func (f *Foo2) Init(p config.Provider, app factory.Provider) error {
 	f.configProvider = p
 	f.factoryProvider = app
 	return nil
 }
 
-func (f *Foo) Serve() chan error {
+func (f *Foo2) Serve() chan error {
 	errCh := make(chan error, 1)
 
 	err := f.configProvider.SetPath(".rr.yaml")
@@ -56,6 +56,6 @@ func (f *Foo) Serve() chan error {
 	return errCh
 }
 
-func (f *Foo) Stop() error {
+func (f *Foo2) Stop() error {
 	return nil
 }

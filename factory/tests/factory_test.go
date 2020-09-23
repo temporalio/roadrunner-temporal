@@ -33,6 +33,12 @@ func TestFactory(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	err = container.Register(&Foo2{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+
 	err = container.Init()
 	if err != nil {
 		t.Fatal(err)
@@ -64,7 +70,6 @@ func TestFactory(t *testing.T) {
 		case <-tt.C:
 			tt.Stop()
 			assert.NoError(t, container.Stop())
-			time.Sleep(time.Second * 2)
 			return
 		}
 	}

@@ -57,7 +57,6 @@ func TestViperProvider_Init(t *testing.T) {
 		case <-tt.C:
 			tt.Stop()
 			assert.NoError(t, container.Stop())
-			time.Sleep(time.Second * 2)
 			return
 		}
 	}
