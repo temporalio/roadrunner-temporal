@@ -172,7 +172,6 @@ func Test_StaticPool_Broken_Replace(t *testing.T) {
 	p.Destroy()
 }
 
-
 func Test_StaticPool_Broken_FromOutside(t *testing.T) {
 	p, err := NewPool(
 		func() *exec.Cmd { return exec.Command("php", "tests/client.php", "echo", "pipes") },
@@ -237,7 +236,6 @@ func Test_StaticPool_AllocateTimeout(t *testing.T) {
 			panic("Pool is nil")
 		}
 	}()
-
 
 	// to ensure that worker is already busy
 	time.Sleep(time.Millisecond * 10)

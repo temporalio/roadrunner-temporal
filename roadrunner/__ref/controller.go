@@ -1,4 +1,4 @@
-package roadrunner
+package __ref
 
 // Controller observes pool state and decides if any worker must be destroyed.
 type Controller interface {
