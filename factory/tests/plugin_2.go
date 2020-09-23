@@ -22,7 +22,7 @@ func (f *Foo2) Init(p config.Provider, app factory.Provider) error {
 func (f *Foo2) Serve() chan error {
 	errCh := make(chan error, 1)
 
-	err := f.configProvider.SetPath(".rr.yaml")
+	err := f.configProvider.SetPath(".rr_2.yaml")
 	if err != nil {
 		errCh <- err
 		return errCh
