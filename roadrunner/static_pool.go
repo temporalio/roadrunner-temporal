@@ -56,9 +56,9 @@ type StaticPool struct {
 
 // NewPool creates new worker pool and task multiplexer. StaticPool will initiate with one worker.
 func NewPool(
-	cmd func() *exec.Cmd,
-	factory Factory,
+	workers func() (Worker, error),
 	cfg Config,
+	//supervisor Supervisor, todO: think about it
 ) (*StaticPool, error) {
 	if err := cfg.Valid(); err != nil {
 		return nil, errors.Wrap(err, "config")
@@ -89,18 +89,18 @@ func NewPool(
 }
 
 // Listen attaches pool event controller.
-func (p *StaticPool) Listen(l func(event int, ctx interface{})) {
-	p.mul.Lock()
-	defer p.mul.Unlock()
-
-	p.lsn = l
-
-	p.muw.Lock()
-	for _, w := range p.workers {
-		w.err.Listen(p.lsn)
-	}
-	p.muw.Unlock()
-}
+//func (p *StaticPool) Listen(l func(event int, ctx interface{})) {
+//	p.mul.Lock()
+//	defer p.mul.Unlock()
+//
+//	p.lsn = l
+//
+//	p.muw.Lock()
+//	for _, w := range p.workers {
+//		w.err.Listen(p.lsn)
+//	}
+//	p.muw.Unlock()
+//}
 
 // Config returns associated pool configuration. Immutable.
 func (p *StaticPool) Config() Config {

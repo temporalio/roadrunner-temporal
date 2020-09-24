@@ -12,7 +12,17 @@ type PoolOptions struct {
 }
 
 type WorkerFactory interface {
-	NewWorker(env Env) (*roadrunner.worker, error)
-	NewAsyncWorker(env Env) (*roadrunner.AsyncWorker, error)
+	NewWorker(env Env) (roadrunner.Worker, error)
 	NewWorkerPool(opt PoolOptions, env Env) (roadrunner.Pool, error)
+}
+
+func (wf WorkerFactory) NewWorkerPool(opt PoolOptions, env Env) (roadrunner.Pool, error) {
+	return roadrunner.NewPool(
+			func() (roadrunner.Worker, error) {
+				return appPreocvider.Swpath(env)
+			}),
+		opts,
+	),
+
+	// event listenters
 }
