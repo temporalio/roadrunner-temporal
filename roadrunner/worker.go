@@ -16,7 +16,7 @@ import (
 // EventWorkerKill thrown after WorkerProcess is being forcefully killed.
 const (
 	// EventWorkerError triggered after WorkerProcess. Except payload to be error.
-	EventWorkerError = iota + 100
+	EventWorkerError int64 = iota + 100
 
 	// EventWorkerLog triggered on every write to WorkerProcess StdErr pipe (batched). Except payload to be []byte string.
 	EventWorkerLog
@@ -28,7 +28,7 @@ const (
 
 // todo: write comment
 type WorkerEvent struct {
-	Event   int
+	Event   int64
 	Worker  *WorkerProcess
 	Payload interface{}
 }
@@ -40,7 +40,7 @@ type Worker interface {
 
 	Events() <-chan WorkerEvent
 
-	Pid() int
+	Pid() int64
 
 	// State return receive-only WorkerProcess state object, state can be used to safely access
 	// WorkerProcess status, time when status changed and number of WorkerProcess executions.
@@ -80,7 +80,7 @@ type WorkerProcess struct {
 	// number of WorkerProcess executions, buf status change time.
 	// publicly this object is receive-only and protected using Mutex
 	// and atomic counter.
-	state *state
+	state state
 
 	// underlying command with associated process, command must be
 	// provided to WorkerProcess from outside in non-started form. CmdSource
@@ -89,7 +89,7 @@ type WorkerProcess struct {
 
 	// pid of the process, points to pid of underlying process and
 	// can be nil while process is not started.
-	pid *int // todo: drop it?
+	pid int
 
 	// errBuffer aggregates stderr output from underlying process. Value can be
 	// receive only once command is completed and all pipes are closed.
@@ -139,7 +139,7 @@ func (w *WorkerProcess) Events() <-chan WorkerEvent {
 }
 
 func (w *WorkerProcess) Pid() int64 {
-	return *w.pid
+	return int64(w.pid)
 }
 
 // State return receive-only WorkerProcess state object, state can be used to safely access
@@ -162,15 +162,16 @@ func (w *WorkerProcess) Relay() goridge.Relay {
 
 // String returns WorkerProcess description.
 func (w *WorkerProcess) String() string {
-	state := w.state.String()
-	if w.pid != nil {
-		state = state + ", pid:" + strconv.Itoa(*w.pid)
+	st := w.state.String()
+	// we can safely compare pid to 0
+	if w.pid != 0 {
+		st = st + ", pid:" + strconv.Itoa(w.pid)
 	}
 
 	return fmt.Sprintf(
 		"(`%s` [%s], numExecs: %v)",
 		strings.Join(w.cmd.Args, " "),
-		state,
+		st,
 		w.state.NumExecs(),
 	)
 }
@@ -181,7 +182,7 @@ func (w *WorkerProcess) Start() error {
 		return err
 	}
 
-	w.pid = &w.cmd.Process.Pid
+	w.pid = w.cmd.Process.Pid
 
 	// wait for process to complete
 	go func() {

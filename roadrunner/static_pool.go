@@ -31,7 +31,7 @@ type StaticPool struct {
 	tasks sync.WaitGroup
 
 	// workers circular allocation buf
-	free chan *Worker
+	free chan Worker
 
 	// number of workers expected to be dead in a buf.
 	numDead int64
@@ -40,7 +40,7 @@ type StaticPool struct {
 	muw sync.RWMutex
 
 	// all registered workers
-	workers []*Worker
+	workers []Worker
 
 	// invalid declares set of workers to be removed from the pool.
 	remove sync.Map
@@ -58,7 +58,7 @@ type StaticPool struct {
 func NewPool(
 	workers func() (Worker, error),
 	cfg Config,
-	//supervisor Supervisor, todO: think about it
+	//supervisor Supervisor, todo: think about it
 ) (*StaticPool, error) {
 	if err := cfg.Valid(); err != nil {
 		return nil, errors.Wrap(err, "config")
@@ -66,10 +66,10 @@ func NewPool(
 
 	p := &StaticPool{
 		cfg:     cfg,
-		cmd:     cmd,
-		factory: factory,
-		workers: make([]*Worker, 0, cfg.NumWorkers),
-		free:    make(chan *Worker, cfg.NumWorkers),
+		//cmd:     cmd,
+		//factory: factory,
+		workers: make([]Worker, 0, cfg.NumWorkers),
+		free:    make(chan Worker, cfg.NumWorkers),
 		destroy: make(chan interface{}),
 	}
 
@@ -108,7 +108,7 @@ func (p *StaticPool) Config() Config {
 }
 
 // Workers returns worker list associated with the pool.
-func (p *StaticPool) Workers() (workers []*Worker) {
+func (p *StaticPool) Workers() (workers []Worker) {
 	p.muw.RLock()
 	defer p.muw.RUnlock()
 
@@ -118,7 +118,7 @@ func (p *StaticPool) Workers() (workers []*Worker) {
 }
 
 // Remove forces pool to remove specific worker.
-func (p *StaticPool) Remove(w *Worker, err error) bool {
+func (p *StaticPool) Remove(w Worker, err error) bool {
 	if w.State().Value() != StateReady && w.State().Value() != StateWorking {
 		// unable to remove inactive worker
 		return false
@@ -181,7 +181,7 @@ func (p *StaticPool) Destroy() {
 	for _, w := range p.Workers() {
 		wg.Add(1)
 		w.markInvalid()
-		go func(w *Worker) {
+		go func(w Worker) {
 			defer wg.Done()
 			p.destroyWorker(w, nil)
 		}(w)
@@ -191,7 +191,7 @@ func (p *StaticPool) Destroy() {
 }
 
 // finds free worker in a given time interval. Skips dead workers.
-func (p *StaticPool) allocateWorker() (w *Worker, err error) {
+func (p *StaticPool) allocateWorker() (w Worker, err error) {
 	for i := atomic.LoadInt64(&p.numDead); i >= 0; i++ {
 		// this loop is required to skip issues with dead workers still being in a ring
 		// (we know how many workers).
@@ -250,7 +250,7 @@ func (p *StaticPool) allocateWorker() (w *Worker, err error) {
 }
 
 // release releases or replaces the worker.
-func (p *StaticPool) release(w *Worker) {
+func (p *StaticPool) release(w Worker) {
 	if p.cfg.MaxJobs != 0 && w.State().NumExecs() >= p.cfg.MaxJobs {
 		p.discardWorker(w, p.cfg.MaxJobs)
 		return
@@ -266,7 +266,7 @@ func (p *StaticPool) release(w *Worker) {
 
 // creates new worker using associated factory. automatically
 // adds worker to the worker list (background)
-func (p *StaticPool) createWorker() (SyncWorker, error) {
+func (p *StaticPool) createWorker() (Worker, error) {
 	w, err := p.factory.SpawnWorker(p.cmd())
 	if err != nil {
 		return nil, err
@@ -289,13 +289,13 @@ func (p *StaticPool) createWorker() (SyncWorker, error) {
 }
 
 // gentry remove worker
-func (p *StaticPool) discardWorker(w *Worker, caused interface{}) {
+func (p *StaticPool) discardWorker(w Worker, caused interface{}) {
 	w.markInvalid()
 	go p.destroyWorker(w, caused)
 }
 
 // destroyWorker destroys workers and removes it from the pool.
-func (p *StaticPool) destroyWorker(w *Worker, caused interface{}) {
+func (p *StaticPool) destroyWorker(w Worker, caused interface{}) {
 	go func() {
 		err := w.Stop()
 		if err != nil {
@@ -319,7 +319,7 @@ func (p *StaticPool) destroyWorker(w *Worker, caused interface{}) {
 }
 
 // watchWorker watches worker state and replaces it if worker fails.
-func (p *StaticPool) watchWorker(w *Worker) {
+func (p *StaticPool) watchWorker(w Worker) {
 	err := w.Wait()
 	p.throw(EventWorkerDead, w)
 

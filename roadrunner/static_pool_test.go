@@ -13,7 +13,7 @@ import (
 )
 
 var cfg = Config{
-	NumWorkers:      int64(runtime.NumCPU()),
+	NumWorkers:      runtime.NumCPU(),
 	AllocateTimeout: time.Second,
 	DestroyTimeout:  time.Second,
 }
@@ -446,15 +446,15 @@ func Benchmark_Pool_Echo(b *testing.B) {
 }
 
 func Benchmark_Pool_Echo_Batched(b *testing.B) {
-	p, _ := NewPool(
-		func() *exec.Cmd { return exec.Command("php", "tests/client.php", "echo", "pipes") },
-		NewPipeFactory(),
-		Config{
-			NumWorkers:      int64(runtime.NumCPU()),
-			AllocateTimeout: time.Second * 100,
-			DestroyTimeout:  time.Second,
-		},
-	)
+	//p, _ := NewPool(
+	//	func() *exec.Cmd { return exec.Command("php", "tests/client.php", "echo", "pipes") },
+	//	NewPipeFactory(),
+	//	Config{
+	//		NumWorkers:      int64(runtime.NumCPU()),
+	//		AllocateTimeout: time.Second * 100,
+	//		DestroyTimeout:  time.Second,
+	//	},
+	//)
 	defer p.Destroy()
 
 	var wg sync.WaitGroup

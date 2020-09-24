@@ -74,6 +74,11 @@ func (cfg *Config) Valid() error {
 	return nil
 }
 
+type PoolEvent struct {
+	Event int
+	Payload interface{}
+}
+
 // Pool managed set of inner worker processes.
 type Pool interface {
 	Events() chan PoolEvent

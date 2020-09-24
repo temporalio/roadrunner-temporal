@@ -46,17 +46,16 @@ const (
 )
 
 type state struct {
-	// todo: fix type
 	value    int64
 	numExecs int64
 }
 
-func newState(value int64) *state {
-	return &state{value: value}
+func newState(value int64) state {
+	return state{value: value}
 }
 
 // String returns current state as string.
-func (s *state) String() string {
+func (s state) String() string {
 	switch s.Value() {
 	case StateInactive:
 		return "inactive"
@@ -76,27 +75,27 @@ func (s *state) String() string {
 }
 
 // NumExecs returns number of registered WorkerProcess execs.
-func (s *state) NumExecs() int64 {
+func (s state) NumExecs() int64 {
 	return atomic.LoadInt64(&s.numExecs)
 }
 
 // Value state returns state value
-func (s *state) Value() int64 {
+func (s state) Value() int64 {
 	return atomic.LoadInt64(&s.value)
 }
 
 // IsActive returns true if WorkerProcess not Inactive or Stopped
-func (s *state) IsActive() bool {
+func (s state) IsActive() bool {
 	state := s.Value()
 	return state == StateWorking || state == StateReady
 }
 
 // change state value (status)
-func (s *state) Set(value int64) {
+func (s state) Set(value int64) {
 	atomic.StoreInt64(&s.value, value)
 }
 
 // register new execution atomically
-func (s *state) RegisterExec() {
+func (s state) RegisterExec() {
 	atomic.AddInt64(&s.numExecs, 1)
 }
