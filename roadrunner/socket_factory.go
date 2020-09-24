@@ -25,7 +25,7 @@ type SocketFactory struct {
 	relays map[int]chan *goridge.SocketRelay
 }
 
-// NewSocketFactory returns SocketFactory attached to a given socket lsn.
+// NewSocketFactory returns SocketFactory attached to a given socket listener.
 // tout specifies for how long factory should serve for incoming relay connection
 func NewSocketFactory(ls net.Listener, tout time.Duration) *SocketFactory {
 	f := &SocketFactory{

@@ -12,7 +12,3 @@ require (
 	github.com/stretchr/testify v1.6.1
 	go.uber.org/multierr v1.6.0 // indirect
 )
-
-replace (
-	github.com/spiral/endure v1.0.0-beta7 => /home/valery/Projects/opensource/spiral/endure
-)

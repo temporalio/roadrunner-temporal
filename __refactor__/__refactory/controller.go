@@ -1,4 +1,4 @@
-package __ref
+package __refactory
 
 // Controller observes pool state and decides if any worker must be destroyed.
 type Controller interface {

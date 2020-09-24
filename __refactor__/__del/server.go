@@ -1,4 +1,4 @@
-package __old
+package __del
 
 import (
 	"fmt"

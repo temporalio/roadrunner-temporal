@@ -22,7 +22,7 @@ func NewPipeFactory() *PipeFactory {
 // SpawnWorker creates new worker and connects it to goridge relay,
 // method Wait() must be handled on level above.
 func (f *PipeFactory) SpawnWorker(cmd *exec.Cmd) (w *Worker, err error) {
-	if w, err = newWorker(cmd); err != nil {
+	if w, err = initWorker(cmd); err != nil {
 		return nil, err
 	}
 

@@ -2,6 +2,7 @@ package roadrunner
 
 import (
 	"fmt"
+	"github.com/spiral/goridge/v2"
 	"os"
 	"os/exec"
 	"strconv"
@@ -10,8 +11,26 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/spiral/goridge/v2"
 )
+
+// EventWorkerKill thrown after worker is being forcefully killed.
+const (
+	// EventWorkerError triggered after worker. Except payload to be error.
+	EventWorkerError = iota + 100
+
+	// EventWorkerLog triggered on every write to worker StdErr pipe (batched). Except payload to be []byte string.
+	EventWorkerLog
+
+	// WaitDuration - for how long error buffer should attempt to aggregate error messages
+	// before merging output together since lastError update (required to keep error update together).
+	WaitDuration = 100 * time.Millisecond
+)
+
+type WorkerEvent struct {
+	Event   int
+	Worker  *Worker
+	Payload interface{}
+}
 
 // Worker - supervised process with api over goridge.Relay.
 type Worker struct {
@@ -21,6 +40,9 @@ type Worker struct {
 
 	// Created indicates at what time worker has been created.
 	Created time.Time
+
+	// updates parent supervisor or pool about worker events
+	Events chan<- WorkerEvent
 
 	// state holds information about current worker state,
 	// number of worker executions, buf status change time.
@@ -33,9 +55,9 @@ type Worker struct {
 	// stdErr direction will be handled by worker to aggregate error message.
 	cmd *exec.Cmd
 
-	// err aggregates stderr output from underlying process. Value can be
+	// errBuffer aggregates stderr output from underlying process. Value can be
 	// receive only once command is completed and all pipes are closed.
-	err *errBuffer
+	errBuffer *errBuffer
 
 	// channel is being closed once command is complete.
 	waitDone chan interface{}
@@ -50,8 +72,8 @@ type Worker struct {
 	rl goridge.Relay
 }
 
-// newWorker creates new worker over given exec.cmd.
-func newWorker(cmd *exec.Cmd) (*Worker, error) {
+// initWorker creates new worker over given exec.cmd.
+func initWorker(cmd *exec.Cmd) (*Worker, error) {
 	if cmd.Process != nil {
 		return nil, fmt.Errorf("can't attach to running process")
 	}
@@ -59,13 +81,15 @@ func newWorker(cmd *exec.Cmd) (*Worker, error) {
 	w := &Worker{
 		Created:  time.Now(),
 		cmd:      cmd,
-		err:      newErrBuffer(),
+		Events:   make(chan WorkerEvent),
 		waitDone: make(chan interface{}),
 		state:    newState(StateInactive),
 	}
 
+	w.errBuffer = newErrBuffer(w.logCallback)
+
 	// piping all stderr to command errBuffer
-	w.cmd.Stderr = w.err
+	w.cmd.Stderr = w.errBuffer
 
 	return w, nil
 }
@@ -113,8 +137,8 @@ func (w *Worker) Wait() error {
 		w.state.set(StateStopped)
 	}
 
-	if w.err.Len() != 0 {
-		return errors.New(w.err.String())
+	if w.errBuffer.Len() != 0 {
+		return errors.New(w.errBuffer.String())
 	}
 
 	// generic process error
@@ -153,44 +177,6 @@ func (w *Worker) Kill() error {
 	}
 }
 
-// Exec sends payload to worker, executes it and returns result or
-// error. Make sure to handle worker.Wait() to gather worker level
-// errors. Method might return JobError indicating issue with payload.
-func (w *Worker) Exec(rqs *Payload) (rsp *Payload, err error) {
-	w.mu.Lock()
-
-	if rqs == nil {
-		w.mu.Unlock()
-		return nil, fmt.Errorf("payload can not be empty")
-	}
-
-	if w.state.Value() != StateReady {
-		w.mu.Unlock()
-		return nil, fmt.Errorf("worker is not ready (%s)", w.state.String())
-	}
-
-	w.state.set(StateWorking)
-
-	rsp, err = w.execPayload(rqs)
-	if err != nil {
-		if _, ok := err.(JobError); !ok {
-			w.state.set(StateErrored)
-			w.state.registerExec()
-			w.mu.Unlock()
-			return nil, err
-		}
-	}
-
-	w.state.set(StateReady)
-	w.state.registerExec()
-	w.mu.Unlock()
-	return rsp, err
-}
-
-func (w *Worker) markInvalid() {
-	w.state.set(StateInvalid)
-}
-
 func (w *Worker) start() error {
 	if err := w.cmd.Start(); err != nil {
 		close(w.waitDone)
@@ -210,49 +196,113 @@ func (w *Worker) start() error {
 			if w.rl != nil {
 				err := w.rl.Close()
 				if err != nil {
-					w.err.lsn(EventWorkerError, WorkerError{Worker: w, Caused: err})
+					w.Events <- WorkerEvent{Event: EventWorkerError, Worker: w, Payload: err}
 				}
 			}
 
-			err := w.err.Close()
+			err := w.errBuffer.Close()
 			if err != nil {
-				w.err.lsn(EventWorkerError, WorkerError{Worker: w, Caused: err})
+				w.Events <- WorkerEvent{Event: EventWorkerError, Worker: w, Payload: err}
 			}
+
+			// todo: check if we can merge waitDone and events
+			close(w.Events)
 		}
 	}()
 
 	return nil
 }
 
-func (w *Worker) execPayload(rqs *Payload) (rsp *Payload, err error) {
-	// two things
-	if err := sendControl(w.rl, rqs.Context); err != nil {
-		return nil, errors.Wrap(err, "header error")
+func (w *Worker) logCallback(log []byte) {
+	w.Events <- WorkerEvent{Event: EventWorkerLog, Worker: w, Payload: log}
+}
+
+// todo: do we still need it?
+func (w *Worker) markInvalid() {
+	w.state.set(StateInvalid)
+}
+
+// thread safe errBuffer
+type errBuffer struct {
+	mu          sync.Mutex
+	buf         []byte
+	last        int
+	wait        *time.Timer
+	update      chan interface{}
+	stop        chan interface{}
+	logCallback func(log []byte)
+}
+
+func newErrBuffer(logCallback func(log []byte)) *errBuffer {
+	eb := &errBuffer{
+		buf:         make([]byte, 0),
+		update:      make(chan interface{}),
+		wait:        time.NewTimer(WaitDuration),
+		stop:        make(chan interface{}),
+		logCallback: logCallback,
 	}
 
-	if err = w.rl.Send(rqs.Body, 0); err != nil {
-		return nil, errors.Wrap(err, "sender error")
-	}
+	go func() {
+		for {
+			select {
+			case <-eb.update:
+				eb.wait.Reset(WaitDuration)
+			case <-eb.wait.C:
+				eb.mu.Lock()
+				if len(eb.buf) > eb.last {
+					eb.logCallback(eb.buf[eb.last:])
+					eb.buf = eb.buf[0:0]
+					eb.last = len(eb.buf)
+				}
+				eb.mu.Unlock()
+			case <-eb.stop:
+				eb.wait.Stop()
 
-	var pr goridge.Prefix
-	rsp = new(Payload)
+				eb.mu.Lock()
+				if len(eb.buf) > eb.last {
+					eb.logCallback(eb.buf[eb.last:])
+					eb.last = len(eb.buf)
+				}
+				eb.mu.Unlock()
+				return
+			}
+		}
+	}()
 
-	if rsp.Context, pr, err = w.rl.Receive(); err != nil {
-		return nil, errors.Wrap(err, "worker error")
-	}
+	return eb
+}
 
-	if !pr.HasFlag(goridge.PayloadControl) {
-		return nil, fmt.Errorf("malformed worker response")
-	}
+// Len returns the number of buf of the unread portion of the errBuffer;
+// buf.Len() == len(buf.Bytes()).
+func (eb *errBuffer) Len() int {
+	eb.mu.Lock()
+	defer eb.mu.Unlock()
 
-	if pr.HasFlag(goridge.PayloadError) {
-		return nil, JobError(rsp.Context)
-	}
+	// currently active message
+	return len(eb.buf)
+}
 
-	// add streaming support :)
-	if rsp.Body, pr, err = w.rl.Receive(); err != nil {
-		return nil, errors.Wrap(err, "worker error")
-	}
+// Write appends the contents of pool to the errBuffer, growing the errBuffer as
+// needed. The return value n is the length of pool; errBuffer is always nil.
+func (eb *errBuffer) Write(p []byte) (int, error) {
+	eb.mu.Lock()
+	eb.buf = append(eb.buf, p...)
+	eb.mu.Unlock()
+	eb.update <- nil
 
-	return rsp, nil
+	return len(p), nil
+}
+
+// Strings fetches all errBuffer data into string.
+func (eb *errBuffer) String() string {
+	eb.mu.Lock()
+	defer eb.mu.Unlock()
+
+	return string(eb.buf)
+}
+
+// Close aggregation timer.
+func (eb *errBuffer) Close() error {
+	close(eb.stop)
+	return nil
 }

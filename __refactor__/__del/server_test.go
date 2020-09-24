@@ -1,4 +1,4 @@
-package __old
+package __del
 
 import (
 	"github.com/stretchr/testify/assert"

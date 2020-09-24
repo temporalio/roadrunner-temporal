@@ -6,7 +6,7 @@ import (
 )
 
 func TestErrBuffer_Write_Len(t *testing.T) {
-	buf := newErrBuffer()
+	buf := newErrBuffer(nil)
 	defer func() {
 		err := buf.Close()
 		if err != nil {
@@ -23,7 +23,7 @@ func TestErrBuffer_Write_Len(t *testing.T) {
 }
 
 func TestErrBuffer_Write_Event(t *testing.T) {
-	buf := newErrBuffer()
+	buf := newErrBuffer(nil)
 	defer func() {
 		err := buf.Close()
 		if err != nil {
@@ -32,11 +32,11 @@ func TestErrBuffer_Write_Event(t *testing.T) {
 	}()
 
 	tr := make(chan interface{})
-	buf.Listen(func(event int, ctx interface{}) {
+	buf.listener = func(event int, ctx interface{}) {
 		assert.Equal(t, EventStderrOutput, event)
 		assert.Equal(t, []byte("hello\n"), ctx)
 		close(tr)
-	})
+	}
 
 	_, err := buf.Write([]byte("hello\n"))
 	if err != nil {
@@ -49,7 +49,7 @@ func TestErrBuffer_Write_Event(t *testing.T) {
 }
 
 func TestErrBuffer_Write_Event_Separated(t *testing.T) {
-	buf := newErrBuffer()
+	buf := newErrBuffer(nil)
 	defer func() {
 		err := buf.Close()
 		if err != nil {
@@ -58,11 +58,11 @@ func TestErrBuffer_Write_Event_Separated(t *testing.T) {
 	}()
 
 	tr := make(chan interface{})
-	buf.Listen(func(event int, ctx interface{}) {
+	buf.listener = func(event int, ctx interface{}) {
 		assert.Equal(t, EventStderrOutput, event)
 		assert.Equal(t, []byte("hello\nending"), ctx)
 		close(tr)
-	})
+	}
 
 	_, err := buf.Write([]byte("hel"))
 	if err != nil {
@@ -85,7 +85,7 @@ func TestErrBuffer_Write_Event_Separated(t *testing.T) {
 }
 
 func TestErrBuffer_Write_Event_Separated_NoListener(t *testing.T) {
-	buf := newErrBuffer()
+	buf := newErrBuffer(nil)
 	defer func() {
 		err := buf.Close()
 		if err != nil {
@@ -113,7 +113,7 @@ func TestErrBuffer_Write_Event_Separated_NoListener(t *testing.T) {
 }
 
 func TestErrBuffer_Write_Remaining(t *testing.T) {
-	buf := newErrBuffer()
+	buf := newErrBuffer(nil)
 	defer func() {
 		err := buf.Close()
 		if err != nil {
