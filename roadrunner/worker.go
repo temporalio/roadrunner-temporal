@@ -13,12 +13,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-// EventWorkerKill thrown after worker is being forcefully killed.
+// EventWorkerKill thrown after WorkerProcess is being forcefully killed.
 const (
-	// EventWorkerError triggered after worker. Except payload to be error.
+	// EventWorkerError triggered after WorkerProcess. Except payload to be error.
 	EventWorkerError = iota + 100
 
-	// EventWorkerLog triggered on every write to worker StdErr pipe (batched). Except payload to be []byte string.
+	// EventWorkerLog triggered on every write to WorkerProcess StdErr pipe (batched). Except payload to be []byte string.
 	EventWorkerLog
 
 	// WaitDuration - for how long error buffer should attempt to aggregate error messages
@@ -26,34 +26,70 @@ const (
 	WaitDuration = 100 * time.Millisecond
 )
 
+// todo: write comment
 type WorkerEvent struct {
 	Event   int
-	Worker  *Worker
+	Worker  *WorkerProcess
 	Payload interface{}
 }
 
-// Worker - supervised process with api over goridge.Relay.
-type Worker struct {
-	// Pid of the process, points to Pid of underlying process and
-	// can be nil while process is not started.
-	Pid *int
+type Worker interface {
+	fmt.Stringer
 
-	// Created indicates at what time worker has been created.
-	Created time.Time
+	Created() time.Time
 
-	// updates parent supervisor or pool about worker events
-	Events chan<- WorkerEvent
+	Events() <-chan WorkerEvent
 
-	// state holds information about current worker state,
-	// number of worker executions, buf status change time.
+	Pid() int
+
+	// State return receive-only WorkerProcess state object, state can be used to safely access
+	// WorkerProcess status, time when status changed and number of WorkerProcess executions.
+	State() State
+
+	Start() error
+
+	// Wait must be called once for each WorkerProcess, call will be released once WorkerProcess is
+	// complete and will return process error (if any), if stderr is presented it's value
+	// will be wrapped as WorkerError. Method will return error code if php process fails
+	// to find or Start the script.
+	Wait() error
+
+	// Closed when worker stops. // todo: see socket factory, see static pool
+	WaitChan() chan interface{}
+
+	// Stop sends soft termination command to the WorkerProcess and waits for process completion.
+	Stop() error
+
+	// Kill kills underlying process, make sure to call Wait() func to gather
+	// error log from the stderr. Does not waits for process completion!
+	Kill() error
+
+	Relay() goridge.Relay
+	AttachRelay(rl goridge.Relay)
+}
+
+// WorkerProcess - supervised process with api over goridge.Relay.
+type WorkerProcess struct {
+	// created indicates at what time WorkerProcess has been created.
+	created time.Time
+
+	// updates parent supervisor or pool about WorkerProcess events
+	events chan WorkerEvent
+
+	// state holds information about current WorkerProcess state,
+	// number of WorkerProcess executions, buf status change time.
 	// publicly this object is receive-only and protected using Mutex
 	// and atomic counter.
 	state *state
 
 	// underlying command with associated process, command must be
-	// provided to worker from outside in non-started form. CmdSource
-	// stdErr direction will be handled by worker to aggregate error message.
+	// provided to WorkerProcess from outside in non-started form. CmdSource
+	// stdErr direction will be handled by WorkerProcess to aggregate error message.
 	cmd *exec.Cmd
+
+	// pid of the process, points to pid of underlying process and
+	// can be nil while process is not started.
+	pid *int // todo: drop it?
 
 	// errBuffer aggregates stderr output from underlying process. Value can be
 	// receive only once command is completed and all pipes are closed.
@@ -69,20 +105,20 @@ type Worker struct {
 	mu sync.Mutex
 
 	// communication bus with underlying process.
-	rl goridge.Relay
+	relay goridge.Relay
 }
 
-// initWorker creates new worker over given exec.cmd.
-func initWorker(cmd *exec.Cmd) (*Worker, error) {
+// initWorker creates new WorkerProcess over given exec.cmd.
+func initWorker(cmd *exec.Cmd) (Worker, error) {
 	if cmd.Process != nil {
 		return nil, fmt.Errorf("can't attach to running process")
 	}
 
-	w := &Worker{
-		Created:  time.Now(),
+	w := &WorkerProcess{
+		created:  time.Now(),
+		events:   make(chan WorkerEvent),
 		cmd:      cmd,
-		Events:   make(chan WorkerEvent),
-		waitDone: make(chan interface{}),
+		waitDone: make(chan interface{}), // todo: deprecate?
 		state:    newState(StateInactive),
 	}
 
@@ -94,17 +130,41 @@ func initWorker(cmd *exec.Cmd) (*Worker, error) {
 	return w, nil
 }
 
-// State return receive-only worker state object, state can be used to safely access
-// worker status, time when status changed and number of worker executions.
-func (w *Worker) State() State {
+func (w *WorkerProcess) Created() time.Time {
+	return w.created
+}
+
+func (w *WorkerProcess) Events() <-chan WorkerEvent {
+	return w.events
+}
+
+func (w *WorkerProcess) Pid() int64 {
+	return *w.pid
+}
+
+// State return receive-only WorkerProcess state object, state can be used to safely access
+// WorkerProcess status, time when status changed and number of WorkerProcess executions.
+func (w *WorkerProcess) State() State {
 	return w.state
 }
 
-// String returns worker description.
-func (w *Worker) String() string {
+// State return receive-only WorkerProcess state object, state can be used to safely access
+// WorkerProcess status, time when status changed and number of WorkerProcess executions.
+func (w *WorkerProcess) AttachRelay(rl goridge.Relay) {
+	w.relay = rl
+}
+
+// State return receive-only WorkerProcess state object, state can be used to safely access
+// WorkerProcess status, time when status changed and number of WorkerProcess executions.
+func (w *WorkerProcess) Relay() goridge.Relay {
+	return w.relay
+}
+
+// String returns WorkerProcess description.
+func (w *WorkerProcess) String() string {
 	state := w.state.String()
-	if w.Pid != nil {
-		state = state + ", pid:" + strconv.Itoa(*w.Pid)
+	if w.pid != nil {
+		state = state + ", pid:" + strconv.Itoa(*w.pid)
 	}
 
 	return fmt.Sprintf(
@@ -115,11 +175,47 @@ func (w *Worker) String() string {
 	)
 }
 
-// Wait must be called once for each worker, call will be released once worker is
+func (w *WorkerProcess) Start() error {
+	if err := w.cmd.Start(); err != nil {
+		close(w.waitDone)
+		return err
+	}
+
+	w.pid = &w.cmd.Process.Pid
+
+	// wait for process to complete
+	go func() {
+		w.endState, _ = w.cmd.Process.Wait()
+		if w.waitDone != nil {
+			close(w.waitDone)
+			w.mu.Lock()
+			defer w.mu.Unlock()
+
+			if w.relay != nil {
+				err := w.relay.Close()
+				if err != nil {
+					w.events <- WorkerEvent{Event: EventWorkerError, Worker: w, Payload: err}
+				}
+			}
+
+			err := w.errBuffer.Close()
+			if err != nil {
+				w.events <- WorkerEvent{Event: EventWorkerError, Worker: w, Payload: err}
+			}
+
+			// todo: check if we can merge waitDone and events
+			close(w.events)
+		}
+	}()
+
+	return nil
+}
+
+// Wait must be called once for each WorkerProcess, call will be released once WorkerProcess is
 // complete and will return process error (if any), if stderr is presented it's value
 // will be wrapped as WorkerError. Method will return error code if php process fails
-// to find or start the script.
-func (w *Worker) Wait() error {
+// to find or Start the script.
+func (w *WorkerProcess) Wait() error {
 	<-w.waitDone
 
 	// ensure that all receive/send operations are complete
@@ -127,14 +223,14 @@ func (w *Worker) Wait() error {
 	defer w.mu.Unlock()
 
 	if w.endState.Success() {
-		w.state.set(StateStopped)
+		w.state.Set(StateStopped)
 		return nil
 	}
 
 	if w.state.Value() != StateStopping {
-		w.state.set(StateErrored)
+		w.state.Set(StateErrored)
 	} else {
-		w.state.set(StateStopped)
+		w.state.Set(StateStopped)
 	}
 
 	if w.errBuffer.Len() != 0 {
@@ -145,8 +241,12 @@ func (w *Worker) Wait() error {
 	return &exec.ExitError{ProcessState: w.endState}
 }
 
-// Stop sends soft termination command to the worker and waits for process completion.
-func (w *Worker) Stop() error {
+func (w *WorkerProcess) WaitChan() chan interface{} {
+	return w.waitDone
+}
+
+// Stop sends soft termination command to the WorkerProcess and waits for process completion.
+func (w *WorkerProcess) Stop() error {
 	select {
 	case <-w.waitDone:
 		return nil
@@ -154,8 +254,8 @@ func (w *Worker) Stop() error {
 		w.mu.Lock()
 		defer w.mu.Unlock()
 
-		w.state.set(StateStopping)
-		err := sendControl(w.rl, &stopCommand{Stop: true})
+		w.state.Set(StateStopping)
+		err := sendControl(w.relay, &stopCommand{Stop: true})
 
 		<-w.waitDone
 		return err
@@ -164,12 +264,12 @@ func (w *Worker) Stop() error {
 
 // Kill kills underlying process, make sure to call Wait() func to gather
 // error log from the stderr. Does not waits for process completion!
-func (w *Worker) Kill() error {
+func (w *WorkerProcess) Kill() error {
 	select {
 	case <-w.waitDone:
 		return nil
 	default:
-		w.state.set(StateStopping)
+		w.state.Set(StateStopping)
 		err := w.cmd.Process.Signal(os.Kill)
 
 		<-w.waitDone
@@ -177,49 +277,8 @@ func (w *Worker) Kill() error {
 	}
 }
 
-func (w *Worker) start() error {
-	if err := w.cmd.Start(); err != nil {
-		close(w.waitDone)
-		return err
-	}
-
-	w.Pid = &w.cmd.Process.Pid
-
-	// wait for process to complete
-	go func() {
-		w.endState, _ = w.cmd.Process.Wait()
-		if w.waitDone != nil {
-			close(w.waitDone)
-			w.mu.Lock()
-			defer w.mu.Unlock()
-
-			if w.rl != nil {
-				err := w.rl.Close()
-				if err != nil {
-					w.Events <- WorkerEvent{Event: EventWorkerError, Worker: w, Payload: err}
-				}
-			}
-
-			err := w.errBuffer.Close()
-			if err != nil {
-				w.Events <- WorkerEvent{Event: EventWorkerError, Worker: w, Payload: err}
-			}
-
-			// todo: check if we can merge waitDone and events
-			close(w.Events)
-		}
-	}()
-
-	return nil
-}
-
-func (w *Worker) logCallback(log []byte) {
-	w.Events <- WorkerEvent{Event: EventWorkerLog, Worker: w, Payload: log}
-}
-
-// todo: do we still need it?
-func (w *Worker) markInvalid() {
-	w.state.set(StateInvalid)
+func (w *WorkerProcess) logCallback(log []byte) {
+	w.events <- WorkerEvent{Event: EventWorkerLog, Worker: w, Payload: log}
 }
 
 // thread safe errBuffer

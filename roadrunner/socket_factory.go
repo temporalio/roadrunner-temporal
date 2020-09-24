@@ -25,6 +25,8 @@ type SocketFactory struct {
 	relays map[int]chan *goridge.SocketRelay
 }
 
+// todo: review
+
 // NewSocketFactory returns SocketFactory attached to a given socket listener.
 // tout specifies for how long factory should serve for incoming relay connection
 func NewSocketFactory(ls net.Listener, tout time.Duration) *SocketFactory {
@@ -39,22 +41,22 @@ func NewSocketFactory(ls net.Listener, tout time.Duration) *SocketFactory {
 	return f
 }
 
-// SpawnWorker creates worker and connects it to appropriate relay or returns error
-func (f *SocketFactory) SpawnWorker(cmd *exec.Cmd) (w *Worker, err error) {
-	if w, err = newWorker(cmd); err != nil {
+// SpawnWorker creates WorkerProcess and connects it to appropriate relay or returns error
+func (f *SocketFactory) SpawnWorker(cmd *exec.Cmd) (w Worker, err error) {
+	if w, err = initWorker(cmd); err != nil {
 		return nil, err
 	}
 
-	if err := w.start(); err != nil {
+	if err := w.Start(); err != nil {
 		return nil, errors.Wrap(err, "process error")
 	}
 
 	rl, err := f.findRelay(w, f.tout)
 	if err != nil {
-		go func(w *Worker) {
+		go func(w Worker) {
 			err := w.Kill()
 			if err != nil {
-				fmt.Println(fmt.Errorf("error killing the worker %v", err))
+				fmt.Println(fmt.Errorf("error killing the WorkerProcess %v", err))
 			}
 		}(w)
 
@@ -66,11 +68,11 @@ func (f *SocketFactory) SpawnWorker(cmd *exec.Cmd) (w *Worker, err error) {
 			}
 		}
 
-		return nil, errors.Wrap(err, "unable to connect to worker")
+		return nil, errors.Wrap(err, "unable to connect to WorkerProcess")
 	}
 
-	w.rl = rl
-	w.state.set(StateReady)
+	w.AttachRelay(rl)
+	w.State().Set(StateReady)
 
 	return w, nil
 }
@@ -95,28 +97,28 @@ func (f *SocketFactory) listen() {
 	}
 }
 
-// waits for worker to connect over socket and returns associated relay of timeout
-func (f *SocketFactory) findRelay(w *Worker, tout time.Duration) (*goridge.SocketRelay, error) {
+// waits for WorkerProcess to connect over socket and returns associated relay of timeout
+func (f *SocketFactory) findRelay(w Worker, tout time.Duration) (*goridge.SocketRelay, error) {
 	timer := time.NewTimer(tout)
 	for {
 		select {
-		case rl := <-f.relayChan(*w.Pid):
+		case rl := <-f.relayChan(w.Pid()):
 			timer.Stop()
-			f.cleanChan(*w.Pid)
+			f.cleanChan(w.Pid())
 			return rl, nil
 
 		case <-timer.C:
 			return nil, fmt.Errorf("relay timeout")
 
-		case <-w.waitDone:
+		case <-w.WaitChan(): // todo: to clean up waiting if worker dies
 			timer.Stop()
-			f.cleanChan(*w.Pid)
-			return nil, fmt.Errorf("worker is gone")
+			f.cleanChan(w.Pid())
+			return nil, fmt.Errorf("WorkerProcess is gone")
 		}
 	}
 }
 
-// chan to store relay associated with specific Pid
+// chan to store relay associated with specific pid
 func (f *SocketFactory) relayChan(pid int) chan *goridge.SocketRelay {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -130,7 +132,7 @@ func (f *SocketFactory) relayChan(pid int) chan *goridge.SocketRelay {
 	return rl
 }
 
-// deletes relay chan associated with specific Pid
+// deletes relay chan associated with specific pid
 func (f *SocketFactory) cleanChan(pid int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

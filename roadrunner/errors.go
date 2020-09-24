@@ -1,6 +1,6 @@
 package roadrunner
 
-// TaskError is job level error (no worker halt), wraps at top
+// TaskError is job level error (no WorkerProcess halt), wraps at top
 // of error context
 type TaskError []byte
 
@@ -9,10 +9,10 @@ func (te TaskError) Error() string {
 	return string(te)
 }
 
-// WorkerError is worker related error
+// WorkerError is WorkerProcess related error
 type WorkerError struct {
 	// Worker
-	Worker *Worker
+	Worker *WorkerProcess
 
 	// Caused error
 	Caused error

@@ -84,7 +84,7 @@ func Test_Pipe_Echo(t *testing.T) {
 	defer func() {
 		err := w.Stop()
 		if err != nil {
-			t.Errorf("error stopping the worker: error %v", err)
+			t.Errorf("error stopping the WorkerProcess: error %v", err)
 		}
 	}()
 
@@ -133,7 +133,7 @@ func Benchmark_Pipe_SpawnWorker_Stop(b *testing.B) {
 
 		err := w.Stop()
 		if err != nil {
-			b.Errorf("error stopping the worker: error %v", err)
+			b.Errorf("error stopping the WorkerProcess: error %v", err)
 		}
 	}
 }
@@ -145,13 +145,13 @@ func Benchmark_Pipe_Worker_ExecEcho(b *testing.B) {
 	go func() {
 		err := w.Wait()
 		if err != nil {
-			b.Errorf("error waiting the worker: error %v", err)
+			b.Errorf("error waiting the WorkerProcess: error %v", err)
 		}
 	}()
 	defer func() {
 		err := w.Stop()
 		if err != nil {
-			b.Errorf("error stopping the worker: error %v", err)
+			b.Errorf("error stopping the WorkerProcess: error %v", err)
 		}
 	}()
 

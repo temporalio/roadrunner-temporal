@@ -15,13 +15,15 @@ type PipeFactory struct {
 
 // NewPipeFactory returns new factory instance and starts
 // listening
+
+// todo: review tests
 func NewPipeFactory() *PipeFactory {
 	return &PipeFactory{}
 }
 
-// SpawnWorker creates new worker and connects it to goridge relay,
+// SpawnWorker creates new WorkerProcess and connects it to goridge relay,
 // method Wait() must be handled on level above.
-func (f *PipeFactory) SpawnWorker(cmd *exec.Cmd) (w *Worker, err error) {
+func (f *PipeFactory) SpawnWorker(cmd *exec.Cmd) (w Worker, err error) {
 	if w, err = initWorker(cmd); err != nil {
 		return nil, err
 	}
@@ -39,18 +41,25 @@ func (f *PipeFactory) SpawnWorker(cmd *exec.Cmd) (w *Worker, err error) {
 		return nil, err
 	}
 
-	w.rl = goridge.NewPipeRelay(in, out)
+	relay := goridge.NewPipeRelay(in, out)
+	w.AttachRelay(relay)
 
-	if err := w.start(); err != nil {
+	if err := w.Start(); err != nil {
 		return nil, errors.Wrap(err, "process error")
 	}
 
-	if pid, err := fetchPID(w.rl); pid != *w.Pid {
-		go func(w *Worker) {
+	if pid, err := fetchPID(relay); pid != w.Pid() {
+		go func(w Worker) {
 			err := w.Kill()
 			if err != nil {
 				// there is no logger here, how to handle error in goroutines ?
-				fmt.Println(fmt.Sprintf("error killing the worker with PID number %d, Created: %s", w.Pid, w.Created))
+				fmt.Println(
+					fmt.Sprintf(
+						"error killing the WorkerProcess with PID number %d, created: %s",
+						w.Pid(),
+						w.Created(),
+					),
+				)
 			}
 		}(w)
 
@@ -65,10 +74,10 @@ func (f *PipeFactory) SpawnWorker(cmd *exec.Cmd) (w *Worker, err error) {
 			}
 		}
 
-		return nil, errors.Wrap(err, "unable to connect to worker")
+		return nil, errors.Wrap(err, "unable to connect to WorkerProcess")
 	}
 
-	w.state.set(StateReady)
+	w.State().Set(StateReady)
 	return w, nil
 }
 

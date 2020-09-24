@@ -12,5 +12,5 @@ type AppProvider interface {
 	CmdFactory(env Env) (func() *exec.Cmd, error)
 
 	//// NewFactory inits new factory for workers.
-	//SpawnWorker(env Env) (*roadrunner.Worker, error)
+	//SpawnWorker(env Env) (*roadrunner.worker, error)
 }

@@ -12,7 +12,7 @@ type PoolOptions struct {
 }
 
 type WorkerFactory interface {
-	NewWorker(env Env) (*roadrunner.Worker, error)
+	NewWorker(env Env) (*roadrunner.worker, error)
 	NewAsyncWorker(env Env) (*roadrunner.AsyncWorker, error)
 	NewWorkerPool(opt PoolOptions, env Env) (roadrunner.Pool, error)
 }

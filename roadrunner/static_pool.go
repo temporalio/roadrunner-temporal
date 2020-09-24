@@ -1,4 +1,4 @@
-package _tmp
+package roadrunner
 
 import (
 	"fmt"
@@ -55,7 +55,11 @@ type StaticPool struct {
 }
 
 // NewPool creates new worker pool and task multiplexer. StaticPool will initiate with one worker.
-func NewPool(cmd func() *exec.Cmd, factory Factory, cfg Config) (*StaticPool, error) {
+func NewPool(
+	cmd func() *exec.Cmd,
+	factory Factory,
+	cfg Config,
+) (*StaticPool, error) {
 	if err := cfg.Valid(); err != nil {
 		return nil, errors.Wrap(err, "config")
 	}
@@ -262,7 +266,7 @@ func (p *StaticPool) release(w *Worker) {
 
 // creates new worker using associated factory. automatically
 // adds worker to the worker list (background)
-func (p *StaticPool) createWorker() (*Worker, error) {
+func (p *StaticPool) createWorker() (SyncWorker, error) {
 	w, err := p.factory.SpawnWorker(p.cmd())
 	if err != nil {
 		return nil, err

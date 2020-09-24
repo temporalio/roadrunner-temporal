@@ -35,7 +35,7 @@ func Test_Tcp_Start(t *testing.T) {
 
 	err = w.Stop()
 	if err != nil {
-		t.Errorf("error stopping the worker: error %v", err)
+		t.Errorf("error stopping the WorkerProcess: error %v", err)
 	}
 }
 
@@ -68,7 +68,7 @@ func Test_Tcp_StartCloseFactory(t *testing.T) {
 
 	err = w.Stop()
 	if err != nil {
-		t.Errorf("error stopping the worker: error %v", err)
+		t.Errorf("error stopping the WorkerProcess: error %v", err)
 	}
 }
 
@@ -227,7 +227,7 @@ func Test_Tcp_Echo(t *testing.T) {
 	defer func() {
 		err = w.Stop()
 		if err != nil {
-			t.Errorf("error stopping the worker: error %v", err)
+			t.Errorf("error stopping the WorkerProcess: error %v", err)
 		}
 	}()
 
@@ -266,7 +266,7 @@ func Test_Unix_Start(t *testing.T) {
 
 	err = w.Stop()
 	if err != nil {
-		t.Errorf("error stopping the worker: error %v", err)
+		t.Errorf("error stopping the WorkerProcess: error %v", err)
 	}
 }
 
@@ -388,7 +388,7 @@ func Test_Unix_Echo(t *testing.T) {
 	defer func() {
 		err = w.Stop()
 		if err != nil {
-			t.Errorf("error stopping the worker: error %v", err)
+			t.Errorf("error stopping the WorkerProcess: error %v", err)
 		}
 	}()
 
@@ -428,7 +428,7 @@ func Benchmark_Tcp_SpawnWorker_Stop(b *testing.B) {
 
 		err = w.Stop()
 		if err != nil {
-			b.Errorf("error stopping the worker: error %v", err)
+			b.Errorf("error stopping the WorkerProcess: error %v", err)
 		}
 	}
 }
@@ -458,7 +458,7 @@ func Benchmark_Tcp_Worker_ExecEcho(b *testing.B) {
 	defer func() {
 		err = w.Stop()
 		if err != nil {
-			b.Errorf("error stopping the worker: error %v", err)
+			b.Errorf("error stopping the WorkerProcess: error %v", err)
 		}
 	}()
 
@@ -495,7 +495,7 @@ func Benchmark_Unix_SpawnWorker_Stop(b *testing.B) {
 
 		err = w.Stop()
 		if err != nil {
-			b.Errorf("error stopping the worker: error %v", err)
+			b.Errorf("error stopping the WorkerProcess: error %v", err)
 		}
 	}
 }
@@ -525,7 +525,7 @@ func Benchmark_Unix_Worker_ExecEcho(b *testing.B) {
 	defer func() {
 		err = w.Stop()
 		if err != nil {
-			b.Errorf("error stopping the worker: error %v", err)
+			b.Errorf("error stopping the WorkerProcess: error %v", err)
 		}
 	}()
 
