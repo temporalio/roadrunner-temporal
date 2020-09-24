@@ -29,7 +29,7 @@ func sendControl(rl goridge.Relay, v interface{}) error {
 	return rl.Send(data, goridge.PayloadControl)
 }
 
-func fetchPID(rl goridge.Relay) (pid int, err error) {
+func fetchPID(rl goridge.Relay) (pid int64, err error) {
 	if err := sendControl(rl, pidCommand{Pid: os.Getpid()}); err != nil {
 		return 0, err
 	}
@@ -47,5 +47,5 @@ func fetchPID(rl goridge.Relay) (pid int, err error) {
 		return 0, err
 	}
 
-	return link.Pid, nil
+	return int64(link.Pid), nil
 }
