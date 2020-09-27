@@ -2,13 +2,14 @@ package roadrunner
 
 import (
 	"fmt"
-	"github.com/spiral/goridge/v2"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/spiral/goridge/v2"
 
 	"github.com/pkg/errors"
 )
@@ -29,7 +30,7 @@ const (
 // todo: write comment
 type WorkerEvent struct {
 	Event   int64
-	Worker  *WorkerProcess
+	Worker  Worker
 	Payload interface{}
 }
 
@@ -55,7 +56,7 @@ type Worker interface {
 	Wait() error
 
 	// Closed when worker stops. // todo: see socket factory, see static pool
-	WaitChan() chan interface{}
+	//WaitChan() chan interface{}
 
 	// Stop sends soft termination command to the WorkerProcess and waits for process completion.
 	Stop() error
@@ -96,7 +97,7 @@ type WorkerProcess struct {
 	errBuffer *errBuffer
 
 	// channel is being closed once command is complete.
-	waitDone chan interface{}
+	// waitDone chan interface{}
 
 	// contains information about resulted process state.
 	endState *os.ProcessState
@@ -118,7 +119,7 @@ func initWorker(cmd *exec.Cmd) (Worker, error) {
 		created:  time.Now(),
 		events:   make(chan WorkerEvent),
 		cmd:      cmd,
-		waitDone: make(chan interface{}), // todo: deprecate?
+		//waitDone: make(chan interface{}), // todo: deprecate?
 		state:    newState(StateInactive),
 	}
 
@@ -178,36 +179,12 @@ func (w *WorkerProcess) String() string {
 
 func (w *WorkerProcess) Start() error {
 	if err := w.cmd.Start(); err != nil {
-		close(w.waitDone)
+		//close(w.waitDone)
 		return err
 	}
 
 	w.pid = w.cmd.Process.Pid
 
-	// wait for process to complete
-	go func() {
-		w.endState, _ = w.cmd.Process.Wait()
-		if w.waitDone != nil {
-			close(w.waitDone)
-			w.mu.Lock()
-			defer w.mu.Unlock()
-
-			if w.relay != nil {
-				err := w.relay.Close()
-				if err != nil {
-					w.events <- WorkerEvent{Event: EventWorkerError, Worker: w, Payload: err}
-				}
-			}
-
-			err := w.errBuffer.Close()
-			if err != nil {
-				w.events <- WorkerEvent{Event: EventWorkerError, Worker: w, Payload: err}
-			}
-
-			// todo: check if we can merge waitDone and events
-			close(w.events)
-		}
-	}()
 
 	return nil
 }
@@ -217,7 +194,27 @@ func (w *WorkerProcess) Start() error {
 // will be wrapped as WorkerError. Method will return error code if php process fails
 // to find or Start the script.
 func (w *WorkerProcess) Wait() error {
-	<-w.waitDone
+	var err error
+	w.endState, err = w.cmd.Process.Wait()
+	if err != nil {
+		return err
+	}
+
+	if w.relay != nil {
+		err := w.relay.Close()
+		if err != nil {
+			w.events <- WorkerEvent{Event: EventWorkerError, Worker: w, Payload: err}
+		}
+	}
+
+	err = w.errBuffer.Close()
+	if err != nil {
+		w.events <- WorkerEvent{Event: EventWorkerError, Worker: w, Payload: err}
+	}
+
+	// close events channel, since we are
+	// TODO close ??
+	close(w.events)
 
 	// ensure that all receive/send operations are complete
 	w.mu.Lock()
@@ -242,40 +239,48 @@ func (w *WorkerProcess) Wait() error {
 	return &exec.ExitError{ProcessState: w.endState}
 }
 
-func (w *WorkerProcess) WaitChan() chan interface{} {
-	return w.waitDone
-}
+//func (w *WorkerProcess) WaitChan() chan interface{} {
+//	return w.waitDone
+//}
 
 // Stop sends soft termination command to the WorkerProcess and waits for process completion.
 func (w *WorkerProcess) Stop() error {
-	select {
-	case <-w.waitDone:
-		return nil
-	default:
-		w.mu.Lock()
-		defer w.mu.Unlock()
+	//select {
+	//case <-w.waitDone:
+	//	return nil
+	//default:
+	//
+	//
+	//	//<-w.waitDone
+	//	return err
+	//}
 
-		w.state.Set(StateStopping)
-		err := sendControl(w.relay, &stopCommand{Stop: true})
+	w.mu.Lock()
+	defer w.mu.Unlock()
 
-		<-w.waitDone
-		return err
-	}
+	w.state.Set(StateStopping)
+	return sendControl(w.relay, &stopCommand{Stop: true})
 }
 
 // Kill kills underlying process, make sure to call Wait() func to gather
 // error log from the stderr. Does not waits for process completion!
 func (w *WorkerProcess) Kill() error {
-	select {
-	case <-w.waitDone:
-		return nil
-	default:
-		w.state.Set(StateStopping)
-		err := w.cmd.Process.Signal(os.Kill)
+	//select {
+	//case <-w.waitDone:
+	//	return nil
+	//default:
+	//	w.state.Set(StateStopping)
+	//	err := w.cmd.Process.Signal(os.Kill)
+	//
+	//	//<-w.waitDone
+	//	return err
+	//}
 
-		<-w.waitDone
-		return err
-	}
+	w.state.Set(StateStopping)
+	err := w.cmd.Process.Signal(os.Kill)
+
+	//<-w.waitDone
+	return err
 }
 
 func (w *WorkerProcess) logCallback(log []byte) {
@@ -288,6 +293,7 @@ type errBuffer struct {
 	buf         []byte
 	last        int
 	wait        *time.Timer
+	// todo remove update
 	update      chan interface{}
 	stop        chan interface{}
 	logCallback func(log []byte)
@@ -302,7 +308,7 @@ func newErrBuffer(logCallback func(log []byte)) *errBuffer {
 		logCallback: logCallback,
 	}
 
-	go func() {
+	go func(eb *errBuffer) {
 		for {
 			select {
 			case <-eb.update:
@@ -327,7 +333,7 @@ func newErrBuffer(logCallback func(log []byte)) *errBuffer {
 				return
 			}
 		}
-	}()
+	}(eb)
 
 	return eb
 }

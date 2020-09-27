@@ -120,9 +120,9 @@ func (tw *taskWorker) Wait() error {
 	return tw.w.Wait()
 }
 
-func (tw *taskWorker) WaitChan() chan interface{} {
-	return tw.w.WaitChan()
-}
+//func (tw *taskWorker) WaitChan() chan interface{} {
+//	return tw.w.WaitChan()
+//}
 
 func (tw *taskWorker) Stop() error {
 	return tw.w.Stop()

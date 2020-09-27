@@ -74,17 +74,12 @@ func (cfg *Config) Valid() error {
 	return nil
 }
 
-type PoolEvent struct {
-	Event int
-	Payload interface{}
-}
-
 // Pool managed set of inner worker processes.
 type Pool interface {
 	Events() chan PoolEvent
 
 	// Exec one task with given payload and context, returns result or error.
-	Exec(rqs *Payload) (rsp *Payload, err error)
+	Exec(rqs Payload) (rsp Payload, err error)
 
 	// Workers returns worker list associated with the pool.
 	Workers() (workers []Worker)
