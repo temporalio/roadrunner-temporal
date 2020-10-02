@@ -1,46 +1,50 @@
 package roadrunner
 
 import (
-	"github.com/stretchr/testify/assert"
+	"context"
 	"os/exec"
+	"sync"
 	"testing"
-	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_GetState(t *testing.T) {
+	ctx := context.Background()
 	cmd := exec.Command("php", "tests/client.php", "echo", "pipes")
 
-	w, err := NewPipeFactory().SpawnWorker(cmd)
+	w, err := NewPipeFactory().SpawnWorker(ctx, cmd)
 	go func() {
-		assert.NoError(t, w.Wait())
-		assert.Equal(t, StateStopped, w.State().Value())
+		assert.NoError(t, w.Wait(ctx))
+		assert.Equal(t, StateStopped, w.State(ctx).Value())
 	}()
 
 	assert.NoError(t, err)
 	assert.NotNil(t, w)
 
-	assert.Equal(t, StateReady, w.State().Value())
-	err = w.Stop()
+	assert.Equal(t, StateReady, w.State(ctx).Value())
+	err = w.Stop(ctx)
 	if err != nil {
 		t.Errorf("error stopping the WorkerProcess: error %v", err)
 	}
 }
 
 func Test_Kill(t *testing.T) {
+	ctx := context.Background()
 	cmd := exec.Command("php", "tests/client.php", "echo", "pipes")
 
-	w, err := NewPipeFactory().SpawnWorker(cmd)
+	w, err := NewPipeFactory().SpawnWorker(ctx, cmd)
 	go func() {
-		assert.Error(t, w.Wait())
-		assert.Equal(t, StateStopped, w.State().Value())
+		assert.Error(t, w.Wait(ctx))
+		assert.Equal(t, StateStopped, w.State(ctx).Value())
 	}()
 
 	assert.NoError(t, err)
 	assert.NotNil(t, w)
 
-	assert.Equal(t, StateReady, w.State().Value())
+	assert.Equal(t, StateReady, w.State(ctx).Value())
 	defer func() {
-		err := w.Kill()
+		err := w.Kill(ctx)
 		if err != nil {
 			t.Errorf("error killing the WorkerProcess: error %v", err)
 		}
@@ -48,10 +52,11 @@ func Test_Kill(t *testing.T) {
 }
 
 func Test_OnStarted(t *testing.T) {
+	ctx := context.Background()
 	cmd := exec.Command("php", "tests/client.php", "broken", "pipes")
 	assert.Nil(t, cmd.Start())
 
-	w, err := initWorker(cmd)
+	w, err := initWorker(ctx, cmd)
 	assert.Nil(t, w)
 	assert.NotNil(t, err)
 
@@ -61,10 +66,7 @@ func Test_OnStarted(t *testing.T) {
 func TestErrBuffer_Write_Len(t *testing.T) {
 	buf := newErrBuffer(nil)
 	defer func() {
-		err := buf.Close()
-		if err != nil {
-			t.Errorf("error during closing the buffer: error %v", err)
-		}
+		buf.Close()
 	}()
 
 	_, err := buf.Write([]byte("hello"))
@@ -78,24 +80,22 @@ func TestErrBuffer_Write_Len(t *testing.T) {
 func TestErrBuffer_Write_Event(t *testing.T) {
 	buf := newErrBuffer(nil)
 	defer func() {
-		err := buf.Close()
-		if err != nil {
-			t.Errorf("error during closing the buffer: error %v", err)
-		}
+		buf.Close()
 	}()
 
-	tr := make(chan interface{})
-	buf.listener = func(event int, ctx interface{}) {
-		assert.Equal(t, EventStderrOutput, event)
-		assert.Equal(t, []byte("hello\n"), ctx)
-		close(tr)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	buf.logCallback = func(log []byte) {
+		assert.Equal(t, []byte("hello\n"), log)
+		wg.Done()
 	}
 
 	_, err := buf.Write([]byte("hello\n"))
 	if err != nil {
 		t.Errorf("fail to write: error %v", err)
 	}
-	<-tr
+
+	wg.Wait()
 
 	// messages are read
 	assert.Equal(t, 0, buf.Len())
@@ -104,19 +104,16 @@ func TestErrBuffer_Write_Event(t *testing.T) {
 func TestErrBuffer_Write_Event_Separated(t *testing.T) {
 	buf := newErrBuffer(nil)
 	defer func() {
-		err := buf.Close()
-		if err != nil {
-			t.Errorf("error during closing the buffer: error %v", err)
-		}
+		buf.Close()
 	}()
 
-	tr := make(chan interface{})
-	buf.listener = func(event int, ctx interface{}) {
-		assert.Equal(t, EventStderrOutput, event)
-		assert.Equal(t, []byte("hello\nending"), ctx)
-		close(tr)
-	}
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
 
+	buf.logCallback = func(log []byte) {
+		assert.Equal(t, []byte("hello\nending"), log)
+		wg.Done()
+	}
 	_, err := buf.Write([]byte("hel"))
 	if err != nil {
 		t.Errorf("fail to write: error %v", err)
@@ -132,7 +129,7 @@ func TestErrBuffer_Write_Event_Separated(t *testing.T) {
 		t.Errorf("fail to write: error %v", err)
 	}
 
-	<-tr
+	wg.Wait()
 	assert.Equal(t, 0, buf.Len())
 	assert.Equal(t, "", buf.String())
 }
@@ -140,10 +137,7 @@ func TestErrBuffer_Write_Event_Separated(t *testing.T) {
 func TestErrBuffer_Write_Event_Separated_NoListener(t *testing.T) {
 	buf := newErrBuffer(nil)
 	defer func() {
-		err := buf.Close()
-		if err != nil {
-			t.Errorf("error during closing the buffer: error %v", err)
-		}
+		buf.Close()
 	}()
 
 	_, err := buf.Write([]byte("hel"))
@@ -168,10 +162,7 @@ func TestErrBuffer_Write_Event_Separated_NoListener(t *testing.T) {
 func TestErrBuffer_Write_Remaining(t *testing.T) {
 	buf := newErrBuffer(nil)
 	defer func() {
-		err := buf.Close()
-		if err != nil {
-			t.Errorf("error during closing the buffer: error %v", err)
-		}
+		buf.Close()
 	}()
 
 	_, err := buf.Write([]byte("hel"))

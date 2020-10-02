@@ -1,8 +1,8 @@
 package roadrunner
 
 import (
+	"context"
 	"fmt"
-	"io"
 	"os/exec"
 
 	"github.com/pkg/errors"
@@ -24,65 +24,60 @@ func NewPipeFactory() *PipeFactory {
 
 // SpawnWorker creates new WorkerProcess and connects it to goridge relay,
 // method Wait() must be handled on level above.
-func (f *PipeFactory) SpawnWorker(cmd *exec.Cmd) (w Worker, err error) {
-	if w, err = initWorker(cmd); err != nil {
+func (f *PipeFactory) SpawnWorker(ctx context.Context, cmd *exec.Cmd) (WorkerBase, error) {
+	w, err := initWorker(ctx, cmd)
+	if err != nil {
 		return nil, err
 	}
 
-	var (
-		in  io.ReadCloser
-		out io.WriteCloser
-	)
-
-	if in, err = cmd.StdoutPipe(); err != nil {
+	// TODO why out is in?
+	in, err := cmd.StdoutPipe()
+	if err != nil {
 		return nil, err
 	}
 
-	if out, err = cmd.StdinPipe(); err != nil {
+	// TODO why in is out?
+	out, err := cmd.StdinPipe()
+	if err != nil {
 		return nil, err
 	}
 
+	// Init new PIPE relay
 	relay := goridge.NewPipeRelay(in, out)
-	w.AttachRelay(relay)
+	w.AttachRelay(ctx, relay)
 
-	if err := w.Start(); err != nil {
+	// Start the worker
+	err = w.Start(ctx)
+	if err != nil {
 		return nil, errors.Wrap(err, "process error")
 	}
 
-	if pid, err := fetchPID(relay); pid != w.Pid() {
-		go func(w Worker) {
-			err := w.Kill()
-			if err != nil {
-				// there is no logger here, how to handle error in goroutines ?
-				fmt.Println(
-					fmt.Sprintf(
-						"error killing the WorkerProcess with PID number %d, created: %s",
-						w.Pid(),
-						w.Created(),
-					),
-				)
-			}
-		}(w)
-
-		if wErr := w.Wait(); wErr != nil {
-			if _, ok := wErr.(*exec.ExitError); ok {
-				// error might be nil here
-				if err != nil {
-					err = errors.Wrap(wErr, err.Error())
-				}
-			} else {
-				err = wErr
-			}
-		}
-
-		return nil, errors.Wrap(err, "unable to connect to WorkerProcess")
+	pid, err := fetchPID(relay)
+	if err != nil {
+		return nil, err
 	}
 
-	w.State().Set(StateReady)
+	if pid != w.Pid(ctx) {
+		err = w.Kill(ctx)
+		if err != nil {
+			return nil, errors.New(fmt.Sprintf(
+				"error killing the WorkerProcess with PID number %d, created: %s",
+				w.Pid(ctx),
+				w.Created(ctx),
+			))
+		}
+	}
+
+	w.State(ctx).Set(StateReady)
+
 	return w, nil
 }
 
+func (f *PipeFactory) Listen() {
+
+}
+
 // Close the factory.
-func (f *PipeFactory) Close() error {
+func (f *PipeFactory) Close(ctx context.Context) error {
 	return nil
 }

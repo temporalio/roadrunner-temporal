@@ -1,6 +1,7 @@
 package roadrunner
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -12,59 +13,62 @@ import (
 var EmptyPayload = Payload{}
 
 type SyncWorker interface {
-	// Worker provides basic functionality for the SyncWorker
-	Worker
+	// WorkerBase provides basic functionality for the SyncWorker
+	WorkerBase
 	// Exec used to execute payload on the SyncWorker
-	Exec(rqs Payload) (rsp Payload, err error)
+	Exec(ctx context.Context, rqs Payload) (Payload, error)
 }
 
 type taskWorker struct {
 	mu sync.Mutex
-	w  Worker
+	w  WorkerBase
 }
 
-func NewSyncWorker(w Worker) (SyncWorker, error) {
-	return &taskWorker{w: w}, nil
+func NewSyncWorker(w WorkerBase) (SyncWorker, error) {
+	return &taskWorker{
+		w: w,
+	}, nil
 }
 
-func (tw *taskWorker) Exec(rqs Payload) (rsp Payload, err error) {
-	tw.mu.Lock()
+func (tw *taskWorker) Exec(ctx context.Context, rqs Payload) (Payload, error) {
+	//tw.mu.Lock()
 
 	if len(rqs.Body) == 0 && len(rqs.Context) == 0 {
-		tw.mu.Unlock()
+		//tw.mu.Unlock()
 		return EmptyPayload, fmt.Errorf("payload can not be empty")
 	}
 
-	if tw.w.State().Value() != StateReady {
-		tw.mu.Unlock()
-		return EmptyPayload, fmt.Errorf("WorkerProcess is not ready (%s)", tw.w.State().String())
+	if tw.w.State(ctx).Value() != StateReady {
+		//tw.mu.Unlock()
+		return EmptyPayload, fmt.Errorf("WorkerProcess is not ready (%s)", tw.w.State(ctx).String())
 	}
 
-	tw.w.State().Set(StateWorking)
+	tw.w.State(ctx).Set(StateWorking)
 
-	rsp, err = tw.execPayload(rqs)
+	rsp, err := tw.execPayload(ctx, rqs)
 	if err != nil {
 		if _, ok := err.(TaskError); !ok {
-			tw.w.State().Set(StateErrored)
-			tw.w.State().RegisterExec()
-			tw.mu.Unlock()
+			tw.w.State(ctx).Set(StateErrored)
+			tw.w.State(ctx).RegisterExec()
+			//tw.mu.Unlock()
 			return EmptyPayload, err
 		}
+		return EmptyPayload, err
 	}
 
-	tw.w.State().Set(StateReady)
-	tw.w.State().RegisterExec()
-	tw.mu.Unlock()
-	return rsp, err
+	tw.w.State(ctx).Set(StateReady)
+	tw.w.State(ctx).RegisterExec()
+	//tw.mu.Unlock()
+	return rsp, nil
 }
 
-func (tw *taskWorker) execPayload(rqs Payload) (Payload, error) {
+func (tw *taskWorker) execPayload(ctx context.Context, rqs Payload) (Payload, error) {
 	// two things; todo: merge
-	if err := sendControl(tw.w.Relay(), rqs.Context); err != nil {
+	if err := sendControl(tw.w.Relay(ctx), rqs.Context); err != nil {
 		return EmptyPayload, errors.Wrap(err, "header error")
 	}
 
-	if err := tw.w.Relay().Send(rqs.Body, 0); err != nil {
+	if err := tw.w.Relay(ctx).Send(rqs.Body, 0); err != nil {
 		return EmptyPayload, errors.Wrap(err, "sender error")
 	}
 
@@ -72,7 +76,7 @@ func (tw *taskWorker) execPayload(rqs Payload) (Payload, error) {
 	rsp := Payload{}
 
 	var err error
-	if rsp.Context, pr, err = tw.w.Relay().Receive(); err != nil {
+	if rsp.Context, pr, err = tw.w.Relay(ctx).Receive(); err != nil {
 		return EmptyPayload, errors.Wrap(err, "WorkerProcess error")
 	}
 
@@ -85,7 +89,7 @@ func (tw *taskWorker) execPayload(rqs Payload) (Payload, error) {
 	}
 
 	// add streaming support :)
-	if rsp.Body, pr, err = tw.w.Relay().Receive(); err != nil {
+	if rsp.Body, pr, err = tw.w.Relay(ctx).Receive(); err != nil {
 		return EmptyPayload, errors.Wrap(err, "WorkerProcess error")
 	}
 
@@ -96,46 +100,40 @@ func (tw *taskWorker) String() string {
 	return tw.w.String()
 }
 
-func (tw *taskWorker) Created() time.Time {
-	return tw.w.Created()
+func (tw *taskWorker) Created(ctx context.Context) time.Time {
+	return tw.w.Created(ctx)
 }
 
-func (tw *taskWorker) Events() <-chan WorkerEvent {
-	return tw.w.Events()
+
+func (tw *taskWorker) Pid(ctx context.Context) int64 {
+	return tw.w.Pid(ctx)
 }
 
-func (tw *taskWorker) Pid() int64 {
-	return tw.w.Pid()
+func (tw *taskWorker) State(ctx context.Context) State {
+	return tw.w.State(ctx)
 }
 
-func (tw *taskWorker) State() State {
-	return tw.w.State()
+func (tw *taskWorker) Start(ctx context.Context) error {
+	return tw.w.Start(ctx)
 }
 
-func (tw *taskWorker) Start() error {
-	return tw.w.Start()
+func (tw *taskWorker) Wait(ctx context.Context) error {
+	return tw.w.Wait(ctx)
 }
 
-func (tw *taskWorker) Wait() error {
-	return tw.w.Wait()
+
+func (tw *taskWorker) Stop(ctx context.Context) error {
+	return tw.w.Stop(ctx)
 }
 
-//func (tw *taskWorker) WaitChan() chan interface{} {
-//	return tw.w.WaitChan()
-//}
-
-func (tw *taskWorker) Stop() error {
-	return tw.w.Stop()
+func (tw *taskWorker) Kill(ctx context.Context) error {
+	return tw.w.Kill(ctx)
 }
 
-func (tw *taskWorker) Kill() error {
-	return tw.w.Kill()
+func (tw *taskWorker) Relay(ctx context.Context) goridge.Relay {
+	return tw.w.Relay(ctx)
 }
 
-func (tw *taskWorker) Relay() goridge.Relay {
-	return tw.w.Relay()
-}
-
-func (tw *taskWorker) AttachRelay(rl goridge.Relay) {
-	tw.w.AttachRelay(rl)
+func (tw *taskWorker) AttachRelay(ctx context.Context, rl goridge.Relay) {
+	tw.w.AttachRelay(ctx, rl)
 }

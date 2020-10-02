@@ -1,10 +1,9 @@
 package roadrunner
 
 import (
-	"fmt"
+	"context"
 	"os/exec"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -12,7 +11,7 @@ import (
 
 const (
 	// StopRequest can be sent by worker to indicate that restart is required.
-	StopRequest = "{\"stop\":true}"
+	StopRequest = "{\"destroy\":true}"
 )
 
 // StaticPool controls worker creation, destruction and task routing. Pool uses fixed amount of workers.
@@ -20,94 +19,86 @@ type StaticPool struct {
 	// pool behaviour
 	cfg Config
 
-	events chan PoolEvent
-
 	// worker command creator
 	cmd func() *exec.Cmd
 
 	// creates and connects to workers
 	factory Factory
 
-	// active task executions
-	tmu   sync.Mutex
-	tasks sync.WaitGroup
-
-	// workers circular allocation buf
-	free chan Worker
-
-	// number of workers expected to be dead in a buf.
-	numDead int64
-
 	// protects state of worker list, does not affect allocation
 	muw sync.RWMutex
 
-	// all registered workers
-	workers []Worker
-
-	// invalid declares set of workers to be removed from the pool.
-	remove sync.Map
-
-	// pool is being destroyed
-	inDestroy int32
-	destroy   chan interface{}
-
-	// lsn is optional callback to handle worker create/destruct/error events.
-	//mul sync.Mutex
-	//lsn func(event int, ctx interface{})
+	ww *WorkersWatcher
 }
 type PoolEvent struct {
 	Event   int64
-	Worker  Worker
+	Worker  WorkerBase // TODO do we really need it here?????????????
 	Payload interface{}
 }
 
-
 // NewPool creates new worker pool and task multiplexer. StaticPool will initiate with one worker.
 // supervisor Supervisor, todo: think about it
-// workers func() (Worker, error),
-func NewPool(cfg Config) (Pool, error) {
+// workers func() (WorkerBase, error),
+func NewPool(cmd func() *exec.Cmd, factory Factory, cfg Config, ) (Pool, error) {
 	if err := cfg.Valid(); err != nil {
 		return nil, errors.Wrap(err, "config")
 	}
 
+	ctx := context.Background()
 	p := &StaticPool{
-		cfg: cfg,
-		//cmd:     cmd,
-		//factory: factory,
-		workers: make([]Worker, 0, cfg.NumWorkers),
-		free:    make(chan Worker, cfg.NumWorkers),
-		destroy: make(chan interface{}),
-		events:  make(chan PoolEvent),
+		cfg:     cfg,
+		cmd:     cmd,
+		factory: factory,
 	}
 
-	// constant number of workers simplify logic
-	for i := int64(0); i < p.cfg.NumWorkers; i++ {
-		// to test if worker ready
-		w, err := p.createWorker()
+	p.ww = NewWorkerWatcher(func(args ...interface{}) (*SyncWorker, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
+		w, err := p.factory.SpawnWorker(ctx, p.cmd())
 		if err != nil {
-			p.Destroy()
 			return nil, err
 		}
 
-		p.free <- w
+		select {
+		case <-ctx.Done():
+			cancel()
+		}
+
+		sw, err := NewSyncWorker(w)
+		if err != nil {
+			return nil, err
+		}
+		return &sw, nil
+	}, p.cfg.NumWorkers)
+
+	workers, err := p.allocateWorkers(ctx, p.cfg.NumWorkers)
+	if err != nil {
+		return nil, err
+	}
+
+	// put workers in the pool
+	err = p.ww.AddToWatch(ctx, workers)
+	if err != nil {
+		return nil, err
 	}
 
 	return p, nil
 }
 
-// Listen attaches pool event controller.
-//func (p *StaticPool) Listen(l func(event int, ctx interface{})) {
-//	p.mul.Lock()
-//	defer p.mul.Unlock()
-//
-//	p.lsn = l
-//
-//	p.muw.Lock()
-//	for _, w := range p.workers {
-//		w.err.Listen(p.lsn)
-//	}
-//	p.muw.Unlock()
-//}
+// allocate required number of workers
+func (p *StaticPool) allocateWorkers(ctx context.Context, numWorkers int64) ([]WorkerBase, error) {
+	var workers []WorkerBase
+	// constant number of workers simplify logic
+	for i := int64(0); i < numWorkers; i++ {
+		// to test if worker ready
+		w, err := p.factory.SpawnWorker(ctx, p.cmd())
+		if err != nil {
+			return nil, err
+		}
+
+		workers = append(workers, w)
+	}
+	return workers, nil
+}
 
 // Config returns associated pool configuration. Immutable.
 func (p *StaticPool) Config() Config {
@@ -115,319 +106,68 @@ func (p *StaticPool) Config() Config {
 }
 
 // Workers returns worker list associated with the pool.
-func (p *StaticPool) Workers() (workers []Worker) {
-	p.muw.RLock()
-	defer p.muw.RUnlock()
-
-	workers = append(workers, p.workers...)
-
-	return workers
-}
-
-func (p *StaticPool) Events() chan PoolEvent {
-	return nil
-}
-
-// Remove forces pool to remove specific worker.
-func (p *StaticPool) Remove(w Worker, err error) bool {
-	if w.State().Value() != StateReady && w.State().Value() != StateWorking {
-		// unable to remove inactive worker
-		return false
-	}
-
-	if _, ok := p.remove.Load(w); ok {
-		return false
-	}
-
-	p.remove.Store(w, err)
-	return true
+func (p *StaticPool) Workers(ctx context.Context) (workers []WorkerBase) {
+	return p.ww.WorkersList(ctx)
 }
 
 // Exec one task with given payload and context, returns result or error.
-func (p *StaticPool) Exec(rqs Payload) (rsp Payload, err error) {
-	p.tmu.Lock()
-	p.tasks.Add(1)
-	p.tmu.Unlock()
-
-	defer p.tasks.Done()
-
-	w, err := p.allocateSyncWorker()
-	if err != nil {
-		return EmptyPayload, errors.Wrap(err, "unable to allocate worker")
+func (p *StaticPool) Exec(ctx context.Context, rqs Payload) (Payload, error) {
+	w, err := p.ww.GetFreeWorker(ctx)
+	if err != nil && errors.Is(err, ErrWatcherStopped) {
+		return EmptyPayload, ErrWatcherStopped
+	} else if err != nil {
+		return EmptyPayload, err
 	}
 
-	rsp, err = w.Exec(rqs)
+	sw := w.(SyncWorker)
 
+	rsp, err := sw.Exec(ctx, rqs)
 	if err != nil {
 		// soft job errors are allowed
 		if _, jobError := err.(TaskError); jobError {
-			p.release(w)
-			return EmptyPayload, err
+			err = p.checkMaxJobs(ctx, w)
+			if err != nil {
+				return EmptyPayload, err
+			}
 		}
 
-		p.discardWorker(w, err)
-		return EmptyPayload, err
+		err = w.Stop(ctx)
+		if err != nil {
+			return EmptyPayload, err
+		}
 	}
 
 	// worker want's to be terminated
 	if rsp.Body == nil && rsp.Context != nil && string(rsp.Context) == StopRequest {
-		p.discardWorker(w, err)
-		return p.Exec(rqs)
+		w.State(ctx).Set(StateInvalid)
+		return p.Exec(ctx, rqs)
 	}
 
-	p.release(w)
+	if p.cfg.MaxJobs != 0 && w.State(ctx).NumExecs() >= p.cfg.MaxJobs {
+		err = p.ww.AllocateNew(ctx)
+		if err != nil {
+			return EmptyPayload, err
+		}
+	}
+	p.ww.PutWorker(ctx, w)
 	return rsp, nil
 }
 
-// Destroy all underlying workers (but let them to complete the task).
-func (p *StaticPool) Destroy() {
-	atomic.AddInt32(&p.inDestroy, 1)
-
-	p.tmu.Lock()
-	p.tasks.Wait()
-	close(p.destroy)
-	p.tmu.Unlock()
-
-	var wg sync.WaitGroup
-	for _, w := range p.Workers() {
-		wg.Add(1)
-
-		w.State().Set(StateInvalid)
-		//w.markInvalid()
-		
-		go func(w Worker) {
-			defer wg.Done()
-			p.destroyWorker(w, nil)
-		}(w)
-	}
-
-	wg.Wait()
-}
-
-//func (w *Worker) markInvalid() {
-//	w.state.set(StateInvalid)
-//}
-
-// finds free worker in a given time interval. Skips dead workers.
-func (p *StaticPool) allocateSyncWorker() (w SyncWorker, err error) {
-	for i := atomic.LoadInt64(&p.numDead); i >= 0; i++ {
-		// this loop is required to skip issues with dead workers still being in a ring
-		// (we know how many workers).
-		select {
-		case w = <-p.free:
-			if w.State().Value() != StateReady {
-				// found expected dead worker
-				atomic.AddInt64(&p.numDead, ^int64(0))
-				continue
-			}
-
-			if err, remove := p.remove.Load(w); remove {
-				p.discardWorker(w, err)
-
-				// get next worker
-				i++
-				continue
-			}
-
-			return w, nil
-		case <-p.destroy:
-			return nil, fmt.Errorf("pool has been stopped")
-		default:
-			// enable timeout handler
-		}
-
-		timeout := time.NewTimer(p.cfg.AllocateTimeout)
-		select {
-		case <-timeout.C:
-			return nil, fmt.Errorf("worker timeout (%s)", p.cfg.AllocateTimeout)
-		case w = <-p.free:
-			timeout.Stop()
-
-			if w.State().Value() != StateReady {
-				atomic.AddInt64(&p.numDead, ^int64(0))
-				continue
-			}
-
-			if err, remove := p.remove.Load(w); remove {
-				p.discardWorker(w, err)
-
-				// get next worker
-				i++
-				continue
-			}
-
-			return w, nil
-		case <-p.destroy:
-			timeout.Stop()
-
-			return nil, fmt.Errorf("pool has been stopped")
-		}
-	}
-
-	return nil, fmt.Errorf("all workers are dead (%v)", p.cfg.NumWorkers)
-}
-
-// release releases or replaces the worker.
-func (p *StaticPool) release(w Worker) {
-	if p.cfg.MaxJobs != 0 && w.State().NumExecs() >= p.cfg.MaxJobs {
-		p.discardWorker(w, p.cfg.MaxJobs)
-		return
-	}
-
-	if err, remove := p.remove.Load(w); remove {
-		p.discardWorker(w, err)
-		return
-	}
-
-	p.free <- w
-}
-
-// creates new worker using associated factory. automatically
-// adds worker to the worker list (background)
-func (p *StaticPool) createWorker() (Worker, error) {
-	w, err := p.factory.SpawnWorker(p.cmd())
-	if err != nil {
-		return nil, err
-	}
-
-	//p.mul.Lock()
-	//if p.lsn != nil {
-	//	w.err.Listen(p.lsn)
-	//}
-	//p.mul.Unlock()
-
-	p.events <- PoolEvent{
-		Event:   EventWorkerConstruct,
-		Worker:  w,
-		Payload: err,
-	}
-
-	//p.throw(EventWorkerConstruct, w)
-
-	p.muw.Lock()
-	p.workers = append(p.workers, w)
-	p.muw.Unlock()
-
-	go p.watchWorker(w)
-	return w, nil
-}
-
-// gentry remove worker
-func (p *StaticPool) discardWorker(w Worker, caused interface{}) {
-	// TODO UB here, go p.destroyWorker might start before state.set
-	w.State().Set(StateInvalid)
-
-	go p.destroyWorker(w, caused)
-}
-
-// destroyWorker destroys workers and removes it from the pool.
-func (p *StaticPool) destroyWorker(w Worker, caused interface{}) {
-	go func() {
-		err := w.Stop()
+func (p *StaticPool) checkMaxJobs(ctx context.Context, w WorkerBase) error {
+	if p.cfg.MaxJobs != 0 && w.State(ctx).NumExecs() >= p.cfg.MaxJobs {
+		err := p.ww.AllocateNew(ctx)
 		if err != nil {
-			p.events <- PoolEvent{
-				Event:   EventWorkerError,
-				Worker:  w,
-				Payload: err,
-			}
-			//p.throw(, WorkerError{Worker: w, Caused: err})
+			return err
 		}
-	}()
-
-	select {
-	//case <-w.waitDone:
-	//	// worker is dead
-	//	p.throw(EventWorkerDestruct, w)
-
-	case <-time.NewTimer(p.cfg.DestroyTimeout).C:
-		// failed to stop process in given time
-		if err := w.Kill(); err != nil {
-			p.events <- PoolEvent{
-				Event:   EventWorkerError,
-				Worker:  w,
-				Payload: err,
-			}
-		}
-
-		p.events <- PoolEvent{
-			Event:   EventWorkerKill,
-			Worker:  w,
-			Payload: nil,
-		}
-
-		//p.throw(EventWorkerKill, w)
 	}
+	return nil
 }
 
-// watchWorker watches worker state and replaces it if worker fails.
-func (p *StaticPool) watchWorker(w Worker) {
-	err := w.Wait()
-	p.events <- PoolEvent{
-		Event:   EventWorkerDead,
-		Worker:  w,
-		Payload: nil,
-	}
-	//p.throw(EventWorkerDead, w)
-
-	// detaching
-	p.muw.Lock()
-	for i, wc := range p.workers {
-		if wc == w {
-			p.workers = append(p.workers[:i], p.workers[i+1:]...)
-			p.remove.Delete(w)
-			break
-		}
-	}
-	p.muw.Unlock()
-
-	// registering a dead worker
-	atomic.AddInt64(&p.numDead, 1)
-
-	// worker have died unexpectedly, pool should attempt to replace it with alive version safely
-	if err != nil {
-		p.events <- PoolEvent{
-			Event:   EventWorkerError,
-			Worker:  w,
-			Payload: err,
-		}
-		//p.throw(EventWorkerError, WorkerError{Worker: w, Caused: err})
-	}
-
-	if !p.destroyed() {
-		nw, err := p.createWorker()
-		if err == nil {
-			p.free <- nw
-			return
-		}
-
-		// possible situation when major error causes all PHP scripts to die (for example dead DB)
-		if len(p.Workers()) == 0 {
-			p.events <- PoolEvent{
-				Event:   EventWorkerError,
-				Worker:  w,
-				Payload: err,
-			}
-			//p.throw(EventPoolError, err)
-		} else {
-			p.events <- PoolEvent{
-				Event:   EventWorkerError,
-				Worker:  w,
-				Payload: err,
-			}
-			//p.throw(EventWorkerError, WorkerError{Worker: w, Caused: err})
-		}
-	}
+// Destroy all underlying workers (but let them to complete the task).
+func (p *StaticPool) Destroy(ctx context.Context) {
+	p.ww.Destroy(ctx)
 }
 
-func (p *StaticPool) destroyed() bool {
-	return atomic.LoadInt32(&p.inDestroy) != 0
-}
+func (p *StaticPool) Listen() {
 
-// throw invokes event handler if any.
-//func (p *StaticPool) throw(event int, ctx interface{}) {
-//	p.mul.Lock()
-//	if p.lsn != nil {
-//		p.lsn(event, ctx)
-//	}
-//	p.mul.Unlock()
-//}
+}

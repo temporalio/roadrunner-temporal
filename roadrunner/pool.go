@@ -1,6 +1,7 @@
 package roadrunner
 
 import (
+	"context"
 	"fmt"
 	"runtime"
 	"time"
@@ -26,9 +27,43 @@ const (
 	EventPoolError
 )
 
+const (
+	// EventMaxMemory caused when worker consumes more memory than allowed.
+	EventMaxMemory = iota + 8000
+
+	// EventTTL thrown when worker is removed due TTL being reached. Context is rr.WorkerError
+	EventTTL
+
+	// EventIdleTTL triggered when worker spends too much time at rest.
+	EventIdleTTL
+
+	// EventExecTTL triggered when worker spends too much time doing the task (max_execution_time).
+	EventExecTTL
+)
+
+// Pool managed set of inner worker processes.
+type Pool interface {
+	//Events() chan PoolEvent
+
+	// Exec one task with given payload and context, returns result or error.
+	Exec(ctx context.Context, rqs Payload) (Payload, error)
+
+	// Workers returns worker list associated with the pool.
+	Workers(ctx context.Context) (workers []WorkerBase)
+
+	// Remove forces pool to remove specific worker. Return true is this is first remove request on given worker.
+	// TODO remove REMOVE
+	// Remove(w WorkerBase) error
+	Config() Config
+
+	// Destroy all underlying workers (but let them to complete the task).
+	Destroy(ctx context.Context)
+}
+
 // todo: merge with pool options
 
 // Config defines basic behaviour of worker creation and handling process.
+//
 type Config struct {
 	// NumWorkers defines how many sub-processes can be run at once. This value
 	// might be doubled by Swapper while hot-swap.
@@ -44,8 +79,30 @@ type Config struct {
 	AllocateTimeout time.Duration
 
 	// DestroyTimeout defines for how long pool should be waiting for worker to
-	// properly stop, if timeout reached worker will be killed.
+	// properly destroy, if timeout reached worker will be killed.
 	DestroyTimeout time.Duration
+
+	// MaxMemory defines maximum amount of memory allowed for worker. In megabytes.
+	MaxMemory uint64
+
+	// TTL defines maximum time worker is allowed to live.
+	TTL int64
+
+	// IdleTTL defines maximum duration worker can spend in idle mode.
+	IdleTTL int64
+
+	// ExecTTL defines maximum lifetime per job.
+	ExecTTL int64
+
+	// config from limit plugin, combine TODO
+	// single bootstrap TODO, bool
+	// warmup one worker and start consume requests and then start the rest of the workers
+
+	// max memory for pool
+	// max ttl
+	// max idle ttl
+
+	// ATTACHER interface - delete
 }
 
 // InitDefaults allows to init blank config with pre-defined set of default values.
@@ -72,21 +129,4 @@ func (cfg *Config) Valid() error {
 	}
 
 	return nil
-}
-
-// Pool managed set of inner worker processes.
-type Pool interface {
-	Events() chan PoolEvent
-
-	// Exec one task with given payload and context, returns result or error.
-	Exec(rqs Payload) (rsp Payload, err error)
-
-	// Workers returns worker list associated with the pool.
-	Workers() (workers []Worker)
-
-	// Remove forces pool to remove specific worker. Return true is this is first remove request on given worker.
-	Remove(w Worker, err error) bool
-
-	// Destroy all underlying workers (but let them to complete the task).
-	Destroy()
 }

@@ -12,7 +12,7 @@ func (te TaskError) Error() string {
 // WorkerError is WorkerProcess related error
 type WorkerError struct {
 	// Worker
-	Worker Worker
+	Worker WorkerBase
 
 	// Caused error
 	Caused error

@@ -1,6 +1,8 @@
 package factory
 
-import "github.com/temporalio/roadrunner-temporal/roadrunner"
+import (
+	"github.com/temporalio/roadrunner-temporal/roadrunner"
+)
 
 type PoolOptions struct {
 	NumWorkers int
@@ -12,13 +14,13 @@ type PoolOptions struct {
 }
 
 type WorkerFactory interface {
-	NewWorker(env Env) (roadrunner.Worker, error)
+	NewWorker(env Env) (roadrunner.WorkerBase, error)
 	NewWorkerPool(opt PoolOptions, env Env) (roadrunner.Pool, error)
 }
 
 func (wf WorkerFactory) NewWorkerPool(opt PoolOptions, env Env) (roadrunner.Pool, error) {
 	return roadrunner.NewPool(
-			func() (roadrunner.Worker, error) {
+			func() (roadrunner.WorkerBase, error) {
 				return appPreocvider.Swpath(env)
 			}),
 		opts,

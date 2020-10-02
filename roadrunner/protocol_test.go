@@ -36,7 +36,7 @@ func Test_Protocol_Errors(t *testing.T) {
 func Test_Protocol_FetchPID(t *testing.T) {
 	pid, err := fetchPID(&relayMock{error: false, payload: "{\"pid\":100}"})
 	assert.NoError(t, err)
-	assert.Equal(t, 100, pid)
+	assert.Equal(t, int64(100), pid)
 
 	_, err = fetchPID(&relayMock{error: true, payload: "{\"pid\":100}"})
 	assert.Error(t, err)

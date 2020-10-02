@@ -7,8 +7,10 @@ import (
 	"os"
 )
 
+var j = json.ConfigCompatibleWithStandardLibrary
+
 type stopCommand struct {
-	Stop bool `json:"stop"`
+	Stop bool `json:"destroy"`
 }
 
 type pidCommand struct {
@@ -20,7 +22,6 @@ func sendControl(rl goridge.Relay, v interface{}) error {
 		return rl.Send(data, goridge.PayloadControl|goridge.PayloadRaw)
 	}
 
-	j := json.ConfigCompatibleWithStandardLibrary
 	data, err := j.Marshal(v)
 	if err != nil {
 		return fmt.Errorf("invalid payload: %s", err)
@@ -29,8 +30,9 @@ func sendControl(rl goridge.Relay, v interface{}) error {
 	return rl.Send(data, goridge.PayloadControl)
 }
 
-func fetchPID(rl goridge.Relay) (pid int64, err error) {
-	if err := sendControl(rl, pidCommand{Pid: os.Getpid()}); err != nil {
+func fetchPID(rl goridge.Relay) (int64, error) {
+	err := sendControl(rl, pidCommand{Pid: os.Getpid()})
+	if err != nil {
 		return 0, err
 	}
 
