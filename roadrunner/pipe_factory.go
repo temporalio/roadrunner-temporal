@@ -22,55 +22,99 @@ func NewPipeFactory() *PipeFactory {
 	return &PipeFactory{}
 }
 
+type SpawnResult struct {
+	w   WorkerBase
+	err error
+}
+
 // SpawnWorker creates new WorkerProcess and connects it to goridge relay,
 // method Wait() must be handled on level above.
 func (f *PipeFactory) SpawnWorker(ctx context.Context, cmd *exec.Cmd) (WorkerBase, error) {
-	w, err := initWorker(ctx, cmd)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO why out is in?
-	in, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO why in is out?
-	out, err := cmd.StdinPipe()
-	if err != nil {
-		return nil, err
-	}
-
-	// Init new PIPE relay
-	relay := goridge.NewPipeRelay(in, out)
-	w.AttachRelay(ctx, relay)
-
-	// Start the worker
-	err = w.Start(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "process error")
-	}
-
-	pid, err := fetchPID(relay)
-	if err != nil {
-		return nil, err
-	}
-
-	if pid != w.Pid(ctx) {
-		err = w.Kill(ctx)
+	c := make(chan SpawnResult)
+	go func() {
+		w, err := initWorker(ctx, cmd)
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf(
-				"error killing the WorkerProcess with PID number %d, created: %s",
-				w.Pid(ctx),
-				w.Created(ctx),
-			))
+			c <- SpawnResult{
+				w:   nil,
+				err: err,
+			}
+			return
 		}
+
+		// TODO why out is in?
+		in, err := cmd.StdoutPipe()
+		if err != nil {
+			c <- SpawnResult{
+				w:   nil,
+				err: err,
+			}
+			return
+		}
+
+		// TODO why in is out?
+		out, err := cmd.StdinPipe()
+		if err != nil {
+			c <- SpawnResult{
+				w:   nil,
+				err: err,
+			}
+			return
+		}
+
+		// Init new PIPE relay
+		relay := goridge.NewPipeRelay(in, out)
+		w.AttachRelay(relay)
+
+		// Start the worker
+		err = w.Start()
+		if err != nil {
+			c <- SpawnResult{
+				w:   nil,
+				err: errors.Wrap(err, "process error"),
+			}
+			return
+		}
+
+		pid, err := fetchPID(relay)
+		if err != nil {
+			c <- SpawnResult{
+				w:   nil,
+				err: err,
+			}
+			return
+		}
+
+		if pid != w.Pid() {
+			err = w.Kill(ctx)
+			if err != nil {
+				c <- SpawnResult{
+					w: nil,
+					err: errors.New(fmt.Sprintf(
+						"error killing the WorkerProcess with PID number %d, created: %s",
+						w.Pid(),
+						w.Created())),
+				}
+				return
+			}
+		}
+
+		w.State().Set(StateReady)
+
+		c <- SpawnResult{
+			w:   w,
+			err: nil,
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case res := <-c:
+		if res.err != nil {
+			return nil, res.err
+		}
+		return res.w, nil
 	}
-
-	w.State(ctx).Set(StateReady)
-
-	return w, nil
 }
 
 func (f *PipeFactory) Listen() {

@@ -16,13 +16,13 @@ func Test_GetState(t *testing.T) {
 	w, err := NewPipeFactory().SpawnWorker(ctx, cmd)
 	go func() {
 		assert.NoError(t, w.Wait(ctx))
-		assert.Equal(t, StateStopped, w.State(ctx).Value())
+		assert.Equal(t, StateStopped, w.State().Value())
 	}()
 
 	assert.NoError(t, err)
 	assert.NotNil(t, w)
 
-	assert.Equal(t, StateReady, w.State(ctx).Value())
+	assert.Equal(t, StateReady, w.State().Value())
 	err = w.Stop(ctx)
 	if err != nil {
 		t.Errorf("error stopping the WorkerProcess: error %v", err)
@@ -36,13 +36,13 @@ func Test_Kill(t *testing.T) {
 	w, err := NewPipeFactory().SpawnWorker(ctx, cmd)
 	go func() {
 		assert.Error(t, w.Wait(ctx))
-		assert.Equal(t, StateStopped, w.State(ctx).Value())
+		assert.Equal(t, StateStopped, w.State().Value())
 	}()
 
 	assert.NoError(t, err)
 	assert.NotNil(t, w)
 
-	assert.Equal(t, StateReady, w.State(ctx).Value())
+	assert.Equal(t, StateReady, w.State().Value())
 	defer func() {
 		err := w.Kill(ctx)
 		if err != nil {

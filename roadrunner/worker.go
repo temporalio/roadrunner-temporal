@@ -48,18 +48,18 @@ type WorkerEvent struct {
 type WorkerBase interface {
 	fmt.Stringer
 
-	Created(ctx context.Context) time.Time
+	Created() time.Time
 
-	//Events() <-chan WorkerEvent
+	Events() <-chan WorkerEvent
 
-	Pid(ctx context.Context) int64
+	Pid() int64
 
 	// State return receive-only WorkerProcess state object, state can be used to safely access
 	// WorkerProcess status, time when status changed and number of WorkerProcess executions.
-	State(ctx context.Context) State
+	State() State
 
 	// Start used to run Cmd and immediately return
-	Start(ctx context.Context) error
+	Start() error
 	// Wait must be called once for each WorkerProcess, call will be released once WorkerProcess is
 	// complete and will return process error (if any), if stderr is presented it's value
 	// will be wrapped as WorkerError. Method will return error code if php process fails
@@ -75,9 +75,9 @@ type WorkerBase interface {
 	// error log from the stderr. Does not waits for process completion!
 	Kill(ctx context.Context) error
 	// Relay returns attached to worker goridge relay
-	Relay(ctx context.Context) goridge.Relay
+	Relay() goridge.Relay
 	// AttachRelay used to attach goridge relay to the worker process
-	AttachRelay(ctx context.Context,rl goridge.Relay)
+	AttachRelay(rl goridge.Relay)
 }
 
 // WorkerProcess - supervised process with api over goridge.Relay.
@@ -86,7 +86,7 @@ type WorkerProcess struct {
 	created time.Time
 
 	// updates parent supervisor or pool about WorkerProcess events
-	//events chan WorkerEvent
+	events chan WorkerEvent
 
 	// state holds information about current WorkerProcess state,
 	// number of WorkerProcess executions, buf status change time.
@@ -128,10 +128,9 @@ func initWorker(ctx context.Context, cmd *exec.Cmd) (WorkerBase, error) {
 
 	w := &WorkerProcess{
 		created: time.Now(),
-		//events:  make(chan WorkerEvent, 100),
+		events:  make(chan WorkerEvent, 100),
 		cmd:     cmd,
-		//waitDone: make(chan interface{}), // todo: deprecate?
-		state: newState(StateInactive),
+		state:   newState(StateInactive),
 	}
 
 	w.errBuffer = newErrBuffer(w.logCallback)
@@ -142,29 +141,29 @@ func initWorker(ctx context.Context, cmd *exec.Cmd) (WorkerBase, error) {
 	return w, nil
 }
 
-func (w *WorkerProcess) Created(ctx context.Context) time.Time {
+func (w *WorkerProcess) Created() time.Time {
 	return w.created
 }
 
-func (w *WorkerProcess) Pid(ctx context.Context) int64 {
+func (w *WorkerProcess) Pid() int64 {
 	return int64(w.pid)
 }
 
 // State return receive-only WorkerProcess state object, state can be used to safely access
 // WorkerProcess status, time when status changed and number of WorkerProcess executions.
-func (w *WorkerProcess) State(ctx context.Context) State {
+func (w *WorkerProcess) State() State {
 	return w.state
 }
 
 // State return receive-only WorkerProcess state object, state can be used to safely access
 // WorkerProcess status, time when status changed and number of WorkerProcess executions.
-func (w *WorkerProcess) AttachRelay(ctx context.Context, rl goridge.Relay) {
+func (w *WorkerProcess) AttachRelay(rl goridge.Relay) {
 	w.relay = rl
 }
 
 // State return receive-only WorkerProcess state object, state can be used to safely access
 // WorkerProcess status, time when status changed and number of WorkerProcess executions.
-func (w *WorkerProcess) Relay(ctx context.Context) goridge.Relay {
+func (w *WorkerProcess) Relay() goridge.Relay {
 	return w.relay
 }
 
@@ -184,7 +183,7 @@ func (w *WorkerProcess) String() string {
 	)
 }
 
-func (w *WorkerProcess) Start(ctx context.Context) error {
+func (w *WorkerProcess) Start() error {
 	err := w.cmd.Start()
 	if err != nil {
 		return err
@@ -195,55 +194,75 @@ func (w *WorkerProcess) Start(ctx context.Context) error {
 	return nil
 }
 
+func (w *WorkerProcess) Events() <-chan WorkerEvent {
+	return w.events
+}
+
 // Wait must be called once for each WorkerProcess, call will be released once WorkerProcess is
 // complete and will return process error (if any), if stderr is presented it's value
 // will be wrapped as WorkerError. Method will return error code if php process fails
 // to find or Start the script.
 func (w *WorkerProcess) Wait(ctx context.Context) error {
-	var err error
-	defer func() {
+	c := make(chan error)
+	go func() {
+		var err error
+		defer func() {
+			if err != nil {
+				w.state.Set(StateErrored)
+			}
+		}()
+		err = w.cmd.Wait()
+		w.endState = w.cmd.ProcessState
 		if err != nil {
-			w.state.Set(StateErrored)
+			if _, ok := err.(*exec.ExitError); ok {
+				// wrap error
+				err = errors.Wrap(err, err.Error())
+			}
+
+			errRel := w.closeRelay()
+			if errRel != nil {
+				c <- fmt.Errorf("%v, %v", err, errRel)
+				return
+			}
 		}
+
+		//if w.errBuffer.Len() != 0 {
+		//	w.errBuffer.Close()
+		//	c <- errors.New(w.errBuffer.String())
+		//	return
+		//}
+
+		// try to close relay, sends error to the WorkerEvents channel in case of error
+		err = w.closeRelay()
+		if err != nil {
+			c <- err
+			return
+		}
+
+		if w.endState.Success() {
+			w.state.Set(StateStopped)
+		}
+		c <- nil
+		//if w.state.Value() != StateStopping {
+		//	w.state.Set(StateErrored)
+		//}
+
+		//if w.errBuffer.Len() != 0 {
+		//	// TODO replace with WorkerBufferEvent
+		//	w.sendEvent(WorkerEvent{Event: EventWorkerError, Worker: w, Payload: w.errBuffer.String()})
+		//}
+
+		//w.events <- WorkerEvent{Event: EventWorkerProcessError, Worker: w, Payload: exec.ExitError{ProcessState: w.endState}}
+
 	}()
-	err = w.cmd.Wait()
-	w.endState = w.cmd.ProcessState
-	if err != nil {
-		if _, ok := err.(*exec.ExitError); ok {
-			// wrap error
-			err = errors.Wrap(err, err.Error())
-		}
-
-		errRel := w.closeRelay()
-		if errRel != nil {
-			return fmt.Errorf("%v, %v", err, errRel)
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case err := <-c:
+			return err
 		}
 	}
-
-	if w.errBuffer.Len() != 0 {
-		return errors.New("buffer len != 0")
-	}
-
-	// try to close relay, sends error to the WorkerEvents channel in case of error
-	err = w.closeRelay()
-	if err != nil {
-		return err
-	}
-
-	if w.endState.Success() {
-		w.state.Set(StateStopped)
-	}
-	//if w.state.Value() != StateStopping {
-	//	w.state.Set(StateErrored)
-	//}
-
-	//if w.errBuffer.Len() != 0 {
-	//	// TODO replace with WorkerBufferEvent
-	//	w.sendEvent(WorkerEvent{Event: EventWorkerError, Worker: w, Payload: w.errBuffer.String()})
-	//}
-
-	//w.events <- WorkerEvent{Event: EventWorkerProcessError, Worker: w, Payload: exec.ExitError{ProcessState: w.endState}}
-	return nil
 }
 
 func (w *WorkerProcess) closeRelay() error {
@@ -255,7 +274,6 @@ func (w *WorkerProcess) closeRelay() error {
 	}
 	return nil
 }
-
 
 // Stop sends soft termination command to the WorkerProcess and waits for process completion.
 func (w *WorkerProcess) Stop(ctx context.Context) error {
@@ -291,9 +309,7 @@ func (w *WorkerProcess) Kill(ctx context.Context) error {
 }
 
 func (w *WorkerProcess) logCallback(log []byte) {
-	// todo replace with uber logs
-	fmt.Println(log)
-	//w.events <- WorkerEvent{Event: EventWorkerLog, Worker: w, Payload: log}
+	w.events <- WorkerEvent{Event: EventWorkerLog, Worker: w, Payload: log}
 }
 
 // thread safe errBuffer

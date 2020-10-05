@@ -80,7 +80,7 @@ func (f *SocketFactory) SpawnWorker(ctx context.Context, cmd *exec.Cmd) (WorkerB
 		return nil, err
 	}
 
-	err = w.Start(ctx)
+	err = w.Start()
 	if err != nil {
 		return nil, errors.Wrap(err, "process error")
 	}
@@ -107,14 +107,14 @@ func (f *SocketFactory) SpawnWorker(ctx context.Context, cmd *exec.Cmd) (WorkerB
 		return nil, errors.Wrap(err, "unable to connect to WorkerProcess")
 	}
 
-	w.AttachRelay(ctx, rl)
-	w.State(ctx).Set(StateReady)
+	w.AttachRelay(rl)
+	w.State().Set(StateReady)
 
 	return w, nil
 }
 
 // Close socket factory and underlying socket connection.
-func (f *SocketFactory) Close() error {
+func (f *SocketFactory) Close(ctx context.Context) error {
 	return f.ls.Close()
 }
 
@@ -161,7 +161,7 @@ func (f *SocketFactory) findRelay(ctx context.Context, w WorkerBase, tout time.D
 			timer.Stop()
 			return nil, fmt.Errorf("relay timeout")
 		case <-pollTimer.C:
-			tmp, ok := f.relays.Load(w.Pid(ctx))
+			tmp, ok := f.relays.Load(w.Pid())
 			if !ok {
 				continue
 			}

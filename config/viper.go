@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -8,7 +9,9 @@ import (
 )
 
 type ViperProvider struct {
-	viper *viper.Viper
+	viper  *viper.Viper
+	Path   string
+	Prefix string
 }
 
 //////// ENDURE //////////
@@ -16,20 +19,16 @@ func (v *ViperProvider) Init() error {
 	v.viper = viper.New()
 	// read in environment variables that match
 	v.viper.AutomaticEnv()
-	v.viper.SetEnvPrefix("rr")
+	if v.Prefix == "" {
+		return errors.New("prefix should be set")
+	}
+	v.viper.SetEnvPrefix(v.Prefix)
+	if v.Path == "" {
+		return errors.New("path should be set")
+	}
+	v.viper.SetConfigFile(v.Path)
 	v.viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	return nil
-}
-
-func (v *ViperProvider) Provides() []interface{} {
-	return []interface{}{
-		v.Logger,
-	}
-}
-
-// Provide config Provider dep
-func (v *ViperProvider) Logger() (Provider, error) {
-	return v, nil
 }
 
 func (v *ViperProvider) Serve() chan error {
@@ -43,18 +42,6 @@ func (v *ViperProvider) Stop() error {
 }
 
 ///////////// VIPER ///////////////
-
-// AddConfigPath adds a path for Viper to search for the config file in.
-// Can be called multiple times to define multiple search paths.
-// Also reads config provided by path
-func (v *ViperProvider) SetPath(name string) error {
-	v.viper.SetConfigFile(name)
-	err := v.viper.ReadInConfig()
-	if err != nil {
-		panic(err)
-	}
-	return nil
-}
 
 // Overwrite overwrites existing config with provided values
 func (v *ViperProvider) Overwrite(values map[string]string) error {

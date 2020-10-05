@@ -2,9 +2,9 @@ package roadrunner
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 	"sync"
-	"time"
 
 	"github.com/pkg/errors"
 )
@@ -29,17 +29,17 @@ type StaticPool struct {
 	muw sync.RWMutex
 
 	ww *WorkersWatcher
+
+	events chan PoolEvent
 }
 type PoolEvent struct {
-	Event   int64
-	Worker  WorkerBase // TODO do we really need it here?????????????
 	Payload interface{}
 }
 
 // NewPool creates new worker pool and task multiplexer. StaticPool will initiate with one worker.
 // supervisor Supervisor, todo: think about it
 // workers func() (WorkerBase, error),
-func NewPool(cmd func() *exec.Cmd, factory Factory, cfg Config, ) (Pool, error) {
+func NewPool(cmd func() *exec.Cmd, factory Factory, cfg Config) (Pool, error) {
 	if err := cfg.Valid(); err != nil {
 		return nil, errors.Wrap(err, "config")
 	}
@@ -49,18 +49,13 @@ func NewPool(cmd func() *exec.Cmd, factory Factory, cfg Config, ) (Pool, error) 
 		cfg:     cfg,
 		cmd:     cmd,
 		factory: factory,
+		events:  make(chan PoolEvent),
 	}
 
 	p.ww = NewWorkerWatcher(func(args ...interface{}) (*SyncWorker, error) {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
 		w, err := p.factory.SpawnWorker(ctx, p.cmd())
 		if err != nil {
 			return nil, err
-		}
-
-		select {
-		case <-ctx.Done():
-			cancel()
 		}
 
 		sw, err := NewSyncWorker(w)
@@ -68,7 +63,7 @@ func NewPool(cmd func() *exec.Cmd, factory Factory, cfg Config, ) (Pool, error) 
 			return nil, err
 		}
 		return &sw, nil
-	}, p.cfg.NumWorkers)
+	}, p.cfg.NumWorkers, p.events)
 
 	workers, err := p.allocateWorkers(ctx, p.cfg.NumWorkers)
 	if err != nil {
@@ -87,14 +82,16 @@ func NewPool(cmd func() *exec.Cmd, factory Factory, cfg Config, ) (Pool, error) 
 // allocate required number of workers
 func (p *StaticPool) allocateWorkers(ctx context.Context, numWorkers int64) ([]WorkerBase, error) {
 	var workers []WorkerBase
+
 	// constant number of workers simplify logic
 	for i := int64(0); i < numWorkers; i++ {
-		// to test if worker ready
+		ctx, cancel := context.WithTimeout(context.Background(), p.cfg.AllocateTimeout)
 		w, err := p.factory.SpawnWorker(ctx, p.cmd())
 		if err != nil {
+			cancel()
 			return nil, err
 		}
-
+		cancel()
 		workers = append(workers, w)
 	}
 	return workers, nil
@@ -112,7 +109,9 @@ func (p *StaticPool) Workers(ctx context.Context) (workers []WorkerBase) {
 
 // Exec one task with given payload and context, returns result or error.
 func (p *StaticPool) Exec(ctx context.Context, rqs Payload) (Payload, error) {
-	w, err := p.ww.GetFreeWorker(ctx)
+	getWorkerCtx, cancel := context.WithTimeout(context.TODO(), p.cfg.AllocateTimeout)
+	defer cancel()
+	w, err := p.ww.GetFreeWorker(getWorkerCtx)
 	if err != nil && errors.Is(err, ErrWatcherStopped) {
 		return EmptyPayload, ErrWatcherStopped
 	} else if err != nil {
@@ -121,40 +120,50 @@ func (p *StaticPool) Exec(ctx context.Context, rqs Payload) (Payload, error) {
 
 	sw := w.(SyncWorker)
 
-	rsp, err := sw.Exec(ctx, rqs)
+	execCtx, cancel2 := context.WithTimeout(context.TODO(), p.cfg.ExecTTL)
+	defer cancel2()
+
+	rsp, err := sw.Exec(execCtx, rqs)
 	if err != nil {
+		errJ := p.checkMaxJobs(ctx, w)
+		if errJ != nil {
+			return EmptyPayload, fmt.Errorf("%v, %v", err, errJ)
+		}
 		// soft job errors are allowed
 		if _, jobError := err.(TaskError); jobError {
-			err = p.checkMaxJobs(ctx, w)
-			if err != nil {
-				return EmptyPayload, err
-			}
-		}
-
-		err = w.Stop(ctx)
-		if err != nil {
+			p.ww.PutWorker(ctx, w)
 			return EmptyPayload, err
 		}
+
+		sw.State().Set(StateInvalid)
+		errS := w.Stop(ctx)
+		if errS != nil {
+			return EmptyPayload, fmt.Errorf("%v, %v", err, errS)
+		}
+
+		return EmptyPayload, err
 	}
 
 	// worker want's to be terminated
 	if rsp.Body == nil && rsp.Context != nil && string(rsp.Context) == StopRequest {
-		w.State(ctx).Set(StateInvalid)
+		w.State().Set(StateInvalid)
+		p.ww.PutWorker(ctx, w)
 		return p.Exec(ctx, rqs)
 	}
 
-	if p.cfg.MaxJobs != 0 && w.State(ctx).NumExecs() >= p.cfg.MaxJobs {
+	if p.cfg.MaxJobs != 0 && w.State().NumExecs() >= p.cfg.MaxJobs {
 		err = p.ww.AllocateNew(ctx)
 		if err != nil {
 			return EmptyPayload, err
 		}
+	} else {
+		p.ww.PutWorker(ctx, w)
 	}
-	p.ww.PutWorker(ctx, w)
 	return rsp, nil
 }
 
 func (p *StaticPool) checkMaxJobs(ctx context.Context, w WorkerBase) error {
-	if p.cfg.MaxJobs != 0 && w.State(ctx).NumExecs() >= p.cfg.MaxJobs {
+	if p.cfg.MaxJobs != 0 && w.State().NumExecs() >= p.cfg.MaxJobs {
 		err := p.ww.AllocateNew(ctx)
 		if err != nil {
 			return err
@@ -168,6 +177,6 @@ func (p *StaticPool) Destroy(ctx context.Context) {
 	p.ww.Destroy(ctx)
 }
 
-func (p *StaticPool) Listen() {
-
+func (p *StaticPool) Events() chan PoolEvent {
+	return p.events
 }

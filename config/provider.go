@@ -11,11 +11,5 @@ type Provider interface {
 	// }
 	UnmarshalKey(name string, out interface{}) error
 	// SetPath sets search path for the config
-	SetPath(name string) error
-	// Get raw config in a form of config section.
-	// TODO first candidate to delete
 	Get(name string) interface{}
 }
-
-// todo: implement service based on viper config
-// todo: see RR implementation + ENV + merge configs

@@ -43,7 +43,7 @@ const (
 
 // Pool managed set of inner worker processes.
 type Pool interface {
-	//Events() chan PoolEvent
+	Events() chan PoolEvent
 
 	// Exec one task with given payload and context, returns result or error.
 	Exec(ctx context.Context, rqs Payload) (Payload, error)
@@ -82,9 +82,6 @@ type Config struct {
 	// properly destroy, if timeout reached worker will be killed.
 	DestroyTimeout time.Duration
 
-	// MaxMemory defines maximum amount of memory allowed for worker. In megabytes.
-	MaxMemory uint64
-
 	// TTL defines maximum time worker is allowed to live.
 	TTL int64
 
@@ -92,7 +89,12 @@ type Config struct {
 	IdleTTL int64
 
 	// ExecTTL defines maximum lifetime per job.
-	ExecTTL int64
+	ExecTTL time.Duration
+
+	// MaxPoolMemory defines maximum amount of memory allowed for worker. In megabytes.
+	MaxPoolMemory uint64
+
+	MaxWorkerMemory uint64
 
 	// config from limit plugin, combine TODO
 	// single bootstrap TODO, bool
@@ -126,6 +128,10 @@ func (cfg *Config) Valid() error {
 
 	if cfg.DestroyTimeout == 0 {
 		return fmt.Errorf("pool.DestroyTimeout must be set")
+	}
+
+	if cfg.ExecTTL == 0 {
+		return fmt.Errorf("pool.ExecTTL must be set")
 	}
 
 	return nil

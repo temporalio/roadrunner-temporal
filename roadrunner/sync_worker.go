@@ -30,45 +30,73 @@ func NewSyncWorker(w WorkerBase) (SyncWorker, error) {
 	}, nil
 }
 
+type twexec struct {
+	payload Payload
+	err     error
+}
+
 func (tw *taskWorker) Exec(ctx context.Context, rqs Payload) (Payload, error) {
-	//tw.mu.Lock()
-
-	if len(rqs.Body) == 0 && len(rqs.Context) == 0 {
-		//tw.mu.Unlock()
-		return EmptyPayload, fmt.Errorf("payload can not be empty")
-	}
-
-	if tw.w.State(ctx).Value() != StateReady {
-		//tw.mu.Unlock()
-		return EmptyPayload, fmt.Errorf("WorkerProcess is not ready (%s)", tw.w.State(ctx).String())
-	}
-
-	tw.w.State(ctx).Set(StateWorking)
-
-	rsp, err := tw.execPayload(ctx, rqs)
-	if err != nil {
-		if _, ok := err.(TaskError); !ok {
-			tw.w.State(ctx).Set(StateErrored)
-			tw.w.State(ctx).RegisterExec()
-			//tw.mu.Unlock()
-			return EmptyPayload, err
+	c := make(chan twexec)
+	go func() {
+		if len(rqs.Body) == 0 && len(rqs.Context) == 0 {
+			c <- twexec{
+				payload: EmptyPayload,
+				err:     fmt.Errorf("payload can not be empty"),
+			}
+			return
 		}
-		return EmptyPayload, err
-	}
 
-	tw.w.State(ctx).Set(StateReady)
-	tw.w.State(ctx).RegisterExec()
-	//tw.mu.Unlock()
-	return rsp, nil
+		if tw.w.State().Value() != StateReady {
+			c <- twexec{
+				payload: EmptyPayload,
+				err:     fmt.Errorf("WorkerProcess is not ready (%s)", tw.w.State().String()),
+			}
+			return
+		}
+
+		tw.w.State().Set(StateWorking)
+
+		rsp, err := tw.execPayload(ctx, rqs)
+		if err != nil {
+			if _, ok := err.(TaskError); !ok {
+				tw.w.State().Set(StateErrored)
+				tw.w.State().RegisterExec()
+			}
+			c <- twexec{
+				payload: EmptyPayload,
+				err:     err,
+			}
+			return
+		}
+
+		tw.w.State().Set(StateReady)
+		tw.w.State().RegisterExec()
+		c <- twexec{
+			payload: rsp,
+			err:     nil,
+		}
+		return
+	}()
+
+	select {
+	case <-ctx.Done():
+		return EmptyPayload, ctx.Err()
+	case res := <-c:
+		if res.err != nil {
+			return EmptyPayload, res.err
+		}
+
+		return res.payload, nil
+	}
 }
 
 func (tw *taskWorker) execPayload(ctx context.Context, rqs Payload) (Payload, error) {
 	// two things; todo: merge
-	if err := sendControl(tw.w.Relay(ctx), rqs.Context); err != nil {
+	if err := sendControl(tw.w.Relay(), rqs.Context); err != nil {
 		return EmptyPayload, errors.Wrap(err, "header error")
 	}
 
-	if err := tw.w.Relay(ctx).Send(rqs.Body, 0); err != nil {
+	if err := tw.w.Relay().Send(rqs.Body, 0); err != nil {
 		return EmptyPayload, errors.Wrap(err, "sender error")
 	}
 
@@ -76,7 +104,7 @@ func (tw *taskWorker) execPayload(ctx context.Context, rqs Payload) (Payload, er
 	rsp := Payload{}
 
 	var err error
-	if rsp.Context, pr, err = tw.w.Relay(ctx).Receive(); err != nil {
+	if rsp.Context, pr, err = tw.w.Relay().Receive(); err != nil {
 		return EmptyPayload, errors.Wrap(err, "WorkerProcess error")
 	}
 
@@ -89,7 +117,7 @@ func (tw *taskWorker) execPayload(ctx context.Context, rqs Payload) (Payload, er
 	}
 
 	// add streaming support :)
-	if rsp.Body, pr, err = tw.w.Relay(ctx).Receive(); err != nil {
+	if rsp.Body, pr, err = tw.w.Relay().Receive(); err != nil {
 		return EmptyPayload, errors.Wrap(err, "WorkerProcess error")
 	}
 
@@ -100,27 +128,29 @@ func (tw *taskWorker) String() string {
 	return tw.w.String()
 }
 
-func (tw *taskWorker) Created(ctx context.Context) time.Time {
-	return tw.w.Created(ctx)
+func (tw *taskWorker) Created() time.Time {
+	return tw.w.Created()
 }
 
-
-func (tw *taskWorker) Pid(ctx context.Context) int64 {
-	return tw.w.Pid(ctx)
+func (tw *taskWorker) Events() <-chan WorkerEvent {
+	return tw.w.Events()
 }
 
-func (tw *taskWorker) State(ctx context.Context) State {
-	return tw.w.State(ctx)
+func (tw *taskWorker) Pid() int64 {
+	return tw.w.Pid()
 }
 
-func (tw *taskWorker) Start(ctx context.Context) error {
-	return tw.w.Start(ctx)
+func (tw *taskWorker) State() State {
+	return tw.w.State()
+}
+
+func (tw *taskWorker) Start() error {
+	return tw.w.Start()
 }
 
 func (tw *taskWorker) Wait(ctx context.Context) error {
 	return tw.w.Wait(ctx)
 }
-
 
 func (tw *taskWorker) Stop(ctx context.Context) error {
 	return tw.w.Stop(ctx)
@@ -130,10 +160,10 @@ func (tw *taskWorker) Kill(ctx context.Context) error {
 	return tw.w.Kill(ctx)
 }
 
-func (tw *taskWorker) Relay(ctx context.Context) goridge.Relay {
-	return tw.w.Relay(ctx)
+func (tw *taskWorker) Relay() goridge.Relay {
+	return tw.w.Relay()
 }
 
-func (tw *taskWorker) AttachRelay(ctx context.Context, rl goridge.Relay) {
-	tw.w.AttachRelay(ctx, rl)
+func (tw *taskWorker) AttachRelay(rl goridge.Relay) {
+	tw.w.AttachRelay(rl)
 }
