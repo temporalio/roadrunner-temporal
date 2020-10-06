@@ -65,10 +65,6 @@ func Test_Tcp_StartCloseFactory(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, w)
 
-	//go func() {
-	//	assert.NoError(t, w.Wait())
-	//}()
-
 	err = w.Stop(ctx)
 	if err != nil {
 		t.Errorf("error stopping the WorkerProcess: error %v", err)
@@ -101,7 +97,7 @@ func Test_Tcp_StartError(t *testing.T) {
 	assert.Nil(t, w)
 }
 
-//func Test_Tcp_Failboot(t *testing.T) {
+// func Test_Tcp_Failboot(t *testing.T) {
 //	time.Sleep(time.Millisecond * 10) // to ensure free socket
 //
 //	ls, err := net.Listen("tcp", "localhost:9007")
@@ -497,12 +493,6 @@ func Benchmark_Tcp_Worker_ExecEcho(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	//go func() {
-	//	err := w.Wait()
-	//	if err != nil {
-	//		b.Errorf("error waiting: %v", err)
-	//	}
-	//}()
 	defer func() {
 		err = w.Stop(ctx)
 		if err != nil {
@@ -544,12 +534,6 @@ func Benchmark_Unix_SpawnWorker_Stop(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		//go func() {
-		//	if w.Wait() != nil {
-		//		b.Fail()
-		//	}
-		//}()
-
 		err = w.Stop(ctx)
 		if err != nil {
 			b.Errorf("error stopping the WorkerProcess: error %v", err)

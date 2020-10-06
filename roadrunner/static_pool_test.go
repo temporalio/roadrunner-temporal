@@ -372,7 +372,6 @@ func Test_Static_Pool_Destroy_And_Close_While_Wait(t *testing.T) {
 		if err != nil {
 			t.Errorf("error executing payload: error %v", err)
 		}
-
 	}()
 	time.Sleep(time.Millisecond * 10)
 

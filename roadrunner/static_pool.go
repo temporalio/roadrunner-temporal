@@ -104,6 +104,8 @@ func (p *StaticPool) Config() Config {
 
 // Workers returns worker list associated with the pool.
 func (p *StaticPool) Workers(ctx context.Context) (workers []WorkerBase) {
+	p.muw.RLock()
+	defer p.muw.RUnlock()
 	return p.ww.WorkersList(ctx)
 }
 
@@ -160,7 +162,9 @@ func (p *StaticPool) Exec(ctx context.Context, rqs Payload) (Payload, error) {
 			return EmptyPayload, err
 		}
 	} else {
+		p.muw.Lock()
 		p.ww.PushWorker(w)
+		p.muw.Unlock()
 	}
 	return rsp, nil
 }

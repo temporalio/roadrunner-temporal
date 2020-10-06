@@ -89,22 +89,6 @@ func Test_Pipe_Echo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	//go func() {
-	//	assert.NoError(t, w.Wait())
-	//}()
-
-	//go func() {
-	//	for  {
-	//		select {
-	//		case event := <-w.Events():
-	//			t.Fatal(event)
-	//		}
-	//	}
-	//	//err := w.Wait()
-	//	//if err != nil {
-	//	//	b.Errorf("error waiting the WorkerProcess: error %v", err)
-	//	//}
-	//}()
 	defer func() {
 		err = w.Stop(ctx)
 		if err != nil {
@@ -137,7 +121,6 @@ func Test_Pipe_Broken(t *testing.T) {
 	defer func() {
 		time.Sleep(time.Second)
 		err = w.Stop(ctx)
-		// write |1: broken pipe
 		assert.Error(t, err)
 	}()
 

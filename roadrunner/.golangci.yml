@@ -6,7 +6,7 @@ linters:
     - bodyclose
     - depguard
     - dogsled
-    - dupl
+#    - dupl
     - gochecknoinits
     - goconst
     - gocritic

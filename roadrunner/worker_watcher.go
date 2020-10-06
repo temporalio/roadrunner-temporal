@@ -36,8 +36,8 @@ func (stack *Stack) Push(w WorkerBase) {
 }
 
 func (stack *Stack) IsEmpty() bool {
-	//stack.mutex.Lock()
-	//defer stack.mutex.Unlock()
+	stack.mutex.Lock()
+	defer stack.mutex.Unlock()
 
 	return len(stack.workers) == 0
 }
@@ -61,6 +61,7 @@ func (stack *Stack) Pop() (WorkerBase, bool) {
 }
 
 type WorkersWatcher struct {
+	mutex             sync.Mutex
 	stack             *Stack
 	allocator         func(args ...interface{}) (*SyncWorker, error)
 	initialNumWorkers int64
@@ -104,10 +105,12 @@ func (ww *WorkersWatcher) AddToWatch(ctx context.Context, workers []WorkerBase) 
 			return err
 		}
 		ww.stack.Push(sw)
-		go func(swc *WorkerBase) {
-			ww.watch(ctx, swc)
-			ww.wait(ctx, swc)
-		}(&ww.stack.workers[i])
+		go func(swc WorkerBase) {
+			//ww.mutex.Lock()
+			ww.watch(&swc)
+			ww.wait(ctx, &swc)
+			//ww.mutex.Unlock()
+		}(sw)
 	}
 	return nil
 }
@@ -156,6 +159,8 @@ func (ww *WorkersWatcher) AllocateNew(ctx context.Context) error {
 }
 
 func (ww *WorkersWatcher) addToWatch(wb WorkerBase) {
+	ww.mutex.Lock()
+	defer ww.mutex.Unlock()
 	go func() {
 		ww.wait(context.Background(), &wb)
 	}()
@@ -213,8 +218,6 @@ func (ww *WorkersWatcher) Destroy(ctx context.Context) {
 
 // Warning, this is O(n) operation
 func (ww *WorkersWatcher) WorkersList(ctx context.Context) []WorkerBase {
-	ww.stack.mutex.Lock()
-	defer ww.stack.mutex.Unlock()
 	return ww.stack.workers
 }
 
@@ -261,7 +264,7 @@ func (ww *WorkersWatcher) wait(ctx context.Context, w *WorkerBase) {
 	return
 }
 
-func (ww *WorkersWatcher) watch(ctx context.Context, swc *WorkerBase) {
+func (ww *WorkersWatcher) watch(swc *WorkerBase) {
 	// todo make event to stop function
 	go func() {
 		select {

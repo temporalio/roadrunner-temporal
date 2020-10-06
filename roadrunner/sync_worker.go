@@ -3,7 +3,6 @@ package roadrunner
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -20,8 +19,7 @@ type SyncWorker interface {
 }
 
 type taskWorker struct {
-	mu sync.Mutex
-	w  WorkerBase
+	w WorkerBase
 }
 
 func NewSyncWorker(w WorkerBase) (SyncWorker, error) {

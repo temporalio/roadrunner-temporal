@@ -239,7 +239,6 @@ func (w *WorkerProcess) Wait(ctx context.Context) error {
 			w.state.Set(StateStopped)
 		}
 		c <- nil
-
 	}()
 	for {
 		select {

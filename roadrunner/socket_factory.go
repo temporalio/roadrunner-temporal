@@ -147,31 +147,6 @@ func (f *SocketFactory) Close(ctx context.Context) error {
 	return f.ls.Close()
 }
 
-// listens for incoming socket connections
-// error will be reported to the pool events channel
-//func (f *SocketFactory) listen() {
-//	go func() {
-//		for {
-//			conn, err := f.ls.Accept()
-//			if err != nil {
-//				return err
-//			}
-//
-//			rl := goridge.NewSocketRelay(conn)
-//			pid, err := fetchPID(rl)
-//			if err != nil {
-//				return err
-//			}
-//
-//			f.attachRelayToPid(pid, rl)
-//
-//			//if pid, err := fetchPID(rl); err == nil {
-//			//	f.attachRelayToPid(int(pid)) <- rl
-//			//}
-//		}
-//	}()
-//}
-
 // waits for WorkerProcess to connect over socket and returns associated relay of timeout
 func (f *SocketFactory) findRelay(ctx context.Context, w WorkerBase) (*goridge.SocketRelay, error) {
 	// poll every 100ms for the relay
@@ -194,20 +169,9 @@ func (f *SocketFactory) findRelay(ctx context.Context, w WorkerBase) (*goridge.S
 // chan to store relay associated with specific pid
 func (f *SocketFactory) attachRelayToPid(pid int64, relay *goridge.SocketRelay) {
 	f.relays.Store(pid, relay)
-	//
-	//rl, ok := f.relays[pid]
-	//if !ok {
-	//	f.relays[pid] = &goridge.SocketRelay{}
-	//	return
-	//}
-	//f.relays[pid] = rl
 }
 
 // deletes relay chan associated with specific pid
 func (f *SocketFactory) removeRelayFromPid(pid int64) {
-	//f.mu.Lock()
-	//defer f.mu.Unlock()
-	//
-	//delete(f.relays, pid)
 	f.relays.Delete(pid)
 }
