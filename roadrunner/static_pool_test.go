@@ -2,6 +2,7 @@ package roadrunner
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os/exec"
 	"runtime"
@@ -170,9 +171,11 @@ func Test_StaticPool_Broken_Replace(t *testing.T) {
 			select {
 			case ev := <-p.Events():
 				wev := ev.Payload.(WorkerEvent)
-				assert.Contains(t, string(wev.Payload.([]byte)), "undefined_function()")
-				wg.Done()
-				return
+				if _, ok := wev.Payload.([]byte); ok {
+					assert.Contains(t, string(wev.Payload.([]byte)), "undefined_function()")
+					wg.Done()
+					return
+				}
 			}
 		}
 	}()
@@ -210,13 +213,23 @@ func Test_StaticPool_Broken_FromOutside(t *testing.T) {
 	assert.Equal(t, "hello", res.String())
 	assert.Equal(t, runtime.NumCPU(), len(p.Workers(ctx)))
 
+	// Consume pool events
+	go func() {
+		for true {
+			select {
+			case ev := <-p.Events():
+				fmt.Println(ev)
+			}
+		}
+	}()
+
 	// killing random worker and expecting pool to replace it
 	err = p.Workers(ctx)[0].Kill(ctx) //.Process.Kill()
 	if err != nil {
 		t.Errorf("error killing the process: error %v", err)
 	}
 
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 3)
 
 	for _, w := range p.Workers(ctx) {
 		assert.Equal(t, StateReady, w.State().Value())
@@ -276,41 +289,44 @@ func Test_StaticPool_Replace_Worker(t *testing.T) {
 }
 
 // identical to replace but controlled on worker side
-//func Test_StaticPool_Stop_Worker(t *testing.T) {
-//	ctx := context.Background()
-//	p, err := NewPool(
-//		func() *exec.Cmd { return exec.Command("php", "tests/client.php", "destroy", "pipes") },
-//		NewPipeFactory(),
-//		Config{
-//			NumWorkers:      1,
-//			AllocateTimeout: time.Second,
-//			DestroyTimeout:  time.Second,
-//			ExecTTL:         time.Second * 5,
-//		},
-//	)
-//	assert.NoError(t, err)
-//	defer p.Destroy(ctx)
-//
-//	assert.NotNil(t, p)
-//
-//	var lastPID string
-//	lastPID = strconv.Itoa(int(p.Workers(ctx)[0].Pid()))
-//
-//	res, _ := p.Exec(ctx, Payload{Body: []byte("hello")})
-//	assert.Equal(t, lastPID, string(res.Body))
-//
-//	for i := 0; i < 10; i++ {
-//		res, err := p.Exec(ctx, Payload{Body: []byte("hello")})
-//
-//		assert.NoError(t, err)
-//		assert.NotNil(t, res)
-//		assert.NotNil(t, res.Body)
-//		assert.Nil(t, res.Context)
-//
-//		assert.NotEqual(t, lastPID, string(res.Body))
-//		lastPID = string(res.Body)
-//	}
-//}
+func Test_StaticPool_Stop_Worker(t *testing.T) {
+	ctx := context.Background()
+	p, err := NewPool(
+		func() *exec.Cmd { return exec.Command("php", "tests/client.php", "stop", "pipes") },
+		NewPipeFactory(),
+		Config{
+			NumWorkers:      1,
+			AllocateTimeout: time.Second,
+			DestroyTimeout:  time.Second,
+			ExecTTL:         time.Second * 15,
+		},
+	)
+	assert.NoError(t, err)
+	defer p.Destroy(ctx)
+
+	assert.NotNil(t, p)
+
+	var lastPID string
+	lastPID = strconv.Itoa(int(p.Workers(ctx)[0].Pid()))
+
+	res, err := p.Exec(ctx, Payload{Body: []byte("hello")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, lastPID, string(res.Body))
+
+	for i := 0; i < 10; i++ {
+		res, err := p.Exec(ctx, Payload{Body: []byte("hello")})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, res)
+		assert.NotNil(t, res.Body)
+		assert.Nil(t, res.Context)
+
+		assert.NotEqual(t, lastPID, string(res.Body))
+		lastPID = string(res.Body)
+	}
+}
 
 // identical to replace but controlled on worker side
 func Test_Static_Pool_Destroy_And_Close(t *testing.T) {
@@ -408,25 +424,6 @@ func Test_Static_Pool_Slow_Destroy(t *testing.T) {
 
 	p.Destroy(context.Background())
 }
-
-//func Benchmark_Pool_Allocate(b *testing.B) {
-//	p, _ := NewPool(
-//		func() *exec.Cmd { return exec.Command("php", "tests/client.php", "echo", "pipes") },
-//		NewPipeFactory(),
-//		cfg,
-//	)
-//	defer p.Destroy()
-//
-//	for n := 0; n < b.N; n++ {
-//		w, err := p.allocateWorker()
-//		if err != nil {
-//			b.Fail()
-//			log.Println(err)
-//		}
-//
-//		p.free <- w
-//	}
-//}
 
 func Benchmark_Pool_Echo(b *testing.B) {
 	ctx := context.Background()

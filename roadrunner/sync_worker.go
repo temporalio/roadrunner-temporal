@@ -56,7 +56,7 @@ func (tw *taskWorker) Exec(ctx context.Context, rqs Payload) (Payload, error) {
 
 		tw.w.State().Set(StateWorking)
 
-		rsp, err := tw.execPayload(ctx, rqs)
+		rsp, err := tw.execPayload(rqs)
 		if err != nil {
 			if _, ok := err.(TaskError); !ok {
 				tw.w.State().Set(StateErrored)
@@ -90,7 +90,7 @@ func (tw *taskWorker) Exec(ctx context.Context, rqs Payload) (Payload, error) {
 	}
 }
 
-func (tw *taskWorker) execPayload(ctx context.Context, rqs Payload) (Payload, error) {
+func (tw *taskWorker) execPayload(rqs Payload) (Payload, error) {
 	// two things; todo: merge
 	if err := sendControl(tw.w.Relay(), rqs.Context); err != nil {
 		return EmptyPayload, errors.Wrap(err, "header error")

@@ -144,7 +144,7 @@ func Test_Tcp_Timeout(t *testing.T) {
 	w, err := NewSocketServer(ls, time.Millisecond*1).SpawnWorker(ctx, cmd)
 	assert.Nil(t, w)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "relay timeout")
+	assert.Contains(t, err.Error(), "context deadline exceeded")
 }
 
 func Test_Tcp_Invalid(t *testing.T) {
@@ -304,7 +304,7 @@ func Test_Unix_Failboot(t *testing.T) {
 
 	cmd := exec.Command("php", "tests/failboot.php")
 
-	w, err := NewSocketServer(ls, time.Second * 2).SpawnWorker(ctx, cmd)
+	w, err := NewSocketServer(ls, time.Second*2).SpawnWorker(ctx, cmd)
 	assert.Nil(t, w)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failboot")
@@ -329,7 +329,7 @@ func Test_Unix_Timeout(t *testing.T) {
 	w, err := NewSocketServer(ls, time.Millisecond*100).SpawnWorker(ctx, cmd)
 	assert.Nil(t, w)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "relay timeout")
+	assert.Contains(t, err.Error(), "context deadline exceeded")
 }
 
 func Test_Unix_Invalid(t *testing.T) {
@@ -373,16 +373,16 @@ func Test_Unix_Broken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	//go func() {
-	//	err := w.Wait()
-	//	assert.Error(t, err)
-	//	assert.Contains(t, err.Error(), "undefined_function()")
-	//}()
+	go func() {
+		err := w.Wait(ctx)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "undefined_function()")
+	}()
 
 	defer func() {
 		time.Sleep(time.Second)
 		err = w.Stop(ctx)
-		assert.NoError(t, err)
+		assert.Error(t, err)
 	}()
 
 	sw, err := NewSyncWorker(w)

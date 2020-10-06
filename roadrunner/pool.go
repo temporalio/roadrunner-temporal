@@ -43,6 +43,7 @@ const (
 
 // Pool managed set of inner worker processes.
 type Pool interface {
+	// ATTENTION, YOU SHOULD CONSUME EVENTS, OTHERWISE POOL WILL BLOCK
 	Events() chan PoolEvent
 
 	// Exec one task with given payload and context, returns result or error.

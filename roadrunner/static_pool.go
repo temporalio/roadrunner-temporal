@@ -11,7 +11,7 @@ import (
 
 const (
 	// StopRequest can be sent by worker to indicate that restart is required.
-	StopRequest = "{\"destroy\":true}"
+	StopRequest = "{\"stop\":true}"
 )
 
 // StaticPool controls worker creation, destruction and task routing. Pool uses fixed amount of workers.
@@ -131,7 +131,7 @@ func (p *StaticPool) Exec(ctx context.Context, rqs Payload) (Payload, error) {
 		}
 		// soft job errors are allowed
 		if _, jobError := err.(TaskError); jobError {
-			p.ww.PutWorker(ctx, w)
+			p.ww.PushWorker(w)
 			return EmptyPayload, err
 		}
 
@@ -147,7 +147,11 @@ func (p *StaticPool) Exec(ctx context.Context, rqs Payload) (Payload, error) {
 	// worker want's to be terminated
 	if rsp.Body == nil && rsp.Context != nil && string(rsp.Context) == StopRequest {
 		w.State().Set(StateInvalid)
-		p.ww.PutWorker(ctx, w)
+		err = w.Stop(ctx)
+		if err != nil {
+			panic(err)
+		}
+
 		return p.Exec(ctx, rqs)
 	}
 
@@ -157,7 +161,7 @@ func (p *StaticPool) Exec(ctx context.Context, rqs Payload) (Payload, error) {
 			return EmptyPayload, err
 		}
 	} else {
-		p.ww.PutWorker(ctx, w)
+		p.ww.PushWorker(w)
 	}
 	return rsp, nil
 }

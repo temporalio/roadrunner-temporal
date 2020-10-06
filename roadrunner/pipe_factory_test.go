@@ -2,9 +2,7 @@ package roadrunner
 
 import (
 	"context"
-	"errors"
 	"os/exec"
-	"sync"
 	"testing"
 	"time"
 
@@ -72,36 +70,10 @@ func Test_Pipe_Failboot(t *testing.T) {
 	ctx := context.Background()
 	w, err := NewPipeFactory().SpawnWorker(ctx, cmd)
 
-	go func() {
-		err = w.Wait(context.Background())
-		if err != nil {
-			t.Fatal(err)
-		}
-	}()
 
 	assert.Nil(t, w)
 	assert.Error(t, err)
-
-
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		tt := time.NewTimer(time.Second * 10)
-		defer wg.Done()
-		for {
-			select {
-			case ev := <-w.Events():
-				assert.NotNil(t,ev.Payload)
-				assert.Contains(t, string(ev.Payload.([]byte)), "failboot")
-				return
-			case <-tt.C:
-				assert.Error(t, errors.New("no events from worker"))
-				return
-			}
-		}
-	}()
-
-	wg.Wait()
+	assert.Contains(t, err.Error(), "failboot")
 }
 
 func Test_Pipe_Invalid(t *testing.T) {
@@ -164,25 +136,6 @@ func Test_Pipe_Broken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	//go func() {
-	//	err := w.Wait()
-	//
-	//	assert.Error(t, err)
-	//	assert.Contains(t, err.Error(), "undefined_function()")
-	//}()
-
-	//go func() {
-	//	for  {
-	//		select {
-	//		case event := <-w.Events():
-	//			t.Fatal(event)
-	//		}
-	//	}
-	//	//err := w.Wait()
-	//	//if err != nil {
-	//	//	b.Errorf("error waiting the WorkerProcess: error %v", err)
-	//	//}
-	//}()
 	defer func() {
 		time.Sleep(time.Second)
 		err = w.Stop(ctx)
@@ -204,40 +157,53 @@ func Test_Pipe_Broken(t *testing.T) {
 
 func Benchmark_Pipe_SpawnWorker_Stop(b *testing.B) {
 	f := NewPipeFactory()
-	ctx := context.Background()
 	for n := 0; n < b.N; n++ {
 		cmd := exec.Command("php", "tests/client.php", "echo", "pipes")
-		w, err := f.SpawnWorker(ctx, cmd)
-		if err != nil {
-			b.Fatal(err)
-		}
+		w, _ := f.SpawnWorker(context.Background(), cmd)
+		go func() {
+			if w.Wait(context.Background()) != nil {
+				b.Fail()
+			}
+		}()
 
-		//go func() {
-		//	for  {
-		//		select {
-		//		case event := <-w.Events():
-		//			b.Fatal(event)
-		//		}
-		//	}
-		//	//err := w.Wait()
-		//	//if err != nil {
-		//	//	b.Errorf("error waiting the WorkerProcess: error %v", err)
-		//	//}
-		//}()
-		//go func() {
-		//	if w.Wait() != nil {
-		//		b.Fail()
-		//	}
-		//}()
-
-		err = w.Stop(ctx)
+		err := w.Stop(context.Background())
 		if err != nil {
-			b.Errorf("error stopping the WorkerProcess: error %v", err)
+			b.Errorf("error stopping the worker: error %v", err)
 		}
 	}
 }
 
 func Benchmark_Pipe_Worker_ExecEcho(b *testing.B) {
+	cmd := exec.Command("php", "tests/client.php", "echo", "pipes")
+
+	w, _ := NewPipeFactory().SpawnWorker(context.Background(), cmd)
+	sw, err := NewSyncWorker(w)
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	go func() {
+		err := w.Wait(context.Background())
+		if err != nil {
+			b.Errorf("error waiting the worker: error %v", err)
+		}
+	}()
+	defer func() {
+		err := w.Stop(context.Background())
+		if err != nil {
+			b.Errorf("error stopping the worker: error %v", err)
+		}
+	}()
+
+	for n := 0; n < b.N; n++ {
+		if _, err := sw.Exec(context.Background(), Payload{Body: []byte("hello")}); err != nil {
+			b.Fail()
+		}
+	}
+}
+
+func Benchmark_Pipe_Worker_ExecEcho3(b *testing.B) {
 	cmd := exec.Command("php", "tests/client.php", "echo", "pipes")
 	ctx := context.Background()
 	w, err := NewPipeFactory().SpawnWorker(ctx, cmd)

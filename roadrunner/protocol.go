@@ -10,7 +10,7 @@ import (
 var j = json.ConfigCompatibleWithStandardLibrary
 
 type stopCommand struct {
-	Stop bool `json:"destroy"`
+	Stop bool `json:"stop"`
 }
 
 type pidCommand struct {

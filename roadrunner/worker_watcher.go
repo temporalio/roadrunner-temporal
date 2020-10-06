@@ -74,7 +74,7 @@ type WorkerWatcher interface {
 	// GetFreeWorker provide first free worker
 	GetFreeWorker(ctx context.Context) (WorkerBase, error)
 	// PutWorker enqueues worker back
-	PutWorker(ctx context.Context, w WorkerBase)
+	PushWorker(w WorkerBase)
 	// AllocateNew used to allocate new worker and put in into the WorkerWatcher
 	AllocateNew(ctx context.Context) error
 	// Destroy destroys the underlying workers
@@ -120,7 +120,7 @@ func (ww *WorkersWatcher) GetFreeWorker(ctx context.Context) (WorkerBase, error)
 	}
 	// no free workers
 	if w == nil {
-		tt := time.NewTicker(time.Millisecond * 100)
+		tt := time.NewTicker(time.Millisecond * 10)
 		defer tt.Stop()
 		tout := time.NewTicker(time.Second * 180)
 		defer tout.Stop()
@@ -146,12 +146,21 @@ func (ww *WorkersWatcher) GetFreeWorker(ctx context.Context) (WorkerBase, error)
 }
 
 func (ww *WorkersWatcher) AllocateNew(ctx context.Context) error {
+	ww.workers.mutex.Lock()
 	sw, err := ww.allocator()
 	if err != nil {
 		return err
 	}
-	ww.PutWorker(ctx, *sw)
+	ww.addToWatch(*sw)
+	ww.workers.mutex.Unlock()
+	ww.PushWorker(*sw)
 	return nil
+}
+
+func (ww *WorkersWatcher) addToWatch(wb WorkerBase) {
+	go func() {
+		ww.wait(context.Background(), &wb)
+	}()
 }
 
 func (ww *WorkersWatcher) reallocate(wb *WorkerBase) error {
@@ -164,7 +173,7 @@ func (ww *WorkersWatcher) reallocate(wb *WorkerBase) error {
 }
 
 // O(1) operation
-func (ww *WorkersWatcher) PutWorker(ctx context.Context, w WorkerBase) {
+func (ww *WorkersWatcher) PushWorker(w WorkerBase) {
 	sw := w.(SyncWorker)
 	ww.actualNumWorkers++
 	ww.workers.Push(sw)
@@ -219,13 +228,10 @@ func (ww *WorkersWatcher) wait(ctx context.Context, w *WorkerBase) {
 			Worker:  *w,
 			Payload: err,
 		}}
-		return
 	}
 	// If not destroyed, reallocate
 	if (*w).State().Value() != StateDestroyed {
-		ww.workers.mutex.Lock()
-		defer ww.workers.mutex.Unlock()
-		err = ww.reallocate(w)
+		err = ww.AllocateNew(ctx)
 		if err != nil {
 			ww.events <- PoolEvent{Payload: WorkerEvent{
 				Event:   EventWorkerError,

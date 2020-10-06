@@ -2,6 +2,7 @@ package roadrunner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/spiral/goridge/v2"
 )
 
@@ -65,9 +65,6 @@ type WorkerBase interface {
 	// will be wrapped as WorkerError. Method will return error code if php process fails
 	// to find or Start the script.
 	Wait(ctx context.Context) error
-
-	// Closed when worker stops. // todo: see socket factory, see static pool
-	//WaitChan() chan interface{}
 
 	// Stop sends soft termination command to the WorkerProcess and waits for process completion.
 	Stop(ctx context.Context) error
@@ -125,10 +122,9 @@ func initWorker(ctx context.Context, cmd *exec.Cmd) (WorkerBase, error) {
 	if cmd.Process != nil {
 		return nil, fmt.Errorf("can't attach to running process")
 	}
-
 	w := &WorkerProcess{
 		created: time.Now(),
-		events:  make(chan WorkerEvent, 100),
+		events:  make(chan WorkerEvent, 10),
 		cmd:     cmd,
 		state:   newState(StateInactive),
 	}
@@ -205,36 +201,36 @@ func (w *WorkerProcess) Events() <-chan WorkerEvent {
 func (w *WorkerProcess) Wait(ctx context.Context) error {
 	c := make(chan error)
 	go func() {
-		var err error
-		defer func() {
-			if err != nil {
-				w.state.Set(StateErrored)
-			}
-		}()
-		err = w.cmd.Wait()
+		var errs []string
+		err := w.cmd.Wait()
 		w.endState = w.cmd.ProcessState
 		if err != nil {
-			if _, ok := err.(*exec.ExitError); ok {
-				// wrap error
-				err = errors.Wrap(err, err.Error())
+			errs = append(errs, err.Error())
+			w.state.Set(StateErrored)
+
+			// if there are messages in the events channel, read it
+			tt := time.NewTimer(WaitDuration * 2)
+			select {
+			case ev := <-w.events:
+				errs = append(errs, string(ev.Payload.([]byte)))
+				tt.Stop()
+				break
+			case <-tt.C:
+				tt.Stop()
+				break
 			}
 
-			errRel := w.closeRelay()
-			if errRel != nil {
-				c <- fmt.Errorf("%v, %v", err, errRel)
-				return
+			err = w.closeRelay()
+			if err != nil {
+				errs = append(errs, err.Error())
 			}
+			c <- errors.New(strings.Join(errs, " : "))
+			return
 		}
 
-		//if w.errBuffer.Len() != 0 {
-		//	w.errBuffer.Close()
-		//	c <- errors.New(w.errBuffer.String())
-		//	return
-		//}
-
-		// try to close relay, sends error to the WorkerEvents channel in case of error
 		err = w.closeRelay()
 		if err != nil {
+			w.state.Set(StateErrored)
 			c <- err
 			return
 		}
@@ -243,16 +239,6 @@ func (w *WorkerProcess) Wait(ctx context.Context) error {
 			w.state.Set(StateStopped)
 		}
 		c <- nil
-		//if w.state.Value() != StateStopping {
-		//	w.state.Set(StateErrored)
-		//}
-
-		//if w.errBuffer.Len() != 0 {
-		//	// TODO replace with WorkerBufferEvent
-		//	w.sendEvent(WorkerEvent{Event: EventWorkerError, Worker: w, Payload: w.errBuffer.String()})
-		//}
-
-		//w.events <- WorkerEvent{Event: EventWorkerProcessError, Worker: w, Payload: exec.ExitError{ProcessState: w.endState}}
 
 	}()
 	for {
@@ -277,21 +263,35 @@ func (w *WorkerProcess) closeRelay() error {
 
 // Stop sends soft termination command to the WorkerProcess and waits for process completion.
 func (w *WorkerProcess) Stop(ctx context.Context) error {
-	w.errBuffer.Close()
-	w.state.Set(StateStopping)
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	err := sendControl(w.relay, &stopCommand{Stop: true})
-	if err != nil {
-		w.state.Set(StateKilling)
-		err2 := w.cmd.Process.Kill()
-		if err2 != nil {
-			return fmt.Errorf("destroy error: %s, kill error: %s", err.Error(), err2.Error())
+	c := make(chan error)
+	go func() {
+		var errs []string
+		w.errBuffer.Close()
+		w.state.Set(StateStopping)
+		w.mu.Lock()
+		defer w.mu.Unlock()
+		err := sendControl(w.relay, &stopCommand{Stop: true})
+		if err != nil {
+			errs = append(errs, err.Error())
+			w.state.Set(StateKilling)
+			err = w.cmd.Process.Kill()
+			if err != nil {
+				errs = append(errs, err.Error())
+			}
+			c <- errors.New(strings.Join(errs, "|"))
 		}
-		return err
+		w.state.Set(StateStopped)
+		c <- nil
+	}()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-c:
+		if err != nil {
+			return err
+		}
+		return nil
 	}
-	w.state.Set(StateStopped)
-	return nil
 }
 
 // Kill kills underlying process, make sure to call Wait() func to gather

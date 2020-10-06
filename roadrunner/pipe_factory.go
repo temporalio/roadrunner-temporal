@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spiral/goridge/v2"
@@ -75,31 +76,43 @@ func (f *PipeFactory) SpawnWorker(ctx context.Context, cmd *exec.Cmd) (WorkerBas
 			return
 		}
 
-		pid, err := fetchPID(relay)
-		if err != nil {
-			c <- SpawnResult{
-				w:   nil,
-				err: err,
+		// errors bundle
+		var errs []string
+		if pid, errF := fetchPID(relay); pid != w.Pid() {
+			if errF != nil {
+				errs = append(errs, errF.Error())
 			}
+
+			// todo kill timeout
+			errK := w.Kill(ctx)
+			if errK != nil {
+				errs = append(errs, fmt.Errorf("error killing the worker with PID number %d, Created: %s", w.Pid(), w.Created()).Error())
+			}
+
+			if wErr := w.Wait(ctx); wErr != nil {
+				errs = append(errs, wErr.Error())
+			}
+
+			if len(errs) > 0 {
+				c <- SpawnResult{
+					w:   nil,
+					err: errors.New(strings.Join(errs, " : ")),
+				}
+			} else {
+				c <- SpawnResult{
+					w:   nil,
+					err: nil,
+				}
+			}
+
+
 			return
 		}
 
-		if pid != w.Pid() {
-			err = w.Kill(ctx)
-			if err != nil {
-				c <- SpawnResult{
-					w: nil,
-					err: errors.New(fmt.Sprintf(
-						"error killing the WorkerProcess with PID number %d, created: %s",
-						w.Pid(),
-						w.Created())),
-				}
-				return
-			}
-		}
-
+		// everything ok, set ready state
 		w.State().Set(StateReady)
 
+		// return worker
 		c <- SpawnResult{
 			w:   w,
 			err: nil,
@@ -115,10 +128,6 @@ func (f *PipeFactory) SpawnWorker(ctx context.Context, cmd *exec.Cmd) (WorkerBas
 		}
 		return res.w, nil
 	}
-}
-
-func (f *PipeFactory) Listen() {
-
 }
 
 // Close the factory.
