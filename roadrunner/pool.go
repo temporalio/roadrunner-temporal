@@ -51,9 +51,6 @@ type Pool interface {
 	// Workers returns worker list associated with the pool.
 	Workers(ctx context.Context) (workers []WorkerBase)
 
-	// Remove forces pool to remove specific worker. Return true is this is first remove request on given worker.
-	// TODO remove REMOVE
-	// Remove(w WorkerBase) error
 	Config() Config
 
 	// Destroy all underlying workers (but let them to complete the task).

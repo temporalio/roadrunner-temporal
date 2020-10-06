@@ -2,7 +2,9 @@ package roadrunner
 
 import (
 	"context"
+	"errors"
 	"os/exec"
+	"sync"
 	"testing"
 	"time"
 
@@ -10,29 +12,19 @@ import (
 )
 
 func Test_Pipe_Start(t *testing.T) {
+	ctx := context.Background()
 	cmd := exec.Command("php", "tests/client.php", "echo", "pipes")
 
-	ctx := context.Background()
+
 	w, err := NewPipeFactory().SpawnWorker(ctx, cmd)
 	assert.NoError(t, err)
 	assert.NotNil(t, w)
 
-	//go func() {
-	//	assert.NoError(t, w.Wait())
-	//}()
+	go func() {
+		ctx := context.Background()
+		assert.NoError(t, w.Wait(ctx))
+	}()
 
-	//go func() {
-	//	for  {
-	//		select {
-	//		case event := <-w.Events():
-	//			t.Fatal(event)
-	//		}
-	//	}
-	//	//err := w.Wait()
-	//	//if err != nil {
-	//	//	b.Errorf("error waiting the WorkerProcess: error %v", err)
-	//	//}
-	//}()
 	assert.NoError(t, w.Stop(ctx))
 }
 
@@ -80,9 +72,36 @@ func Test_Pipe_Failboot(t *testing.T) {
 	ctx := context.Background()
 	w, err := NewPipeFactory().SpawnWorker(ctx, cmd)
 
+	go func() {
+		err = w.Wait(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+
 	assert.Nil(t, w)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failboot")
+
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		tt := time.NewTimer(time.Second * 10)
+		defer wg.Done()
+		for {
+			select {
+			case ev := <-w.Events():
+				assert.NotNil(t,ev.Payload)
+				assert.Contains(t, string(ev.Payload.([]byte)), "failboot")
+				return
+			case <-tt.C:
+				assert.Error(t, errors.New("no events from worker"))
+				return
+			}
+		}
+	}()
+
+	wg.Wait()
 }
 
 func Test_Pipe_Invalid(t *testing.T) {

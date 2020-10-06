@@ -170,8 +170,7 @@ func Test_StaticPool_Broken_Replace(t *testing.T) {
 			select {
 			case ev := <-p.Events():
 				wev := ev.Payload.(WorkerEvent)
-				//println(string(wev.Payload.([]uint8)))
-				assert.Contains(t, string(wev.Payload.([]uint8)), "undefined_function()")
+				assert.Contains(t, string(wev.Payload.([]byte)), "undefined_function()")
 				wg.Done()
 				return
 			}
@@ -183,9 +182,9 @@ func Test_StaticPool_Broken_Replace(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, res.Context)
 	assert.Nil(t, res.Body)
+	wg.Wait()
 
 	p.Destroy(ctx)
-	wg.Wait()
 }
 
 //

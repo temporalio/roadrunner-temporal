@@ -2,7 +2,9 @@ package roadrunner
 
 import (
 	"context"
+	"errors"
 	"os/exec"
+	"sync"
 	"testing"
 	"time"
 
@@ -161,10 +163,22 @@ func Test_Broken(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
-		err := w.Wait(ctx)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "undefined_function()")
+		assert.NotNil(t, w)
+		tt := time.NewTimer(time.Second * 10)
+		defer wg.Done()
+		for {
+			select {
+			case ev := <-w.Events():
+				assert.Contains(t, string(ev.Payload.([]byte)), "undefined_function()")
+				return
+			case <-tt.C:
+				assert.Error(t, errors.New("no events from worker"))
+				return
+			}
+		}
 	}()
 
 	syncWorker, err := NewSyncWorker(w)
@@ -177,8 +191,7 @@ func Test_Broken(t *testing.T) {
 	assert.Nil(t, res.Body)
 	assert.Nil(t, res.Context)
 
-	time.Sleep(time.Second)
-	// here should be an error
+	wg.Wait()
 	assert.Error(t, w.Stop(ctx))
 }
 

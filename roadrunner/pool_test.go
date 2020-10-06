@@ -22,6 +22,7 @@ func Test_NumWorkers_Default(t *testing.T) {
 	cfg := Config{
 		AllocateTimeout: time.Second,
 		DestroyTimeout:  time.Second * 10,
+		ExecTTL:         time.Second * 5,
 	}
 
 	assert.NoError(t, cfg.InitDefaults())

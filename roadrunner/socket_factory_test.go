@@ -141,7 +141,7 @@ func Test_Tcp_Timeout(t *testing.T) {
 
 	cmd := exec.Command("php", "tests/slow-client.php", "echo", "tcp", "200", "0")
 
-	w, err := NewSocketServer(ls, time.Millisecond*100).SpawnWorker(ctx, cmd)
+	w, err := NewSocketServer(ls, time.Millisecond*1).SpawnWorker(ctx, cmd)
 	assert.Nil(t, w)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "relay timeout")
