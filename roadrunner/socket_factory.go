@@ -22,7 +22,7 @@ type SocketFactory struct {
 	tout time.Duration
 
 	// sockets which are waiting for process association
-	//relays map[int64]*goridge.SocketRelay
+	// relays map[int64]*goridge.SocketRelay
 	relays sync.Map
 
 	ErrCh chan error
@@ -36,7 +36,7 @@ func NewSocketServer(ls net.Listener, tout time.Duration) *SocketFactory {
 	f := &SocketFactory{
 		ls:     ls,
 		tout:   tout,
-		relays: sync.Map{}, //make(map[int64]*goridge.SocketRelay),
+		relays: sync.Map{},
 		ErrCh:  make(chan error, 10),
 	}
 

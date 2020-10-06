@@ -78,15 +78,17 @@ func (tw *taskWorker) Exec(ctx context.Context, rqs Payload) (Payload, error) {
 		return
 	}()
 
-	select {
-	case <-ctx.Done():
-		return EmptyPayload, ctx.Err()
-	case res := <-c:
-		if res.err != nil {
-			return EmptyPayload, res.err
-		}
+	for {
+		select {
+		case <-ctx.Done():
+			return EmptyPayload, ctx.Err()
+		case res := <-c:
+			if res.err != nil {
+				return EmptyPayload, res.err
+			}
 
-		return res.payload, nil
+			return res.payload, nil
+		}
 	}
 }
 

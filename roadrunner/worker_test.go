@@ -39,7 +39,7 @@ func Test_Kill(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		assert.Error(t, w.Wait(ctx))
-		// TODO changet from stopped, discuss
+		// TODO changed from stopped, discuss
 		assert.Equal(t, StateErrored, w.State().Value())
 	}()
 

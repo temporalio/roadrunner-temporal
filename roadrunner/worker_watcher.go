@@ -36,8 +36,8 @@ func (stack *Stack) Push(w WorkerBase) {
 }
 
 func (stack *Stack) IsEmpty() bool {
-	stack.mutex.Lock()
-	defer stack.mutex.Unlock()
+	//stack.mutex.Lock()
+	//defer stack.mutex.Unlock()
 
 	return len(stack.workers) == 0
 }
@@ -120,13 +120,11 @@ func (ww *WorkersWatcher) GetFreeWorker(ctx context.Context) (WorkerBase, error)
 	}
 	// no free stack
 	if w == nil {
-		tt := time.NewTicker(time.Millisecond * 10)
-		defer tt.Stop()
 		tout := time.NewTicker(time.Second * 180)
 		defer tout.Stop()
 		for {
 			select {
-			case <-tt.C:
+			default:
 				w, stop = ww.stack.Pop()
 				if stop {
 					return nil, ErrWatcherStopped

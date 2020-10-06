@@ -13,7 +13,6 @@ func Test_Pipe_Start(t *testing.T) {
 	ctx := context.Background()
 	cmd := exec.Command("php", "tests/client.php", "echo", "pipes")
 
-
 	w, err := NewPipeFactory().SpawnWorker(ctx, cmd)
 	assert.NoError(t, err)
 	assert.NotNil(t, w)
@@ -69,7 +68,6 @@ func Test_Pipe_Failboot(t *testing.T) {
 	cmd := exec.Command("php", "tests/failboot.php")
 	ctx := context.Background()
 	w, err := NewPipeFactory().SpawnWorker(ctx, cmd)
-
 
 	assert.Nil(t, w)
 	assert.Error(t, err)
@@ -210,7 +208,6 @@ func Benchmark_Pipe_Worker_ExecEcho3(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-
 
 	//go func() {
 	//	for  {

@@ -105,7 +105,6 @@ func (f *PipeFactory) SpawnWorker(ctx context.Context, cmd *exec.Cmd) (WorkerBas
 				}
 			}
 
-
 			return
 		}
 

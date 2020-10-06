@@ -577,12 +577,6 @@ func Benchmark_Unix_Worker_ExecEcho(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	//go func() {
-	//	err := w.Wait()
-	//	if err != nil {
-	//		b.Errorf("error waiting: %v", err)
-	//	}
-	//}()
 	defer func() {
 		err = w.Stop(ctx)
 		if err != nil {
