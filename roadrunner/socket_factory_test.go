@@ -164,7 +164,7 @@ func Test_Tcp_Invalid(t *testing.T) {
 
 	cmd := exec.Command("php", "tests/invalid.php")
 
-	w, err := NewSocketServer(ls, time.Minute).SpawnWorker(ctx, cmd)
+	w, err := NewSocketServer(ls, time.Second*10).SpawnWorker(ctx, cmd)
 	assert.Error(t, err)
 	assert.Nil(t, w)
 }
@@ -348,7 +348,7 @@ func Test_Unix_Invalid(t *testing.T) {
 
 	cmd := exec.Command("php", "tests/invalid.php")
 
-	w, err := NewSocketServer(ls, time.Minute).SpawnWorker(ctx, cmd)
+	w, err := NewSocketServer(ls, time.Second*10).SpawnWorker(ctx, cmd)
 	assert.Error(t, err)
 	assert.Nil(t, w)
 }

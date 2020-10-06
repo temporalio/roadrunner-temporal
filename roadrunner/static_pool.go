@@ -14,7 +14,7 @@ const (
 	StopRequest = "{\"stop\":true}"
 )
 
-// StaticPool controls worker creation, destruction and task routing. Pool uses fixed amount of workers.
+// StaticPool controls worker creation, destruction and task routing. Pool uses fixed amount of stack.
 type StaticPool struct {
 	// pool behaviour
 	cfg Config
@@ -22,7 +22,7 @@ type StaticPool struct {
 	// worker command creator
 	cmd func() *exec.Cmd
 
-	// creates and connects to workers
+	// creates and connects to stack
 	factory Factory
 
 	// protects state of worker list, does not affect allocation
@@ -38,7 +38,7 @@ type PoolEvent struct {
 
 // NewPool creates new worker pool and task multiplexer. StaticPool will initiate with one worker.
 // supervisor Supervisor, todo: think about it
-// workers func() (WorkerBase, error),
+// stack func() (WorkerBase, error),
 func NewPool(cmd func() *exec.Cmd, factory Factory, cfg Config) (Pool, error) {
 	if err := cfg.Valid(); err != nil {
 		return nil, errors.Wrap(err, "config")
@@ -70,7 +70,7 @@ func NewPool(cmd func() *exec.Cmd, factory Factory, cfg Config) (Pool, error) {
 		return nil, err
 	}
 
-	// put workers in the pool
+	// put stack in the pool
 	err = p.ww.AddToWatch(ctx, workers)
 	if err != nil {
 		return nil, err
@@ -79,11 +79,11 @@ func NewPool(cmd func() *exec.Cmd, factory Factory, cfg Config) (Pool, error) {
 	return p, nil
 }
 
-// allocate required number of workers
+// allocate required number of stack
 func (p *StaticPool) allocateWorkers(ctx context.Context, numWorkers int64) ([]WorkerBase, error) {
 	var workers []WorkerBase
 
-	// constant number of workers simplify logic
+	// constant number of stack simplify logic
 	for i := int64(0); i < numWorkers; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), p.cfg.AllocateTimeout)
 		w, err := p.factory.SpawnWorker(ctx, p.cmd())
@@ -151,7 +151,6 @@ func (p *StaticPool) Exec(ctx context.Context, rqs Payload) (Payload, error) {
 		if err != nil {
 			panic(err)
 		}
-
 		return p.Exec(ctx, rqs)
 	}
 
@@ -176,7 +175,7 @@ func (p *StaticPool) checkMaxJobs(ctx context.Context, w WorkerBase) error {
 	return nil
 }
 
-// Destroy all underlying workers (but let them to complete the task).
+// Destroy all underlying stack (but let them to complete the task).
 func (p *StaticPool) Destroy(ctx context.Context) {
 	p.ww.Destroy(ctx)
 }

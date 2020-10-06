@@ -54,7 +54,7 @@ type Pool interface {
 
 	Config() Config
 
-	// Destroy all underlying workers (but let them to complete the task).
+	// Destroy all underlying stack (but let them to complete the task).
 	Destroy(ctx context.Context)
 }
 
@@ -96,7 +96,7 @@ type Config struct {
 
 	// config from limit plugin, combine TODO
 	// single bootstrap TODO, bool
-	// warmup one worker and start consume requests and then start the rest of the workers
+	// warmup one worker and start consume requests and then start the rest of the stack
 
 	// max memory for pool
 	// max ttl

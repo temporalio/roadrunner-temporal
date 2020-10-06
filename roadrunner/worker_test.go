@@ -34,21 +34,24 @@ func Test_Kill(t *testing.T) {
 	cmd := exec.Command("php", "tests/client.php", "echo", "pipes")
 
 	w, err := NewPipeFactory().SpawnWorker(ctx, cmd)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		assert.Error(t, w.Wait(ctx))
-		assert.Equal(t, StateStopped, w.State().Value())
+		// TODO changet from stopped, discuss
+		assert.Equal(t, StateErrored, w.State().Value())
 	}()
 
 	assert.NoError(t, err)
 	assert.NotNil(t, w)
 
 	assert.Equal(t, StateReady, w.State().Value())
-	defer func() {
-		err := w.Kill(ctx)
-		if err != nil {
-			t.Errorf("error killing the WorkerProcess: error %v", err)
-		}
-	}()
+	err = w.Kill(ctx)
+	if err != nil {
+		t.Errorf("error killing the WorkerProcess: error %v", err)
+	}
+	wg.Wait()
 }
 
 func Test_OnStarted(t *testing.T) {

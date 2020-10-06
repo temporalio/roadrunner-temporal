@@ -13,7 +13,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// SocketFactory connects to external workers using socket server.
+// SocketFactory connects to external stack using socket server.
 type SocketFactory struct {
 	// listens for incoming connections from underlying processes
 	ls net.Listener

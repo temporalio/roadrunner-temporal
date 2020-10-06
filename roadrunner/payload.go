@@ -1,6 +1,6 @@
 package roadrunner
 
-// Payload carries binary header and body to workers and
+// Payload carries binary header and body to stack and
 // back to the server.
 type Payload struct {
 	// Context represent payload context, might be omitted.

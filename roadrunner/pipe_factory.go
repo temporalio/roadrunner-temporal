@@ -10,7 +10,7 @@ import (
 	"github.com/spiral/goridge/v2"
 )
 
-// PipeFactory connects to workers using standard
+// PipeFactory connects to stack using standard
 // streams (STDIN, STDOUT pipes).
 type PipeFactory struct {
 }

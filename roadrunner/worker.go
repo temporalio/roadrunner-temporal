@@ -351,6 +351,10 @@ func newErrBuffer(logCallback func(log []byte)) *errBuffer {
 
 				eb.mu.Lock()
 				if len(eb.buf) > eb.last {
+					if eb == nil || eb.logCallback == nil {
+						eb.mu.Unlock()
+						return
+					}
 					eb.logCallback(eb.buf[eb.last:])
 					eb.last = len(eb.buf)
 				}

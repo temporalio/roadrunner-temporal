@@ -224,12 +224,12 @@ func Test_StaticPool_Broken_FromOutside(t *testing.T) {
 	}()
 
 	// killing random worker and expecting pool to replace it
-	err = p.Workers(ctx)[0].Kill(ctx) //.Process.Kill()
+	err = p.Workers(ctx)[0].Kill(ctx)
 	if err != nil {
 		t.Errorf("error killing the process: error %v", err)
 	}
 
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 2)
 
 	for _, w := range p.Workers(ctx) {
 		assert.Equal(t, StateReady, w.State().Value())
@@ -398,7 +398,7 @@ func Test_Static_Pool_Destroy_And_Close_While_Wait(t *testing.T) {
 //
 //	assert.NotNil(t, p)
 //
-//	for _, w := range p.workers {
+//	for _, w := range p.stack {
 //		w.state.value = StateErrored
 //	}
 //
