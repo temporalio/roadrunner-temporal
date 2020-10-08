@@ -12,7 +12,7 @@ const MB = 1024 * 1024
 type Supervisor interface {
 	Attach(pool Pool)
 	StartWatching() error
-	StopWatching() error
+	StopWatching()
 	Detach()
 }
 
@@ -26,19 +26,35 @@ type staticPoolSupervisor struct {
 	// maxWorkerIdle in seconds
 	maxWorkerIdle uint64
 
+	// watchTimeout in seconds
+	watchTimeout uint64
+	stopCh       chan struct{}
+
 	pool Pool
 }
 
-func NewStaticPoolSupervisor(maxWorkerMemory uint64, maxPoolMemory uint64, maxTtl uint64, maxIdle uint64) Supervisor {
+/*
+The arguments are:
+maxWorkerMemory - maximum memory allowed for a single worker
+maxPoolMemory - maximum pool memory allowed for a pool of a workers
+maxTtl - maximum ttl for the worker after which it will be killed and replaced
+maxIdle - maximum time to live for the worker in Ready state
+watchTimeout - time between watching for the workers/pool status
+*/
+func NewStaticPoolSupervisor(maxWorkerMemory, maxPoolMemory, maxTtl, maxIdle, watchTimeout uint64) Supervisor {
 	if maxWorkerMemory == 0 {
 		// just set to a big number, 5GB
-		maxPoolMemory = 5000*MB
+		maxPoolMemory = 5000 * MB
+	}
+	if watchTimeout == 0 {
+		watchTimeout = 60
 	}
 	return &staticPoolSupervisor{
 		maxWorkerMemory: maxWorkerMemory,
 		maxPoolMemory:   maxPoolMemory,
 		maxWorkerTTL:    maxTtl,
 		maxWorkerIdle:   maxIdle,
+		stopCh:          make(chan struct{}),
 	}
 }
 
@@ -47,18 +63,34 @@ func (sps *staticPoolSupervisor) Attach(pool Pool) {
 }
 
 func (sps *staticPoolSupervisor) StartWatching() error {
+	go func() {
+		watchTout := time.NewTicker(time.Second * time.Duration(sps.watchTimeout))
+		for {
+			select {
+			case <-sps.stopCh:
+				watchTout.Stop()
+				return
+			// stop here
+			case <-watchTout.C:
+				err := sps.control()
+				if err != nil {
+					sps.pool.Events() <- PoolEvent{Payload: err}
+				}
+			}
+		}
+	}()
 	return nil
 }
 
-func (sps *staticPoolSupervisor) StopWatching() error {
-	return nil
+func (sps *staticPoolSupervisor) StopWatching() {
+	sps.stopCh <- struct{}{}
 }
 
 func (sps *staticPoolSupervisor) Detach() {
 
 }
 
-func (sps *staticPoolSupervisor) control(p Pool) error {
+func (sps *staticPoolSupervisor) control() error {
 	if sps.pool == nil {
 		return errors.New("pool should be attached")
 	}
@@ -66,7 +98,7 @@ func (sps *staticPoolSupervisor) control(p Pool) error {
 	ctx := context.TODO()
 
 	// THIS IS A COPY OF WORKERS
-	workers := p.Workers(ctx)
+	workers := sps.pool.Workers(ctx)
 	var totalUsedMemory uint64
 
 	for i := 0; i < len(workers); i++ {
@@ -81,9 +113,9 @@ func (sps *staticPoolSupervisor) control(p Pool) error {
 		}
 
 		if sps.maxWorkerTTL != 0 && now.Sub(workers[i].Created()).Seconds() >= float64(sps.maxWorkerTTL) {
-			err = p.RemoveWorker(ctx, workers[i])
+			err = sps.pool.RemoveWorker(ctx, workers[i])
 			if err != nil {
-				panic(err)
+				return err
 			}
 
 			// after remove worker we should exclude it from further analysis
@@ -92,11 +124,10 @@ func (sps *staticPoolSupervisor) control(p Pool) error {
 
 		if sps.maxWorkerMemory != 0 && s.MemoryUsage >= sps.maxWorkerMemory*MB {
 			// TODO events
-			p.Events() <- PoolEvent{Payload: fmt.Errorf("max allowed memory reached (%vMB)", sps.maxWorkerMemory)}
-			err = p.RemoveWorker(ctx, workers[i])
+			sps.pool.Events() <- PoolEvent{Payload: fmt.Errorf("max allowed memory reached (%vMB)", sps.maxWorkerMemory)}
+			err = sps.pool.RemoveWorker(ctx, workers[i])
 			if err != nil {
-				// TODO
-				panic(err)
+				return err
 			}
 			workers = append(workers[:i], workers[i+1:]...)
 			continue
@@ -120,11 +151,10 @@ func (sps *staticPoolSupervisor) control(p Pool) error {
 			res := int64(lu) - now.UnixNano()
 			// maxWorkerIdle more than diff between now and last used
 			if int64(sps.maxWorkerIdle)-res <= 0 {
-				p.Events() <- PoolEvent{Payload: fmt.Errorf("max allowed worker idle time elapsed. actual idle time: %v, max idle time: %v", sps.maxWorkerIdle, res)}
-				err = p.RemoveWorker(ctx, workers[i])
+				sps.pool.Events() <- PoolEvent{Payload: fmt.Errorf("max allowed worker idle time elapsed. actual idle time: %v, max idle time: %v", sps.maxWorkerIdle, res)}
+				err = sps.pool.RemoveWorker(ctx, workers[i])
 				if err != nil {
-					// TODO
-					panic(err)
+					return err
 				}
 				workers = append(workers[:i], workers[i+1:]...)
 			}
@@ -137,7 +167,7 @@ func (sps *staticPoolSupervisor) control(p Pool) error {
 	// if current usage more than max allowed pool memory usage
 	if totalUsedMemory > sps.maxPoolMemory {
 		// destroy pool
-		p.Destroy(ctx)
+		sps.pool.Destroy(ctx)
 	}
 
 	return nil
