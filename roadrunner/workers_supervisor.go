@@ -19,6 +19,8 @@ type Supervisor interface {
 type staticPoolSupervisor struct {
 	// maxWorkerMemory in MB
 	maxWorkerMemory uint64
+	// maxPoolMemory in MB
+	maxPoolMemory uint64
 	// maxWorkerTTL in seconds
 	maxWorkerTTL uint64
 	// maxWorkerIdle in seconds
@@ -27,9 +29,14 @@ type staticPoolSupervisor struct {
 	pool Pool
 }
 
-func NewStaticPoolSupervisor(mwm uint64, maxTtl uint64, maxIdle uint64) Supervisor {
+func NewStaticPoolSupervisor(maxWorkerMemory uint64, maxPoolMemory uint64, maxTtl uint64, maxIdle uint64) Supervisor {
+	if maxWorkerMemory == 0 {
+		// just set to a big number, 5GB
+		maxPoolMemory = 5000*MB
+	}
 	return &staticPoolSupervisor{
-		maxWorkerMemory: mwm,
+		maxWorkerMemory: maxWorkerMemory,
+		maxPoolMemory:   maxPoolMemory,
 		maxWorkerTTL:    maxTtl,
 		maxWorkerIdle:   maxIdle,
 	}
@@ -60,6 +67,7 @@ func (sps *staticPoolSupervisor) control(p Pool) error {
 
 	// THIS IS A COPY OF WORKERS
 	workers := p.Workers(ctx)
+	var totalUsedMemory uint64
 
 	for i := 0; i < len(workers); i++ {
 		if workers[i].State().Value() == StateInvalid {
@@ -90,6 +98,7 @@ func (sps *staticPoolSupervisor) control(p Pool) error {
 				// TODO
 				panic(err)
 			}
+			workers = append(workers[:i], workers[i+1:]...)
 			continue
 		}
 
@@ -117,9 +126,18 @@ func (sps *staticPoolSupervisor) control(p Pool) error {
 					// TODO
 					panic(err)
 				}
+				workers = append(workers[:i], workers[i+1:]...)
 			}
 		}
 
+		// the very last step is to calculate pool memory usage (except excluded workers)
+		totalUsedMemory += s.MemoryUsage
+	}
+
+	// if current usage more than max allowed pool memory usage
+	if totalUsedMemory > sps.maxPoolMemory {
+		// destroy pool
+		p.Destroy(ctx)
 	}
 
 	return nil
