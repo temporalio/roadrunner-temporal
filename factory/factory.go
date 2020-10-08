@@ -9,7 +9,7 @@ import (
 
 type WorkerFactory interface {
 	NewWorker(ctx context.Context, env Env) (roadrunner.WorkerBase, error)
-	NewWorkerPool(ctx context.Context, opt roadrunner.Config, env Env) (roadrunner.Pool, error)
+	NewWorkerPool(ctx context.Context, opt *roadrunner.Config, env Env) (roadrunner.Pool, error)
 }
 
 type WFactory struct {
@@ -17,7 +17,7 @@ type WFactory struct {
 	config config.Provider
 }
 
-func (wf *WFactory) NewWorkerPool(ctx context.Context, opt roadrunner.Config, env Env) (roadrunner.Pool, error) {
+func (wf *WFactory) NewWorkerPool(ctx context.Context, opt *roadrunner.Config, env Env) (roadrunner.Pool, error) {
 	cmd, err := wf.spw.NewCmd(env)
 	if err != nil {
 		return nil, err
@@ -27,7 +27,7 @@ func (wf *WFactory) NewWorkerPool(ctx context.Context, opt roadrunner.Config, en
 		return nil, err
 	}
 
-	return roadrunner.NewPool(cmd, factory, opt)
+	return roadrunner.NewPool(ctx, cmd, factory, opt)
 }
 
 func (wf *WFactory) NewWorker(ctx context.Context, env Env) (roadrunner.WorkerBase, error) {
@@ -36,7 +36,7 @@ func (wf *WFactory) NewWorker(ctx context.Context, env Env) (roadrunner.WorkerBa
 		return nil, err
 	}
 
-	wb, err := roadrunner.InitBaseWorker(ctx, cmd())
+	wb, err := roadrunner.InitBaseWorker(cmd())
 	if err != nil {
 		return nil, err
 	}
@@ -57,21 +57,6 @@ func (wf *WFactory) Init(app Spawner, config config.Provider) error {
 
 func (wf *WFactory) Serve() chan error {
 	c := make(chan error)
-	pool, err := wf.NewWorkerPool(context.Background(), roadrunner.Config{
-		NumWorkers:      0,
-		MaxJobs:         0,
-		AllocateTimeout: 0,
-		DestroyTimeout:  0,
-		TTL:             0,
-		IdleTTL:         0,
-		ExecTTL:         0,
-		MaxPoolMemory:   0,
-		MaxWorkerMemory: 0,
-	}, Env{})
-	if err != nil {
-		c <- err
-	}
-	_ = pool
 	return c
 }
 

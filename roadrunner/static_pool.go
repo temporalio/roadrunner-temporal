@@ -17,7 +17,7 @@ const (
 // StaticPool controls worker creation, destruction and task routing. Pool uses fixed amount of stack.
 type StaticPool struct {
 	// pool behaviour
-	cfg Config
+	cfg *Config
 
 	// worker command creator
 	cmd func() *exec.Cmd
@@ -39,12 +39,11 @@ type PoolEvent struct {
 // NewPool creates new worker pool and task multiplexer. StaticPool will initiate with one worker.
 // supervisor Supervisor, todo: think about it
 // stack func() (WorkerBase, error),
-func NewPool(cmd func() *exec.Cmd, factory Factory, cfg Config) (Pool, error) {
+func NewPool(ctx context.Context, cmd func() *exec.Cmd, factory Factory, cfg *Config) (Pool, error) {
 	if err := cfg.Valid(); err != nil {
 		return nil, errors.Wrap(err, "config")
 	}
 
-	ctx := context.Background()
 	p := &StaticPool{
 		cfg:     cfg,
 		cmd:     cmd,
@@ -81,7 +80,7 @@ func NewPool(cmd func() *exec.Cmd, factory Factory, cfg Config) (Pool, error) {
 
 // Config returns associated pool configuration. Immutable.
 func (p *StaticPool) Config() Config {
-	return p.cfg
+	return *p.cfg
 }
 
 // Workers returns worker list associated with the pool.
@@ -170,7 +169,7 @@ func (p *StaticPool) allocateWorkers(ctx context.Context, numWorkers int64) ([]W
 
 	// constant number of stack simplify logic
 	for i := int64(0); i < numWorkers; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), p.cfg.AllocateTimeout)
+		ctx, cancel := context.WithTimeout(ctx, p.cfg.AllocateTimeout)
 		w, err := p.factory.SpawnWorkerWithContext(ctx, p.cmd())
 		if err != nil {
 			cancel()

@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/temporalio/roadrunner-temporal/config"
-	"github.com/temporalio/roadrunner-temporal/factory/osutil"
 	"github.com/temporalio/roadrunner-temporal/roadrunner"
+	"github.com/temporalio/roadrunner-temporal/roadrunner/util"
 )
 
 // AppConfig config combines factory, pool and cmd configurations.
@@ -63,12 +63,12 @@ func (app *App) NewCmd(env Env) (func() *exec.Cmd, error) {
 
 	return func() *exec.Cmd {
 		cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
-		osutil.IsolateProcess(cmd)
+		util.IsolateProcess(cmd)
 
 		// if user is not empty, and OS is linux or macos
 		// execute php worker from that particular user
 		if app.cfg.User != "" {
-			err := osutil.ExecuteFromUser(cmd, app.cfg.User)
+			err := util.ExecuteFromUser(cmd, app.cfg.User)
 			if err != nil {
 				return nil
 			}

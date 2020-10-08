@@ -118,7 +118,7 @@ type WorkerProcess struct {
 }
 
 // InitBaseWorker creates new WorkerProcess over given exec.cmd.
-func InitBaseWorker(ctx context.Context, cmd *exec.Cmd) (WorkerBase, error) {
+func InitBaseWorker(cmd *exec.Cmd) (WorkerBase, error) {
 	if cmd.Process != nil {
 		return nil, fmt.Errorf("can't attach to running process")
 	}

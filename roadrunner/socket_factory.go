@@ -84,7 +84,7 @@ func (f *SocketFactory) SpawnWorkerWithContext(ctx context.Context, cmd *exec.Cm
 	ctx, cancel := context.WithTimeout(ctx, f.tout)
 	defer cancel()
 	go func() {
-		w, err := InitBaseWorker(ctx, cmd)
+		w, err := InitBaseWorker(cmd)
 		if err != nil {
 			c <- socketSpawn{
 				w:   nil,
@@ -145,7 +145,7 @@ func (f *SocketFactory) SpawnWorkerWithContext(ctx context.Context, cmd *exec.Cm
 
 func (f *SocketFactory) SpawnWorker(cmd *exec.Cmd) (WorkerBase, error) {
 	ctx := context.Background()
-	w, err := InitBaseWorker(ctx, cmd)
+	w, err := InitBaseWorker(cmd)
 	if err != nil {
 		return nil, err
 	}

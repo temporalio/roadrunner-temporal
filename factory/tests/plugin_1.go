@@ -10,32 +10,26 @@ import (
 
 type Foo struct {
 	configProvider  config.Provider
-	factoryProvider factory.Provider
+	spawner factory.Spawner
 }
 
-func (f *Foo) Init(p config.Provider, app factory.Provider) error {
+func (f *Foo) Init(p config.Provider, spw factory.Spawner) error {
 	f.configProvider = p
-	f.factoryProvider = app
+	f.spawner = spw
 	return nil
 }
 
 func (f *Foo) Serve() chan error {
 	errCh := make(chan error, 1)
 
-	err := f.configProvider.SetPath(".rr.yaml")
-	if err != nil {
-		errCh <- err
-		return errCh
-	}
-
 	r := &factory.AppConfig{}
-	err = f.configProvider.UnmarshalKey("app", r)
+	err := f.configProvider.UnmarshalKey("app", r)
 	if err != nil {
 		errCh <- err
 		return errCh
 	}
 
-	cmd, err := f.factoryProvider.NewCmd(nil)
+	cmd, err := f.spawner.NewCmd(nil)
 	if err != nil {
 		errCh <- err
 		return errCh

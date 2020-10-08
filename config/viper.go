@@ -28,7 +28,7 @@ func (v *ViperProvider) Init() error {
 	}
 	v.viper.SetConfigFile(v.Path)
 	v.viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	return nil
+	return v.viper.ReadInConfig()
 }
 
 func (v *ViperProvider) Serve() chan error {

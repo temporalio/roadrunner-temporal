@@ -36,13 +36,8 @@ func (f *Foo) Init(p config.Provider) error {
 func (f *Foo) Serve() chan error {
 	errCh := make(chan error, 1)
 
-	err := f.configProvider.SetPath(".rr.yaml")
-	if err != nil {
-		errCh <- err
-	}
-
 	r := &ReloadConfig{}
-	err = f.configProvider.UnmarshalKey("reload", r)
+	err := f.configProvider.UnmarshalKey("reload", r)
 	if err != nil {
 		errCh <- err
 	}

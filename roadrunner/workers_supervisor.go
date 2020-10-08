@@ -41,6 +41,7 @@ maxTtl - maximum ttl for the worker after which it will be killed and replaced
 maxIdle - maximum time to live for the worker in Ready state
 watchTimeout - time between watching for the workers/pool status
 */
+// TODO might be just wrap the pool and return ControlledPool with included Pool interface
 func NewStaticPoolSupervisor(maxWorkerMemory, maxPoolMemory, maxTtl, maxIdle, watchTimeout uint64) Supervisor {
 	if maxWorkerMemory == 0 {
 		// just set to a big number, 5GB

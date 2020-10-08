@@ -10,6 +10,6 @@ type Provider interface {
 	//     }
 	// }
 	UnmarshalKey(name string, out interface{}) error
-	// SetPath sets search path for the config
+	// Get used to get config section
 	Get(name string) interface{}
 }

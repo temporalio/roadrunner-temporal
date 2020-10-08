@@ -18,12 +18,20 @@ func TestFactory(t *testing.T) {
 		t.Fatal(err)
 	}
 	// config plugin
-	err = container.Register(&config.ViperProvider{})
+	vp := &config.ViperProvider{}
+	vp.Path = ".rr.yaml"
+	vp.Prefix = "rr"
+	err = container.Register(vp)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	err = container.Register(&factory.App{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = container.Register(&factory.WFactory{})
 	if err != nil {
 		t.Fatal(err)
 	}
