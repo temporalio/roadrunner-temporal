@@ -55,11 +55,10 @@ func Test_Kill(t *testing.T) {
 }
 
 func Test_OnStarted(t *testing.T) {
-	ctx := context.Background()
 	cmd := exec.Command("php", "tests/client.php", "broken", "pipes")
 	assert.Nil(t, cmd.Start())
 
-	w, err := InitBaseWorker(ctx, cmd)
+	w, err := InitBaseWorker(cmd)
 	assert.Nil(t, w)
 	assert.NotNil(t, err)
 

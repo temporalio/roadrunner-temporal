@@ -75,10 +75,9 @@ func Test_BadPayload(t *testing.T) {
 }
 
 func Test_NotStarted_String(t *testing.T) {
-	ctx := context.Background()
 	cmd := exec.Command("php", "tests/client.php", "echo", "pipes")
 
-	w, _ := InitBaseWorker(ctx, cmd)
+	w, _ := InitBaseWorker(cmd)
 	assert.Contains(t, w.String(), "php tests/client.php echo pipes")
 	assert.Contains(t, w.String(), "inactive")
 	assert.Contains(t, w.String(), "numExecs: 0")
@@ -88,7 +87,7 @@ func Test_NotStarted_Exec(t *testing.T) {
 	ctx := context.Background()
 	cmd := exec.Command("php", "tests/client.php", "echo", "pipes")
 
-	w, _ := InitBaseWorker(ctx, cmd)
+	w, _ := InitBaseWorker(cmd)
 
 	syncWorker, err := NewSyncWorker(w)
 	if err != nil {
