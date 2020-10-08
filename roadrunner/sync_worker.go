@@ -52,6 +52,8 @@ func (tw *taskWorker) Exec(ctx context.Context, rqs Payload) (Payload, error) {
 			return
 		}
 
+		// set last used time
+		tw.w.State().SetLastUsed(uint64(time.Now().UnixNano()))
 		tw.w.State().Set(StateWorking)
 
 		rsp, err := tw.execPayload(rqs)

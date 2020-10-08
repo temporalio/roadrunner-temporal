@@ -117,8 +117,8 @@ type WorkerProcess struct {
 	relay goridge.Relay
 }
 
-// initWorker creates new WorkerProcess over given exec.cmd.
-func initWorker(ctx context.Context, cmd *exec.Cmd) (WorkerBase, error) {
+// InitBaseWorker creates new WorkerProcess over given exec.cmd.
+func InitBaseWorker(ctx context.Context, cmd *exec.Cmd) (WorkerBase, error) {
 	if cmd.Process != nil {
 		return nil, fmt.Errorf("can't attach to running process")
 	}

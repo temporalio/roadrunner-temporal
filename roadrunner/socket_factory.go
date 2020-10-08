@@ -79,10 +79,12 @@ type socketSpawn struct {
 }
 
 // SpawnWorker creates WorkerProcess and connects it to appropriate relay or returns error
-func (f *SocketFactory) SpawnWorker(ctx context.Context, cmd *exec.Cmd) (WorkerBase, error) {
+func (f *SocketFactory) SpawnWorkerWithContext(ctx context.Context, cmd *exec.Cmd) (WorkerBase, error) {
 	c := make(chan socketSpawn)
+	ctx, cancel := context.WithTimeout(ctx, f.tout)
+	defer cancel()
 	go func() {
-		w, err := initWorker(ctx, cmd)
+		w, err := InitBaseWorker(ctx, cmd)
 		if err != nil {
 			c <- socketSpawn{
 				w:   nil,
@@ -101,9 +103,8 @@ func (f *SocketFactory) SpawnWorker(ctx context.Context, cmd *exec.Cmd) (WorkerB
 		}
 
 		var errs []string
-		relayToutCtx, cancel := context.WithTimeout(ctx, f.tout)
-		defer cancel()
-		rl, err := f.findRelay(relayToutCtx, w)
+
+		rl, err := f.findRelayWithContext(ctx, w)
 		if err != nil {
 			errs = append(errs, err.Error())
 			err = w.Kill(ctx)
@@ -142,21 +143,67 @@ func (f *SocketFactory) SpawnWorker(ctx context.Context, cmd *exec.Cmd) (WorkerB
 	}
 }
 
+func (f *SocketFactory) SpawnWorker(cmd *exec.Cmd) (WorkerBase, error) {
+	ctx := context.Background()
+	w, err := InitBaseWorker(ctx, cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	err = w.Start()
+	if err != nil {
+		return nil, errors.Wrap(err, "process error")
+	}
+
+	var errs []string
+	rl, err := f.findRelay(w)
+	if err != nil {
+		errs = append(errs, err.Error())
+		err = w.Kill(ctx)
+		if err != nil {
+			errs = append(errs, err.Error())
+		}
+		if err = w.Wait(ctx); err != nil {
+			errs = append(errs, err.Error())
+		}
+		return nil, errors.New(strings.Join(errs, "/"))
+	}
+
+	w.AttachRelay(rl)
+	w.State().Set(StateReady)
+
+	return w, nil
+}
+
 // Close socket factory and underlying socket connection.
 func (f *SocketFactory) Close(ctx context.Context) error {
 	return f.ls.Close()
 }
 
 // waits for WorkerProcess to connect over socket and returns associated relay of timeout
-func (f *SocketFactory) findRelay(ctx context.Context, w WorkerBase) (*goridge.SocketRelay, error) {
-	// poll every 100ms for the relay
-	pollTimer := time.NewTimer(time.Millisecond * 100)
+func (f *SocketFactory) findRelayWithContext(ctx context.Context, w WorkerBase) (*goridge.SocketRelay, error) {
 	for {
 		select {
 		case <-ctx.Done():
-			pollTimer.Stop()
 			return nil, ctx.Err()
-		case <-pollTimer.C:
+		default:
+			tmp, ok := f.relays.Load(w.Pid())
+			if !ok {
+				continue
+			}
+			return tmp.(*goridge.SocketRelay), nil
+		}
+	}
+}
+
+func (f *SocketFactory) findRelay(w WorkerBase) (*goridge.SocketRelay, error) {
+	// poll every 1ms for the relay
+	pollDone := time.NewTimer(f.tout)
+	for {
+		select {
+		case <-pollDone.C:
+			return nil, errors.New("relay timeout")
+		default:
 			tmp, ok := f.relays.Load(w.Pid())
 			if !ok {
 				continue

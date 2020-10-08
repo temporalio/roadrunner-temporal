@@ -426,11 +426,14 @@ func Test_Static_Pool_Slow_Destroy(t *testing.T) {
 
 func Benchmark_Pool_Echo(b *testing.B) {
 	ctx := context.Background()
-	p, _ := NewPool(
+	p, err := NewPool(
 		func() *exec.Cmd { return exec.Command("php", "tests/client.php", "echo", "pipes") },
 		NewPipeFactory(),
 		cfg,
 	)
+	if err != nil {
+		b.Fatal(err)
+	}
 
 	b.ResetTimer()
 	b.ReportAllocs()

@@ -13,7 +13,7 @@ func Test_GetState(t *testing.T) {
 	ctx := context.Background()
 	cmd := exec.Command("php", "tests/client.php", "echo", "pipes")
 
-	w, err := NewPipeFactory().SpawnWorker(ctx, cmd)
+	w, err := NewPipeFactory().SpawnWorkerWithContext(ctx, cmd)
 	go func() {
 		assert.NoError(t, w.Wait(ctx))
 		assert.Equal(t, StateStopped, w.State().Value())
@@ -33,7 +33,7 @@ func Test_Kill(t *testing.T) {
 	ctx := context.Background()
 	cmd := exec.Command("php", "tests/client.php", "echo", "pipes")
 
-	w, err := NewPipeFactory().SpawnWorker(ctx, cmd)
+	w, err := NewPipeFactory().SpawnWorkerWithContext(ctx, cmd)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -59,7 +59,7 @@ func Test_OnStarted(t *testing.T) {
 	cmd := exec.Command("php", "tests/client.php", "broken", "pipes")
 	assert.Nil(t, cmd.Start())
 
-	w, err := initWorker(ctx, cmd)
+	w, err := InitBaseWorker(ctx, cmd)
 	assert.Nil(t, w)
 	assert.NotNil(t, err)
 

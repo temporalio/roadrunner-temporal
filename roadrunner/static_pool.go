@@ -53,7 +53,7 @@ func NewPool(cmd func() *exec.Cmd, factory Factory, cfg Config) (Pool, error) {
 	}
 
 	p.ww = NewWorkerWatcher(func(args ...interface{}) (*SyncWorker, error) {
-		w, err := p.factory.SpawnWorker(ctx, p.cmd())
+		w, err := p.factory.SpawnWorkerWithContext(ctx, p.cmd())
 		if err != nil {
 			return nil, err
 		}
@@ -79,24 +79,6 @@ func NewPool(cmd func() *exec.Cmd, factory Factory, cfg Config) (Pool, error) {
 	return p, nil
 }
 
-// allocate required number of stack
-func (p *StaticPool) allocateWorkers(ctx context.Context, numWorkers int64) ([]WorkerBase, error) {
-	var workers []WorkerBase
-
-	// constant number of stack simplify logic
-	for i := int64(0); i < numWorkers; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), p.cfg.AllocateTimeout)
-		w, err := p.factory.SpawnWorker(ctx, p.cmd())
-		if err != nil {
-			cancel()
-			return nil, err
-		}
-		cancel()
-		workers = append(workers, w)
-	}
-	return workers, nil
-}
-
 // Config returns associated pool configuration. Immutable.
 func (p *StaticPool) Config() Config {
 	return p.cfg
@@ -107,6 +89,10 @@ func (p *StaticPool) Workers(ctx context.Context) (workers []WorkerBase) {
 	p.muw.RLock()
 	defer p.muw.RUnlock()
 	return p.ww.WorkersList(ctx)
+}
+
+func (p *StaticPool) RemoveWorker(ctx context.Context, wb WorkerBase) error {
+	return p.ww.RemoveWorker(ctx, wb)
 }
 
 // Exec one task with given payload and context, returns result or error.
@@ -169,6 +155,33 @@ func (p *StaticPool) Exec(ctx context.Context, rqs Payload) (Payload, error) {
 	return rsp, nil
 }
 
+// Destroy all underlying stack (but let them to complete the task).
+func (p *StaticPool) Destroy(ctx context.Context) {
+	p.ww.Destroy(ctx)
+}
+
+func (p *StaticPool) Events() chan PoolEvent {
+	return p.events
+}
+
+// allocate required number of stack
+func (p *StaticPool) allocateWorkers(ctx context.Context, numWorkers int64) ([]WorkerBase, error) {
+	var workers []WorkerBase
+
+	// constant number of stack simplify logic
+	for i := int64(0); i < numWorkers; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), p.cfg.AllocateTimeout)
+		w, err := p.factory.SpawnWorkerWithContext(ctx, p.cmd())
+		if err != nil {
+			cancel()
+			return nil, err
+		}
+		cancel()
+		workers = append(workers, w)
+	}
+	return workers, nil
+}
+
 func (p *StaticPool) checkMaxJobs(ctx context.Context, w WorkerBase) error {
 	if p.cfg.MaxJobs != 0 && w.State().NumExecs() >= p.cfg.MaxJobs {
 		err := p.ww.AllocateNew(ctx)
@@ -177,13 +190,4 @@ func (p *StaticPool) checkMaxJobs(ctx context.Context, w WorkerBase) error {
 		}
 	}
 	return nil
-}
-
-// Destroy all underlying stack (but let them to complete the task).
-func (p *StaticPool) Destroy(ctx context.Context) {
-	p.ww.Destroy(ctx)
-}
-
-func (p *StaticPool) Events() chan PoolEvent {
-	return p.events
 }

@@ -9,7 +9,9 @@ import (
 type Factory interface {
 	// SpawnWorker creates new WorkerProcess process based on given command.
 	// Process must not be started.
-	SpawnWorker(ctx context.Context, cmd *exec.Cmd) (w WorkerBase, err error)
+	SpawnWorkerWithContext(context.Context, *exec.Cmd) (WorkerBase, error)
+
+	SpawnWorker(*exec.Cmd) (WorkerBase, error)
 
 	// Close the factory and underlying connections.
 	Close(ctx context.Context) error

@@ -31,7 +31,22 @@ func (wf *WFactory) NewWorkerPool(ctx context.Context, opt roadrunner.Config, en
 }
 
 func (wf *WFactory) NewWorker(ctx context.Context, env Env) (roadrunner.WorkerBase, error) {
-	return nil, nil
+	cmd, err := wf.spw.NewCmd(env)
+	if err != nil {
+		return nil, err
+	}
+
+	wb, err := roadrunner.InitBaseWorker(ctx, cmd())
+	if err != nil {
+		return nil, err
+	}
+
+	sw, err := roadrunner.NewSyncWorker(wb)
+	if err != nil {
+		return nil, err
+	}
+
+	return sw, nil
 }
 
 func (wf *WFactory) Init(app Spawner, config config.Provider) error {

@@ -20,6 +20,10 @@ type State interface {
 	IsActive() bool
 
 	RegisterExec()
+
+	SetLastUsed(lu uint64)
+
+	LastUsed() uint64
 }
 
 const (
@@ -49,11 +53,15 @@ const (
 
 	// StateErrored - error state (can't be used).
 	StateErrored
+
+	StateRemove
 )
 
 type state struct {
 	value    int64
 	numExecs int64
+	// to be lightweight, use UnixNano
+	lastUsed uint64
 }
 
 // Thread safe
@@ -105,4 +113,13 @@ func (s *state) Set(value int64) {
 // register new execution atomically
 func (s *state) RegisterExec() {
 	atomic.AddInt64(&s.numExecs, 1)
+}
+
+// Update last used time
+func (s *state) SetLastUsed(lu uint64) {
+	atomic.StoreUint64(&s.lastUsed, lu)
+}
+
+func (s *state) LastUsed() uint64 {
+	return atomic.LoadUint64(&s.lastUsed)
 }

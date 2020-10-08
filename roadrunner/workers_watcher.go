@@ -11,7 +11,7 @@ var ErrWatcherStopped = errors.New("watcher stopped")
 
 type Stack struct {
 	workers []WorkerBase
-	mutex   sync.Mutex
+	mutex   sync.RWMutex
 	destroy bool
 }
 
@@ -31,7 +31,6 @@ func (stack *Stack) Reset() {
 func (stack *Stack) Push(w WorkerBase) {
 	stack.mutex.Lock()
 	defer stack.mutex.Unlock()
-
 	stack.workers = append(stack.workers, w)
 }
 
@@ -82,6 +81,8 @@ type WorkerWatcher interface {
 	Destroy(ctx context.Context)
 	// WorkersList return all stack w/o removing it from internal storage
 	WorkersList(ctx context.Context) []WorkerBase
+	// RemoveWorker remove worker from the stack
+	RemoveWorker(ctx context.Context, wb WorkerBase) error
 }
 
 // workerCreateFunc can be nil, but in that case, dead stack will not be replaced
@@ -121,6 +122,16 @@ func (ww *WorkersWatcher) GetFreeWorker(ctx context.Context) (WorkerBase, error)
 	if stop {
 		return nil, ErrWatcherStopped
 	}
+	// handle worker remove state
+	// in this state worker is destroyed by supervisor
+	if w.State().Value() == StateRemove {
+		err := ww.RemoveWorker(ctx, w)
+		if err != nil {
+			return nil, err
+		}
+		// try to get next
+		return ww.GetFreeWorker(ctx)
+	}
 	// no free stack
 	if w == nil {
 		tout := time.NewTicker(time.Second * 180)
@@ -158,32 +169,42 @@ func (ww *WorkersWatcher) AllocateNew(ctx context.Context) error {
 	return nil
 }
 
-func (ww *WorkersWatcher) addToWatch(wb WorkerBase) {
-	ww.mutex.Lock()
-	defer ww.mutex.Unlock()
-	go func() {
-		ww.wait(context.Background(), &wb)
-	}()
-}
+func (ww *WorkersWatcher) RemoveWorker(ctx context.Context, wb WorkerBase) error {
+	ww.stack.mutex.Lock()
+	defer ww.stack.mutex.Unlock()
+	pid := wb.Pid()
+	for i := 0; i < len(ww.stack.workers); i++ {
+		if ww.stack.workers[i].Pid() == pid {
+			// found in the stack
+			// remove worker
+			ww.stack.workers = append(ww.stack.workers[:i], ww.stack.workers[i+1:]...)
+			ww.decreaseNumOfActualWorkers()
 
-func (ww *WorkersWatcher) reallocate(wb *WorkerBase) error {
-	sw, err := ww.allocator()
-	if err != nil {
-		return err
+			wb.State().Set(StateInvalid)
+			err := wb.Kill(ctx)
+			if err != nil {
+				return err
+			}
+			break
+		}
 	}
-	*wb = *sw
+	// worker currently handle request, set state Remove
+	wb.State().Set(StateRemove)
 	return nil
 }
 
 // O(1) operation
 func (ww *WorkersWatcher) PushWorker(w WorkerBase) {
-	sw := w.(SyncWorker)
+	ww.mutex.Lock()
 	ww.actualNumWorkers++
-	ww.stack.Push(sw)
+	ww.mutex.Unlock()
+	ww.stack.Push(w)
 }
 
 func (ww *WorkersWatcher) ReduceWorkersCount() {
+	ww.mutex.Unlock()
 	ww.actualNumWorkers--
+	ww.mutex.Lock()
 }
 
 // Destroy all underlying stack (but let them to complete the task)
@@ -237,9 +258,12 @@ func (ww *WorkersWatcher) wait(ctx context.Context, w *WorkerBase) {
 			// worker in the stack, reallocating
 			if ww.stack.workers[i].Pid() == pid {
 				ww.stack.mutex.Lock()
-				err = ww.reallocate(w)
+				ww.stack.workers = append(ww.stack.workers[:i], ww.stack.workers[i+1:]...)
+
+				ww.decreaseNumOfActualWorkers()
+
 				ww.stack.mutex.Unlock()
-				//err = ww.AllocateNew(ctx)
+				err = ww.AllocateNew(ctx)
 				if err != nil {
 					ww.events <- PoolEvent{Payload: WorkerEvent{
 						Event:   EventWorkerError,
@@ -248,6 +272,7 @@ func (ww *WorkersWatcher) wait(ctx context.Context, w *WorkerBase) {
 					}}
 					return
 				}
+				return
 			}
 		}
 		// worker not in the stack (not returned), forget and allocate new
@@ -262,6 +287,29 @@ func (ww *WorkersWatcher) wait(ctx context.Context, w *WorkerBase) {
 		}
 	}
 	return
+}
+
+func (ww *WorkersWatcher) addToWatch(wb WorkerBase) {
+	ww.mutex.Lock()
+	defer ww.mutex.Unlock()
+	go func() {
+		ww.wait(context.Background(), &wb)
+	}()
+}
+
+func (ww *WorkersWatcher) reallocate(wb *WorkerBase) error {
+	sw, err := ww.allocator()
+	if err != nil {
+		return err
+	}
+	*wb = *sw
+	return nil
+}
+
+func (ww *WorkersWatcher) decreaseNumOfActualWorkers() {
+	ww.mutex.Lock()
+	ww.actualNumWorkers--
+	ww.mutex.Unlock()
 }
 
 func (ww *WorkersWatcher) watch(swc *WorkerBase) {

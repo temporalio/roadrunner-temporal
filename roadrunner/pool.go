@@ -52,6 +52,8 @@ type Pool interface {
 	// Workers returns worker list associated with the pool.
 	Workers(ctx context.Context) (workers []WorkerBase)
 
+	RemoveWorker(ctx context.Context, worker WorkerBase) error
+
 	Config() Config
 
 	// Destroy all underlying stack (but let them to complete the task).
