@@ -209,6 +209,7 @@ func (w *WorkerProcess) Wait(ctx context.Context) error {
 			w.state.Set(StateErrored)
 
 			// if there are messages in the events channel, read it
+			// TODO potentially danger place
 			tt := time.NewTimer(WaitDuration * 2)
 			select {
 			case ev := <-w.events:

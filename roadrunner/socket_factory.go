@@ -32,7 +32,7 @@ type SocketFactory struct {
 
 // NewSocketServer returns SocketFactory attached to a given socket listener.
 // tout specifies for how long factory should serve for incoming relay connection
-func NewSocketServer(ls net.Listener, tout time.Duration) *SocketFactory {
+func NewSocketServer(ls net.Listener, tout time.Duration) Factory {
 	f := &SocketFactory{
 		ls:     ls,
 		tout:   tout,
