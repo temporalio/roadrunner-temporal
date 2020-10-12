@@ -15,7 +15,6 @@ type WorkerFactory interface {
 type WFactory struct {
 	spw Spawner
 	eb  *events.EventBroadcaster
-	//config config.Provider
 }
 
 func (wf *WFactory) NewWorkerPool(ctx context.Context, opt *roadrunner.Config, env Env) (roadrunner.Pool, error) {
@@ -33,6 +32,7 @@ func (wf *WFactory) NewWorkerPool(ctx context.Context, opt *roadrunner.Config, e
 		return nil, err
 	}
 
+	// TODO event to stop
 	go func() {
 		for e := range p.Events() {
 			wf.eb.Push(e)
@@ -59,20 +59,9 @@ func (wf *WFactory) NewWorker(ctx context.Context, env Env) (roadrunner.WorkerBa
 func (wf *WFactory) Init(app Spawner) error {
 	wf.spw = app
 	wf.eb = events.NewEventBroadcaster()
-	//wf.config = config
 	return nil
 }
 
 func (wf *WFactory) AddListener(l events.EventListener) {
 	wf.eb.AddListener(l)
-}
-
-// TODO make serve stop optional
-func (wf *WFactory) Serve() chan error {
-	c := make(chan error)
-	return c
-}
-
-func (wf *WFactory) Stop() error {
-	return nil
 }
