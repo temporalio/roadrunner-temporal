@@ -48,13 +48,3 @@ func (wf *WFactory) Init(app Spawner) error {
 	//wf.config = config
 	return nil
 }
-
-// TODO make serve stop optional
-func (wf *WFactory) Serve() chan error {
-	c := make(chan error)
-	return c
-}
-
-func (wf *WFactory) Stop() error {
-	return nil
-}
