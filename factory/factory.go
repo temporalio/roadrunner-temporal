@@ -3,7 +3,6 @@ package factory
 import (
 	"context"
 
-	"github.com/temporalio/roadrunner-temporal/config"
 	"github.com/temporalio/roadrunner-temporal/roadrunner"
 )
 
@@ -14,7 +13,7 @@ type WorkerFactory interface {
 
 type WFactory struct {
 	spw    Spawner
-	config config.Provider
+	//config config.Provider
 }
 
 func (wf *WFactory) NewWorkerPool(ctx context.Context, opt *roadrunner.Config, env Env) (roadrunner.Pool, error) {
@@ -41,20 +40,16 @@ func (wf *WFactory) NewWorker(ctx context.Context, env Env) (roadrunner.WorkerBa
 		return nil, err
 	}
 
-	sw, err := roadrunner.NewSyncWorker(wb)
-	if err != nil {
-		return nil, err
-	}
-
-	return sw, nil
+	return wb, nil
 }
 
-func (wf *WFactory) Init(app Spawner, config config.Provider) error {
+func (wf *WFactory) Init(app Spawner) error {
 	wf.spw = app
-	wf.config = config
+	//wf.config = config
 	return nil
 }
 
+// TODO make serve stop optional
 func (wf *WFactory) Serve() chan error {
 	c := make(chan error)
 	return c

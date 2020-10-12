@@ -81,6 +81,7 @@ func (app *App) NewCmd(env Env) (func() *exec.Cmd, error) {
 }
 
 func (app *App) NewFactory(env Env) (roadrunner.Factory, error) {
+	// TODO unix missed
 	if app.cfg.Relay == "" {
 		return nil, errors.New("relay should be set")
 	}

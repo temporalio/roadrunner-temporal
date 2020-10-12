@@ -1,6 +1,13 @@
+0. Make Serve and Stop optional
+0.1. // TODO unix missed
+
 1. worker_watcher queue
 2. workers supervisor (check pool memory, workers memory)
 3. PROFILE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 4. Check max jobs
 5. Tests for the SpawnWorkerWithContext, process_state
 6. Context usage STANDARD!!!!!! now there are a mix of function with context and without w/o note
+
+7. CMD in temporal (binary) folder
+8. Logger
+9. Debug plugin in RR, see how it works

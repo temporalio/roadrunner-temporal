@@ -168,6 +168,7 @@ func (sps *staticPoolSupervisor) control() error {
 	// if current usage more than max allowed pool memory usage
 	if totalUsedMemory > sps.maxPoolMemory {
 		// destroy pool
+		totalUsedMemory = 0
 		sps.pool.Destroy(ctx)
 	}
 
