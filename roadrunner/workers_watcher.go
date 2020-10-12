@@ -124,7 +124,7 @@ func (ww *WorkersWatcher) GetFreeWorker(ctx context.Context) (WorkerBase, error)
 	}
 	// handle worker remove state
 	// in this state worker is destroyed by supervisor
-	if w.State().Value() == StateRemove {
+	if w != nil && w.State().Value() == StateRemove {
 		err := ww.RemoveWorker(ctx, w)
 		if err != nil {
 			return nil, err

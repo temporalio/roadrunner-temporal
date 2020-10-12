@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spiral/goridge/v2"
+	"go.uber.org/multierr"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -81,9 +82,9 @@ type socketSpawn struct {
 // SpawnWorker creates WorkerProcess and connects it to appropriate relay or returns error
 func (f *SocketFactory) SpawnWorkerWithContext(ctx context.Context, cmd *exec.Cmd) (WorkerBase, error) {
 	c := make(chan socketSpawn)
-	ctx, cancel := context.WithTimeout(ctx, f.tout)
-	defer cancel()
 	go func() {
+		ctx, cancel := context.WithTimeout(ctx, f.tout)
+		defer cancel()
 		w, err := InitBaseWorker(cmd)
 		if err != nil {
 			c <- socketSpawn{
@@ -102,21 +103,16 @@ func (f *SocketFactory) SpawnWorkerWithContext(ctx context.Context, cmd *exec.Cm
 			return
 		}
 
-		var errs []string
-
 		rl, err := f.findRelayWithContext(ctx, w)
 		if err != nil {
-			errs = append(errs, err.Error())
-			err = w.Kill(ctx)
-			if err != nil {
-				errs = append(errs, err.Error())
-			}
-			if err = w.Wait(ctx); err != nil {
-				errs = append(errs, err.Error())
-			}
+			err = multierr.Combine(
+				err,
+				w.Kill(context.Background()),
+				w.Wait(context.Background()),
+			)
 			c <- socketSpawn{
 				w:   nil,
-				err: errors.New(strings.Join(errs, "/")),
+				err: err,
 			}
 			return
 		}

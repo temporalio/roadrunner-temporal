@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/spiral/goridge/v2"
+	"go.uber.org/multierr"
 )
 
 // EventWorkerKill thrown after WorkerProcess is being forcefully killed.
@@ -201,35 +202,28 @@ func (w *WorkerProcess) Events() <-chan WorkerEvent {
 func (w *WorkerProcess) Wait(ctx context.Context) error {
 	c := make(chan error)
 	go func() {
-		var errs []string
-		err := w.cmd.Wait()
+		err := multierr.Combine(w.cmd.Wait())
 		w.endState = w.cmd.ProcessState
 		if err != nil {
-			errs = append(errs, err.Error())
 			w.state.Set(StateErrored)
-
 			// if there are messages in the events channel, read it
 			// TODO potentially danger place
-			tt := time.NewTimer(WaitDuration * 2)
-			select {
-			case ev := <-w.events:
-				errs = append(errs, string(ev.Payload.([]byte)))
-				tt.Stop()
-				break
-			case <-tt.C:
-				tt.Stop()
-				break
+			if len(w.events) > 0 {
+				select {
+				case ev := <-w.events:
+					err = multierr.Append(err, errors.New(string(ev.Payload.([]byte))))
+				}
+			}
+			// if no errors in the events, error might be in the errbuffer
+			if w.errBuffer.Len() > 0 {
+				err = multierr.Append(err, errors.New(w.errBuffer.String()))
 			}
 
-			err = w.closeRelay()
-			if err != nil {
-				errs = append(errs, err.Error())
-			}
-			c <- errors.New(strings.Join(errs, " : "))
+			c <- multierr.Append(err, w.closeRelay())
 			return
 		}
 
-		err = w.closeRelay()
+		err = multierr.Append(err, w.closeRelay())
 		if err != nil {
 			w.state.Set(StateErrored)
 			c <- err

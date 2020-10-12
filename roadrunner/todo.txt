@@ -11,3 +11,4 @@
 7. CMD in temporal (binary) folder
 8. Logger
 9. Debug plugin in RR, see how it works
+10. SocketFactory, contexts - findRelayWithContext expires and then passed expired to the wait and kill

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"os/exec"
+	"sync"
 	"testing"
 	"time"
 
@@ -369,7 +370,10 @@ func Test_Unix_Broken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		err := w.Wait(ctx)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "undefined_function()")
@@ -391,6 +395,7 @@ func Test_Unix_Broken(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, res.Context)
 	assert.Nil(t, res.Body)
+	wg.Wait()
 }
 
 func Test_Unix_Echo(t *testing.T) {
