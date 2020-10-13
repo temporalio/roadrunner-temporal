@@ -1,4 +1,4 @@
-0. Make Serve and Stop optional
+0. Make Serve and Stop optional - DONE
 0.1. // TODO unix missed
 
 1. worker_watcher queue
@@ -12,3 +12,4 @@
 8. Logger
 9. Debug plugin in RR, see how it works
 10. SocketFactory, contexts - findRelayWithContext expires and then passed expired to the wait and kill
+11. Rust BufWriter/BufReader. Rewrite errBuffer to make better handling of messages
