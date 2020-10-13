@@ -31,16 +31,6 @@ func (v *ViperProvider) Init() error {
 	return v.viper.ReadInConfig()
 }
 
-func (v *ViperProvider) Serve() chan error {
-	errCh := make(chan error, 1)
-	return errCh
-}
-
-func (v *ViperProvider) Stop() error {
-	v.viper = nil
-	return nil
-}
-
 ///////////// VIPER ///////////////
 
 // Overwrite overwrites existing config with provided values

@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spiral/roadrunner/v2"
+	"github.com/spiral/roadrunner/v2/util"
 	"github.com/temporalio/roadrunner-temporal/config"
-	"github.com/temporalio/roadrunner-temporal/roadrunner"
-	"github.com/temporalio/roadrunner-temporal/roadrunner/util"
 )
 
 // AppConfig config combines factory, pool and cmd configurations.
@@ -21,10 +21,11 @@ type AppConfig struct {
 	Group   string
 	Env     Env
 
-	// Relay defines connection method and factory to be used to connect to workers:
+	Relay string
+	// Listen defines connection method and factory to be used to connect to workers:
 	// "pipes", "tcp://:6001", "unix://rr.sock"
 	// This config section must not change on re-configuration.
-	Relay string
+	Listen string
 
 	// RelayTimeout defines for how long socket factory will be waiting for worker connection. This config section
 	// must not change on re-configuration.
@@ -80,19 +81,33 @@ func (app *App) NewCmd(env Env) (func() *exec.Cmd, error) {
 	}, nil
 }
 
-func (app *App) NewFactory(env Env) (roadrunner.Factory, error) {
-	// TODO unix missed
-	if app.cfg.Relay == "" {
+// todo ENV unused
+func (app *App) NewFactory() (roadrunner.Factory, error) {
+	// if Listen is empty or doesn't contain separator, return error
+	if app.cfg.Listen == "" || !strings.Contains(app.cfg.Listen, "://") {
 		return nil, errors.New("relay should be set")
 	}
 
-	switch app.cfg.Relay {
-	case "sockets":
-		return roadrunner.NewSocketServer(nil, time.Second*100), nil
-	case "pipes":
+	lsn, err := util.CreateListener(app.cfg.Listen)
+	if err != nil {
+		return nil, err
+	}
+
+	dsn := strings.Split(app.cfg.Listen, "://")
+	if len(dsn) != 2 {
+		return nil, errors.New("invalid DSN (tcp://:6001, unix://file.sock)")
+	}
+
+	switch dsn[0] {
+	// sockets group
+	case "unix":
+		return roadrunner.NewSocketServer(lsn, app.cfg.RelayTimeout), nil
+	case "tcp":
+		return roadrunner.NewSocketServer(lsn, app.cfg.RelayTimeout), nil
+		// pipes
+	default:
 		return roadrunner.NewPipeFactory(), nil
 	}
-	return roadrunner.NewPipeFactory(), nil
 }
 
 func (app *App) Serve() chan error {
