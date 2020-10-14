@@ -58,6 +58,11 @@ func (v *ViperProvider) UnmarshalKey(name string, out interface{}) error {
 }
 
 // Get raw config in a form of config section.
+func (v *ViperProvider) Has(name string) bool {
+	return v.viper.IsSet(name)
+}
+
+// Get raw config in a form of config section.
 func (v *ViperProvider) Get(name string) interface{} {
 	return v.viper.Get(name)
 }
