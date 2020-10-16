@@ -1,12 +1,66 @@
 package main
 
+import (
+	"log"
+
+	"github.com/spiral/endure"
+	"github.com/spiral/roadrunner/v2/plugins/factory"
+	"github.com/temporalio/roadrunner-temporal/cmd/subcommands"
+	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+)
+
 func main() {
-	/*
-	1. -c flag - path to the config (default .rr.yaml
-	2. change working dir to the path with .rr.yaml
-	3. init endure here, path should be -c
-	4. command to serve endure container
-	5. plugins to use - temporal, config, factory
-	6. USE COBRA!!!!!11111oneoneone
-	*/
+	// LOG LEVEL SHOULD BE SET BY CLI
+	cfg := zap.Config{
+		Level:    zap.NewAtomicLevelAt(zap.DebugLevel),
+		Encoding: "console",
+		EncoderConfig: zapcore.EncoderConfig{
+			MessageKey:    "message",
+			LevelKey:      "level",
+			TimeKey:       "time",
+			CallerKey:     "caller",
+			StacktraceKey: "stack",
+			EncodeLevel:   zapcore.CapitalLevelEncoder,
+			EncodeTime:    zapcore.ISO8601TimeEncoder,
+			EncodeCaller:  zapcore.ShortCallerEncoder,
+		},
+		OutputPaths:      []string{"stderr"},
+		ErrorOutputPaths: []string{"stderr"},
+	}
+
+	logger, err := cfg.Build(zap.AddCaller())
+	if err != nil {
+		// os.Exit(1) here
+		log.Fatal("failed to initialize logger")
+	}
+
+
+	subcommands.Container, err = endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(false))
+	if err != nil {
+		logger.Fatal("failed to instantiate endure container", zap.Error(err))
+		return
+	}
+
+	err = subcommands.Container.Register(&temporal.Plugin{})
+	if err != nil {
+		logger.Fatal("failed to register temporal plugin", zap.Error(err))
+		return
+	}
+
+	err = subcommands.Container.Register(&factory.WFactory{})
+	if err != nil {
+		logger.Fatal("failed to register WFactory", zap.Error(err))
+		return
+	}
+
+	err = subcommands.Container.Register(&factory.App{})
+	if err != nil {
+		logger.Fatal("failed to factory App", zap.Error(err))
+		return
+	}
+
+	// exec
+	subcommands.Execute()
 }
