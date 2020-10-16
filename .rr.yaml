@@ -5,3 +5,6 @@ app:
   env:
     DEBUG: true
     APP_KEY: "..."
+
+temporal:
+  address: "localhost:7233"

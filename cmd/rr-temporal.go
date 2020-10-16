@@ -1,47 +1,64 @@
 package main
 
 import (
+	"log"
+
 	"github.com/spiral/endure"
-	"github.com/spiral/roadrunner/v2/plugins/config"
 	"github.com/spiral/roadrunner/v2/plugins/factory"
 	"github.com/temporalio/roadrunner-temporal/cmd/subcommands"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func main() {
-	var err error
+	// LOG LEVEL SHOULD BE SET BY CLI
+	cfg := zap.Config{
+		Level:    zap.NewAtomicLevelAt(zap.DebugLevel),
+		Encoding: "console",
+		EncoderConfig: zapcore.EncoderConfig{
+			MessageKey:    "message",
+			LevelKey:      "level",
+			TimeKey:       "time",
+			CallerKey:     "caller",
+			StacktraceKey: "stack",
+			EncodeLevel:   zapcore.CapitalLevelEncoder,
+			EncodeTime:    zapcore.ISO8601TimeEncoder,
+			EncodeCaller:  zapcore.ShortCallerEncoder,
+		},
+		OutputPaths:      []string{"stderr"},
+		ErrorOutputPaths: []string{"stderr"},
+	}
+
+	logger, err := cfg.Build(zap.AddCaller())
+	if err != nil {
+		// os.Exit(1) here
+		log.Fatal("failed to initialize logger")
+	}
+
+
 	subcommands.Container, err = endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(false))
 	if err != nil {
-		panic(err)
+		logger.Fatal("failed to instantiate endure container", zap.Error(err))
+		return
 	}
 
 	err = subcommands.Container.Register(&temporal.Plugin{})
 	if err != nil {
-		panic(err)
-	}
-
-	conf := &config.ViperProvider{}
-	conf.Path = subcommands.ConfDir
-	conf.Prefix = "rr"
-
-	err = subcommands.Container.Register(conf)
-	if err != nil {
-		panic(err)
+		logger.Fatal("failed to register temporal plugin", zap.Error(err))
+		return
 	}
 
 	err = subcommands.Container.Register(&factory.WFactory{})
 	if err != nil {
-		panic(err)
+		logger.Fatal("failed to register WFactory", zap.Error(err))
+		return
 	}
 
 	err = subcommands.Container.Register(&factory.App{})
 	if err != nil {
-		panic(err)
-	}
-
-	err = subcommands.Container.Init()
-	if err != nil {
-		panic(err)
+		logger.Fatal("failed to factory App", zap.Error(err))
+		return
 	}
 
 	// exec

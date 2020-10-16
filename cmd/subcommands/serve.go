@@ -7,6 +7,7 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
+	"github.com/spiral/roadrunner/v2/plugins/config"
 )
 
 func init() {
@@ -18,6 +19,24 @@ func init() {
 }
 
 func handler(cmd *cobra.Command, args []string) error {
+	/*
+	We need to have path to the config at the Register stage
+	But after cobra.Execute, because cobra fills up cli variables on this stage
+	 */
+	conf := &config.ViperProvider{}
+	conf.Path = ConfDir
+	conf.Prefix = "rr"
+
+	err := Container.Register(conf)
+	if err != nil {
+		return err
+	}
+
+	err = Container.Init()
+	if err != nil {
+		return err
+	}
+
 	errCh, err := Container.Serve()
 	if err != nil {
 		return err
