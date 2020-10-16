@@ -10,7 +10,7 @@ import (
 var (
 	ConfDir string
 
-	Container *endure.Endure
+	Container endure.Container
 
 	rootCmd = &cobra.Command{
 		Use:           "rrt",
