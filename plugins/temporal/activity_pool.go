@@ -125,6 +125,9 @@ func (act *ActivityPool) handleActivity(ctx context.Context, data RRPayload) (re
 		return RRPayload{}, err
 	}
 
+	// todo: async
+
+	// todo: what results options do we have
 	if err := json.Unmarshal(res.Body, &result.Data); err != nil {
 		return RRPayload{}, err
 	}

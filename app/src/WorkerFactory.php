@@ -56,11 +56,27 @@ class WorkerFactory
                 error_log($context);
                 error_log($payload);
 
-                $this->worker->send($payload, $context);
+                $this->worker->send(json_encode($this->invoke(
+                    json_decode($context, true),
+                    json_decode($payload, true)
+                )));
             } catch (\Throwable $e) {
                 $this->worker->error((string) $e);
             }
         }
+    }
+
+    /**
+     * @param array $context
+     * @param array $payload
+     * @return mixed
+     */
+    private function invoke(array $context, array $payload)
+    {
+        $worker = $this->activityWorkers[$context['TaskQueue']];
+
+        // todo: what is array returned? wrap it somehow
+        return [$worker->invoke($context, $payload)];
     }
 
     /**

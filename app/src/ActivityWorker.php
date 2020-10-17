@@ -87,4 +87,16 @@ class ActivityWorker
     {
         $this->methods [$name] = $handler;
     }
+
+    /**
+     * @param array $context
+     * @param array $payload
+     * @return mixed
+     */
+    public function invoke(array $context, array $payload)
+    {
+        // todo: pass context
+        // todo: pass halt and continue
+        return call_user_func_array($this->methods[$context['ActivityType']['Name']], $payload);
+    }
 }
