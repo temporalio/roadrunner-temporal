@@ -13,7 +13,7 @@ $temporal = new Client\WorkerFactory($w);
 
 $temporal
     ->createActivityWorker("default", [Client\ActivityWorker::MAX_CONCURRENT_ACTIVITY_TASK_POLLERS => 2])
-    ->registerActivity('hello', function (string $name): string {
+    ->registerActivity('Test', function (string $name): string {
         return sprintf("Hello, %s!", $name);
     });
 

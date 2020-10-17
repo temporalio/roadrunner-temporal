@@ -40,24 +40,6 @@ type RRDataConverter struct {
 }
 
 type RRPayload struct {
-	Data RRData
-	Meta RRMeta
-}
-
-type RRData struct {
-	ID     int
-	Params struct {
-		Name  string
-		Rid   string
-		Input []interface{}
-	}
-}
-
-type RRMeta struct {
-	Error error
-}
-
-type RRResult struct {
 	Data []interface{}
 }
 
@@ -130,14 +112,7 @@ func (r *RRDataConverter) FromPayload(payload *commonpb.Payload, valuePtr interf
 	switch res := valuePtr.(type) {
 	case *RRPayload:
 		var data interface{}
-		err := json.Unmarshal(payload.GetData(), &data)
-		if err != nil {
-			return fmt.Errorf(
-				"unable to decode argument: %T, with error: %v", valuePtr, err)
-		}
-		res.Data.Params.Input = append(res.Data.Params.Input, data)
-	case *RRResult:
-		var data interface{}
+		// TODO: BYPASS MARSHAL AND SEND IT AS IT IS
 		err := json.Unmarshal(payload.GetData(), &data)
 		if err != nil {
 			return fmt.Errorf(
@@ -145,6 +120,7 @@ func (r *RRDataConverter) FromPayload(payload *commonpb.Payload, valuePtr interf
 		}
 		res.Data = append(res.Data, data)
 	default:
+		// todo: fallback to default converter
 	}
 	return nil
 }

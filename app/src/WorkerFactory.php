@@ -53,6 +53,9 @@ class WorkerFactory
                     continue;
                 }
 
+                error_log($context);
+                error_log($payload);
+
                 $this->worker->send($payload, $context);
             } catch (\Throwable $e) {
                 $this->worker->error((string) $e);

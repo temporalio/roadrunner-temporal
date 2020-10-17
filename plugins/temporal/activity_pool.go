@@ -2,9 +2,10 @@ package temporal
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/spiral/roadrunner/v2"
+	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/worker"
-	"log"
 	"sync"
 	"time"
 )
@@ -19,7 +20,7 @@ type ActivityPool struct {
 	temporalWorkers []worker.Worker
 }
 
-type poolConfiguration map[string]struct {
+type pipelineConfig struct {
 	// Pipeline options.
 	Options struct {
 		// Optional: To set the maximum concurrent activity executions this worker can have.
@@ -68,13 +69,67 @@ func (act *ActivityPool) InitTemporal(ctx context.Context, temporal Temporal) er
 		return err
 	}
 
-	log.Print(result)
+	config := make(map[string]pipelineConfig)
+	if err := json.Unmarshal(result.Body, &config); err != nil {
+		return err
+	}
+
+	act.temporalWorkers = make([]worker.Worker, 0)
+	for queue, pipeline := range config {
+		w, err := temporal.CreateWorker(queue, worker.Options{
+			MaxConcurrentActivityExecutionSize:      pipeline.Options.MaxConcurrentActivityExecutionSize,
+			WorkerActivitiesPerSecond:               pipeline.Options.WorkerActivitiesPerSecond,
+			MaxConcurrentLocalActivityExecutionSize: pipeline.Options.MaxConcurrentActivityExecutionSize,
+			TaskQueueActivitiesPerSecond:            pipeline.Options.TaskQueueActivitiesPerSecond,
+			MaxConcurrentActivityTaskPollers:        pipeline.Options.MaxConcurrentActivityTaskPollers,
+		})
+
+		if err != nil {
+			act.Destroy(ctx)
+			return err
+		}
+
+		act.temporalWorkers = append(act.temporalWorkers, w)
+
+		for _, name := range pipeline.Activities {
+			w.RegisterActivityWithOptions(act.handleActivity, activity.RegisterOptions{Name: name})
+		}
+	}
 
 	return nil
 }
 
 func (act *ActivityPool) Start(errChan chan error) {
+	for _, w := range act.temporalWorkers {
+		if err := w.Start(); err != nil {
+			errChan <- err
+		}
+	}
+}
 
+func (act *ActivityPool) handleActivity(ctx context.Context, data RRPayload) (result RRPayload, err error) {
+	payload := roadrunner.Payload{}
+
+	payload.Context, err = json.Marshal(activity.GetInfo(ctx))
+	if err != nil {
+		return RRPayload{}, err
+	}
+
+	payload.Body, err = json.Marshal(data.Data)
+	if err != nil {
+		return RRPayload{}, err
+	}
+
+	res, err := act.workerPool.Exec(ctx, payload)
+	if err != nil {
+		return RRPayload{}, err
+	}
+
+	if err := json.Unmarshal(res.Body, &result.Data); err != nil {
+		return RRPayload{}, err
+	}
+
+	return
 }
 
 // initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
