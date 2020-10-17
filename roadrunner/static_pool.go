@@ -92,6 +92,7 @@ func (p *StaticPool) RemoveWorker(ctx context.Context, wb WorkerBase) error {
 
 // Exec one task with given payload and context, returns result or error.
 func (p *StaticPool) Exec(ctx context.Context, rqs Payload) (Payload, error) {
+	// todo: why TODO passed here?
 	getWorkerCtx, cancel := context.WithTimeout(context.TODO(), p.cfg.AllocateTimeout)
 	defer cancel()
 	w, err := p.ww.GetFreeWorker(getWorkerCtx)
@@ -103,8 +104,14 @@ func (p *StaticPool) Exec(ctx context.Context, rqs Payload) (Payload, error) {
 
 	sw := w.(SyncWorker)
 
-	execCtx, cancel2 := context.WithTimeout(context.TODO(), p.cfg.ExecTTL)
-	defer cancel2()
+	var execCtx context.Context
+	if p.cfg.ExecTTL != 0 {
+		var cancel2 context.CancelFunc
+		execCtx, cancel2 = context.WithTimeout(context.TODO(), p.cfg.ExecTTL)
+		defer cancel2()
+	} else {
+		execCtx = ctx
+	}
 
 	rsp, err := sw.Exec(execCtx, rqs)
 	if err != nil {

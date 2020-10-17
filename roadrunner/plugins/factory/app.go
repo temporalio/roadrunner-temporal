@@ -31,23 +31,28 @@ type AppConfig struct {
 }
 
 type App struct {
-	cfg            *AppConfig
+	cfg            AppConfig
 	configProvider config.Provider
 	factory        roadrunner.Factory
 }
 
 func (app *App) Init(provider config.Provider) error {
-	app.cfg = &AppConfig{}
+	app.cfg = AppConfig{}
 	app.configProvider = provider
 
 	return nil
 }
 
 func (app *App) Configure() error {
-	err := app.configProvider.UnmarshalKey("app", app.cfg)
+	err := app.configProvider.UnmarshalKey("app", &app.cfg)
 	if err != nil {
 		return err
 	}
+
+	if app.cfg.Relay == "" {
+		app.cfg.Relay = "pipes"
+	}
+
 	return nil
 }
 
