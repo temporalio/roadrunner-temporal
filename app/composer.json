@@ -1,0 +1,5 @@
+{
+    "require": {
+        "spiral/roadrunner": "^1.8"
+    }
+}

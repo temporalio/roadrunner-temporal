@@ -1,18 +1,18 @@
 package main
 
 import (
+	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	"log"
 
 	"github.com/spiral/endure"
 	"github.com/spiral/roadrunner/v2/plugins/factory"
-	"github.com/temporalio/roadrunner-temporal/cmd/subcommands"
-	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
+	"github.com/temporalio/roadrunner-temporal/cmd/cli"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 func main() {
-	// LOG LEVEL SHOULD BE SET BY CLI
+	// LOG LEVEL SHOULD BE SET BY CLI, todo: move from main.go
 	cfg := zap.Config{
 		Level:    zap.NewAtomicLevelAt(zap.DebugLevel),
 		Encoding: "console",
@@ -32,35 +32,41 @@ func main() {
 
 	logger, err := cfg.Build(zap.AddCaller())
 	if err != nil {
-		// os.Exit(1) here
 		log.Fatal("failed to initialize logger")
+		return
 	}
 
-
-	subcommands.Container, err = endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(false))
+	// todo: verbose and debug flag
+	cli.Container, err = endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(false))
 	if err != nil {
 		logger.Fatal("failed to instantiate endure container", zap.Error(err))
 		return
 	}
 
-	err = subcommands.Container.Register(&temporal.Plugin{})
-	if err != nil {
-		logger.Fatal("failed to register temporal plugin", zap.Error(err))
-		return
-	}
-
-	err = subcommands.Container.Register(&factory.WFactory{})
-	if err != nil {
-		logger.Fatal("failed to register WFactory", zap.Error(err))
-		return
-	}
-
-	err = subcommands.Container.Register(&factory.App{})
+	err = cli.Container.Register(&factory.App{})
 	if err != nil {
 		logger.Fatal("failed to factory App", zap.Error(err))
 		return
 	}
 
+	err = cli.Container.Register(&factory.WFactory{})
+	if err != nil {
+		logger.Fatal("failed to register WFactory", zap.Error(err))
+		return
+	}
+
+	err = cli.Container.Register(&temporal.Provider{})
+	if err != nil {
+		logger.Fatal("failed to register temporal plugin", zap.Error(err))
+		return
+	}
+
+	err = cli.Container.Register(&temporal.ActivityPool{})
+	if err != nil {
+		logger.Fatal("failed to register temporal activity pool", zap.Error(err))
+		return
+	}
+
 	// exec
-	subcommands.Execute()
+	cli.Execute()
 }

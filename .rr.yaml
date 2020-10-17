@@ -1,10 +1,15 @@
+# Application configuration
 app:
-  commmand: "php app.php"
-  user: user
-  group: group
+  commmand: "php app/app.php"
   env:
     DEBUG: true
-    APP_KEY: "..."
 
+# Workflow and activity mesh service
 temporal:
   address: "localhost:7233"
+  activities:
+    numWorkers: 1
+    maxJobs: 1
+    execTTL: 60s
+    allocateTimeout: 1s
+    destroyTimeout: 1s

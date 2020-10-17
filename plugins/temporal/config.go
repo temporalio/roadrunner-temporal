@@ -1,5 +1,9 @@
 package temporal
 
+import "github.com/spiral/roadrunner/v2"
+
 type Config struct {
-	Address string
+	Address    string
+	Namespace  string
+	Activities *roadrunner.Config
 }
