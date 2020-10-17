@@ -1,5 +1,10 @@
 {
-    "require": {
-        "spiral/roadrunner": "^1.8"
+  "require": {
+    "spiral/roadrunner": "^1.8"
+  },
+  "autoload": {
+    "psr-4": {
+      "Temporal\\Client\\": "src"
     }
+  }
 }

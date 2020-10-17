@@ -30,14 +30,14 @@ func (a *ActivityRouter) Serve() chan error {
 }
 
 func (a *ActivityRouter) initPool(errCh chan error) {
-	pool, err := a.createPool()
+	pool, err := a.createPool(context.Background())
 	if err != nil {
 		errCh <- err
 		return
 	}
 
 	a.pool = pool
-	go a.pool.Serve(errCh)
+	go a.pool.Start(errCh)
 }
 
 func (a *ActivityRouter) Stop() error {
@@ -48,7 +48,7 @@ func (a *ActivityRouter) Stop() error {
 	return nil
 }
 
-func (a *ActivityRouter) createPool() (pool *ActivityPool, err error) {
+func (a *ActivityRouter) createPool(ctx context.Context) (pool *ActivityPool, err error) {
 	pool = &ActivityPool{}
 
 	pool.workerPool, err = a.wFactory.NewWorkerPool(
@@ -61,7 +61,7 @@ func (a *ActivityRouter) createPool() (pool *ActivityPool, err error) {
 		return nil, err
 	}
 
-	if err := pool.InitTemporal(a.temporal); err != nil {
+	if err := pool.InitTemporal(ctx, a.temporal); err != nil {
 		return nil, err
 	}
 

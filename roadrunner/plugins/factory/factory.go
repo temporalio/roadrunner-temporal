@@ -2,9 +2,10 @@ package factory
 
 import (
 	"context"
-	"github.com/spiral/roadrunner/v2/plugins/events"
-
+	"github.com/fatih/color"
 	"github.com/spiral/roadrunner/v2"
+	"github.com/spiral/roadrunner/v2/plugins/events"
+	"log"
 )
 
 type WorkerFactory interface {
@@ -37,6 +38,11 @@ func (wf *WFactory) NewWorkerPool(ctx context.Context, opt *roadrunner.Config, e
 	go func() {
 		for e := range p.Events() {
 			wf.eb.Push(e)
+			if we, ok := e.Payload.(roadrunner.WorkerEvent); ok {
+				if we.Event == roadrunner.EventWorkerLog {
+					log.Print(color.YellowString(string(we.Payload.([]byte))))
+				}
+			}
 		}
 	}()
 

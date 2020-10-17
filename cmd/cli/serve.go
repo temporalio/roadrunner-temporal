@@ -13,7 +13,7 @@ import (
 func init() {
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "serve",
-		Short: "Serve RoadRunner Temporal service(s)",
+		Short: "Start RoadRunner Temporal service(s)",
 		RunE:  handler,
 	})
 }
