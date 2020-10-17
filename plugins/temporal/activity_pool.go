@@ -3,63 +3,29 @@ package temporal
 import (
 	"context"
 	"github.com/spiral/roadrunner/v2"
-	"github.com/spiral/roadrunner/v2/plugins/factory"
-	"log"
+	"go.temporal.io/sdk/worker"
 )
 
+// ActivityPool manages set of RR and Temporal activity workers and their cancellation contexts.
 type ActivityPool struct {
-	temporal *Provider
-	wFactory factory.WorkerFactory
-	pool     roadrunner.Pool
+	workerPool      roadrunner.Pool
+	temporalWorkers []worker.Worker
 }
 
-// logger dep also
-func (a *ActivityPool) Init(
-	temporal *Provider,
-	wFactory factory.WorkerFactory,
-) error {
-	a.temporal = temporal
-	a.wFactory = wFactory
-	return nil
+// initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
+func (p *ActivityPool) InitTemporal(temporal Temporal) error {
+	//r, err := pool.Exec(context.Background(), roadrunner.Payload{Body: []byte("hello"), Context: []byte("jello")})
+	//if err != nil {
+	//	errCh <- err
+	//	return
+	//}
 }
 
-func (a *ActivityPool) Serve() chan error {
-	errCh := make(chan error)
-	if a.temporal.config.Activities != nil {
-		go a.runWorkers(errCh)
-	} else {
-		log.Println("disabled", a.temporal.serviceClient)
-	}
-
-	return errCh
-}
-
-func (a *ActivityPool) runWorkers(errCh chan error) {
-	pool, err := a.wFactory.NewWorkerPool(context.Background(), a.temporal.config.Activities, map[string]string{
-		"RR_ACTIVITY_POOL": "true", // todo: temporal specific
-	})
-
-	if err != nil {
-		errCh <- err
-		return
-	}
-
-	a.pool = pool
-
-	r, err := pool.Exec(context.Background(), roadrunner.Payload{Body: []byte("hello"), Context: []byte("jello")})
-	if err != nil {
-		errCh <- err
-		return
-	}
-
-	log.Print(r)
+func (p *ActivityPool) Serve(errChan chan error) {
 
 }
 
-func (a *ActivityPool) Stop() error {
-	if a.pool != nil {
-		a.pool.Destroy(context.Background())
-	}
+// initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
+func (p *ActivityPool) Destroy(ctx context.Context) {
 
-	return nil
 }

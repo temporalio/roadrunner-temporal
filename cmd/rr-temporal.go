@@ -61,7 +61,7 @@ func main() {
 		return
 	}
 
-	err = cli.Container.Register(&temporal.ActivityPool{})
+	err = cli.Container.Register(&temporal.ActivityRouter{})
 	if err != nil {
 		logger.Fatal("failed to register temporal activity pool", zap.Error(err))
 		return
