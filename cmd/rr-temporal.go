@@ -61,9 +61,15 @@ func main() {
 		return
 	}
 
-	err = cli.Container.Register(&temporal.ActivityFactory{})
+	err = cli.Container.Register(&temporal.ActivityServer{})
 	if err != nil {
-		logger.Fatal("failed to register temporal activity pool", zap.Error(err))
+		logger.Fatal("failed to register temporal activity server", zap.Error(err))
+		return
+	}
+
+	err = cli.Container.Register(&temporal.WorkflowServer{})
+	if err != nil {
+		logger.Fatal("failed to register temporal workflow server", zap.Error(err))
 		return
 	}
 

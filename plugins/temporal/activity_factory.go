@@ -5,7 +5,7 @@ import (
 	"github.com/spiral/roadrunner/v2/plugins/factory"
 )
 
-type ActivityFactory struct {
+type ActivityServer struct {
 	temporal *Provider
 	wFactory factory.WorkerFactory
 
@@ -14,13 +14,13 @@ type ActivityFactory struct {
 }
 
 // logger dep also
-func (a *ActivityFactory) Init(temporal *Provider, wFactory factory.WorkerFactory) error {
+func (a *ActivityServer) Init(temporal *Provider, wFactory factory.WorkerFactory) error {
 	a.temporal = temporal
 	a.wFactory = wFactory
 	return nil
 }
 
-func (a *ActivityFactory) Serve() chan error {
+func (a *ActivityServer) Serve() chan error {
 	errCh := make(chan error)
 	if a.temporal.config.Activities != nil {
 		go a.initPool(errCh)
@@ -29,7 +29,7 @@ func (a *ActivityFactory) Serve() chan error {
 	return errCh
 }
 
-func (a *ActivityFactory) initPool(errCh chan error) {
+func (a *ActivityServer) initPool(errCh chan error) {
 	pool, err := a.createPool(context.Background())
 	if err != nil {
 		errCh <- err
@@ -40,7 +40,7 @@ func (a *ActivityFactory) initPool(errCh chan error) {
 	go a.pool.Start(errCh)
 }
 
-func (a *ActivityFactory) Stop() error {
+func (a *ActivityServer) Stop() error {
 	if a.pool != nil {
 		a.pool.Destroy(context.Background())
 	}
@@ -48,7 +48,7 @@ func (a *ActivityFactory) Stop() error {
 	return nil
 }
 
-func (a *ActivityFactory) createPool(ctx context.Context) (pool *ActivityPool, err error) {
+func (a *ActivityServer) createPool(ctx context.Context) (pool *ActivityPool, err error) {
 	pool = &ActivityPool{}
 
 	pool.workerPool, err = a.wFactory.NewWorkerPool(
