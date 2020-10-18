@@ -1,12 +1,19 @@
 package temporal
 
 import (
+	"github.com/spiral/roadrunner/v2"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 )
 
 const temporalSection = "temporal"
+
+type Config struct {
+	Address    string
+	Namespace  string
+	Activities *roadrunner.Config
+}
 
 type Temporal interface {
 	GetClient() (client.Client, error)
