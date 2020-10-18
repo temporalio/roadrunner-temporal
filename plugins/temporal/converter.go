@@ -36,7 +36,7 @@ import (
 //	}
 //)
 
-type RRDataConverter struct {
+type DataConverter struct {
 }
 
 type RRPayload struct {
@@ -44,10 +44,10 @@ type RRPayload struct {
 }
 
 func NewRRDataConverter() converter.DataConverter {
-	return &RRDataConverter{}
+	return &DataConverter{}
 }
 
-func (r *RRDataConverter) ToPayloads(values ...interface{}) (*commonpb.Payloads, error) {
+func (r *DataConverter) ToPayloads(values ...interface{}) (*commonpb.Payloads, error) {
 	res := &commonpb.Payloads{}
 	for i := 0; i < len(values); i++ {
 		payload, err := r.ToPayload(values[i])
@@ -59,7 +59,7 @@ func (r *RRDataConverter) ToPayloads(values ...interface{}) (*commonpb.Payloads,
 	return res, nil
 }
 
-func (r *RRDataConverter) ToPayload(value interface{}) (*commonpb.Payload, error) {
+func (r *DataConverter) ToPayload(value interface{}) (*commonpb.Payload, error) {
 	switch v := value.(type) {
 	// special case
 	case []byte:
@@ -91,7 +91,7 @@ func (r *RRDataConverter) ToPayload(value interface{}) (*commonpb.Payload, error
 	}
 }
 
-func (r *RRDataConverter) FromPayloads(payloads *commonpb.Payloads, valuePtrs ...interface{}) error {
+func (r *DataConverter) FromPayloads(payloads *commonpb.Payloads, valuePtrs ...interface{}) error {
 	if payloads == nil {
 		return nil
 	}
@@ -108,7 +108,7 @@ func (r *RRDataConverter) FromPayloads(payloads *commonpb.Payloads, valuePtrs ..
 	return nil
 }
 
-func (r *RRDataConverter) FromPayload(payload *commonpb.Payload, valuePtr interface{}) error {
+func (r *DataConverter) FromPayload(payload *commonpb.Payload, valuePtr interface{}) error {
 	switch res := valuePtr.(type) {
 	case *RRPayload:
 		var data interface{}
@@ -125,10 +125,10 @@ func (r *RRDataConverter) FromPayload(payload *commonpb.Payload, valuePtr interf
 	return nil
 }
 
-func (r *RRDataConverter) ToString(input *commonpb.Payload) string {
+func (r *DataConverter) ToString(input *commonpb.Payload) string {
 	panic("implement me")
 }
 
-func (r *RRDataConverter) ToStrings(input *commonpb.Payloads) []string {
+func (r *DataConverter) ToStrings(input *commonpb.Payloads) []string {
 	panic("implement me")
 }
