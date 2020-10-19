@@ -3,11 +3,12 @@ package temporal
 import (
 	"context"
 	"encoding/json"
+	"sync"
+	"time"
+
 	"github.com/spiral/roadrunner/v2"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/worker"
-	"sync"
-	"time"
 )
 
 const (
@@ -64,7 +65,7 @@ type pipelineConfig struct {
 
 // initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
 func (act *ActivityPool) InitTemporal(ctx context.Context, temporal Temporal) error {
-	result, err := act.workerPool.Exec(ctx, roadrunner.Payload{Body: []byte(initCmd), Context: nil})
+	result, err := act.workerPool.ExecWithContext(ctx, roadrunner.Payload{Body: []byte(initCmd), Context: nil})
 	if err != nil {
 		return err
 	}
@@ -120,7 +121,7 @@ func (act *ActivityPool) handleActivity(ctx context.Context, data RRPayload) (re
 		return RRPayload{}, err
 	}
 
-	res, err := act.workerPool.Exec(ctx, payload)
+	res, err := act.workerPool.ExecWithContext(ctx, payload)
 	if err != nil {
 		return RRPayload{}, err
 	}

@@ -250,8 +250,8 @@ github.com/spiral/endure v1.0.0-beta9 h1:PNiVit9DCucmhZLd4RgoiVL7Y5DBmweUwadFyul
 github.com/spiral/endure v1.0.0-beta9/go.mod h1:EhC6CKaSQum/gz1zRqkyu4LqFOlngVTGbXK69pebmxQ=
 github.com/spiral/goridge/v2 v2.4.5 h1:rg4lLEJLrEh1Wj6G1qTsYVbYiQvig6mOR1F9GyDIGm8=
 github.com/spiral/goridge/v2 v2.4.5/go.mod h1:C/EZKFPON9lypi8QO7I5ObgVmrIzTmhZqFz/tmypcGc=
-github.com/spiral/roadrunner/v2 v2.0.0-alpha12 h1:Pr3v/7FCFCyI6/DVNgMnGMPDgaKyxiB+BXpQUqfD19k=
-github.com/spiral/roadrunner/v2 v2.0.0-alpha12/go.mod h1:PXLgMzAK0zTALqmIpxthNIDQmyj113gyQVenED3Uqqk=
+github.com/spiral/roadrunner/v2 v2.0.0-alpha13 h1:/WyeZinkTF3uGTIf7wVMeaOLq8dHMv1fP8N2tXWUERc=
+github.com/spiral/roadrunner/v2 v2.0.0-alpha13/go.mod h1:Sqrg3oxNrpnVRcEdh7P1/9PH6fMRsmvQfazry4j//0E=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.2.0 h1:Hbg2NidpLE8veEBkEZTL3CvlkUIVzuU9jDplZO54c48=
