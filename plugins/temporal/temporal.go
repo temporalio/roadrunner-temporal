@@ -63,3 +63,8 @@ func (p *Plugin) CreateWorker(tq string, options worker.Options) (worker.Worker,
 	w := worker.New(p.serviceClient, tq, options)
 	return w, nil
 }
+
+
+func (p *Plugin) RpcService() interface{} {
+	return p
+}

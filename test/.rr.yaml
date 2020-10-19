@@ -1,4 +1,3 @@
-
 app:
   command: "php hello.php"
   user: ""
