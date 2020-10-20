@@ -69,8 +69,3 @@ func (p *Provider) CreateWorker(tq string, options worker.Options) (worker.Worke
 	w := worker.New(p.serviceClient, tq, options)
 	return w, nil
 }
-
-
-func (p *Plugin) RpcService() interface{} {
-	return p
-}
