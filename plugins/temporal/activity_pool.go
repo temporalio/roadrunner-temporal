@@ -14,6 +14,8 @@ const (
 	initCmd = "{\"command\":\"GetActivityWorkers\"}"
 )
 
+var EmptyRrResult = RRPayload{}
+
 type ActivityPool interface {
 	InitTemporal(ctx context.Context, temporal Temporal) error
 	Start() error
@@ -68,6 +70,13 @@ type pipelineConfig struct {
 	Activities []string `json:"activities"`
 }
 
+// NewActivityPool
+func NewActivityPool(pool roadrunner.Pool) ActivityPool {
+	return &ActivityPoolImpl{
+		workerPool: pool,
+	}
+}
+
 // initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
 func (act *ActivityPoolImpl) InitTemporal(ctx context.Context, temporal Temporal) error {
 	result, err := act.workerPool.ExecWithContext(ctx, roadrunner.Payload{Body: []byte(initCmd), Context: nil})
@@ -115,33 +124,35 @@ func (act *ActivityPoolImpl) Start() error {
 	return nil
 }
 
-func (act *ActivityPoolImpl) handleActivity(ctx context.Context, data RRPayload) (result RRPayload, err error) {
+func (act *ActivityPoolImpl) handleActivity(ctx context.Context, data RRPayload) (RRPayload, error) {
+	var err error
 	payload := roadrunner.Payload{}
 
 	payload.Context, err = json.Marshal(activity.GetInfo(ctx))
 	if err != nil {
-		return RRPayload{}, err
+		return EmptyRrResult, err
 	}
 
 	payload.Body, err = json.Marshal(data.Data)
 	if err != nil {
-		return RRPayload{}, err
+		return EmptyRrResult, err
 	}
 
 	res, err := act.workerPool.ExecWithContext(ctx, payload)
 	if err != nil {
-		return RRPayload{}, err
+		return EmptyRrResult, err
 	}
 
 	// todo: async
-
 	// todo: what results options do we have
 	// todo: make sure results are packed correctly
-	if err := json.Unmarshal(res.Body, &result.Data); err != nil {
-		return RRPayload{}, err
+	result := RRPayload{}
+	err = json.Unmarshal(res.Body, &result.Data)
+	if err != nil {
+		return EmptyRrResult, err
 	}
 
-	return
+	return result, nil
 }
 
 // initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.

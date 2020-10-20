@@ -11,7 +11,7 @@ type ActivityServer struct {
 	wFactory factory.WorkerFactory
 
 	// currently active worker pool (can be replaced at runtime)
-	pool *ActivityPool
+	pool ActivityPool
 }
 
 // logger dep also
@@ -38,7 +38,7 @@ func (a *ActivityServer) Serve() chan error {
 }
 
 // non blocking function
-func (a *ActivityServer) initPool() (*ActivityPool, error) {
+func (a *ActivityServer) initPool() (ActivityPool, error) {
 	pool, err := a.createPool(context.Background())
 	if err != nil {
 		return nil, err
@@ -59,20 +59,17 @@ func (a *ActivityServer) Stop() error {
 	return nil
 }
 
-func (a *ActivityServer) createPool(ctx context.Context) (*ActivityPool, error) {
-	var err error
-	pool := &ActivityPool{}
-
-	pool.workerPool, err = a.wFactory.NewWorkerPool(
+func (a *ActivityServer) createPool(ctx context.Context) (ActivityPool, error) {
+	rrPool, err := a.wFactory.NewWorkerPool(
 		context.Background(),
 		a.temporal.config.Activities,
 		map[string]string{"RR_MODE": "temporal/activities"},
 	)
-
 	if err != nil {
 		return nil, err
 	}
 
+	pool := NewActivityPool(rrPool)
 	err = pool.InitTemporal(ctx, a.temporal)
 	if err != nil {
 		return nil, err
