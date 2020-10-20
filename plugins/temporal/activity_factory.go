@@ -22,23 +22,33 @@ func (a *ActivityServer) Init(temporal *Provider, wFactory factory.WorkerFactory
 }
 
 func (a *ActivityServer) Serve() chan error {
-	errCh := make(chan error)
+	errCh := make(chan error, 1)
 	if a.temporal.config.Activities != nil {
-		go a.initPool(errCh)
+		pool, err := a.initPool()
+		if err != nil {
+			errCh <- err
+			return errCh
+		}
+
+		// set the pool after all initialization complete
+		a.pool = pool
 	}
 
 	return errCh
 }
 
-func (a *ActivityServer) initPool(errCh chan error) {
+// non blocking function
+func (a *ActivityServer) initPool() (*ActivityPool, error) {
 	pool, err := a.createPool(context.Background())
 	if err != nil {
-		errCh <- err
-		return
+		return nil, err
 	}
 
-	a.pool = pool
-	go a.pool.Start(errCh)
+	err = pool.Start()
+	if err != nil {
+		return nil, err
+	}
+	return pool, nil
 }
 
 func (a *ActivityServer) Stop() error {
@@ -49,8 +59,9 @@ func (a *ActivityServer) Stop() error {
 	return nil
 }
 
-func (a *ActivityServer) createPool(ctx context.Context) (pool *ActivityPool, err error) {
-	pool = &ActivityPool{}
+func (a *ActivityServer) createPool(ctx context.Context) (*ActivityPool, error) {
+	var err error
+	pool := &ActivityPool{}
 
 	pool.workerPool, err = a.wFactory.NewWorkerPool(
 		context.Background(),
@@ -62,7 +73,8 @@ func (a *ActivityServer) createPool(ctx context.Context) (pool *ActivityPool, er
 		return nil, err
 	}
 
-	if err := pool.InitTemporal(ctx, a.temporal); err != nil {
+	err = pool.InitTemporal(ctx, a.temporal)
+	if err != nil {
 		return nil, err
 	}
 

@@ -21,8 +21,13 @@ type Temporal interface {
 }
 
 type Provider struct {
+	// Rpc implementation
+	Rpc
+	// config
 	configProvider config.Provider
+	// Temporal config from .rr.yaml
 	config         Config
+	// Temporal connection
 	serviceClient  client.Client
 }
 
@@ -48,6 +53,8 @@ func (p *Provider) Serve() chan error {
 		Namespace:     p.config.Namespace,
 		DataConverter: NewRRDataConverter(),
 	})
+
+	p.Rpc.client = p.serviceClient
 
 	if err != nil {
 		errCh <- err
