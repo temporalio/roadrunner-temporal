@@ -1,4 +1,4 @@
-package subcommands
+package cli
 
 import (
 	"fmt"
@@ -13,18 +13,18 @@ import (
 func init() {
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "serve",
-		Short: "Serve RoadRunner Temporal service(s)",
+		Short: "Start RoadRunner Temporal service(s)",
 		RunE:  handler,
 	})
 }
 
 func handler(cmd *cobra.Command, args []string) error {
 	/*
-	We need to have path to the config at the Register stage
-	But after cobra.Execute, because cobra fills up cli variables on this stage
-	 */
+		We need to have path to the config at the Register stage
+		But after cobra.Execute, because cobra fills up cli variables on this stage
+	*/
 	conf := &config.ViperProvider{}
-	conf.Path = ConfDir
+	conf.Path = CfgFile
 	conf.Prefix = "rr"
 
 	err := Container.Register(conf)
