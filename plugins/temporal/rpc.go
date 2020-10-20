@@ -3,7 +3,6 @@ package temporal
 import (
 	"context"
 
-	"github.com/spiral/endure"
 	"go.temporal.io/sdk/client"
 )
 
@@ -17,18 +16,24 @@ const name = "rpc"
 - the method has return type error.
 */
 type Rpc struct {
-	endure.Named
 	client client.Client
 }
 
-func (r *Rpc) Name() string {
+func (p *Provider) Name() string {
 	return name
 }
 
 //func (t *T) MethodName(argType T1, replyType *T2) error
+func (p *Provider) RpcService() interface{} {
+	c, err := p.GetClient()
+	if err != nil {
+		// TODO change interface
+		panic(err)
+	}
 
-func (r *Rpc) RpcService() interface{} {
-	return r
+	return &Rpc{
+		client: c,
+	}
 }
 
 type ExecuteWorkflow struct {

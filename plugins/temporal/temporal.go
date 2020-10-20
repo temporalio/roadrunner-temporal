@@ -1,8 +1,10 @@
 package temporal
 
 import (
+	"github.com/spiral/endure"
 	"github.com/spiral/roadrunner/v2"
 	"github.com/spiral/roadrunner/v2/plugins/config"
+	"github.com/temporalio/roadrunner-temporal"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 )
@@ -17,24 +19,30 @@ type Config struct {
 
 type Temporal interface {
 	GetClient() (client.Client, error)
+	GetConfig() Config
 	CreateWorker(taskQueue string, options worker.Options) (worker.Worker, error)
 }
 
 type Provider struct {
+	endure.Named
 	// Rpc implementation
 	Rpc
 	// config
 	configProvider config.Provider
 	// Temporal config from .rr.yaml
-	config         Config
+	config Config
 	// Temporal connection
-	serviceClient  client.Client
+	serviceClient client.Client
 }
 
 // logger dep also
 func (p *Provider) Init(provider config.Provider) error {
 	p.configProvider = provider
 	return nil
+}
+
+func (p *Provider) GetConfig() Config {
+	return p.config
 }
 
 func (p *Provider) Configure() error {
@@ -51,10 +59,10 @@ func (p *Provider) Serve() chan error {
 	p.serviceClient, err = client.NewClient(client.Options{
 		HostPort:      p.config.Address,
 		Namespace:     p.config.Namespace,
-		DataConverter: NewRRDataConverter(),
+		DataConverter: roadrunner_temporal.NewRRDataConverter(),
 	})
 
-	p.Rpc.client = p.serviceClient
+	//p.Rpc.client = p.serviceClient
 
 	if err != nil {
 		errCh <- err

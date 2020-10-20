@@ -1,4 +1,4 @@
-package temporal
+package activity_server
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/spiral/roadrunner/v2"
+	"github.com/temporalio/roadrunner-temporal"
+	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/worker"
 )
@@ -14,10 +16,10 @@ const (
 	initCmd = "{\"command\":\"GetActivityWorkers\"}"
 )
 
-var EmptyRrResult = RRPayload{}
+var EmptyRrResult = roadrunner_temporal.RRPayload{}
 
 type ActivityPool interface {
-	InitTemporal(ctx context.Context, temporal Temporal) error
+	InitTemporal(ctx context.Context, temporal temporal.Temporal) error
 	Start() error
 	Destroy(ctx context.Context)
 }
@@ -78,7 +80,7 @@ func NewActivityPool(pool roadrunner.Pool) ActivityPool {
 }
 
 // initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
-func (act *ActivityPoolImpl) InitTemporal(ctx context.Context, temporal Temporal) error {
+func (act *ActivityPoolImpl) InitTemporal(ctx context.Context, temporal temporal.Temporal) error {
 	result, err := act.workerPool.ExecWithContext(ctx, roadrunner.Payload{Body: []byte(initCmd), Context: nil})
 	if err != nil {
 		return err
@@ -124,7 +126,7 @@ func (act *ActivityPoolImpl) Start() error {
 	return nil
 }
 
-func (act *ActivityPoolImpl) handleActivity(ctx context.Context, data RRPayload) (RRPayload, error) {
+func (act *ActivityPoolImpl) handleActivity(ctx context.Context, data roadrunner_temporal.RRPayload) (roadrunner_temporal.RRPayload, error) {
 	var err error
 	payload := roadrunner.Payload{}
 
@@ -146,7 +148,7 @@ func (act *ActivityPoolImpl) handleActivity(ctx context.Context, data RRPayload)
 	// todo: async
 	// todo: what results options do we have
 	// todo: make sure results are packed correctly
-	result := RRPayload{}
+	result := roadrunner_temporal.RRPayload{}
 	err = json.Unmarshal(res.Body, &result.Data)
 	if err != nil {
 		return EmptyRrResult, err
@@ -161,6 +163,6 @@ func (act *ActivityPoolImpl) Destroy(ctx context.Context) {
 		act.temporalWorkers[i].Stop()
 	}
 
-	// TODO add ctx.Done in RR
+	// TODO add ctx.Done in RR for timeouts
 	act.workerPool.Destroy(ctx)
 }

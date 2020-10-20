@@ -1,4 +1,4 @@
-package temporal
+package roadrunner_temporal
 
 import (
 	//"encoding/json"
