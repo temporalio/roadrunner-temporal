@@ -70,22 +70,6 @@ type Rpc struct {
 	client client.Client
 }
 
-func (p *Provider) Name() string {
-	return name
-}
-
-//func (t *T) MethodName(argType T1, replyType *T2) error
-func (p *Provider) RpcService() (interface{}, error) {
-	c, err := p.GetClient()
-	if err != nil {
-		return nil, err
-	}
-
-	return &Rpc{
-		client: c,
-	}, nil
-}
-
 // ExecuteWorkflow starts a workflow execution and return a WorkflowRun instance and error
 // The user can use this to start using a function or workflow type name.
 // Either by

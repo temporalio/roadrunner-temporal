@@ -81,3 +81,19 @@ func (p *Provider) CreateWorker(tq string, options worker.Options) (worker.Worke
 	w := worker.New(p.serviceClient, tq, options)
 	return w, nil
 }
+
+func (p *Provider) Name() string {
+	return name
+}
+
+//func (t *T) MethodName(argType T1, replyType *T2) error
+func (p *Provider) RpcService() (interface{}, error) {
+	c, err := p.GetClient()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Rpc{
+		client: c,
+	}, nil
+}
