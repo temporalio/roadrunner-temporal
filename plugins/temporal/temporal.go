@@ -61,9 +61,6 @@ func (p *Provider) Serve() chan error {
 		Namespace:     p.config.Namespace,
 		DataConverter: roadrunner_temporal.NewRRDataConverter(),
 	})
-
-	//p.Rpc.client = p.serviceClient
-
 	if err != nil {
 		errCh <- err
 	}
