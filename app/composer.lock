@@ -349,16 +349,16 @@
         },
         {
             "name": "spiral/roadrunner",
-            "version": "v1.8.3",
+            "version": "v1.8.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/spiral/roadrunner.git",
-                "reference": "0af502835616774a8b306596e4d1a8c5843b6bc8"
+                "reference": "561003b0b66a4f767782552a9282d824b08831be"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/spiral/roadrunner/zipball/0af502835616774a8b306596e4d1a8c5843b6bc8",
-                "reference": "0af502835616774a8b306596e4d1a8c5843b6bc8",
+                "url": "https://api.github.com/repos/spiral/roadrunner/zipball/561003b0b66a4f767782552a9282d824b08831be",
+                "reference": "561003b0b66a4f767782552a9282d824b08831be",
                 "shasum": ""
             },
             "require": {
@@ -398,7 +398,7 @@
                 }
             ],
             "description": "High-performance PHP application server, load-balancer and process manager written in Golang",
-            "time": "2020-09-02T08:52:38+00:00"
+            "time": "2020-10-21T11:03:49+00:00"
         },
         {
             "name": "symfony/console",
