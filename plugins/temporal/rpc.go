@@ -23,6 +23,7 @@ CountWorkflow(ctx context.Context, request *workflowservice.CountWorkflowExecuti
 etSearchAttributes(ctx context.Context) (*workflowservice.GetSearchAttributesResponse, error)
 QueryWorkflowWithOptions(ctx context.Context, request *QueryWorkflowWithOptionsRequest) (*QueryWorkflowWithOptionsResponse, error)
 DescribeTaskQueue(ctx context.Context, taskqueue string, taskqueueType enumspb.TaskQueueType) (*workflowservice.DescribeTaskQueueResponse, error)
+DescribeWorkflowExecution(ctx context.Context, workflowID, runID string) (*workflowservice.DescribeWorkflowExecutionResponse, error)
 */
 
 const name = "rpc"
@@ -452,22 +453,22 @@ func (r *Rpc) QueryWorkflow(in QueryWorkflowIn, out *payload.RRPayload) error {
 	return nil
 }
 
-type DescribeWorkflowExecutionIn struct {
-	WorkflowId    string `json:"wid"`
-	WorkflowRunId string `json:"rid"`
-}
-
-func (r *Rpc) DescribeWorkflowExecution(in DescribeWorkflowExecutionIn, ) error {
-	ctx := context.Background()
-	// TODO really big response, we should figure out, what do we exactly need here
-	resp, err := r.client.DescribeWorkflowExecution(ctx, in.WorkflowId, in.WorkflowRunId)
-	if err != nil {
-		return err
-	}
-
-	_ = resp
-	return nil
-}
+//type DescribeWorkflowExecutionIn struct {
+//	WorkflowId    string `json:"wid"`
+//	WorkflowRunId string `json:"rid"`
+//}
+//
+//func (r *Rpc) DescribeWorkflowExecution(in DescribeWorkflowExecutionIn, ) error {
+//	ctx := context.Background()
+//	// TODO really big response, we should figure out, what do we exactly need here
+//	resp, err := r.client.DescribeWorkflowExecution(ctx, in.WorkflowId, in.WorkflowRunId)
+//	if err != nil {
+//		return err
+//	}
+//
+//	_ = resp
+//	return nil
+//}
 
 // Close client and clean up underlying resources.
 func (r *Rpc) Close(_ EmptyStruct, out *EmptyStruct) error {
