@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/temporalio/roadrunner-temporal/plugins/activity_server"
+	"github.com/temporalio/roadrunner-temporal/plugins/activity"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 
 	"github.com/spiral/endure"
@@ -66,12 +66,6 @@ func main() {
 	err = cli.Container.Register(&activity_server.ActivityServer{})
 	if err != nil {
 		logger.Fatal("failed to register temporal activity server", zap.Error(err))
-		return
-	}
-
-	err = cli.Container.Register(&temporal.WorkflowServer{})
-	if err != nil {
-		logger.Fatal("failed to register temporal workflow server", zap.Error(err))
 		return
 	}
 

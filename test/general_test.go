@@ -49,6 +49,7 @@ func TestGeneral(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// todo add signal to stop
 
 	for {
 		select {
