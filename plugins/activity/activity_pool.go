@@ -1,12 +1,13 @@
-package temporal
+package activity_server
 
 import (
 	"context"
 	"encoding/json"
-	"sync"
 	"time"
 
 	"github.com/spiral/roadrunner/v2"
+	"github.com/temporalio/roadrunner-temporal"
+	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/worker"
 )
@@ -15,8 +16,16 @@ const (
 	initCmd = "{\"command\":\"GetActivityWorkers\"}"
 )
 
-// ActivityPool manages set of RR and Temporal activity workers and their cancellation contexts.
-type ActivityPool struct {
+var EmptyRrResult = roadrunner_temporal.RRPayload{}
+
+type ActivityPool interface {
+	InitTemporal(ctx context.Context, temporal temporal.Temporal) error
+	Start() error
+	Destroy(ctx context.Context)
+}
+
+// ActivityPoolImpl manages set of RR and Temporal activity workers and their cancellation contexts.
+type ActivityPoolImpl struct {
 	workerPool      roadrunner.Pool
 	temporalWorkers []worker.Worker
 }
@@ -63,8 +72,15 @@ type pipelineConfig struct {
 	Activities []string `json:"activities"`
 }
 
+// NewActivityPool
+func NewActivityPool(pool roadrunner.Pool) ActivityPool {
+	return &ActivityPoolImpl{
+		workerPool: pool,
+	}
+}
+
 // initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
-func (act *ActivityPool) InitTemporal(ctx context.Context, temporal Temporal) error {
+func (act *ActivityPoolImpl) InitTemporal(ctx context.Context, temporal temporal.Temporal) error {
 	result, err := act.workerPool.ExecWithContext(ctx, roadrunner.Payload{Body: []byte(initCmd), Context: nil})
 	if err != nil {
 		return err
@@ -100,54 +116,53 @@ func (act *ActivityPool) InitTemporal(ctx context.Context, temporal Temporal) er
 	return nil
 }
 
-func (act *ActivityPool) Start(errChan chan error) {
-	for _, w := range act.temporalWorkers {
-		if err := w.Start(); err != nil {
-			errChan <- err
+func (act *ActivityPoolImpl) Start() error {
+	for i := 0; i < len(act.temporalWorkers); i++ {
+		err := act.temporalWorkers[i].Start()
+		if err != nil {
+			return err
 		}
 	}
+	return nil
 }
 
-func (act *ActivityPool) handleActivity(ctx context.Context, data RRPayload) (result RRPayload, err error) {
+func (act *ActivityPoolImpl) handleActivity(ctx context.Context, data roadrunner_temporal.RRPayload) (roadrunner_temporal.RRPayload, error) {
+	var err error
 	payload := roadrunner.Payload{}
 
 	payload.Context, err = json.Marshal(activity.GetInfo(ctx))
 	if err != nil {
-		return RRPayload{}, err
+		return EmptyRrResult, err
 	}
 
 	payload.Body, err = json.Marshal(data.Data)
 	if err != nil {
-		return RRPayload{}, err
+		return EmptyRrResult, err
 	}
 
 	res, err := act.workerPool.ExecWithContext(ctx, payload)
 	if err != nil {
-		return RRPayload{}, err
+		return EmptyRrResult, err
 	}
 
 	// todo: async
-
 	// todo: what results options do we have
 	// todo: make sure results are packed correctly
-	if err := json.Unmarshal(res.Body, &result.Data); err != nil {
-		return RRPayload{}, err
+	result := roadrunner_temporal.RRPayload{}
+	err = json.Unmarshal(res.Body, &result.Data)
+	if err != nil {
+		return EmptyRrResult, err
 	}
 
-	return
+	return result, nil
 }
 
 // initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
-func (act *ActivityPool) Destroy(ctx context.Context) {
-	wg := sync.WaitGroup{}
-	for _, w := range act.temporalWorkers {
-		wg.Add(1)
-		go func(w worker.Worker) {
-			w.Stop()
-			wg.Done()
-		}(w)
+func (act *ActivityPoolImpl) Destroy(ctx context.Context) {
+	for i := 0; i < len(act.temporalWorkers); i++ {
+		act.temporalWorkers[i].Stop()
 	}
 
-	wg.Wait()
+	// TODO add ctx.Done in RR for timeouts
 	act.workerPool.Destroy(ctx)
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/spiral/endure"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	"github.com/spiral/roadrunner/v2/plugins/factory"
+	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 )
 
 func TestGeneral(t *testing.T) {
@@ -16,7 +17,7 @@ func TestGeneral(t *testing.T) {
 	}
 
 	conf := &config.ViperProvider{
-		Path:   ".",
+		Path:   ".rr.yaml",
 		Prefix: "rr",
 	}
 	err = cont.Register(conf)
@@ -34,6 +35,11 @@ func TestGeneral(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	err = cont.Register(&temporal.Provider{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	err = cont.Init()
 	if err != nil {
 		t.Fatal(err)
@@ -43,6 +49,7 @@ func TestGeneral(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// todo add signal to stop
 
 	for {
 		select {

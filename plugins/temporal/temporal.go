@@ -3,6 +3,7 @@ package temporal
 import (
 	"github.com/spiral/roadrunner/v2"
 	"github.com/spiral/roadrunner/v2/plugins/config"
+	"github.com/temporalio/roadrunner-temporal"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 )
@@ -17,19 +18,27 @@ type Config struct {
 
 type Temporal interface {
 	GetClient() (client.Client, error)
+	GetConfig() Config
 	CreateWorker(taskQueue string, options worker.Options) (worker.Worker, error)
 }
 
+// inherit roadrunner.rpc.Plugin interface
 type Provider struct {
 	configProvider config.Provider
-	config         Config
-	serviceClient  client.Client
+	// Temporal config from .rr.yaml
+	config Config
+	// Temporal connection
+	serviceClient client.Client
 }
 
 // logger dep also
 func (p *Provider) Init(provider config.Provider) error {
 	p.configProvider = provider
 	return nil
+}
+
+func (p *Provider) GetConfig() Config {
+	return p.config
 }
 
 func (p *Provider) Configure() error {
@@ -46,9 +55,8 @@ func (p *Provider) Serve() chan error {
 	p.serviceClient, err = client.NewClient(client.Options{
 		HostPort:      p.config.Address,
 		Namespace:     p.config.Namespace,
-		DataConverter: NewRRDataConverter(),
+		DataConverter: roadrunner_temporal.NewRRDataConverter(),
 	})
-
 	if err != nil {
 		errCh <- err
 	}
@@ -68,4 +76,20 @@ func (p *Provider) GetClient() (client.Client, error) {
 func (p *Provider) CreateWorker(tq string, options worker.Options) (worker.Worker, error) {
 	w := worker.New(p.serviceClient, tq, options)
 	return w, nil
+}
+
+func (p *Provider) Name() string {
+	return name
+}
+
+//func (t *T) MethodName(argType T1, replyType *T2) error
+func (p *Provider) RpcService() (interface{}, error) {
+	c, err := p.GetClient()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Rpc{
+		client: c,
+	}, nil
 }

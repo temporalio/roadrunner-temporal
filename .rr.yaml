@@ -1,4 +1,7 @@
 # Application configuration
+rpc:
+  listen: tcp://127.0.0.1:6001
+
 app:
   command: "php app/app.php"
   env:

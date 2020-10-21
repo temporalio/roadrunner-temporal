@@ -1,9 +1,14 @@
+# Application configuration
+rpc:
+  listen: tcp://127.0.0.1:6001
+
 app:
-  command: "php hello.php"
-  user: ""
-  group: ""
+  command: "php app/app.php"
   env:
-    "RR_CONFIG": "/some/place/on/the/C134"
-    "RR_CONFIG2": "C138"
-  relay: "pipes"
-  relayTimeout: "20s"
+    DEBUG: true
+
+# Workflow and activity mesh service
+temporal:
+  address: "localhost:7233"
+  activities:
+    numWorkers: 1
