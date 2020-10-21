@@ -97,7 +97,7 @@ type Rpc struct {
 // NOTE: DO NOT USE THIS API INSIDE A WORKFLOW, USE workflow.ExecuteChildWorkflow instead
 
 type ExecuteWorkflowIn struct {
-	Options client.StartWorkflowOptions `json:"options"`
+	Options StartWorkflowOptions `json:"options"`
 }
 
 type ExecuteWorkflowOut struct {
@@ -107,7 +107,13 @@ type ExecuteWorkflowOut struct {
 
 func (r *Rpc) ExecuteWorkflow(in ExecuteWorkflowIn, out *ExecuteWorkflowOut) error {
 	ctx := context.Background()
-	wr, err := r.client.ExecuteWorkflow(ctx, in.Options, nil, nil)
+	wr, err := r.client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
+		ID:                       in.Options.ID,
+		TaskQueue:                in.Options.TaskQueue,
+		WorkflowExecutionTimeout: in.Options.WorkflowExecutionTimeout,
+		WorkflowRunTimeout:       in.Options.WorkflowRunTimeout,
+		WorkflowTaskTimeout:      in.Options.WorkflowTaskTimeout,
+	}, nil, nil)
 	if err != nil {
 		return err
 	}
