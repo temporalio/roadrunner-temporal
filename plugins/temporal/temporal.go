@@ -1,7 +1,6 @@
 package temporal
 
 import (
-	"github.com/spiral/endure"
 	"github.com/spiral/roadrunner/v2"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	"github.com/temporalio/roadrunner-temporal"
@@ -23,11 +22,8 @@ type Temporal interface {
 	CreateWorker(taskQueue string, options worker.Options) (worker.Worker, error)
 }
 
+// inherit roadrunner.rpc.Plugin interface
 type Provider struct {
-	endure.Named
-	// Rpc implementation
-	Rpc
-	// config
 	configProvider config.Provider
 	// Temporal config from .rr.yaml
 	config Config
