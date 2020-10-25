@@ -1,13 +1,13 @@
 package main
 
 import (
+	"github.com/spiral/roadrunner/v2/plugins/factory"
 	"github.com/spiral/roadrunner/v2/plugins/rpc"
 	"github.com/temporalio/roadrunner-temporal/plugins/activity"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	"github.com/temporalio/roadrunner-temporal/plugins/workflow"
 	"log"
 
-	"github.com/spiral/roadrunner/v2/plugins/factory"
 	"github.com/temporalio/roadrunner-temporal/cmd/cli"
 )
 

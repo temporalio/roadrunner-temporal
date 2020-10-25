@@ -78,6 +78,7 @@ func (srv *Server) createSession(ctx context.Context) (*session, error) {
 
 	go func() {
 		err := worker.Wait(ctx)
+
 		log.Print(err)
 		// todo: recreate ss
 	}()
