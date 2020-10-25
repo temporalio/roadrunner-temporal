@@ -17,3 +17,5 @@
 # vendor/
 .idea
 app/vendor
+
+.rr.local.yaml

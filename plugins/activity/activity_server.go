@@ -7,12 +7,14 @@ import (
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 )
 
+const RrActivityMode = "temporal/activities"
+
 type ActivityServer struct {
 	temporal temporal.Temporal
 	wFactory factory.WorkerFactory
 
 	// currently active worker pool (can be replaced at runtime)
-	pool ActivityPool
+	pool *activityPool
 }
 
 // logger dep also
@@ -39,7 +41,7 @@ func (a *ActivityServer) Serve() chan error {
 }
 
 // non blocking function
-func (a *ActivityServer) initPool() (ActivityPool, error) {
+func (a *ActivityServer) initPool() (*activityPool, error) {
 	pool, err := a.createPool(context.Background())
 	if err != nil {
 		return nil, err
@@ -60,17 +62,17 @@ func (a *ActivityServer) Stop() error {
 	return nil
 }
 
-func (a *ActivityServer) createPool(ctx context.Context) (ActivityPool, error) {
+func (a *ActivityServer) createPool(ctx context.Context) (*activityPool, error) {
 	rrPool, err := a.wFactory.NewWorkerPool(
 		context.Background(),
 		a.temporal.GetConfig().Activities,
-		map[string]string{"RR_MODE": "temporal/activities"},
+		map[string]string{"RR_MODE": RrActivityMode},
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	pool := NewActivityPool(rrPool)
+	pool := newActivityPool(rrPool)
 	err = pool.InitTemporal(ctx, a.temporal)
 	if err != nil {
 		return nil, err
