@@ -8,7 +8,7 @@ import (
 	"go.temporal.io/sdk/worker"
 )
 
-const temporalSection = "temporal"
+const ServiceName = "temporal"
 
 type Config struct {
 	Address    string
@@ -25,10 +25,16 @@ type Temporal interface {
 // inherit roadrunner.rpc.Plugin interface
 type Provider struct {
 	configProvider config.Provider
+
 	// Temporal config from .rr.yaml
 	config Config
+
 	// Temporal connection
 	serviceClient client.Client
+}
+
+func (p *Provider) Name() string {
+	return ServiceName
 }
 
 // logger dep also
@@ -42,7 +48,7 @@ func (p *Provider) GetConfig() Config {
 }
 
 func (p *Provider) Configure() error {
-	return p.configProvider.UnmarshalKey(temporalSection, &p.config)
+	return p.configProvider.UnmarshalKey(ServiceName, &p.config)
 }
 
 func (p *Provider) Close() error {
@@ -52,6 +58,7 @@ func (p *Provider) Close() error {
 func (p *Provider) Serve() chan error {
 	errCh := make(chan error, 1)
 	var err error
+
 	p.serviceClient, err = client.NewClient(client.Options{
 		HostPort:      p.config.Address,
 		Namespace:     p.config.Namespace,
@@ -78,12 +85,7 @@ func (p *Provider) CreateWorker(tq string, options worker.Options) (worker.Worke
 	return w, nil
 }
 
-func (p *Provider) Name() string {
-	return name
-}
-
-//func (t *T) MethodName(argType T1, replyType *T2) error
-func (p *Provider) RpcService() (interface{}, error) {
+func (p *Provider) RPCService() (interface{}, error) {
 	c, err := p.GetClient()
 	if err != nil {
 		return nil, err

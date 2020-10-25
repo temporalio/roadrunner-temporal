@@ -26,8 +26,6 @@ DescribeTaskQueue(ctx context.Context, taskqueue string, taskqueueType enumspb.T
 DescribeWorkflowExecution(ctx context.Context, workflowID, runID string) (*workflowservice.DescribeWorkflowExecutionResponse, error)
 */
 
-const name = "rpc"
-
 type EmptyStruct struct{}
 
 type StartWorkflowOptions struct {

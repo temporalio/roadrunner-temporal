@@ -7,7 +7,7 @@ import (
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 )
 
-const RrActivityMode = "temporal/activities"
+const RRMode = "temporal/activities"
 
 type ActivityServer struct {
 	temporal temporal.Temporal
@@ -18,31 +18,31 @@ type ActivityServer struct {
 }
 
 // logger dep also
-func (a *ActivityServer) Init(temporal temporal.Temporal, wFactory factory.WorkerFactory) error {
-	a.temporal = temporal
-	a.wFactory = wFactory
+func (srv *ActivityServer) Init(temporal temporal.Temporal, wFactory factory.WorkerFactory) error {
+	srv.temporal = temporal
+	srv.wFactory = wFactory
 	return nil
 }
 
-func (a *ActivityServer) Serve() chan error {
+func (srv *ActivityServer) Serve() chan error {
 	errCh := make(chan error, 1)
-	if a.temporal.GetConfig().Activities != nil {
-		pool, err := a.initPool()
+	if srv.temporal.GetConfig().Activities != nil {
+		pool, err := srv.initPool()
 		if err != nil {
 			errCh <- err
 			return errCh
 		}
 
 		// set the pool after all initialization complete
-		a.pool = pool
+		srv.pool = pool
 	}
 
 	return errCh
 }
 
 // non blocking function
-func (a *ActivityServer) initPool() (*activityPool, error) {
-	pool, err := a.createPool(context.Background())
+func (srv *ActivityServer) initPool() (*activityPool, error) {
+	pool, err := srv.createPool(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -54,26 +54,27 @@ func (a *ActivityServer) initPool() (*activityPool, error) {
 	return pool, nil
 }
 
-func (a *ActivityServer) Stop() error {
-	if a.pool != nil {
-		a.pool.Destroy(context.Background())
+func (srv *ActivityServer) Stop() error {
+	if srv.pool != nil {
+		srv.pool.Destroy(context.Background())
 	}
 
 	return nil
 }
 
-func (a *ActivityServer) createPool(ctx context.Context) (*activityPool, error) {
-	rrPool, err := a.wFactory.NewWorkerPool(
+func (srv *ActivityServer) createPool(ctx context.Context) (*activityPool, error) {
+	rrPool, err := srv.wFactory.NewWorkerPool(
 		context.Background(),
-		a.temporal.GetConfig().Activities,
-		map[string]string{"RR_MODE": RrActivityMode},
+		srv.temporal.GetConfig().Activities,
+		map[string]string{"RR_MODE": RRMode},
 	)
+
 	if err != nil {
 		return nil, err
 	}
 
 	pool := newActivityPool(rrPool)
-	err = pool.InitTemporal(ctx, a.temporal)
+	err = pool.InitTemporal(ctx, srv.temporal)
 	if err != nil {
 		return nil, err
 	}
