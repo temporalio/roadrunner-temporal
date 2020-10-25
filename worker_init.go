@@ -91,12 +91,12 @@ func (opt WorkerOptions) ToNativeOptions() worker.Options {
 
 type Executor interface {
 	// ExecWithContext allow to set ExecTTL
-	ExecWithContext(ctx context.Context, rqs roadrunner.Payload) (roadrunner.Payload, error)
+	Exec(rqs roadrunner.Payload) (roadrunner.Payload, error)
 }
 
 // GetWorkerInfo fetches information from attached worker or worker pool.
 func GetWorkerInfo(ctx context.Context, e Executor) (WorkerInfo, error) {
-	result, err := e.ExecWithContext(ctx, WorkerInit)
+	result, err := e.Exec(WorkerInit)
 	if err != nil {
 		return WorkerInfo{}, err
 	}

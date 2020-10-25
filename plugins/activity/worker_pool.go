@@ -13,47 +13,47 @@ import (
 // todo: improve it to push directly into converter
 var EmptyRrResult = rrt.RRPayload{}
 
-// workerPool manages set of RR and Temporal activity workers and their cancellation contexts.
-type workerPool struct {
+// session manages set of RR and Temporal activity workers and their cancellation contexts.
+type session struct {
 	workerPool      roadrunner.Pool
 	temporalWorkers []worker.Worker
 }
 
-// newActivityPool
-func newActivityPool(pool roadrunner.Pool) *workerPool {
-	return &workerPool{
+// newSession
+func newSession(pool roadrunner.Pool) *session {
+	return &session{
 		workerPool: pool,
 	}
 }
 
-// initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
-func (wp *workerPool) InitPool(ctx context.Context, temporal temporal.Temporal) error {
-	info, err := rrt.GetWorkerInfo(ctx, wp.workerPool)
+// initWorkers request workers info from underlying PHP and configures temporal workers linked to the ss.
+func (ss *session) InitPool(ctx context.Context, temporal temporal.Temporal) error {
+	info, err := rrt.GetWorkerInfo(ctx, ss.workerPool)
 	if err != nil {
 		return err
 	}
 
-	wp.temporalWorkers = make([]worker.Worker, 0)
+	ss.temporalWorkers = make([]worker.Worker, 0)
 	for _, cfg := range info {
 		w, err := temporal.CreateWorker(cfg.TaskQueue, cfg.Options.ToNativeOptions())
 
 		if err != nil {
-			wp.Destroy(ctx)
+			ss.Destroy(ctx)
 			return err
 		}
 
-		wp.temporalWorkers = append(wp.temporalWorkers, w)
+		ss.temporalWorkers = append(ss.temporalWorkers, w)
 		for _, aCfg := range cfg.Activities {
-			w.RegisterActivityWithOptions(wp.handleActivity, activity.RegisterOptions{Name: aCfg.Name})
+			w.RegisterActivityWithOptions(ss.handleActivity, activity.RegisterOptions{Name: aCfg.Name})
 		}
 	}
 
 	return nil
 }
 
-func (wp *workerPool) Start() error {
-	for i := 0; i < len(wp.temporalWorkers); i++ {
-		err := wp.temporalWorkers[i].Start()
+func (ss *session) Start() error {
+	for i := 0; i < len(ss.temporalWorkers); i++ {
+		err := ss.temporalWorkers[i].Start()
 		if err != nil {
 			return err
 		}
@@ -61,19 +61,19 @@ func (wp *workerPool) Start() error {
 	return nil
 }
 
-// initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
-func (wp *workerPool) Destroy(ctx context.Context) {
-	for i := 0; i < len(wp.temporalWorkers); i++ {
-		wp.temporalWorkers[i].Stop()
+// initWorkers request workers info from underlying PHP and configures temporal workers linked to the ss.
+func (ss *session) Destroy(ctx context.Context) {
+	for i := 0; i < len(ss.temporalWorkers); i++ {
+		ss.temporalWorkers[i].Stop()
 	}
 
 	// TODO add ctx.Done in RR for timeouts
-	wp.workerPool.Destroy(ctx)
+	ss.workerPool.Destroy(ctx)
 }
 
 // todo: improve this method handling, introduce proper marshalling and faster decoding.
 // todo: wrap execution into command.
-func (wp *workerPool) handleActivity(ctx context.Context, data rrt.RRPayload) (rrt.RRPayload, error) {
+func (ss *session) handleActivity(ctx context.Context, data rrt.RRPayload) (rrt.RRPayload, error) {
 	var err error
 	payload := roadrunner.Payload{}
 
@@ -87,7 +87,7 @@ func (wp *workerPool) handleActivity(ctx context.Context, data rrt.RRPayload) (r
 		return EmptyRrResult, err
 	}
 
-	res, err := wp.workerPool.ExecWithContext(ctx, payload)
+	res, err := ss.workerPool.Exec(payload)
 	if err != nil {
 		return EmptyRrResult, err
 	}

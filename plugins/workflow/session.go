@@ -23,8 +23,6 @@ func newSession(worker roadrunner.WorkerBase) (*session, error) {
 		return nil, err
 	}
 
-	// todo: watch worker state and restart session or notify server and dead session
-
 	return &session{worker: syncWorker}, nil
 }
 
@@ -72,7 +70,7 @@ func (ss *session) Destroy(ctx context.Context) {
 		ss.temporalWorkers[i].Stop()
 	}
 
-	// todo: how to handle error?
+	// todo: pass via event callback
 	ss.worker.Stop(ctx)
 }
 

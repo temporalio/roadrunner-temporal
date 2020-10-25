@@ -2,6 +2,9 @@ package activity
 
 import (
 	"context"
+	"github.com/spiral/endure/errors"
+	"github.com/spiral/roadrunner/v2"
+	"log"
 
 	"github.com/spiral/roadrunner/v2/plugins/factory"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
@@ -11,47 +14,48 @@ const RRMode = "temporal/activities"
 
 type Server struct {
 	temporal temporal.Temporal
-	wFactory factory.WorkerFactory
-
-	// currently active worker pool (can be replaced at runtime)
-	pool *workerPool
+	app      factory.AppFactory
+	ss       *session
 }
 
 // logger dep also
-func (srv *Server) Init(temporal temporal.Temporal, wFactory factory.WorkerFactory) error {
+func (srv *Server) Init(temporal temporal.Temporal, app factory.AppFactory) error {
+	if temporal.GetConfig().Activities == nil {
+		// no need to serve activities
+		return errors.E(errors.Disabled)
+	}
+
 	srv.temporal = temporal
-	srv.wFactory = wFactory
+	srv.app = app
+
 	return nil
 }
 
 func (srv *Server) Serve() chan error {
 	errCh := make(chan error, 1)
-	if srv.temporal.GetConfig().Activities == nil {
-		return errCh
-	}
 
 	pool, err := srv.initPool()
 	if err != nil {
-		errCh <- err
+		errCh <- errors.E(errors.Op("init ss"), err)
 		return errCh
 	}
 
-	// set the pool after all initialization complete
-	srv.pool = pool
+	// set the ss after all initialization complete
+	srv.ss = pool
 
 	return errCh
 }
 
 func (srv *Server) Stop() error {
-	if srv.pool != nil {
-		srv.pool.Destroy(context.Background())
+	if srv.ss != nil {
+		srv.ss.Destroy(context.Background())
 	}
 
 	return nil
 }
 
 // non blocking function
-func (srv *Server) initPool() (*workerPool, error) {
+func (srv *Server) initPool() (*session, error) {
 	pool, err := srv.createPool(context.Background())
 	if err != nil {
 		return nil, err
@@ -65,25 +69,36 @@ func (srv *Server) initPool() (*workerPool, error) {
 	return pool, nil
 }
 
-func (srv *Server) createPool(ctx context.Context) (*workerPool, error) {
-	rrPool, err := srv.wFactory.NewWorkerPool(
+func (srv *Server) createPool(ctx context.Context) (*session, error) {
+	rrPool, err := srv.app.NewWorkerPool(
 		context.Background(),
-		srv.temporal.GetConfig().Activities,
+		*srv.temporal.GetConfig().Activities,
 		map[string]string{"RR_MODE": RRMode},
 	)
-
-	// todo: observe pool events and restart it
-	//rrPool.Events()
 
 	if err != nil {
 		return nil, err
 	}
 
-	pool := newActivityPool(rrPool)
+	// todo: observe ss events and restart it
+	rrPool.AddListener(func(event interface{}) {
+		if pe, ok := event.(roadrunner.PoolEvent); ok {
+			if pe.Event == roadrunner.EventPoolError {
+				srv.recreatePool()
+			}
+		}
+	})
+
+	pool := newSession(rrPool)
 	err = pool.InitPool(ctx, srv.temporal)
 	if err != nil {
 		return nil, err
 	}
 
 	return pool, nil
+}
+
+func (srv *Server) recreatePool() {
+	// todo: implement
+	log.Print("ss is dead")
 }

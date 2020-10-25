@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"github.com/spiral/roadrunner/v2/plugins/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"log"
@@ -69,6 +70,16 @@ func init() {
 			if err := os.Chdir(WorkDir); err != nil {
 				panic(err)
 			}
+		}
+
+		// todo: config is global, not only for serve
+		conf := &config.ViperProvider{}
+		conf.Path = CfgFile
+		conf.Prefix = "rr"
+
+		err := Container.Register(conf)
+		if err != nil {
+			panic(err)
 		}
 	})
 }

@@ -14,4 +14,5 @@ require (
 
 replace (
 	github.com/spiral/roadrunner/v2 v2.0.0-alpha13 => ./../roadrunner
+	github.com/spiral/endure v1.0.0-beta9 => ./../endure
 )

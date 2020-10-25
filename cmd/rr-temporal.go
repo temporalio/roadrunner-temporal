@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/spiral/roadrunner/v2/plugins/rpc"
 	"github.com/temporalio/roadrunner-temporal/plugins/activity"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	"github.com/temporalio/roadrunner-temporal/plugins/workflow"
@@ -14,7 +15,7 @@ func main() {
 	err := cli.InitApp(
 		// PHP application init.
 		&factory.App{},
-		&factory.WFactory{},
+		&rpc.Service{},
 
 		// Temporal extension.
 		&temporal.Server{},
