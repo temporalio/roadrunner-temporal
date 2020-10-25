@@ -108,8 +108,5 @@ func initLogger() *zap.Logger {
 		panic(err)
 	}
 
-	logger.Warn("hello")
-	logger.Named("temporal").Warn("test")
-
 	return logger
 }

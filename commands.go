@@ -6,7 +6,7 @@ import (
 )
 
 type Context struct {
-	TaskQueue string    `json:"taskQueue"`
+	TaskQueue string    `json:"TaskQueue"`
 	TickTime  time.Time `json:"tickTime"`
 	Replay    bool      `json:"replay"`
 }
@@ -19,6 +19,6 @@ type Frame struct {
 	Command string `json:"command,omitempty"`
 
 	Params json.RawMessage `json:"params,omitempty"`
-	Result json.RawMessage `json:"result"`
-	Error  json.RawMessage `json:"error"`
+	Result json.RawMessage `json:"result,omitempty"`
+	Error  string          `json:"error,omitempty"`
 }

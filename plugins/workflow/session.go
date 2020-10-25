@@ -62,6 +62,7 @@ func (ss *session) Start() error {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -78,6 +79,5 @@ func (ss *session) NewWorkflowDefinition() bindings.WorkflowDefinition {
 	return &workflowProxy{
 		seqID:  &ss.seqID,
 		worker: ss.worker,
-		// todo: data converter?
 	}
 }

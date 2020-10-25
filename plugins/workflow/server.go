@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"github.com/fatih/color"
 	"github.com/spiral/endure/errors"
 	"github.com/spiral/roadrunner/v2"
 	"github.com/spiral/roadrunner/v2/plugins/factory"
@@ -9,7 +10,7 @@ import (
 	"log"
 )
 
-const RRMode = "temporal/workflows"
+const RRMode = "temporal/workflow"
 
 type Server struct {
 	temporal temporal.Temporal
@@ -71,8 +72,9 @@ func (srv *Server) createSession(ctx context.Context) (*session, error) {
 	}
 
 	worker.AddListener(func(event interface{}) {
-		if event.(roadrunner.WorkerEvent).Event == roadrunner.EventWorkerError {
+		if event.(roadrunner.WorkerEvent).Event == roadrunner.EventWorkerLog {
 			// todo: recreate ss
+			log.Print(color.RedString(string(event.(roadrunner.WorkerEvent).Payload.([]byte))))
 		}
 	})
 
