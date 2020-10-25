@@ -11,3 +11,7 @@ require (
 	go.temporal.io/sdk v1.1.0
 	go.uber.org/zap v1.16.0
 )
+
+replace (
+	github.com/spiral/roadrunner/v2 v2.0.0-alpha13 => ./../roadrunner
+)

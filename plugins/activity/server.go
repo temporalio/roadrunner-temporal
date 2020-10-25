@@ -14,7 +14,7 @@ type Server struct {
 	wFactory factory.WorkerFactory
 
 	// currently active worker pool (can be replaced at runtime)
-	pool *activityPool
+	pool *workerPool
 }
 
 // logger dep also
@@ -26,32 +26,20 @@ func (srv *Server) Init(temporal temporal.Temporal, wFactory factory.WorkerFacto
 
 func (srv *Server) Serve() chan error {
 	errCh := make(chan error, 1)
-	if srv.temporal.GetConfig().Activities != nil {
-		pool, err := srv.initPool()
-		if err != nil {
-			errCh <- err
-			return errCh
-		}
-
-		// set the pool after all initialization complete
-		srv.pool = pool
+	if srv.temporal.GetConfig().Activities == nil {
+		return errCh
 	}
+
+	pool, err := srv.initPool()
+	if err != nil {
+		errCh <- err
+		return errCh
+	}
+
+	// set the pool after all initialization complete
+	srv.pool = pool
 
 	return errCh
-}
-
-// non blocking function
-func (srv *Server) initPool() (*activityPool, error) {
-	pool, err := srv.createPool(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	err = pool.Start()
-	if err != nil {
-		return nil, err
-	}
-	return pool, nil
 }
 
 func (srv *Server) Stop() error {
@@ -62,12 +50,30 @@ func (srv *Server) Stop() error {
 	return nil
 }
 
-func (srv *Server) createPool(ctx context.Context) (*activityPool, error) {
+// non blocking function
+func (srv *Server) initPool() (*workerPool, error) {
+	pool, err := srv.createPool(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	err = pool.Start()
+	if err != nil {
+		return nil, err
+	}
+
+	return pool, nil
+}
+
+func (srv *Server) createPool(ctx context.Context) (*workerPool, error) {
 	rrPool, err := srv.wFactory.NewWorkerPool(
 		context.Background(),
 		srv.temporal.GetConfig().Activities,
 		map[string]string{"RR_MODE": RRMode},
 	)
+
+	// todo: observe pool events and restart it
+	//rrPool.Events()
 
 	if err != nil {
 		return nil, err

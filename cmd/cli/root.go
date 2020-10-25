@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"log"
 	"os"
 	"path/filepath"
@@ -12,6 +14,7 @@ import (
 var (
 	CfgFile, WorkDir string
 	Container        endure.Container
+	Logger           *zap.Logger
 	rootCmd          = &cobra.Command{
 		Use:           "rr",
 		SilenceErrors: true,
@@ -21,7 +24,7 @@ var (
 
 // InitApp with a list of provided services.
 func InitApp(service ...interface{}) (err error) {
-	Container, err = endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(false))
+	Container, err = endure.NewContainer(endure.FatalLevel, endure.RetryOnFail(false))
 	if err != nil {
 		return err
 	}
@@ -47,6 +50,9 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&CfgFile, "config", "c", ".rr.yaml", "config file (default is .rr.yaml)")
 	rootCmd.PersistentFlags().StringVarP(&WorkDir, "WorkDir", "w", "", "work directory")
 
+	// todo: properly handle debug level
+	Logger = initLogger()
+
 	cobra.OnInitialize(func() {
 		if CfgFile != "" {
 			if absPath, err := filepath.Abs(CfgFile); err == nil {
@@ -65,4 +71,30 @@ func init() {
 			}
 		}
 	})
+}
+
+func initLogger() *zap.Logger {
+	cfg := zap.Config{
+		Level:    zap.NewAtomicLevelAt(zap.DebugLevel),
+		Encoding: "console",
+		EncoderConfig: zapcore.EncoderConfig{
+			MessageKey:    "message",
+			LevelKey:      "level",
+			TimeKey:       "time",
+			CallerKey:     "caller",
+			StacktraceKey: "stack",
+			EncodeLevel:   zapcore.CapitalLevelEncoder,
+			EncodeTime:    zapcore.ISO8601TimeEncoder,
+			EncodeCaller:  zapcore.ShortCallerEncoder,
+		},
+		OutputPaths:      []string{"stderr"},
+		ErrorOutputPaths: []string{"stderr"},
+	}
+
+	logger, err := cfg.Build(zap.AddCaller())
+	if err != nil {
+		panic(err)
+	}
+
+	return logger
 }

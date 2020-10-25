@@ -12,8 +12,11 @@ import (
 
 func main() {
 	err := cli.InitApp(
+		// PHP application init.
 		&factory.App{},
 		&factory.WFactory{},
+
+		// Temporal extension.
 		&temporal.Server{},
 		&activity.Server{},
 		&workflow.Server{},

@@ -17,5 +17,6 @@ type Config struct {
 type Temporal interface {
 	GetClient() (client.Client, error)
 	GetConfig() Config
+	// todo: get data converter
 	CreateWorker(taskQueue string, options worker.Options) (worker.Worker, error)
 }

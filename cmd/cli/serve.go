@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"fmt"
+	"go.uber.org/zap"
 	"os"
 	"os/signal"
 	"syscall"
@@ -23,6 +23,8 @@ func handler(cmd *cobra.Command, args []string) error {
 		We need to have path to the config at the Register stage
 		But after cobra.Execute, because cobra fills up cli variables on this stage
 	*/
+
+	// todo: config is global, not only for serve
 	conf := &config.ViperProvider{}
 	conf.Path = CfgFile
 	conf.Prefix = "rr"
@@ -50,8 +52,11 @@ func handler(cmd *cobra.Command, args []string) error {
 	for {
 		select {
 		case e := <-errCh:
-			fmt.Println(e.Error)
-			fmt.Println(e.VertexID)
+			Logger.Fatal(
+				e.Error.Err.Error(),
+				zap.String("vertex", e.VertexID),
+			)
+
 		case <-c:
 			err = Container.Stop()
 			if err != nil {

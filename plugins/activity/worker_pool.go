@@ -13,62 +13,67 @@ import (
 // todo: improve it to push directly into converter
 var EmptyRrResult = rrt.RRPayload{}
 
-// activityPool manages set of RR and Temporal activity workers and their cancellation contexts.
-type activityPool struct {
+// workerPool manages set of RR and Temporal activity workers and their cancellation contexts.
+type workerPool struct {
 	workerPool      roadrunner.Pool
 	temporalWorkers []worker.Worker
 }
 
 // newActivityPool
-func newActivityPool(pool roadrunner.Pool) *activityPool {
-	return &activityPool{
+func newActivityPool(pool roadrunner.Pool) *workerPool {
+	return &workerPool{
 		workerPool: pool,
 	}
 }
 
 // initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
-func (act *activityPool) InitPool(ctx context.Context, temporal temporal.Temporal) error {
-	result, err := act.workerPool.ExecWithContext(ctx, rrt.WorkerInit)
+func (wp *workerPool) InitPool(ctx context.Context, temporal temporal.Temporal) error {
+	info, err := rrt.GetWorkerInfo(ctx, wp.workerPool)
 	if err != nil {
 		return err
 	}
 
-	var info rrt.WorkerInfo
-	if err := json.Unmarshal(result.Body, &info); err != nil {
-		return err
-	}
-
-	act.temporalWorkers = make([]worker.Worker, 0)
+	wp.temporalWorkers = make([]worker.Worker, 0)
 	for _, cfg := range info {
-		w, err := temporal.CreateWorker(cfg.TaskQueue, cfg.Options.ToTemporalOptions())
+		w, err := temporal.CreateWorker(cfg.TaskQueue, cfg.Options.ToNativeOptions())
 
 		if err != nil {
-			act.Destroy(ctx)
+			wp.Destroy(ctx)
 			return err
 		}
 
-		act.temporalWorkers = append(act.temporalWorkers, w)
+		wp.temporalWorkers = append(wp.temporalWorkers, w)
 		for _, aCfg := range cfg.Activities {
-			w.RegisterActivityWithOptions(act.handleActivity, activity.RegisterOptions{Name: aCfg.Name})
+			w.RegisterActivityWithOptions(wp.handleActivity, activity.RegisterOptions{Name: aCfg.Name})
 		}
 	}
 
 	return nil
 }
 
-func (act *activityPool) Start() error {
-	for i := 0; i < len(act.temporalWorkers); i++ {
-		err := act.temporalWorkers[i].Start()
+func (wp *workerPool) Start() error {
+	for i := 0; i < len(wp.temporalWorkers); i++ {
+		err := wp.temporalWorkers[i].Start()
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
+func (wp *workerPool) Destroy(ctx context.Context) {
+	for i := 0; i < len(wp.temporalWorkers); i++ {
+		wp.temporalWorkers[i].Stop()
+	}
+
+	// TODO add ctx.Done in RR for timeouts
+	wp.workerPool.Destroy(ctx)
 }
 
 // todo: improve this method handling, introduce proper marshalling and faster decoding.
 // todo: wrap execution into command.
-func (act *activityPool) handleActivity(ctx context.Context, data rrt.RRPayload) (rrt.RRPayload, error) {
+func (wp *workerPool) handleActivity(ctx context.Context, data rrt.RRPayload) (rrt.RRPayload, error) {
 	var err error
 	payload := roadrunner.Payload{}
 
@@ -82,7 +87,7 @@ func (act *activityPool) handleActivity(ctx context.Context, data rrt.RRPayload)
 		return EmptyRrResult, err
 	}
 
-	res, err := act.workerPool.ExecWithContext(ctx, payload)
+	res, err := wp.workerPool.ExecWithContext(ctx, payload)
 	if err != nil {
 		return EmptyRrResult, err
 	}
@@ -97,14 +102,4 @@ func (act *activityPool) handleActivity(ctx context.Context, data rrt.RRPayload)
 	}
 
 	return result, nil
-}
-
-// initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
-func (act *activityPool) Destroy(ctx context.Context) {
-	for i := 0; i < len(act.temporalWorkers); i++ {
-		act.temporalWorkers[i].Stop()
-	}
-
-	// TODO add ctx.Done in RR for timeouts
-	act.workerPool.Destroy(ctx)
 }

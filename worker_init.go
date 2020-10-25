@@ -1,6 +1,8 @@
 package roadrunner_temporal
 
 import (
+	"context"
+	"encoding/json"
 	"github.com/spiral/roadrunner/v2"
 	"go.temporal.io/sdk/worker"
 	"time"
@@ -75,8 +77,8 @@ type WorkerOptions struct {
 	WorkerStopTimeout time.Duration `json:"workerStopTimeout"`
 }
 
-// ToTemporalOptions converts options to the temporal worker options.
-func (opt WorkerOptions) ToTemporalOptions() worker.Options {
+// ToNativeOptions converts options to the temporal worker options.
+func (opt WorkerOptions) ToNativeOptions() worker.Options {
 	// todo: map remaining options
 	return worker.Options{
 		MaxConcurrentActivityExecutionSize:      opt.MaxConcurrentActivityExecutionSize,
@@ -85,4 +87,24 @@ func (opt WorkerOptions) ToTemporalOptions() worker.Options {
 		TaskQueueActivitiesPerSecond:            opt.TaskQueueActivitiesPerSecond,
 		MaxConcurrentActivityTaskPollers:        opt.MaxConcurrentActivityTaskPollers,
 	}
+}
+
+type Executor interface {
+	// ExecWithContext allow to set ExecTTL
+	ExecWithContext(ctx context.Context, rqs roadrunner.Payload) (roadrunner.Payload, error)
+}
+
+// GetWorkerInfo fetches information from attached worker or worker pool.
+func GetWorkerInfo(ctx context.Context, e Executor) (WorkerInfo, error) {
+	result, err := e.ExecWithContext(ctx, WorkerInit)
+	if err != nil {
+		return WorkerInfo{}, err
+	}
+
+	var info WorkerInfo
+	if err := json.Unmarshal(result.Body, &info); err != nil {
+		return WorkerInfo{}, err
+	}
+
+	return info, nil
 }
