@@ -1,4 +1,4 @@
-package activity_server
+package activity
 
 import (
 	"context"
@@ -27,7 +27,7 @@ func newActivityPool(pool roadrunner.Pool) *activityPool {
 }
 
 // initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
-func (act *activityPool) InitTemporal(ctx context.Context, temporal temporal.Temporal) error {
+func (act *activityPool) InitPool(ctx context.Context, temporal temporal.Temporal) error {
 	result, err := act.workerPool.ExecWithContext(ctx, rrt.WorkerInit)
 	if err != nil {
 		return err

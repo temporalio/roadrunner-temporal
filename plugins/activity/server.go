@@ -1,4 +1,4 @@
-package activity_server
+package activity
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 
 const RRMode = "temporal/activities"
 
-type ActivityServer struct {
+type Server struct {
 	temporal temporal.Temporal
 	wFactory factory.WorkerFactory
 
@@ -18,13 +18,13 @@ type ActivityServer struct {
 }
 
 // logger dep also
-func (srv *ActivityServer) Init(temporal temporal.Temporal, wFactory factory.WorkerFactory) error {
+func (srv *Server) Init(temporal temporal.Temporal, wFactory factory.WorkerFactory) error {
 	srv.temporal = temporal
 	srv.wFactory = wFactory
 	return nil
 }
 
-func (srv *ActivityServer) Serve() chan error {
+func (srv *Server) Serve() chan error {
 	errCh := make(chan error, 1)
 	if srv.temporal.GetConfig().Activities != nil {
 		pool, err := srv.initPool()
@@ -41,7 +41,7 @@ func (srv *ActivityServer) Serve() chan error {
 }
 
 // non blocking function
-func (srv *ActivityServer) initPool() (*activityPool, error) {
+func (srv *Server) initPool() (*activityPool, error) {
 	pool, err := srv.createPool(context.Background())
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (srv *ActivityServer) initPool() (*activityPool, error) {
 	return pool, nil
 }
 
-func (srv *ActivityServer) Stop() error {
+func (srv *Server) Stop() error {
 	if srv.pool != nil {
 		srv.pool.Destroy(context.Background())
 	}
@@ -62,7 +62,7 @@ func (srv *ActivityServer) Stop() error {
 	return nil
 }
 
-func (srv *ActivityServer) createPool(ctx context.Context) (*activityPool, error) {
+func (srv *Server) createPool(ctx context.Context) (*activityPool, error) {
 	rrPool, err := srv.wFactory.NewWorkerPool(
 		context.Background(),
 		srv.temporal.GetConfig().Activities,
@@ -74,7 +74,7 @@ func (srv *ActivityServer) createPool(ctx context.Context) (*activityPool, error
 	}
 
 	pool := newActivityPool(rrPool)
-	err = pool.InitTemporal(ctx, srv.temporal)
+	err = pool.InitPool(ctx, srv.temporal)
 	if err != nil {
 		return nil, err
 	}

@@ -7,7 +7,7 @@ import (
 
 const RRMode = "temporal/workflows"
 
-type WorkflowServer struct {
+type Server struct {
 	temporal temporal.Temporal
 	wFactory factory.WorkerFactory
 
@@ -16,7 +16,7 @@ type WorkflowServer struct {
 }
 
 // logger dep also
-func (s *WorkflowServer) Init(temporal temporal.Temporal, wFactory factory.WorkerFactory) error {
+func (s *Server) Init(temporal temporal.Temporal, wFactory factory.WorkerFactory) error {
 	s.temporal = temporal
 	s.wFactory = wFactory
 	return nil

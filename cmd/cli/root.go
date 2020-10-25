@@ -19,6 +19,23 @@ var (
 	}
 )
 
+// InitApp with a list of provided services.
+func InitApp(service ...interface{}) (err error) {
+	Container, err = endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(false))
+	if err != nil {
+		return err
+	}
+
+	for _, svc := range service {
+		err = Container.Register(svc)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		// exit with error, fatal invoke os.Exit(1)
