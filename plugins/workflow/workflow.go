@@ -1,16 +1,19 @@
 package workflow
 
 import (
+	"encoding/json"
 	"github.com/spiral/roadrunner/v2"
+	rrt "github.com/temporalio/roadrunner-temporal"
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
 )
 
 type workflowProxy struct {
 	seqID     *uint64
+	taskQueue string
 	worker    roadrunner.SyncWorker
-	queue     []interface{}
 	env       bindings.WorkflowEnvironment
+	queue     []interface{}
 	callbacks []func()
 }
 
@@ -179,4 +182,35 @@ func (wp *workflowProxy) startWorkflow(input *commonpb.Payloads) {
 	//wp.server.mu.Unlock()
 	//
 	//wp.queue = append(wp.queue, swf)
+}
+
+// Exchange commands with worker.
+func (wp *workflowProxy) execute(cmd ...rrt.Frame) (result []rrt.Frame, err error) {
+	ctx := rrt.Context{
+		TaskQueue: wp.taskQueue,
+		Replay:    wp.env.IsReplaying(),
+		TickTime:  wp.env.Now(),
+	}
+
+	p := roadrunner.Payload{}
+	if p.Context, err = json.Marshal(ctx); err != nil {
+		return nil, err
+	}
+
+	p.Body, err = json.Marshal(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	rsp, err := wp.worker.Exec(p)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(rsp.Body, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

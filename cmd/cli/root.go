@@ -93,6 +93,7 @@ func initLogger() *zap.Logger {
 			LevelKey:      "level",
 			TimeKey:       "time",
 			CallerKey:     "caller",
+			NameKey:       "name",
 			StacktraceKey: "stack",
 			EncodeLevel:   zapcore.CapitalLevelEncoder,
 			EncodeTime:    zapcore.ISO8601TimeEncoder,
@@ -106,6 +107,9 @@ func initLogger() *zap.Logger {
 	if err != nil {
 		panic(err)
 	}
+
+	logger.Warn("hello")
+	logger.Named("temporal").Warn("test")
 
 	return logger
 }

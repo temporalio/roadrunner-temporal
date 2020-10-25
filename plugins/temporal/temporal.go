@@ -48,8 +48,9 @@ func (p *Server) Serve() chan error {
 	p.client, err = client.NewClient(client.Options{
 		HostPort:      p.config.Address,
 		Namespace:     p.config.Namespace,
-		DataConverter: rrt.NewRRDataConverter(),
+		DataConverter: rrt.NewDataConverter(),
 	})
+
 	if err != nil {
 		errCh <- err
 	}

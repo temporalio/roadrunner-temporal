@@ -17,7 +17,7 @@ type RRPayload struct {
 	Data []interface{} `json:"data"`
 }
 
-func NewRRDataConverter() converter.DataConverter {
+func NewDataConverter() converter.DataConverter {
 	return &DataConverter{}
 }
 
