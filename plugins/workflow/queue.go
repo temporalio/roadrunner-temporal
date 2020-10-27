@@ -36,10 +36,8 @@ func (mq *messageQueue) pushCommand(cmd string, params interface{}) (id uint64, 
 	return id, nil
 }
 
-func (mq *messageQueue) pushResult(id uint64, result []json.RawMessage) error {
+func (mq *messageQueue) pushResult(id uint64, result []json.RawMessage) {
 	mq.queue = append(mq.queue, rrt.Message{ID: id, Result: result})
-
-	return nil
 }
 
 func (mq *messageQueue) pushError(id uint64, err error) {

@@ -6,7 +6,7 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/json-iterator/go v1.1.10
 	github.com/spf13/cobra v1.1.0
-	github.com/spiral/endure v1.0.0-beta9
+	github.com/spiral/endure v1.0.0-beta10
 	github.com/spiral/roadrunner/v2 v2.0.0-alpha13
 	go.temporal.io/api v1.0.0
 	go.temporal.io/sdk v1.1.0
@@ -14,6 +14,5 @@ require (
 )
 
 replace (
-	github.com/spiral/endure v1.0.0-beta9 => ./../endure
 	github.com/spiral/roadrunner/v2 v2.0.0-alpha13 => ./../roadrunner
 )

@@ -45,7 +45,7 @@ type Message struct {
 	Result []json.RawMessage `json:"result,omitempty"`
 
 	// Error associated with command id.
-	Error string `json:"error,omitempty"`
+	Error interface{} `json:"error,omitempty"`
 }
 
 // String converts message into string.
@@ -60,6 +60,10 @@ func (msg Message) String() string {
 
 // Exchange commands with worker.
 func Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
+	if len(msg) == 0 {
+		return nil, nil
+	}
+
 	var (
 		result = make([]Message, 0, 5)
 		err    error
@@ -81,10 +85,15 @@ func Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 		return nil, errors.E(errors.Op("encodePayload"), err)
 	}
 
+	// todo: debug flag?
+	//log.Print("send: ", color.GreenString(string(p.Body)))
+
 	out, err := e.Exec(p)
 	if err != nil {
 		return nil, errors.E(errors.Op("execute"), err)
 	}
+
+	//log.Print("got: ", color.HiCyanString(string(out.Body)))
 
 	err = json.Unmarshal(out.Body, &result)
 	if err != nil {
