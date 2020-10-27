@@ -6,6 +6,7 @@ import (
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
 	"go.uber.org/zap"
 )
@@ -27,6 +28,7 @@ type Temporal interface {
 // inherit roadrunner.rpc.Plugin interface
 type Server struct {
 	cfg    Config
+	dc     converter.DataConverter
 	log    *zap.Logger
 	client client.Client
 }
@@ -34,6 +36,7 @@ type Server struct {
 // logger dep also
 func (srv *Server) Init(cfg config.Provider, log *zap.Logger) error {
 	srv.log = log
+	srv.dc = rrt.NewDataConverter()
 	return cfg.UnmarshalKey(ServiceName, &srv.cfg)
 }
 
@@ -42,7 +45,7 @@ func (srv *Server) GetConfig() Config {
 	return srv.cfg
 }
 
-// Serve starts temporal client.
+// Serve starts temporal srv.
 func (srv *Server) Serve() chan error {
 	errCh := make(chan error, 1)
 	var err error
@@ -51,19 +54,19 @@ func (srv *Server) Serve() chan error {
 		Logger:        &ZapAdapter{zl: srv.log},
 		HostPort:      srv.cfg.Address,
 		Namespace:     srv.cfg.Namespace,
-		DataConverter: rrt.NewDataConverter(),
+		DataConverter: srv.dc,
 	})
 
 	srv.log.Debug("Connected to temporal server", zap.String("Server", srv.cfg.Address))
 
 	if err != nil {
-		errCh <- errors.E(errors.Op("client connect"), err)
+		errCh <- errors.E(errors.Op("srv connect"), err)
 	}
 
 	return errCh
 }
 
-// Stop stops temporal client connection.
+// Stop stops temporal srv connection.
 func (srv *Server) Stop() error {
 	if srv.client != nil {
 		srv.client.Close()
@@ -72,7 +75,7 @@ func (srv *Server) Stop() error {
 	return nil
 }
 
-// GetClient returns active client connection.
+// GetClient returns active srv connection.
 func (srv *Server) GetClient() (client.Client, error) {
 	return srv.client, nil
 }
@@ -80,7 +83,7 @@ func (srv *Server) GetClient() (client.Client, error) {
 // CreateWorker allocates new temporal worker on an active connection.
 func (srv *Server) CreateWorker(tq string, options worker.Options) (worker.Worker, error) {
 	if srv.client == nil {
-		return nil, errors.E("unable to create worker, invalid temporal client")
+		return nil, errors.E("unable to create worker, invalid temporal srv")
 	}
 
 	return worker.New(srv.client, tq, options), nil
@@ -93,10 +96,5 @@ func (srv *Server) Name() string {
 
 // RPCService returns associated rpc service.
 func (srv *Server) RPCService() (interface{}, error) {
-	c, err := srv.GetClient()
-	if err != nil {
-		return nil, err
-	}
-
-	return &rpc{client: c}, nil
+	return &rpc{srv: srv}, nil
 }

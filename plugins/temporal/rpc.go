@@ -31,31 +31,31 @@ type EmptyStruct struct{}
 type StartWorkflowOptions struct {
 	// ID - The business identifier of the workflow execution.
 	// Optional: defaulted to a uuid.
-	ID string `json:"wid,omitempty"`
+	ID string `json:"id,omitempty"`
 
 	// TaskQueue - The workflow tasks of the workflow are scheduled on the queue with this name.
 	// This is also the name of the activity task queue on which activities are scheduled.
 	// The workflow author can choose to override this using activity options.
 	// Mandatory: No default.
-	TaskQueue string `json:"task_queue"`
+	TaskQueue string `json:"taskQueue"`
 
 	// WorkflowExecutionTimeout - The timeout for duration of workflow execution.
 	// It includes retries and continue as new. Use WorkflowRunTimeout to limit execution time
 	// of a single workflow run.
 	// The resolution is seconds.
 	// Optional: defaulted to 10 years.
-	WorkflowExecutionTimeout time.Duration `json:"workflow_execution_timeout"`
+	//WorkflowExecutionTimeout time.Duration `json:"workflowExecutionTimeout"`
 
 	// WorkflowRunTimeout - The timeout for duration of a single workflow run.
 	// The resolution is seconds.
 	// Optional: defaulted to WorkflowExecutionTimeout.
-	WorkflowRunTimeout time.Duration `json:"workflow_run_timeout"`
+	//WorkflowRunTimeout time.Duration `json:"workflowRunTimeout"`
 
 	// WorkflowTaskTimeout - The timeout for processing workflow task from the time the worker
 	// pulled this task. If a workflow task is lost, it is retried after this timeout.
 	// The resolution is seconds.
 	// Optional: defaulted to 10 secs.
-	WorkflowTaskTimeout time.Duration `json:"workflow_task_timeout"`
+	//WorkflowTaskTimeout time.Duration `json:"workflowTaskTimeout"`
 }
 
 /*
@@ -66,7 +66,7 @@ type StartWorkflowOptions struct {
 - the method has return type error.
 */
 type rpc struct {
-	client client.Client
+	srv *Server
 }
 
 // ExecuteWorkflow starts a workflow execution and return a WorkflowRun instance and error
@@ -95,28 +95,33 @@ type rpc struct {
 // NOTE: DO NOT USE THIS API INSIDE A WORKFLOW, USE workflow.ExecuteChildWorkflow instead
 
 type ExecuteWorkflowIn struct {
+	Name    string               `json:"name"`
+	Input   []interface{}        `json:"input"`
 	Options StartWorkflowOptions `json:"options"`
 }
 
 type ExecuteWorkflowOut struct {
-	WorkflowId    string `json:"wid"`
-	WorkflowRunId string `json:"rid"`
+	WorkflowId    string `json:"id"`
+	WorkflowRunId string `json:"runId"`
 }
 
 func (r *rpc) ExecuteWorkflow(in ExecuteWorkflowIn, out *ExecuteWorkflowOut) error {
 	ctx := context.Background()
-	wr, err := r.client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
+
+	wr, err := r.srv.client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
 		ID:                       in.Options.ID,
 		TaskQueue:                in.Options.TaskQueue,
-		WorkflowExecutionTimeout: in.Options.WorkflowExecutionTimeout,
-		WorkflowRunTimeout:       in.Options.WorkflowRunTimeout,
-		WorkflowTaskTimeout:      in.Options.WorkflowTaskTimeout,
-	}, nil, nil)
+		WorkflowExecutionTimeout: time.Minute, //in.Options.WorkflowExecutionTimeout,
+		WorkflowRunTimeout:       time.Minute, //in.Options.WorkflowRunTimeout,
+		WorkflowTaskTimeout:      time.Minute, //in.Options.WorkflowTaskTimeout,
+	}, in.Name, in.Input...)
 	if err != nil {
 		return err
 	}
+
 	out.WorkflowId = wr.GetID()
 	out.WorkflowRunId = wr.GetRunID()
+
 	return nil
 }
 
@@ -148,7 +153,7 @@ type GetWorkflowResult struct {
 // GetRunID() will always return "run ID 1" and  Get(ctx context.Context, valuePtr interface{}) will return the result of second run.
 func (r *rpc) GetWorkflow(in GetWorkflowIn, out *GetWorkflowResult) error {
 	ctx := context.Background()
-	wr := r.client.GetWorkflow(ctx, in.WorkflowId, in.WorkflowRunId)
+	wr := r.srv.client.GetWorkflow(ctx, in.WorkflowId, in.WorkflowRunId)
 
 	(*out).WorkflowRunId = wr.GetRunID()
 	(*out).WorkflowId = wr.GetID()
@@ -171,7 +176,7 @@ type SignalWorkflowIn struct {
 //	- InternalServiceError
 func (r *rpc) SignalWorkflow(in SignalWorkflowIn, _ *EmptyStruct) error {
 	ctx := context.Background()
-	err := r.client.SignalWorkflow(ctx, in.WorkflowId, in.WorkflowRunId, in.SignalName, in.Args)
+	err := r.srv.client.SignalWorkflow(ctx, in.WorkflowId, in.WorkflowRunId, in.SignalName, in.Args)
 	if err != nil {
 		return err
 	}
@@ -203,12 +208,12 @@ type SignalWithStartOut struct {
 //	- InternalServiceError
 func (r *rpc) SignalWithStartWorkflow(in SignalWithStartIn, out *SignalWithStartOut) error {
 	ctx := context.Background()
-	wr, err := r.client.SignalWithStartWorkflow(ctx, in.WorkflowId, in.SignalName, in.SignalArg, client.StartWorkflowOptions{
+	wr, err := r.srv.client.SignalWithStartWorkflow(ctx, in.WorkflowId, in.SignalName, in.SignalArg, client.StartWorkflowOptions{
 		ID:                       in.Options.ID,
 		TaskQueue:                in.Options.TaskQueue,
-		WorkflowExecutionTimeout: in.Options.WorkflowExecutionTimeout,
-		WorkflowRunTimeout:       in.Options.WorkflowRunTimeout,
-		WorkflowTaskTimeout:      in.Options.WorkflowTaskTimeout,
+		WorkflowExecutionTimeout: time.Minute, //in.Options.WorkflowExecutionTimeout,
+		WorkflowRunTimeout:       time.Minute, //in.Options.WorkflowRunTimeout,
+		WorkflowTaskTimeout:      time.Minute, //in.Options.WorkflowTaskTimeout,
 	}, in.WorkflowInterface, in.Args...)
 	if err != nil {
 		return err
@@ -234,7 +239,7 @@ type CancelWorkflowIn struct {
 //	- InternalServiceError
 func (r *rpc) CancelWorkflow(in CancelWorkflowIn, _ *EmptyStruct) error {
 	ctx := context.Background()
-	err := r.client.CancelWorkflow(ctx, in.WorkflowId, in.WorkflowRunId)
+	err := r.srv.client.CancelWorkflow(ctx, in.WorkflowId, in.WorkflowRunId)
 	if err != nil {
 		return err
 	}
@@ -260,7 +265,7 @@ type TerminateWorkflowIn struct {
 
 func (r *rpc) TerminateWorkflow(in TerminateWorkflowIn, _ *EmptyStruct) error {
 	ctx := context.Background()
-	err := r.client.TerminateWorkflow(ctx, in.WorkflowId, in.WorkflowRunId, in.Reason, in.Details...)
+	err := r.srv.client.TerminateWorkflow(ctx, in.WorkflowId, in.WorkflowRunId, in.Reason, in.Details...)
 	if err != nil {
 		return err
 	}
@@ -299,7 +304,7 @@ func (r *rpc) GetWorkflowHistory(in GetWorkflowHistoryIn, out *GetWorkflowHistor
 		return errors.New("filter type should be between 0 and 2 inclusive")
 	}
 	ctx := context.Background()
-	iterator := r.client.GetWorkflowHistory(ctx, in.WorkflowId, in.WorkflowRunId, false, enums.HistoryEventFilterType(in.FilterType))
+	iterator := r.srv.client.GetWorkflowHistory(ctx, in.WorkflowId, in.WorkflowRunId, false, enums.HistoryEventFilterType(in.FilterType))
 
 	(*out).HistoryEvents = make([]HistoryEvent, 0, 10)
 	for iterator.HasNext() {
@@ -348,7 +353,7 @@ func (r *rpc) CompleteActivity(in CompleteActivityIn, out *CompleteActivityOut) 
 	var res interface{}
 	if in.Err != "" {
 		// complete with error
-		err = r.client.CompleteActivity(ctx, in.TaskToken, &res, errors.New(in.Err))
+		err = r.srv.client.CompleteActivity(ctx, in.TaskToken, &res, errors.New(in.Err))
 		if err != nil {
 			return err
 		}
@@ -358,7 +363,7 @@ func (r *rpc) CompleteActivity(in CompleteActivityIn, out *CompleteActivityOut) 
 	}
 
 	// just complete
-	err = r.client.CompleteActivity(ctx, in.TaskToken, &res, nil)
+	err = r.srv.client.CompleteActivity(ctx, in.TaskToken, &res, nil)
 	if err != nil {
 		return err
 	}
@@ -399,7 +404,7 @@ func (r *rpc) CompleteActivityByID(in CompleteActivityByIdIn, out *CompleteActiv
 
 	if in.Err != "" {
 		// complete by id with error
-		err = r.client.CompleteActivityByID(ctx, in.Namespace, in.WorkflowId, in.WorkflowRunId, in.ActivityId, &res, errors.New(in.Err))
+		err = r.srv.client.CompleteActivityByID(ctx, in.Namespace, in.WorkflowId, in.WorkflowRunId, in.ActivityId, &res, errors.New(in.Err))
 		if err != nil {
 			return err
 		}
@@ -408,7 +413,7 @@ func (r *rpc) CompleteActivityByID(in CompleteActivityByIdIn, out *CompleteActiv
 	}
 
 	// complete without error
-	err = r.client.CompleteActivityByID(ctx, in.Namespace, in.WorkflowId, in.WorkflowRunId, in.ActivityId, &res, nil)
+	err = r.srv.client.CompleteActivityByID(ctx, in.Namespace, in.WorkflowId, in.WorkflowRunId, in.ActivityId, &res, nil)
 	if err != nil {
 		return err
 	}
@@ -444,7 +449,7 @@ type QueryWorkflowIn struct {
 //  - QueryFailError
 func (r *rpc) QueryWorkflow(in QueryWorkflowIn, out *payload.RRPayload) error {
 	ctx := context.Background()
-	ev, err := r.client.QueryWorkflow(ctx, in.WorkflowId, in.WorkflowRunId, in.QueryType, in.Args...)
+	ev, err := r.srv.client.QueryWorkflow(ctx, in.WorkflowId, in.WorkflowRunId, in.QueryType, in.Args...)
 	if err != nil {
 		return err
 	}
