@@ -8,6 +8,7 @@ import (
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/internalbindings"
+	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
 	"time"
 )
@@ -55,6 +56,21 @@ type ExecuteActivity struct {
 	ArgsPayload *commonpb.Payloads
 }
 
+// ActivityParams maps activity command to activity params.
+func (cmd ExecuteActivity) ActivityParams() bindings.ExecuteActivityParams {
+	return bindings.ExecuteActivityParams{
+		// todo: implement mapping
+		ExecuteActivityOptions: bindings.ExecuteActivityOptions{
+			ScheduleToCloseTimeout: time.Second * 60,
+			ScheduleToStartTimeout: time.Second * 60,
+			StartToCloseTimeout:    time.Second * 60,
+			HeartbeatTimeout:       time.Second * 10,
+		},
+		ActivityType: bindings.ActivityType{Name: cmd.Name},
+		Input:        cmd.ArgsPayload,
+	}
+}
+
 // NewTimer starts new timer.
 type NewTimer struct {
 	// Milliseconds defines timer duration.
@@ -70,6 +86,8 @@ func (t NewTimer) ToDuration() time.Duration {
 type CompleteWorkflow struct {
 	// Result defines workflow execution result.
 	Result []json.RawMessage `json:"result"`
+
+	// todo: need error!!
 
 	// ResultPayload represents Result converted into Temporal payload format.
 	ResultPayload *commonpb.Payloads

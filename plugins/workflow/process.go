@@ -66,8 +66,12 @@ func (wp *workflowProcess) StackTrace() string {
 	return "todo: needs to be implemented"
 }
 
+// Close the workflow.
 func (wp *workflowProcess) Close() {
-	// TODO: detect if workflow has to be offloaded before the completion, send terminate process command
+	_, err := rrt.Execute(wp.pool, wp.getContext(), wp.mq.queue...)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (wp *workflowProcess) getContext() rrt.Context {
@@ -76,6 +80,27 @@ func (wp *workflowProcess) getContext() rrt.Context {
 		TickTime:  wp.env.Now(),
 		Replay:    wp.env.IsReplaying(),
 	}
+}
+
+func (wp *workflowProcess) handleCommand(id uint64, name string, params json.RawMessage) error {
+	cmd, err := parseCommand(wp.env.GetDataConverter(), name, params)
+	if err != nil {
+		return err
+	}
+
+	switch cmd.(type) {
+	case ExecuteActivity:
+		wp.env.ExecuteActivity(cmd.(ExecuteActivity).ActivityParams(), wp.createCallback(id))
+
+	case NewTimer:
+		wp.env.NewTimer(cmd.(NewTimer).ToDuration(), wp.createCallback(id))
+
+	case CompleteWorkflow:
+		wp.mq.pushResponse(id, nil)
+		wp.env.Complete(cmd.(CompleteWorkflow).ResultPayload, nil)
+	}
+
+	return nil
 }
 
 func (wp *workflowProcess) createCallback(id uint64) bindings.ResultHandler {
@@ -90,7 +115,7 @@ func (wp *workflowProcess) createCallback(id uint64) bindings.ResultHandler {
 			return err
 		}
 
-		wp.mq.pushResult(id, data)
+		wp.mq.pushResponse(id, data)
 		return nil
 	}
 
@@ -99,70 +124,4 @@ func (wp *workflowProcess) createCallback(id uint64) bindings.ResultHandler {
 			return callback(result, err)
 		})
 	}
-}
-
-func (wp *workflowProcess) handleCommand(id uint64, name string, params json.RawMessage) error {
-	cmd, err := parseCommand(wp.env.GetDataConverter(), name, params)
-	if err != nil {
-		return err
-	}
-
-	return nil
-	//switch name {
-	//case "ExecuteActivity":
-	//	data := ExecuteActivity{}
-	//	err := json.Unmarshal(params, &data)
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//	payloads, err := wp.env.GetDataConverter().ToPayloads(data.Input...)
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//	// todo: get options from activity, improve mapping
-	//	options := bindings.ExecuteActivityParams{
-	//		ExecuteActivityOptions: bindings.ExecuteActivityOptions{
-	//			TaskQueueName:          wp.env.WorkflowInfo().TaskQueueName,
-	//			ScheduleToCloseTimeout: time.Second * 60,
-	//			ScheduleToStartTimeout: time.Second * 60,
-	//			StartToCloseTimeout:    time.Second * 60,
-	//			HeartbeatTimeout:       time.Second * 10,
-	//		},
-	//		ActivityType: bindings.ActivityType{Name: data.Name},
-	//		Input:        payloads,
-	//	}
-	//
-	//	wp.env.ExecuteActivity(options, wp.createCallback(id))
-	//
-	//case "NewTimer":
-	//	data := NewTimer{}
-	//	err := json.Unmarshal(params, &data)
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//	wp.env.NewTimer(data.ToDuration(), wp.createCallback(id))
-	//
-	//case "CompleteWorkflow":
-	//	data := CompleteWorkflow{}
-	//	err := json.Unmarshal(params, &data)
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//	payloads, err := wp.env.GetDataConverter().ToPayloads(data.Result...)
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//	//log.Println("complete")
-	//	wp.env.Complete(payloads, nil)
-	//
-	//	// confirm it
-	//	wp.pushResult(id, &commonpb.Payloads{})
-	//}
-	//
-	//return nil
 }
