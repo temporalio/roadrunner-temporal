@@ -6,6 +6,7 @@ import (
 	"github.com/spiral/endure/errors"
 	"github.com/spiral/roadrunner/v2"
 	"github.com/spiral/roadrunner/v2/plugins/app"
+	"github.com/spiral/roadrunner/v2/util"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	bindings "go.temporal.io/sdk/internalbindings"
@@ -17,6 +18,7 @@ import (
 
 // workflowPool manages workflowProcess executions between worker restarts.
 type workflowPool struct {
+	events    *util.EventHandler
 	seqID     uint64
 	workflows map[string]rrt.WorkflowInfo
 	tWorkers  []worker.Worker
@@ -57,6 +59,11 @@ func NewWorkflowPool(ctx context.Context, factory app.WorkerFactory) (*workflowP
 	}
 
 	return &workflowPool{worker: sw}, nil
+}
+
+// AddListener adds event listeners to the workflow pool.
+func (pool *workflowPool) AddListener(listener util.EventListener) {
+	pool.events.AddListener(listener)
 }
 
 // Start the pool in non blocking mode. TODO: capture worker errors.

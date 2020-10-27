@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/spiral/endure/errors"
 	"github.com/spiral/roadrunner/v2/plugins/app"
+	"github.com/spiral/roadrunner/v2/util"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	"go.uber.org/zap"
 )
@@ -19,6 +20,7 @@ const (
 // Service manages workflows and workers.
 type Service struct {
 	temporal temporal.Temporal
+	events   *util.EventHandler
 	app      app.WorkerFactory
 	log      *zap.Logger
 	pool     *workflowPool
@@ -31,6 +33,11 @@ func (svc *Service) Init(temporal temporal.Temporal, app app.WorkerFactory) erro
 	return nil
 }
 
+// AddListener adds event listeners to the service.
+func (svc *Service) AddListener(listener util.EventListener) {
+	svc.events.AddListener(listener)
+}
+
 // Serve starts workflow service.
 func (svc *Service) Serve() chan error {
 	errCh := make(chan error, 1)
@@ -40,6 +47,8 @@ func (svc *Service) Serve() chan error {
 		errCh <- errors.E(errors.Op("NewWorkflowPool"), err)
 		return errCh
 	}
+
+	// todo: proxy events
 
 	err = pool.Start(context.Background(), svc.temporal)
 	if err != nil {
@@ -67,4 +76,10 @@ func (svc *Service) Stop() error {
 // Name of the service.
 func (svc *Service) Name() string {
 	return ServiceName
+}
+
+// Reset resets underlying workflow pool with new copy.
+func (svc *Service) Reset() error {
+
+	return nil
 }

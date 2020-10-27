@@ -13,11 +13,18 @@ import (
 )
 
 const (
+	DestroyWorkflowCommand  = "DestroyWorkflow"
 	StartWorkflowCommand    = "StartWorkflow"
 	ExecuteActivityCommand  = "ExecuteActivity"
 	NewTimerCommand         = "NewTimer"
 	CompleteWorkflowCommand = "CompleteWorkflow"
 )
+
+// DestroyWorkflow asks worker to offload workflow from memory.
+type DestroyWorkflow struct {
+	// RunID workflow run id.
+	RunID string `json:"runId"`
+}
 
 // StartWorkflow sends worker command to start workflow.
 type StartWorkflow struct {
