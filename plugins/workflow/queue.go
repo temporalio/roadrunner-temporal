@@ -22,7 +22,6 @@ func (mq *messageQueue) flush() {
 	mq.queue = mq.queue[0:0]
 }
 
-// todo: optimize?
 func (mq *messageQueue) pushCommand(cmd string, params interface{}) (id uint64, err error) {
 	msg := rrt.Message{ID: atomic.AddUint64(mq.seqID, 1), Command: cmd}
 
