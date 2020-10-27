@@ -43,11 +43,11 @@ func NewWorkflowPool(ctx context.Context, factory app.WorkerFactory) (*workflowP
 
 	go func() {
 		// todo: move into pool start
-		err := w.Wait(ctx)
 		// todo: must be supervised
-		log.Print(err)
-
 		// todo: report to parent supervisor
+
+		err := w.Wait(ctx)
+		log.Print(err)
 	}()
 
 	sw, err := roadrunner.NewSyncWorker(w)
@@ -88,7 +88,7 @@ func (pool *workflowPool) Destroy(ctx context.Context) {
 // NewWorkflowDefinition initiates new workflow process.
 func (pool *workflowPool) NewWorkflowDefinition() bindings.WorkflowDefinition {
 	// todo: add logging or event listener?
-	return &workflowProcess{worker: pool.worker, pool: pool}
+	return &workflowProcess{pool: pool}
 }
 
 // Exec set of commands in thread safe move.
@@ -106,7 +106,9 @@ func (pool *workflowPool) initWorkers(ctx context.Context, temporal temporal.Tem
 		return err
 	}
 
+	pool.workflows = make(map[string]rrt.WorkflowInfo)
 	pool.tWorkers = make([]worker.Worker, 0)
+
 	for _, info := range workerInfo {
 		w, err := temporal.CreateWorker(info.TaskQueue, info.Options.TemporalOptions())
 		if err != nil {

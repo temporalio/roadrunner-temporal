@@ -2,136 +2,61 @@ package workflow
 
 import (
 	"encoding/json"
-	"github.com/spiral/roadrunner/v2"
-	rrt "github.com/temporalio/roadrunner-temporal"
+	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
-	"log"
-	"sync/atomic"
-	"time"
 )
 
+// wraps single workflow process
 type workflowProcess struct {
 	pool      *workflowPool
-	taskQueue string
-	worker    roadrunner.SyncWorker
 	env       bindings.WorkflowEnvironment
-	// todo: pre-fetch workflows
-	// todo: improve data conversions
-	queue     []rrt.Message
+	mq        *messageQueue
 	callbacks []func()
-	complete  bool
 }
 
+// Execute workflow, bootstraps process.
 func (wp *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *commonpb.Header, input *commonpb.Payloads) {
 	wp.callbacks = append(wp.callbacks, func() {
-		info := env.WorkflowInfo()
-
 		wp.env = env
-		wp.taskQueue = info.TaskQueueName
+		wp.mq = newMessageQueue(&wp.pool.seqID)
 
-		// todo: update mapping
-		wp.pushCommand("StartWorkflow", struct {
-			Name      string             `json:"name"`
-			Wid       string             `json:"wid"`
-			Rid       string             `json:"rid"`
-			TaskQueue string             `json:"taskQueue"`
-			Payload   *commonpb.Payloads `json:"payload"`
-		}{
-			Name:      info.WorkflowType.Name,
-			Wid:       info.WorkflowExecution.ID,
-			Rid:       info.WorkflowExecution.RunID,
-			TaskQueue: info.TaskQueueName,
-			Payload:   input, // todo: implement
-		})
+		start := StartWorkflow{}
+		if err := start.FromEnvironment(env, input); err != nil {
+			panic(err)
+		}
+
+		if _, err := wp.mq.pushCommand("StartWorkflow", start); err != nil {
+			panic(err)
+		}
 	})
 }
 
+// OnWorkflowTaskStarted handles single workflow tick and batch of messages from temporal server.
 func (wp *workflowProcess) OnWorkflowTaskStarted() {
 	for _, callback := range wp.callbacks {
 		callback()
 	}
 	wp.callbacks = nil
 
-	if wp.queue != nil {
-		result, err := wp.execute(wp.queue...)
-		if err != nil {
-			// todo: what to do?
-			log.Println("error: ", err)
-		}
-		wp.queue = nil
-
-		for _, frame := range result {
-			if frame.Command == "" {
-				//				log.Printf("got response for %v: %s", frame.ID, color.MagentaString(string(frame.Result)))
-				continue
-			}
-
-			//			log.Printf("got command for %s(%v): %s", color.BlueString(frame.Command), frame.ID, color.GreenString(string(frame.Params)))
-			wp.handle(frame.Command, frame.ID, frame.Params)
-		}
-	}
-}
-
-func (wp *workflowProcess) handle(cmd string, id uint64, params json.RawMessage) error {
-	switch cmd {
-	case "ExecuteActivity":
-		data := ExecuteActivity{}
-		err := json.Unmarshal(params, &data)
-		if err != nil {
-			return err
-		}
-
-		payloads, err := wp.env.GetDataConverter().ToPayloads(data.Args...)
-		if err != nil {
-			return err
-		}
-
-		// todo: get options from activity, improve mapping
-		options := bindings.ExecuteActivityParams{
-			ExecuteActivityOptions: bindings.ExecuteActivityOptions{
-				TaskQueueName:          wp.taskQueue,
-				ScheduleToCloseTimeout: time.Second * 60,
-				ScheduleToStartTimeout: time.Second * 60,
-				StartToCloseTimeout:    time.Second * 60,
-				HeartbeatTimeout:       time.Second * 10,
-			},
-			ActivityType: bindings.ActivityType{Name: data.Name},
-			Input:        payloads,
-		}
-
-		wp.env.ExecuteActivity(options, wp.newResultHandler(id))
-
-	case "NewTimer":
-		data := NewTimer{}
-		err := json.Unmarshal(params, &data)
-		if err != nil {
-			return err
-		}
-
-		wp.env.NewTimer(data.ToDuration(), wp.newResultHandler(id))
-
-	case "CompleteWorkflow":
-		data := CompleteWorkflow{}
-		err := json.Unmarshal(params, &data)
-		if err != nil {
-			return err
-		}
-
-		payloads, err := wp.env.GetDataConverter().ToPayloads(data.Result...)
-		if err != nil {
-			return err
-		}
-
-		//log.Println("complete")
-		wp.env.Complete(payloads, nil)
-
-		// confirm it
-		wp.pushResult(id, &commonpb.Payloads{})
-		wp.complete = true
-	}
-
-	return nil
+	//if wp.mq != nil {
+	//	result, err := wp.execute(wp.mq...)
+	//	if err != nil {
+	//		// todo: what to do?
+	//		log.Println("error: ", err)
+	//	}
+	//	wp.mq = nil
+	//
+	//	for _, frame := range result {
+	//		if frame.Command == "" {
+	//			//				log.Printf("got response for %v: %s", frame.ID, color.MagentaString(string(frame.Result)))
+	//			continue
+	//		}
+	//
+	//		//			log.Printf("got command for %s(%v): %s", color.BlueString(frame.Command), frame.ID, color.GreenString(string(frame.Params)))
+	//		wp.handle(frame.Command, frame.ID, frame.Params)
+	//	}
+	//}
 }
 
 func (wp *workflowProcess) StackTrace() string {
@@ -140,30 +65,24 @@ func (wp *workflowProcess) StackTrace() string {
 }
 
 func (wp *workflowProcess) Close() {
-	atomic.AddUint64(&wp.pool.numW, ^uint64(0))
-	if wp.queue != nil {
-		wp.execute(wp.queue...)
-	}
-
-	if !wp.complete {
-		log.Println("OFFLOAD NOT COMPELETE")
-	}
-
-	// TODO: CACHE OFFLOAD
-	// todo: send command
+	// TODO: detect if workflow has to be offloaded before the completion, send terminate process command
 }
 
-func (wp *workflowProcess) newResultHandler(id uint64) bindings.ResultHandler {
-	return wp.addCallback(func(result *commonpb.Payloads, err error) {
+func (wp *workflowProcess) createCallback(id uint64) bindings.ResultHandler {
+	callback := func(result *commonpb.Payloads, err error) {
 		if err != nil {
-			wp.pushError(id, err)
+			wp.mq.pushError(id, err)
 		} else {
-			wp.pushResult(id, result)
+			var data []json.RawMessage
+			if err = temporal.ParsePayload(wp.env.GetDataConverter(), result, &data); err != nil {
+				panic(err)
+			}
+			if err = wp.mq.pushResult(id, data); err != nil {
+				panic(err)
+			}
 		}
-	})
-}
+	}
 
-func (wp *workflowProcess) addCallback(callback bindings.ResultHandler) bindings.ResultHandler {
 	return func(result *commonpb.Payloads, err error) {
 		wp.callbacks = append(wp.callbacks, func() {
 			callback(result, err)
@@ -171,89 +90,103 @@ func (wp *workflowProcess) addCallback(callback bindings.ResultHandler) bindings
 	}
 }
 
-func (wp *workflowProcess) pushCommand(name string, params interface{}) (id uint64, err error) {
-	cmd := rrt.Message{
-		ID:      atomic.AddUint64(&wp.pool.seqID, 1),
-		Command: name,
-	}
-
-	cmd.Params, err = json.Marshal(params)
-	if err != nil {
-		return 0, err
-	}
-
-	wp.queue = append(wp.queue, cmd)
-
-	return id, nil
-}
-
-func (wp *workflowProcess) pushResult(id uint64, result *commonpb.Payloads) {
-	cmd := rrt.Message{
-		ID: id,
-	}
-
-	payload := rrt.RRPayload{}
-	wp.env.GetDataConverter().FromPayloads(result, &payload)
-
-	// todo: REPACK
-	//	cmd.Result, _ = json.Marshal(payload.Data)
-	wp.queue = append(wp.queue, cmd)
-}
-
-func (wp *workflowProcess) pushError(id uint64, err error) {
-	//	cmd := rrt.Message{
-	//		ID:    id,
-	//		Error: err.Error(),
+func (wp *workflowProcess) handle(cmd string, id uint64, params json.RawMessage) error {
+	return nil
+	//switch cmd {
+	//case "ExecuteActivity":
+	//	data := ExecuteActivity{}
+	//	err := json.Unmarshal(params, &data)
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	payloads, err := wp.env.GetDataConverter().ToPayloads(data.Input...)
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	// todo: get options from activity, improve mapping
+	//	options := bindings.ExecuteActivityParams{
+	//		ExecuteActivityOptions: bindings.ExecuteActivityOptions{
+	//			TaskQueueName:          wp.env.WorkflowInfo().TaskQueueName,
+	//			ScheduleToCloseTimeout: time.Second * 60,
+	//			ScheduleToStartTimeout: time.Second * 60,
+	//			StartToCloseTimeout:    time.Second * 60,
+	//			HeartbeatTimeout:       time.Second * 10,
+	//		},
+	//		ActivityType: bindings.ActivityType{Name: data.Name},
+	//		Input:        payloads,
+	//	}
+	//
+	//	wp.env.ExecuteActivity(options, wp.createCallback(id))
+	//
+	//case "NewTimer":
+	//	data := NewTimer{}
+	//	err := json.Unmarshal(params, &data)
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	wp.env.NewTimer(data.ToDuration(), wp.createCallback(id))
+	//
+	//case "CompleteWorkflow":
+	//	data := CompleteWorkflow{}
+	//	err := json.Unmarshal(params, &data)
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	payloads, err := wp.env.GetDataConverter().ToPayloads(data.Result...)
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	//log.Println("complete")
+	//	wp.env.Complete(payloads, nil)
+	//
+	//	// confirm it
+	//	wp.pushResult(id, &commonpb.Payloads{})
 	//}
-	//log.Println("error!", err)
-	//wp.queue = append(wp.queue, cmd)
-
-}
-
-type Wrapper struct {
-	Rid      string        `json:"rid"`
-	Commands []rrt.Message `json:"commands"`
+	//
+	//return nil
 }
 
 // Exchange commands with worker.
-func (wp *workflowProcess) execute(cmd ...rrt.Message) (result []rrt.Message, err error) {
-	atomic.AddUint64(&wp.pool.numS, 1)
-	defer atomic.AddUint64(&wp.pool.numS, ^uint64(0))
-
-	ctx := rrt.Context{
-		TaskQueue: wp.taskQueue,
-		Replay:    wp.env.IsReplaying(),
-		TickTime:  wp.env.Now(),
-	}
-
-	wr := Wrapper{
-		Rid:      wp.env.WorkflowInfo().WorkflowExecution.RunID,
-		Commands: cmd,
-	}
-
-	p := roadrunner.Payload{}
-	if p.Context, err = json.Marshal(ctx); err != nil {
-		return nil, err
-	}
-
-	p.Body, err = json.Marshal(wr)
-	if err != nil {
-		return nil, err
-	}
-
-	//log.Printf("send: %s", color.YellowString(string(p.Body)))
-
-	rsp, err := wp.pool.Exec(p)
-	if err != nil {
-		return nil, err
-	}
-
-	wrr := Wrapper{}
-
-	err = json.Unmarshal(rsp.Body, &wrr)
-	if err != nil {
-		return nil, err
-	}
-
-	return wrr.Commands, nil
-}
+//func (wp *workflowProcess) execute(cmd ...rrt.Message)// (result []rrt.Message, err error) {
+//ctx := rrt.Context{
+//	TaskQueue: wp.taskQueue,
+//	Replay:    wp.env.IsReplaying(),
+//	TickTime:  wp.env.Now(),
+//}
+//
+//wr := Wrapper{
+//	Rid:      wp.env.WorkflowInfo().WorkflowExecution.RunID,
+//	Commands: cmd,
+//}
+//
+//p := roadrunner.Payload{}
+//if p.Context, err = json.Marshal(ctx); err != nil {
+//	return nil, err
+//}
+//
+//p.Body, err = json.Marshal(wr)
+//if err != nil {
+//	return nil, err
+//}
+//
+////log.Printf("send: %s", color.YellowString(string(p.Body)))
+//
+//rsp, err := wp.pool.Exec(p)
+//if err != nil {
+//	return nil, err
+//}
+//
+//wrr := Wrapper{}
+//
+//err = json.Unmarshal(rsp.Body, &wrr)
+//if err != nil {
+//	return nil, err
+//}
+//
+//return wrr.Commands, nil
+//}
