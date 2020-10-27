@@ -2,7 +2,6 @@ package workflow
 
 import (
 	"encoding/json"
-	"github.com/fatih/color"
 	"github.com/spiral/roadrunner/v2"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	commonpb "go.temporal.io/api/common/v1"
@@ -13,12 +12,15 @@ import (
 )
 
 type workflowProxy struct {
-	seqID     *uint64
+	session   *session
 	taskQueue string
 	worker    roadrunner.SyncWorker
 	env       bindings.WorkflowEnvironment
+	// todo: pre-fetch info
+	// todo: improve data conversions
 	queue     []rrt.Frame
 	callbacks []func()
+	complete  bool
 }
 
 func (wp *workflowProxy) Execute(env bindings.WorkflowEnvironment, header *commonpb.Header, input *commonpb.Payloads) {
@@ -46,7 +48,6 @@ func (wp *workflowProxy) Execute(env bindings.WorkflowEnvironment, header *commo
 }
 
 func (wp *workflowProxy) OnWorkflowTaskStarted() {
-	log.Print("task started")
 	for _, callback := range wp.callbacks {
 		callback()
 	}
@@ -62,99 +63,14 @@ func (wp *workflowProxy) OnWorkflowTaskStarted() {
 
 		for _, frame := range result {
 			if frame.Command == "" {
-				log.Printf("got response for %v: %s", frame.ID, color.MagentaString(string(frame.Result)))
+				//log.Printf("got response for %v: %s", frame.ID, color.MagentaString(string(frame.Result)))
 				continue
 			}
 
-			log.Printf("got command for %s(%v): %s", color.BlueString(frame.Command), frame.ID, color.GreenString(string(frame.Params)))
+			//log.Printf("got command for %s(%v): %s", color.BlueString(frame.Command), frame.ID, color.GreenString(string(frame.Params)))
 			wp.handle(frame.Command, frame.ID, frame.Params)
 		}
 	}
-
-	//dc := NewRRDataConverter()
-	//for {
-	//	select {
-	//	case sig := <-wp.workflowSignals:
-	//		log.Printf(
-	//			"[debug] got worflow specific signal %s: %s",
-	//			color.RedString(sig.Method),
-	//			color.MagentaString(string(sig.Data)),
-	//		)
-	//
-	//		switch sig.Method {
-	//		case ExecuteActivity:
-	//			ex := new(ExecuteActivityStr)
-	//			err := json.Unmarshal(sig.Data, ex)
-	//
-	//			if err != nil {
-	//				panic(err)
-	//			}
-	//
-	//			input, err := dc.ToPayloads(ex)
-	//			if err != nil {
-	//				panic(err)
-	//			}
-	//
-	//			parameters := bindings.ExecuteActivityParams{
-	//				ExecuteActivityOptions: bindings.ExecuteActivityOptions{
-	//					TaskQueueName:       wp.env.WorkflowInfo().TaskQueueName,
-	//					StartToCloseTimeout: 10 * time.Second,
-	//				},
-	//				// activity type: NAME here is the function name to invoke
-	//				ActivityType: bindings.ActivityType{Name: ex.Params.Name},
-	//				Input:        input, // todo: use one from .ex, convert from JSON to Payloads
-	//			}
-	//
-	//			// todo: where is our message ID?
-	//			wp.env.ExecuteActivity(parameters, wp.addCallback(func(result *commonpb.Payloads, err error) {
-	//				// todo: use callbacks?
-	//				if err != nil {
-	//					// ERROR RESPONSE
-	//					errResp := ErrorResponse{
-	//						Error: struct {
-	//							Code    string `json:"code"`
-	//							Message string `json:"message"`
-	//						}{
-	//							Code:    "666",
-	//							Message: err.Error(),
-	//						},
-	//						ID: sig.ID,
-	//					}
-	//					wp.queue = append(wp.queue, errResp)
-	//					log.Printf("ACTIVITIY DONE WITH ERRORS")
-	//					return
-	//				}
-	//
-	//				// RESPONSE
-	//				valPtr := &RrResult{}
-	//				err = dc.FromPayloads(result, valPtr)
-	//				if err != nil {
-	//					panic(err)
-	//				}
-	//				resp := Response{
-	//					Result: *valPtr,
-	//					ID:     sig.ID,
-	//				}
-	//				wp.queue = append(wp.queue, resp)
-	//				log.Printf("ACTIVITIY DONE")
-	//			}))
-	//			return
-	//
-	//		case CompleteWorkflow:
-	//			wp.server.mu.Lock()
-	//			delete(wp.server.workflowSignals, wp.startID.String())
-	//			delete(wp.server.workflowSignals, wp.env.WorkflowInfo().WorkflowExecution.RunID)
-	//			wp.server.mu.Unlock()
-	//
-	//			// convert PHP answer to the payload
-	//			wp.env.Complete(nil, nil)
-	//			return
-	//		default:
-	//			log.Println("unknown case")
-	//			return
-	//		}
-	//	}
-	//}
 }
 
 func (wp *workflowProxy) handle(cmd string, id uint64, params json.RawMessage) error {
@@ -184,13 +100,16 @@ func (wp *workflowProxy) handle(cmd string, id uint64, params json.RawMessage) e
 			Input:        payloads,
 		}
 
-		wp.env.ExecuteActivity(options, wp.addCallback(func(result *commonpb.Payloads, err error) {
-			if err != nil {
-				wp.pushError(id, err)
-			} else {
-				wp.pushResult(id, result)
-			}
-		}))
+		wp.env.ExecuteActivity(options, wp.newResultHandler(id))
+
+	case "NewTimer":
+		data := NewTimer{}
+		err := json.Unmarshal(params, &data)
+		if err != nil {
+			return err
+		}
+
+		wp.env.NewTimer(data.ToDuration(), wp.newResultHandler(id))
 
 	case "CompleteWorkflow":
 		data := CompleteWorkflow{}
@@ -204,7 +123,12 @@ func (wp *workflowProxy) handle(cmd string, id uint64, params json.RawMessage) e
 			return err
 		}
 
+		//log.Println("complete")
 		wp.env.Complete(payloads, nil)
+
+		// confirm it
+		wp.pushResult(id, &commonpb.Payloads{})
+		wp.complete = true
 	}
 
 	return nil
@@ -216,8 +140,27 @@ func (wp *workflowProxy) StackTrace() string {
 }
 
 func (wp *workflowProxy) Close() {
+	atomic.AddUint64(&wp.session.numW, ^uint64(0))
+	if wp.queue != nil {
+		wp.execute(wp.queue...)
+	}
+
+	if !wp.complete {
+		log.Println("OFFLOAD NOT COMPELETE")
+	}
+
 	// TODO: CACHE OFFLOAD
 	// todo: send command
+}
+
+func (wp *workflowProxy) newResultHandler(id uint64) bindings.ResultHandler {
+	return wp.addCallback(func(result *commonpb.Payloads, err error) {
+		if err != nil {
+			wp.pushError(id, err)
+		} else {
+			wp.pushResult(id, result)
+		}
+	})
 }
 
 func (wp *workflowProxy) addCallback(callback bindings.ResultHandler) bindings.ResultHandler {
@@ -230,7 +173,7 @@ func (wp *workflowProxy) addCallback(callback bindings.ResultHandler) bindings.R
 
 func (wp *workflowProxy) pushCommand(name string, params interface{}) (id uint64, err error) {
 	cmd := rrt.Frame{
-		ID:      atomic.AddUint64(wp.seqID, 1),
+		ID:      atomic.AddUint64(&wp.session.seqID, 1),
 		Command: name,
 	}
 
@@ -262,7 +205,7 @@ func (wp *workflowProxy) pushError(id uint64, err error) {
 	//		ID:    id,
 	//		Error: err.Error(),
 	//}
-	log.Println("error!", err)
+	//log.Println("error!", err)
 	//wp.queue = append(wp.queue, cmd)
 
 }
@@ -274,6 +217,9 @@ type Wrapper struct {
 
 // Exchange commands with worker.
 func (wp *workflowProxy) execute(cmd ...rrt.Frame) (result []rrt.Frame, err error) {
+	atomic.AddUint64(&wp.session.numS, 1)
+	defer atomic.AddUint64(&wp.session.numS, ^uint64(0))
+
 	ctx := rrt.Context{
 		TaskQueue: wp.taskQueue,
 		Replay:    wp.env.IsReplaying(),
@@ -295,9 +241,9 @@ func (wp *workflowProxy) execute(cmd ...rrt.Frame) (result []rrt.Frame, err erro
 		return nil, err
 	}
 
-	log.Printf("send: %s", color.YellowString(string(p.Body)))
+	//log.Printf("send: %s", color.YellowString(string(p.Body)))
 
-	rsp, err := wp.worker.Exec(p)
+	rsp, err := wp.session.Exec(p)
 	if err != nil {
 		return nil, err
 	}

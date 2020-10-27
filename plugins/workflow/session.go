@@ -8,11 +8,16 @@ import (
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
+	"sync"
+	"sync/atomic"
 )
 
 // session manages workflowProxy executions between worker restarts.
 type session struct {
 	seqID           uint64
+	numW            uint64
+	numS            uint64
+	mu              sync.Mutex
 	worker          roadrunner.SyncWorker
 	temporalWorkers []worker.Worker
 }
@@ -76,8 +81,16 @@ func (ss *session) Destroy(ctx context.Context) {
 }
 
 func (ss *session) NewWorkflowDefinition() bindings.WorkflowDefinition {
+	atomic.AddUint64(&ss.numW, 1)
 	return &workflowProxy{
-		seqID:  &ss.seqID,
-		worker: ss.worker,
+		worker:  ss.worker,
+		session: ss,
 	}
+}
+
+func (ss *session) Exec(p roadrunner.Payload) (roadrunner.Payload, error) {
+	ss.mu.Lock()
+	defer ss.mu.Unlock()
+
+	return ss.worker.Exec(p)
 }

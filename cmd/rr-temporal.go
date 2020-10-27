@@ -1,7 +1,8 @@
 package main
 
 import (
-	"github.com/spiral/roadrunner/v2/plugins/factory"
+	"github.com/spiral/roadrunner/v2/plugins/app"
+	"github.com/spiral/roadrunner/v2/plugins/logger"
 	"github.com/spiral/roadrunner/v2/plugins/rpc"
 	"github.com/temporalio/roadrunner-temporal/plugins/activity"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
@@ -13,8 +14,11 @@ import (
 
 func main() {
 	err := cli.InitApp(
+		// todo: move to root
+		&logger.ZapLogger{},
+
 		// PHP application init.
-		&factory.App{},
+		&app.App{},
 		&rpc.Service{},
 
 		// Temporal extension.

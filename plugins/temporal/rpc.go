@@ -65,7 +65,7 @@ type StartWorkflowOptions struct {
 - the method's second argument is a pointer.
 - the method has return type error.
 */
-type RPC struct {
+type rpc struct {
 	client client.Client
 }
 
@@ -103,7 +103,7 @@ type ExecuteWorkflowOut struct {
 	WorkflowRunId string `json:"rid"`
 }
 
-func (r *RPC) ExecuteWorkflow(in ExecuteWorkflowIn, out *ExecuteWorkflowOut) error {
+func (r *rpc) ExecuteWorkflow(in ExecuteWorkflowIn, out *ExecuteWorkflowOut) error {
 	ctx := context.Background()
 	wr, err := r.client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
 		ID:                       in.Options.ID,
@@ -146,7 +146,7 @@ type GetWorkflowResult struct {
 // Say ExecuteWorkflow started a workflow, in its first run, has run ID "run ID 1", and returned ContinueAsNewError,
 // the second run has run ID "run ID 2" and return some result other than ContinueAsNewError:
 // GetRunID() will always return "run ID 1" and  Get(ctx context.Context, valuePtr interface{}) will return the result of second run.
-func (r *RPC) GetWorkflow(in GetWorkflowIn, out *GetWorkflowResult) error {
+func (r *rpc) GetWorkflow(in GetWorkflowIn, out *GetWorkflowResult) error {
 	ctx := context.Background()
 	wr := r.client.GetWorkflow(ctx, in.WorkflowId, in.WorkflowRunId)
 
@@ -169,7 +169,7 @@ type SignalWorkflowIn struct {
 // The errors it can return:
 //	- EntityNotExistsError
 //	- InternalServiceError
-func (r *RPC) SignalWorkflow(in SignalWorkflowIn, _ *EmptyStruct) error {
+func (r *rpc) SignalWorkflow(in SignalWorkflowIn, _ *EmptyStruct) error {
 	ctx := context.Background()
 	err := r.client.SignalWorkflow(ctx, in.WorkflowId, in.WorkflowRunId, in.SignalName, in.Args)
 	if err != nil {
@@ -201,7 +201,7 @@ type SignalWithStartOut struct {
 //  - EntityNotExistsError, if namespace does not exist
 //  - BadRequestError
 //	- InternalServiceError
-func (r *RPC) SignalWithStartWorkflow(in SignalWithStartIn, out *SignalWithStartOut) error {
+func (r *rpc) SignalWithStartWorkflow(in SignalWithStartIn, out *SignalWithStartOut) error {
 	ctx := context.Background()
 	wr, err := r.client.SignalWithStartWorkflow(ctx, in.WorkflowId, in.SignalName, in.SignalArg, client.StartWorkflowOptions{
 		ID:                       in.Options.ID,
@@ -232,7 +232,7 @@ type CancelWorkflowIn struct {
 //	- EntityNotExistsError
 //	- BadRequestError
 //	- InternalServiceError
-func (r *RPC) CancelWorkflow(in CancelWorkflowIn, _ *EmptyStruct) error {
+func (r *rpc) CancelWorkflow(in CancelWorkflowIn, _ *EmptyStruct) error {
 	ctx := context.Background()
 	err := r.client.CancelWorkflow(ctx, in.WorkflowId, in.WorkflowRunId)
 	if err != nil {
@@ -258,7 +258,7 @@ type TerminateWorkflowIn struct {
 	Details       []interface{} `json:"details"`
 }
 
-func (r *RPC) TerminateWorkflow(in TerminateWorkflowIn, _ *EmptyStruct) error {
+func (r *rpc) TerminateWorkflow(in TerminateWorkflowIn, _ *EmptyStruct) error {
 	ctx := context.Background()
 	err := r.client.TerminateWorkflow(ctx, in.WorkflowId, in.WorkflowRunId, in.Reason, in.Details...)
 	if err != nil {
@@ -294,7 +294,7 @@ type GetWorkflowHistoryOut struct {
 	HistoryEvents []HistoryEvent `json:"history_events"`
 }
 
-func (r *RPC) GetWorkflowHistory(in GetWorkflowHistoryIn, out *GetWorkflowHistoryOut) error {
+func (r *rpc) GetWorkflowHistory(in GetWorkflowHistoryIn, out *GetWorkflowHistoryOut) error {
 	if in.FilterType < 0 || in.FilterType > 2 {
 		return errors.New("filter type should be between 0 and 2 inclusive")
 	}
@@ -342,7 +342,7 @@ type CompleteActivityOut struct {
 //	To fail the activity with an error.
 //      CompleteActivity(token, nil, temporal.NewApplicationError("reason", details)
 // The activity can fail with below errors ErrorWithDetails, TimeoutError, CanceledError.
-func (r *RPC) CompleteActivity(in CompleteActivityIn, out *CompleteActivityOut) error {
+func (r *rpc) CompleteActivity(in CompleteActivityIn, out *CompleteActivityOut) error {
 	ctx := context.Background()
 	var err error
 	var res interface{}
@@ -392,7 +392,7 @@ type CompleteActivityByIdOut struct {
 //  - ErrorWithDetails
 //  - TimeoutError
 //  - CanceledError
-func (r *RPC) CompleteActivityByID(in CompleteActivityByIdIn, out *CompleteActivityByIdOut) error {
+func (r *rpc) CompleteActivityByID(in CompleteActivityByIdIn, out *CompleteActivityByIdOut) error {
 	ctx := context.Background()
 	var res interface{}
 	var err error
@@ -442,7 +442,7 @@ type QueryWorkflowIn struct {
 //  - InternalServiceError
 //  - EntityNotExistError
 //  - QueryFailError
-func (r *RPC) QueryWorkflow(in QueryWorkflowIn, out *payload.RRPayload) error {
+func (r *rpc) QueryWorkflow(in QueryWorkflowIn, out *payload.RRPayload) error {
 	ctx := context.Background()
 	ev, err := r.client.QueryWorkflow(ctx, in.WorkflowId, in.WorkflowRunId, in.QueryType, in.Args...)
 	if err != nil {

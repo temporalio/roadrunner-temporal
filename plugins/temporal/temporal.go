@@ -1,12 +1,13 @@
 package temporal
 
 import (
+	"github.com/spiral/endure/errors"
 	"github.com/spiral/roadrunner/v2"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
-	"log"
+	"go.uber.org/zap"
 )
 
 const ServiceName = "temporal"
@@ -25,65 +26,77 @@ type Temporal interface {
 
 // inherit roadrunner.rpc.Plugin interface
 type Server struct {
-	// Temporal config from .rr.yaml
-	config Config
-
-	// Temporal connection
+	cfg    Config
+	log    *zap.Logger
 	client client.Client
 }
 
 // logger dep also
-func (p *Server) Init(config config.Provider) error {
-	return config.UnmarshalKey(ServiceName, &p.config)
+func (srv *Server) Init(cfg config.Provider, log *zap.Logger) error {
+	srv.log = log
+	return cfg.UnmarshalKey(ServiceName, &srv.cfg)
 }
 
-func (p *Server) GetConfig() Config {
-	return p.config
+// GetConfig returns temporal configuration.
+func (srv *Server) GetConfig() Config {
+	return srv.cfg
 }
 
-func (p *Server) Serve() chan error {
+// Serve starts temporal client.
+func (srv *Server) Serve() chan error {
 	errCh := make(chan error, 1)
 	var err error
 
-	p.client, err = client.NewClient(client.Options{
-		HostPort:      p.config.Address,
-		Namespace:     p.config.Namespace,
+	srv.client, err = client.NewClient(client.Options{
+		Logger:        &ZapAdapter{zl: srv.log},
+		HostPort:      srv.cfg.Address,
+		Namespace:     srv.cfg.Namespace,
 		DataConverter: rrt.NewDataConverter(),
 	})
 
+	srv.log.Debug("Connected to temporal server", zap.String("Server", srv.cfg.Address))
+
 	if err != nil {
-		errCh <- err
+		errCh <- errors.E(errors.Op("client connect"), err)
 	}
 
 	return errCh
 }
 
-func (p *Server) Stop() error {
-	p.client.Close()
+// Stop stops temporal client connection.
+func (srv *Server) Stop() error {
+	if srv.client != nil {
+		srv.client.Close()
+	}
+
 	return nil
 }
 
-func (p *Server) GetClient() (client.Client, error) {
-	return p.client, nil
+// GetClient returns active client connection.
+func (srv *Server) GetClient() (client.Client, error) {
+	return srv.client, nil
 }
 
-func (p *Server) CreateWorker(tq string, options worker.Options) (worker.Worker, error) {
-	w := worker.New(p.client, tq, options)
-	return w, nil
+// CreateWorker allocates new temporal worker on an active connection.
+func (srv *Server) CreateWorker(tq string, options worker.Options) (worker.Worker, error) {
+	if srv.client == nil {
+		return nil, errors.E("unable to create worker, invalid temporal client")
+	}
+
+	return worker.New(srv.client, tq, options), nil
 }
 
-func (p *Server) Name() string {
+// Name of the service.
+func (srv *Server) Name() string {
 	return ServiceName
 }
 
-func (p *Server) RPCService() (interface{}, error) {
-	log.Print("hello RPC")
-	c, err := p.GetClient()
+// RPCService returns associated rpc service.
+func (srv *Server) RPCService() (interface{}, error) {
+	c, err := srv.GetClient()
 	if err != nil {
 		return nil, err
 	}
 
-	return &RPC{
-		client: c,
-	}, nil
+	return &rpc{client: c}, nil
 }

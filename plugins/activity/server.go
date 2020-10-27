@@ -4,9 +4,9 @@ import (
 	"context"
 	"github.com/spiral/endure/errors"
 	"github.com/spiral/roadrunner/v2"
+	"github.com/spiral/roadrunner/v2/plugins/app"
 	"log"
 
-	"github.com/spiral/roadrunner/v2/plugins/factory"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 )
 
@@ -14,12 +14,12 @@ const RRMode = "temporal/activities"
 
 type Server struct {
 	temporal temporal.Temporal
-	app      factory.AppFactory
+	app      app.WorkerFactory
 	ss       *session
 }
 
 // logger dep also
-func (srv *Server) Init(temporal temporal.Temporal, app factory.AppFactory) error {
+func (srv *Server) Init(temporal temporal.Temporal, app app.WorkerFactory) error {
 	if temporal.GetConfig().Activities == nil {
 		// no need to serve activities
 		return errors.E(errors.Disabled)

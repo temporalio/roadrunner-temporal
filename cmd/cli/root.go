@@ -85,6 +85,7 @@ func init() {
 }
 
 func initLogger() *zap.Logger {
+	// todo: we do not need it
 	cfg := zap.Config{
 		Level:    zap.NewAtomicLevelAt(zap.DebugLevel),
 		Encoding: "console",

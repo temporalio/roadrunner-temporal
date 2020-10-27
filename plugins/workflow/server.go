@@ -5,7 +5,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/spiral/endure/errors"
 	"github.com/spiral/roadrunner/v2"
-	"github.com/spiral/roadrunner/v2/plugins/factory"
+	"github.com/spiral/roadrunner/v2/plugins/app"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	"log"
 )
@@ -14,12 +14,12 @@ const RRMode = "temporal/workflow"
 
 type Server struct {
 	temporal temporal.Temporal
-	app      factory.AppFactory
+	app      app.WorkerFactory
 	ss       *session
 }
 
 // logger dep also
-func (srv *Server) Init(temporal temporal.Temporal, app factory.AppFactory) error {
+func (srv *Server) Init(temporal temporal.Temporal, app app.WorkerFactory) error {
 	srv.temporal = temporal
 	srv.app = app
 	return nil
