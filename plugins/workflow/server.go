@@ -15,7 +15,7 @@ const RRMode = "temporal/workflow"
 type Server struct {
 	temporal temporal.Temporal
 	app      app.WorkerFactory
-	ss       *session
+	ss       *workflowPool
 }
 
 // logger dep also
@@ -30,7 +30,7 @@ func (srv *Server) Serve() chan error {
 
 	session, err := srv.initSession()
 	if err != nil {
-		errCh <- errors.E(errors.Op("init ss"), err)
+		errCh <- errors.E(errors.Op("workflowServer"), err)
 		return errCh
 	}
 
@@ -48,7 +48,7 @@ func (srv *Server) Stop() error {
 	return nil
 }
 
-func (srv *Server) initSession() (*session, error) {
+func (srv *Server) initSession() (*workflowPool, error) {
 	session, err := srv.createSession(context.Background())
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (srv *Server) initSession() (*session, error) {
 	return session, nil
 }
 
-func (srv *Server) createSession(ctx context.Context) (*session, error) {
+func (srv *Server) createSession(ctx context.Context) (*workflowPool, error) {
 	worker, err := srv.app.NewWorker(
 		context.Background(),
 		map[string]string{"RR_MODE": RRMode},
@@ -85,7 +85,7 @@ func (srv *Server) createSession(ctx context.Context) (*session, error) {
 		// todo: recreate ss
 	}()
 
-	session, err := newSession(worker)
+	session, err := newWorkflowPool(worker)
 	if err != nil {
 		return nil, err
 	}

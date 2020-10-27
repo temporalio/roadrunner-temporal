@@ -25,7 +25,7 @@ var (
 
 // InitApp with a list of provided services.
 func InitApp(service ...interface{}) (err error) {
-	Container, err = endure.NewContainer(endure.FatalLevel, endure.RetryOnFail(false))
+	Container, err = endure.NewContainer(endure.ErrorLevel, endure.RetryOnFail(false))
 	if err != nil {
 		return err
 	}

@@ -35,7 +35,7 @@ func (ss *session) InitPool(ctx context.Context, temporal temporal.Temporal) err
 
 	ss.temporalWorkers = make([]worker.Worker, 0)
 	for _, cfg := range info {
-		w, err := temporal.CreateWorker(cfg.TaskQueue, cfg.Options.ToNativeOptions())
+		w, err := temporal.CreateWorker(cfg.TaskQueue, cfg.Options.TemporalOptions())
 
 		if err != nil {
 			ss.Destroy(ctx)

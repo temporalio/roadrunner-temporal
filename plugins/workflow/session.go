@@ -12,8 +12,8 @@ import (
 	"sync/atomic"
 )
 
-// session manages workflowProxy executions between worker restarts.
-type session struct {
+// workflowPool manages workflowProxy executions between worker restarts.
+type workflowPool struct {
 	seqID           uint64
 	numW            uint64
 	numS            uint64
@@ -22,25 +22,25 @@ type session struct {
 	temporalWorkers []worker.Worker
 }
 
-func newSession(worker roadrunner.WorkerBase) (*session, error) {
+func newWorkflowPool(worker roadrunner.WorkerBase) (*workflowPool, error) {
 	syncWorker, err := roadrunner.NewSyncWorker(worker)
 	if err != nil {
 		return nil, err
 	}
 
-	return &session{worker: syncWorker}, nil
+	return &workflowPool{worker: syncWorker}, nil
 }
 
 // initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
-func (ss *session) InitSession(ctx context.Context, temporal temporal.Temporal) error {
-	info, err := rrt.GetWorkerInfo(ctx, ss.worker)
+func (ss *workflowPool) InitSession(ctx context.Context, temporal temporal.Temporal) error {
+	info, err := rrt.GetWorkerInfo(ss.worker)
 	if err != nil {
 		return err
 	}
 
 	ss.temporalWorkers = make([]worker.Worker, 0)
 	for _, cfg := range info {
-		w, err := temporal.CreateWorker(cfg.TaskQueue, cfg.Options.ToNativeOptions())
+		w, err := temporal.CreateWorker(cfg.TaskQueue, cfg.Options.TemporalOptions())
 
 		if err != nil {
 			ss.Destroy(ctx)
@@ -60,7 +60,7 @@ func (ss *session) InitSession(ctx context.Context, temporal temporal.Temporal) 
 	return nil
 }
 
-func (ss *session) Start() error {
+func (ss *workflowPool) Start() error {
 	for i := 0; i < len(ss.temporalWorkers); i++ {
 		err := ss.temporalWorkers[i].Start()
 		if err != nil {
@@ -71,7 +71,7 @@ func (ss *session) Start() error {
 	return nil
 }
 
-func (ss *session) Destroy(ctx context.Context) {
+func (ss *workflowPool) Destroy(ctx context.Context) {
 	for i := 0; i < len(ss.temporalWorkers); i++ {
 		ss.temporalWorkers[i].Stop()
 	}
@@ -80,7 +80,7 @@ func (ss *session) Destroy(ctx context.Context) {
 	ss.worker.Stop(ctx)
 }
 
-func (ss *session) NewWorkflowDefinition() bindings.WorkflowDefinition {
+func (ss *workflowPool) NewWorkflowDefinition() bindings.WorkflowDefinition {
 	atomic.AddUint64(&ss.numW, 1)
 	return &workflowProxy{
 		worker:  ss.worker,
@@ -88,7 +88,7 @@ func (ss *session) NewWorkflowDefinition() bindings.WorkflowDefinition {
 	}
 }
 
-func (ss *session) Exec(p roadrunner.Payload) (roadrunner.Payload, error) {
+func (ss *workflowPool) Exec(p roadrunner.Payload) (roadrunner.Payload, error) {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
 

@@ -1,25 +1,21 @@
 package roadrunner_temporal
 
 import (
-	"context"
 	"encoding/json"
-	"github.com/spiral/roadrunner/v2"
+	"github.com/spiral/endure/errors"
 	"go.temporal.io/sdk/worker"
 	"time"
 )
 
-// todo: implement
-var WorkerInit = roadrunner.Payload{
-	Context: []byte("[]"),
-	Body:    []byte("[]"),
-}
+const getWorkerInfo = "GetWorkerInfo"
 
-type WorkerInfo map[string]struct {
+// WorkerInfo outlines information about every available worker and it's TaskQueues.
+type WorkerInfo struct {
 	// TaskQueue assigned to the worker.
 	TaskQueue string `json:"taskQueue"`
 
-	// Options describe worker options. TODO: map remaining options
-	Options WorkerOptions `json:"options"`
+	// Options describe worker options.
+	Options WorkerOptions `json:"options,omitempty"`
 
 	// Workflows provided by the worker.
 	Workflows []struct {
@@ -40,7 +36,7 @@ type WorkerInfo map[string]struct {
 	}
 }
 
-// WorkerOptions defined by the underlying worker.
+// WorkerOptions defined by the underlying worker. @todo: finish mapping
 type WorkerOptions struct {
 	// Optional: To set the maximum concurrent activity executions this worker can have.
 	// The zero value of this uses the default value.
@@ -77,9 +73,8 @@ type WorkerOptions struct {
 	WorkerStopTimeout time.Duration `json:"workerStopTimeout"`
 }
 
-// ToNativeOptions converts options to the temporal worker options.
-func (opt WorkerOptions) ToNativeOptions() worker.Options {
-	// todo: map remaining options
+// TemporalOptions converts options to the temporal worker options.
+func (opt WorkerOptions) TemporalOptions() worker.Options {
 	return worker.Options{
 		MaxConcurrentActivityExecutionSize:      opt.MaxConcurrentActivityExecutionSize,
 		WorkerActivitiesPerSecond:               opt.WorkerActivitiesPerSecond,
@@ -89,21 +84,29 @@ func (opt WorkerOptions) ToNativeOptions() worker.Options {
 	}
 }
 
-type Executor interface {
-	// ExecWithContext allow to set ExecTTL
-	Exec(rqs roadrunner.Payload) (roadrunner.Payload, error)
-}
-
-// GetWorkerInfo fetches information from attached worker or worker pool.
-func GetWorkerInfo(ctx context.Context, e Executor) (WorkerInfo, error) {
-	result, err := e.Exec(WorkerInit)
+// GetWorkerInfo fetches information about all underlying workers (can be multiplexed inside single process).
+func GetWorkerInfo(e Endpoint) ([]WorkerInfo, error) {
+	result, err := Execute(e, Context{}, Message{ID: 0, Command: getWorkerInfo})
 	if err != nil {
-		return WorkerInfo{}, err
+		return nil, err
 	}
 
-	var info WorkerInfo
-	if err := json.Unmarshal(result.Body, &info); err != nil {
-		return WorkerInfo{}, err
+	if len(result) != 1 {
+		return nil, errors.E(errors.Op("getWorkerInfo"), "unable to read worker info")
+	}
+
+	if result[0].ID != 0 {
+		return nil, errors.E(errors.Op("getWorkerInfo"), "GetWorkerInfo confirmation missing")
+	}
+
+	var info []WorkerInfo
+	for _, data := range result[0].Result {
+		wi := WorkerInfo{}
+		if err := json.Unmarshal(data, &wi); err != nil {
+			return nil, errors.E(errors.Op("getWorkerInfo"), err)
+		}
+
+		info = append(info, wi)
 	}
 
 	return info, nil

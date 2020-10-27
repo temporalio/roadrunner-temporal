@@ -12,13 +12,13 @@ import (
 )
 
 type workflowProxy struct {
-	session   *session
+	session   *workflowPool
 	taskQueue string
 	worker    roadrunner.SyncWorker
 	env       bindings.WorkflowEnvironment
 	// todo: pre-fetch info
 	// todo: improve data conversions
-	queue     []rrt.Frame
+	queue     []rrt.Message
 	callbacks []func()
 	complete  bool
 }
@@ -172,7 +172,7 @@ func (wp *workflowProxy) addCallback(callback bindings.ResultHandler) bindings.R
 }
 
 func (wp *workflowProxy) pushCommand(name string, params interface{}) (id uint64, err error) {
-	cmd := rrt.Frame{
+	cmd := rrt.Message{
 		ID:      atomic.AddUint64(&wp.session.seqID, 1),
 		Command: name,
 	}
@@ -188,7 +188,7 @@ func (wp *workflowProxy) pushCommand(name string, params interface{}) (id uint64
 }
 
 func (wp *workflowProxy) pushResult(id uint64, result *commonpb.Payloads) {
-	cmd := rrt.Frame{
+	cmd := rrt.Message{
 		ID: id,
 	}
 
@@ -196,12 +196,12 @@ func (wp *workflowProxy) pushResult(id uint64, result *commonpb.Payloads) {
 	wp.env.GetDataConverter().FromPayloads(result, &payload)
 
 	// todo: REPACK
-	cmd.Result, _ = json.Marshal(payload.Data)
+	//	cmd.Result, _ = json.Marshal(payload.Data)
 	wp.queue = append(wp.queue, cmd)
 }
 
 func (wp *workflowProxy) pushError(id uint64, err error) {
-	//	cmd := rrt.Frame{
+	//	cmd := rrt.Message{
 	//		ID:    id,
 	//		Error: err.Error(),
 	//}
@@ -211,12 +211,12 @@ func (wp *workflowProxy) pushError(id uint64, err error) {
 }
 
 type Wrapper struct {
-	Rid      string      `json:"rid"`
-	Commands []rrt.Frame `json:"commands"`
+	Rid      string        `json:"rid"`
+	Commands []rrt.Message `json:"commands"`
 }
 
 // Exchange commands with worker.
-func (wp *workflowProxy) execute(cmd ...rrt.Frame) (result []rrt.Frame, err error) {
+func (wp *workflowProxy) execute(cmd ...rrt.Message) (result []rrt.Message, err error) {
 	atomic.AddUint64(&wp.session.numS, 1)
 	defer atomic.AddUint64(&wp.session.numS, ^uint64(0))
 
