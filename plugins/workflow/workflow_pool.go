@@ -30,6 +30,7 @@ func NewWorkflowPool(ctx context.Context, factory app.WorkerFactory) (*workflowP
 		context.Background(),
 		map[string]string{"RR_MODE": RRMode},
 	)
+
 	if err != nil {
 		return nil, err
 	}
