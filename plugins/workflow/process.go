@@ -83,21 +83,21 @@ func (wp *workflowProcess) getContext() rrt.Context {
 }
 
 func (wp *workflowProcess) handleCommand(id uint64, name string, params json.RawMessage) error {
-	cmd, err := parseCommand(wp.env.GetDataConverter(), name, params)
+	rawCmd, err := parseCommand(wp.env.GetDataConverter(), name, params)
 	if err != nil {
 		return err
 	}
 
-	switch cmd.(type) {
+	switch cmd := rawCmd.(type) {
 	case ExecuteActivity:
-		wp.env.ExecuteActivity(cmd.(ExecuteActivity).ActivityParams(), wp.createCallback(id))
+		wp.env.ExecuteActivity(cmd.ActivityParams(wp.env), wp.createCallback(id))
 
 	case NewTimer:
-		wp.env.NewTimer(cmd.(NewTimer).ToDuration(), wp.createCallback(id))
+		wp.env.NewTimer(cmd.ToDuration(), wp.createCallback(id))
 
 	case CompleteWorkflow:
-		wp.mq.pushResponse(id, nil)
-		wp.env.Complete(cmd.(CompleteWorkflow).ResultPayload, nil)
+		wp.mq.pushResponse(id, []json.RawMessage{[]byte("true")})
+		wp.env.Complete(cmd.ResultPayload, nil)
 	}
 
 	return nil

@@ -9,7 +9,6 @@ import (
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/internalbindings"
 	bindings "go.temporal.io/sdk/internalbindings"
-	"go.temporal.io/sdk/workflow"
 	"time"
 )
 
@@ -50,17 +49,19 @@ type ExecuteActivity struct {
 	Args []json.RawMessage `json:"arguments"`
 
 	// Options to run activity as.
-	Options workflow.ActivityOptions `json:"options,omitempty"`
+	// todo: implement
+	//Options workflow.ActivityOptions `json:"options,omitempty"`
 
 	// ArgsPayload represents Args converted into Temporal payload format.
 	ArgsPayload *commonpb.Payloads
 }
 
 // ActivityParams maps activity command to activity params.
-func (cmd ExecuteActivity) ActivityParams() bindings.ExecuteActivityParams {
+func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment) bindings.ExecuteActivityParams {
 	return bindings.ExecuteActivityParams{
 		// todo: implement mapping
 		ExecuteActivityOptions: bindings.ExecuteActivityOptions{
+			TaskQueueName:          env.WorkflowInfo().TaskQueueName,
 			ScheduleToCloseTimeout: time.Second * 60,
 			ScheduleToStartTimeout: time.Second * 60,
 			StartToCloseTimeout:    time.Second * 60,
@@ -103,6 +104,7 @@ func parseCommand(dc converter.DataConverter, name string, params json.RawMessag
 			return nil, err
 		}
 
+		cmd.ArgsPayload = &commonpb.Payloads{}
 		if err := rrt.ToPayload(dc, cmd.Args, cmd.ArgsPayload); err != nil {
 			return nil, err
 		}
@@ -123,6 +125,7 @@ func parseCommand(dc converter.DataConverter, name string, params json.RawMessag
 			return nil, err
 		}
 
+		cmd.ResultPayload = &commonpb.Payloads{}
 		if err := rrt.ToPayload(dc, cmd.Result, cmd.ResultPayload); err != nil {
 			return nil, err
 		}

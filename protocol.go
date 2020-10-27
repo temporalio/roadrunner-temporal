@@ -86,14 +86,14 @@ func Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 	}
 
 	// todo: debug flag?
-	//log.Print("send: ", color.GreenString(string(p.Body)))
+	//log.Print(color.GreenString(string(p.Body)))
 
 	out, err := e.Exec(p)
 	if err != nil {
 		return nil, errors.E(errors.Op("execute"), err)
 	}
 
-	//log.Print("got: ", color.HiCyanString(string(out.Body)))
+	//log.Print(color.HiYellowString(string(out.Body)))
 
 	err = json.Unmarshal(out.Body, &result)
 	if err != nil {
