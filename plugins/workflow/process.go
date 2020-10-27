@@ -11,19 +11,19 @@ import (
 	"time"
 )
 
-type workflowProxy struct {
-	session   *workflowPool
+type workflowProcess struct {
+	pool      *workflowPool
 	taskQueue string
 	worker    roadrunner.SyncWorker
 	env       bindings.WorkflowEnvironment
-	// todo: pre-fetch info
+	// todo: pre-fetch workflows
 	// todo: improve data conversions
 	queue     []rrt.Message
 	callbacks []func()
 	complete  bool
 }
 
-func (wp *workflowProxy) Execute(env bindings.WorkflowEnvironment, header *commonpb.Header, input *commonpb.Payloads) {
+func (wp *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *commonpb.Header, input *commonpb.Payloads) {
 	wp.callbacks = append(wp.callbacks, func() {
 		info := env.WorkflowInfo()
 
@@ -47,7 +47,7 @@ func (wp *workflowProxy) Execute(env bindings.WorkflowEnvironment, header *commo
 	})
 }
 
-func (wp *workflowProxy) OnWorkflowTaskStarted() {
+func (wp *workflowProcess) OnWorkflowTaskStarted() {
 	for _, callback := range wp.callbacks {
 		callback()
 	}
@@ -63,17 +63,17 @@ func (wp *workflowProxy) OnWorkflowTaskStarted() {
 
 		for _, frame := range result {
 			if frame.Command == "" {
-				//log.Printf("got response for %v: %s", frame.ID, color.MagentaString(string(frame.Result)))
+				//				log.Printf("got response for %v: %s", frame.ID, color.MagentaString(string(frame.Result)))
 				continue
 			}
 
-			//log.Printf("got command for %s(%v): %s", color.BlueString(frame.Command), frame.ID, color.GreenString(string(frame.Params)))
+			//			log.Printf("got command for %s(%v): %s", color.BlueString(frame.Command), frame.ID, color.GreenString(string(frame.Params)))
 			wp.handle(frame.Command, frame.ID, frame.Params)
 		}
 	}
 }
 
-func (wp *workflowProxy) handle(cmd string, id uint64, params json.RawMessage) error {
+func (wp *workflowProcess) handle(cmd string, id uint64, params json.RawMessage) error {
 	switch cmd {
 	case "ExecuteActivity":
 		data := ExecuteActivity{}
@@ -134,13 +134,13 @@ func (wp *workflowProxy) handle(cmd string, id uint64, params json.RawMessage) e
 	return nil
 }
 
-func (wp *workflowProxy) StackTrace() string {
+func (wp *workflowProcess) StackTrace() string {
 	// TODO: IDEAL - debug_stacktrace()
 	return "this is ST"
 }
 
-func (wp *workflowProxy) Close() {
-	atomic.AddUint64(&wp.session.numW, ^uint64(0))
+func (wp *workflowProcess) Close() {
+	atomic.AddUint64(&wp.pool.numW, ^uint64(0))
 	if wp.queue != nil {
 		wp.execute(wp.queue...)
 	}
@@ -153,7 +153,7 @@ func (wp *workflowProxy) Close() {
 	// todo: send command
 }
 
-func (wp *workflowProxy) newResultHandler(id uint64) bindings.ResultHandler {
+func (wp *workflowProcess) newResultHandler(id uint64) bindings.ResultHandler {
 	return wp.addCallback(func(result *commonpb.Payloads, err error) {
 		if err != nil {
 			wp.pushError(id, err)
@@ -163,7 +163,7 @@ func (wp *workflowProxy) newResultHandler(id uint64) bindings.ResultHandler {
 	})
 }
 
-func (wp *workflowProxy) addCallback(callback bindings.ResultHandler) bindings.ResultHandler {
+func (wp *workflowProcess) addCallback(callback bindings.ResultHandler) bindings.ResultHandler {
 	return func(result *commonpb.Payloads, err error) {
 		wp.callbacks = append(wp.callbacks, func() {
 			callback(result, err)
@@ -171,9 +171,9 @@ func (wp *workflowProxy) addCallback(callback bindings.ResultHandler) bindings.R
 	}
 }
 
-func (wp *workflowProxy) pushCommand(name string, params interface{}) (id uint64, err error) {
+func (wp *workflowProcess) pushCommand(name string, params interface{}) (id uint64, err error) {
 	cmd := rrt.Message{
-		ID:      atomic.AddUint64(&wp.session.seqID, 1),
+		ID:      atomic.AddUint64(&wp.pool.seqID, 1),
 		Command: name,
 	}
 
@@ -187,7 +187,7 @@ func (wp *workflowProxy) pushCommand(name string, params interface{}) (id uint64
 	return id, nil
 }
 
-func (wp *workflowProxy) pushResult(id uint64, result *commonpb.Payloads) {
+func (wp *workflowProcess) pushResult(id uint64, result *commonpb.Payloads) {
 	cmd := rrt.Message{
 		ID: id,
 	}
@@ -200,7 +200,7 @@ func (wp *workflowProxy) pushResult(id uint64, result *commonpb.Payloads) {
 	wp.queue = append(wp.queue, cmd)
 }
 
-func (wp *workflowProxy) pushError(id uint64, err error) {
+func (wp *workflowProcess) pushError(id uint64, err error) {
 	//	cmd := rrt.Message{
 	//		ID:    id,
 	//		Error: err.Error(),
@@ -216,9 +216,9 @@ type Wrapper struct {
 }
 
 // Exchange commands with worker.
-func (wp *workflowProxy) execute(cmd ...rrt.Message) (result []rrt.Message, err error) {
-	atomic.AddUint64(&wp.session.numS, 1)
-	defer atomic.AddUint64(&wp.session.numS, ^uint64(0))
+func (wp *workflowProcess) execute(cmd ...rrt.Message) (result []rrt.Message, err error) {
+	atomic.AddUint64(&wp.pool.numS, 1)
+	defer atomic.AddUint64(&wp.pool.numS, ^uint64(0))
 
 	ctx := rrt.Context{
 		TaskQueue: wp.taskQueue,
@@ -243,7 +243,7 @@ func (wp *workflowProxy) execute(cmd ...rrt.Message) (result []rrt.Message, err 
 
 	//log.Printf("send: %s", color.YellowString(string(p.Body)))
 
-	rsp, err := wp.session.Exec(p)
+	rsp, err := wp.pool.Exec(p)
 	if err != nil {
 		return nil, err
 	}

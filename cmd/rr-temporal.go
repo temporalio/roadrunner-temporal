@@ -22,8 +22,8 @@ func main() {
 
 		// Temporal extension.
 		&temporal.Server{},
-		//&activity.Server{},
-		&workflow.Server{},
+		//&activity.Service{},
+		&workflow.Service{},
 	)
 
 	if err != nil {

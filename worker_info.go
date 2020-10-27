@@ -18,22 +18,28 @@ type WorkerInfo struct {
 	Options WorkerOptions `json:"options,omitempty"`
 
 	// Workflows provided by the worker.
-	Workflows []struct {
-		// Name of the workflow.
-		Name string `json:"name"`
-
-		// Queries pre-defined for the workflow type.
-		Queries []string `json:"queries"`
-
-		// Signals pre-defined for the workflow type.
-		Signals []string `json:"signals"`
-	}
+	Workflows []WorkflowInfo
 
 	// Activities provided by the worker.
-	Activities []struct {
-		// Name describes public activity name.
-		Name string `json:"name"`
-	}
+	Activities []ActivityInfo
+}
+
+// WorkflowInfo describes single worker workflow.
+type WorkflowInfo struct {
+	// Name of the workflow.
+	Name string `json:"name"`
+
+	// Queries pre-defined for the workflow type.
+	Queries []string `json:"queries"`
+
+	// Signals pre-defined for the workflow type.
+	Signals []string `json:"signals"`
+}
+
+// ActivityInfo describes single worker activity.
+type ActivityInfo struct {
+	// Name describes public activity name.
+	Name string `json:"name"`
 }
 
 // WorkerOptions defined by the underlying worker. @todo: finish mapping

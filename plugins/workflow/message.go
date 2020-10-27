@@ -1,11 +1,19 @@
 package workflow
 
-import "time"
+import (
+	"go.temporal.io/sdk/workflow"
+	"time"
+)
 
+// ExecuteActivity command by workflow worker.
 type ExecuteActivity struct {
+	// Name defines activity name.
 	Name string `json:"name"`
 
-	//todo: options
+	// Options to run activity as.
+	Options workflow.ActivityOptions `json:"options"`
+
+	// todo: chnage to
 	Args []interface{} `json:"arguments"`
 }
 
