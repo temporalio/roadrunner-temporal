@@ -44,7 +44,7 @@ type Message struct {
 	Params json.RawMessage `json:"params,omitempty"`
 
 	// Result always contains array of values.
-	Result []json.RawMessage `json:"result,omitempty"`
+	Result []json.RawMessage `json:"result"`
 
 	// Error associated with command id.
 	Error interface{} `json:"error,omitempty"`
