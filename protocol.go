@@ -98,7 +98,7 @@ func Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 	}
 
 	// todo: debug flag?
-	//	log.Print(color.GreenString(string(p.Body)))
+	//log.Print(color.GreenString(string(p.Body)))
 
 	out, err := e.Exec(p)
 	if err != nil {

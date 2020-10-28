@@ -171,5 +171,4 @@ func (pool *activityPool) executeActivity(ctx context.Context, input rrt.RRPaylo
 	//}
 
 	return rrt.RRPayload{}, nil
-	//return result, nil
 }
