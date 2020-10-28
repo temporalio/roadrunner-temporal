@@ -55,9 +55,9 @@ type ExecuteActivity struct {
 	// Args to pass to the activity.
 	Args []json.RawMessage `json:"arguments"`
 
-	// Options to run activity as.
+	// Info to run activity as.
 	// todo: implement
-	//Options workflow.ActivityOptions `json:"options,omitempty"`
+	//Info workflow.ActivityOptions `json:"options,omitempty"`
 
 	// ArgsPayload represents Args converted into Temporal payload format.
 	ArgsPayload *commonpb.Payloads

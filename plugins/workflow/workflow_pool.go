@@ -38,6 +38,7 @@ func NewWorkflowPool(ctx context.Context, factory app.WorkerFactory) (*workflowP
 	}
 
 	w.AddListener(func(event interface{}) {
+		// todo: forward logs to the parent service
 		if event.(roadrunner.WorkerEvent).Event == roadrunner.EventWorkerLog {
 			// todo: recreate pool
 			log.Print(color.RedString(string(event.(roadrunner.WorkerEvent).Payload.([]byte))))

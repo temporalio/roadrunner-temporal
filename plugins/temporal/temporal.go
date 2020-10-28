@@ -21,6 +21,7 @@ type Config struct {
 
 type Temporal interface {
 	GetClient() (client.Client, error)
+	GetDataConverter() converter.DataConverter
 	GetConfig() Config
 	CreateWorker(taskQueue string, options worker.Options) (worker.Worker, error)
 }
@@ -43,6 +44,11 @@ func (srv *Server) Init(cfg config.Provider, log *zap.Logger) error {
 // GetConfig returns temporal configuration.
 func (srv *Server) GetConfig() Config {
 	return srv.cfg
+}
+
+// GetDataConverter returns data active data converter.
+func (srv *Server) GetDataConverter() converter.DataConverter {
+	return srv.dc
 }
 
 // Serve starts temporal srv.

@@ -111,9 +111,9 @@ func (r *rpc) ExecuteWorkflow(in ExecuteWorkflowIn, out *ExecuteWorkflowOut) err
 	wr, err := r.srv.client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
 		ID:                       in.Options.ID,
 		TaskQueue:                in.Options.TaskQueue,
-		WorkflowExecutionTimeout: time.Minute, //in.Options.WorkflowExecutionTimeout,
-		WorkflowRunTimeout:       time.Minute, //in.Options.WorkflowRunTimeout,
-		WorkflowTaskTimeout:      time.Minute, //in.Options.WorkflowTaskTimeout,
+		WorkflowExecutionTimeout: time.Minute, //in.Info.WorkflowExecutionTimeout,
+		WorkflowRunTimeout:       time.Minute, //in.Info.WorkflowRunTimeout,
+		WorkflowTaskTimeout:      time.Minute, //in.Info.WorkflowTaskTimeout,
 	}, in.Name, in.Input...)
 	if err != nil {
 		return err
@@ -211,9 +211,9 @@ func (r *rpc) SignalWithStartWorkflow(in SignalWithStartIn, out *SignalWithStart
 	wr, err := r.srv.client.SignalWithStartWorkflow(ctx, in.WorkflowId, in.SignalName, in.SignalArg, client.StartWorkflowOptions{
 		ID:                       in.Options.ID,
 		TaskQueue:                in.Options.TaskQueue,
-		WorkflowExecutionTimeout: time.Minute, //in.Options.WorkflowExecutionTimeout,
-		WorkflowRunTimeout:       time.Minute, //in.Options.WorkflowRunTimeout,
-		WorkflowTaskTimeout:      time.Minute, //in.Options.WorkflowTaskTimeout,
+		WorkflowExecutionTimeout: time.Minute, //in.Info.WorkflowExecutionTimeout,
+		WorkflowRunTimeout:       time.Minute, //in.Info.WorkflowRunTimeout,
+		WorkflowTaskTimeout:      time.Minute, //in.Info.WorkflowTaskTimeout,
 	}, in.WorkflowInterface, in.Args...)
 	if err != nil {
 		return err
