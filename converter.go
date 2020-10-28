@@ -23,6 +23,17 @@ func NewDataConverter() converter.DataConverter {
 func (r *DataConverter) ToPayloads(values ...interface{}) (*commonpb.Payloads, error) {
 	res := &commonpb.Payloads{}
 	for i := 0; i < len(values); i++ {
+		if rrtP, ok := values[i].(RRPayload); ok {
+			for j := 0; j < len(rrtP.Data); j++ {
+				payload, err := r.ToPayload(rrtP.Data[j])
+				if err != nil {
+					return nil, fmt.Errorf("values[%d]: %w", i, err)
+				}
+				res.Payloads = append(res.Payloads, payload)
+			}
+			continue
+		}
+
 		payload, err := r.ToPayload(values[i])
 		if err != nil {
 			return nil, fmt.Errorf("values[%d]: %w", i, err)
