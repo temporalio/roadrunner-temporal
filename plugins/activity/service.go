@@ -65,7 +65,7 @@ func (svc *Service) Serve() chan error {
 
 	svc.pool = pool
 
-	svc.log.Debug("Started consuming activities", zap.Any("activities", pool.activities))
+	svc.log.Debug("Started activity processing", zap.Any("activities", pool.activities))
 
 	return errCh
 }

@@ -40,6 +40,10 @@ func NewActivityPool(ctx context.Context, poolConfig roadrunner.Config, factory 
 	}
 
 	wp.AddListener(func(event interface{}) {
+		if _, ok := event.(roadrunner.PoolEvent); ok {
+			return
+		}
+
 		// todo: forward logs to the parent service
 		if event.(roadrunner.WorkerEvent).Event == roadrunner.EventWorkerLog {
 			// todo: recreate pool
@@ -154,21 +158,22 @@ func (pool *activityPool) executeActivity(ctx context.Context, input rrt.RRPaylo
 		return rrt.RRPayload{}, errors.E(errors.Op("executeActivity"), "invalid activity worker response")
 	}
 
-	log.Println(result[0])
+	if result[0].Error != nil {
+		return rrt.RRPayload{}, errors.E("got error, marshaling is required")
+	}
 
-	//res, err := pool.workerPool.Exec(payload)
-	//if err != nil {
-	//	return EmptyRrResult, err
-	//}
-	//
-	//// todo: async
-	//// todo: what results options do we have
-	//// todo: make sure results are packed correctly
-	//result := rrt.RRPayload{}
-	//err = json.Unmarshal(res.Body, &result.Data)
-	//if err != nil {
-	//	return EmptyRrResult, err
-	//}
+	// todo: optimize
+	out := rrt.RRPayload{}
+	for _, raw := range result[0].Result {
+		var value interface{}
+		err := json.Unmarshal(raw, &value)
+		if err != nil {
+			return rrt.RRPayload{}, err
+		}
 
-	return rrt.RRPayload{}, nil
+		out.Data = append(out.Data, value)
+	}
+
+	// todo: handle error and async commands
+	return out, nil
 }

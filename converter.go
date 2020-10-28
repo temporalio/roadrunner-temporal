@@ -4,7 +4,6 @@ import (
 	//"encoding/json"
 	"errors"
 	"fmt"
-
 	json "github.com/json-iterator/go"
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/converter"
