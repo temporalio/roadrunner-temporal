@@ -9,6 +9,7 @@ import (
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/internalbindings"
 	bindings "go.temporal.io/sdk/internalbindings"
+	"go.temporal.io/sdk/workflow"
 	"time"
 )
 
@@ -35,10 +36,11 @@ type DestroyWorkflow struct {
 
 // StartWorkflow sends worker command to start workflow.
 type StartWorkflow struct {
-	Name      string            `json:"name"`
-	Wid       string            `json:"wid"`
-	Rid       string            `json:"rid"`
-	TaskQueue string            `json:"taskQueue"`
+	Name      string `json:"name"`
+	Wid       string `json:"wid"`
+	Rid       string `json:"rid"`
+	TaskQueue string `json:"taskQueue"`
+	Info      *workflow.Info
 	Input     []json.RawMessage `json:"args"`
 }
 
@@ -50,6 +52,7 @@ func (start *StartWorkflow) FromEnvironment(env internalbindings.WorkflowEnviron
 	start.Wid = info.WorkflowExecution.ID
 	start.Rid = info.WorkflowExecution.RunID
 	start.TaskQueue = info.TaskQueueName
+	start.Info = env.WorkflowInfo()
 
 	return rrt.FromPayload(env.GetDataConverter(), input, &start.Input)
 }
