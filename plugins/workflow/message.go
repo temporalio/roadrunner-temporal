@@ -22,6 +22,7 @@ const (
 	RegisterSignalHandlerCommand = "RegisterSignalHandler"
 	RegisterQueryHandlerCommand  = "RegisterQueryHandler"
 	ExecuteChildWorkflowCommand  = "ExecuteChildWorkflow"
+	GetVersionCommand            = "GetVersion"
 
 	// todo: cancelling?
 )
