@@ -2,7 +2,6 @@ package workflow
 
 import (
 	"context"
-	"github.com/fatih/color"
 	"github.com/spiral/endure/errors"
 	"github.com/spiral/roadrunner/v2"
 	"github.com/spiral/roadrunner/v2/plugins/app"
@@ -36,14 +35,6 @@ func NewWorkflowPool(ctx context.Context, factory app.WorkerFactory) (*workflowP
 	if err != nil {
 		return nil, err
 	}
-
-	w.AddListener(func(event interface{}) {
-		// todo: forward logs to the parent service
-		if event.(roadrunner.WorkerEvent).Event == roadrunner.EventWorkerLog {
-			// todo: recreate pool
-			log.Print(color.RedString(string(event.(roadrunner.WorkerEvent).Payload.([]byte))))
-		}
-	})
 
 	go func() {
 		// todo: move into pool start
@@ -91,7 +82,9 @@ func (pool *workflowPool) Destroy(ctx context.Context) {
 	}
 
 	// todo: pass via event callback
-	pool.worker.Stop(ctx)
+	//if err := pool.worker.Stop(ctx); err != nil {
+	//	pool.events.Push()
+	//}
 }
 
 // NewWorkflowDefinition initiates new workflow process.

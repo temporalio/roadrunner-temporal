@@ -71,14 +71,14 @@ func (wp *workflowProcess) StackTrace() string {
 func (wp *workflowProcess) Close() {
 	if !wp.completed {
 		// offloaded from memory
-		_, err := wp.mq.pushCommand(
-			DestroyWorkflowCommand,
-			DestroyWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID},
-		)
-
-		if err != nil {
-			panic(err)
-		}
+		//_, err := wp.mq.pushCommand(
+		//	DestroyWorkflowCommand,
+		//	DestroyWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID},
+		//)
+		//
+		//if err != nil {
+		//	panic(err)
+		//}
 	}
 
 	_, err := rrt.Execute(wp.pool, wp.getContext(), wp.mq.queue...)
@@ -110,7 +110,7 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params json.Raw
 
 	case CompleteWorkflow:
 		wp.completed = true
-		wp.mq.pushResponse(id, []json.RawMessage{[]byte("true")})
+		//wp.mq.pushResponse(id, []json.RawMessage{[]byte("true")})
 		wp.env.Complete(cmd.ResultPayload, nil)
 	}
 

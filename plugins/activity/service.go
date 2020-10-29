@@ -40,11 +40,6 @@ func (svc *Service) Init(temporal temporal.Temporal, app app.WorkerFactory, log 
 	return nil
 }
 
-// AddListener adds event listeners to the service.
-func (svc *Service) AddListener(listener util.EventListener) {
-	svc.events.AddListener(listener)
-}
-
 // Serve activities with underlying workers.
 func (svc *Service) Serve() chan error {
 	errCh := make(chan error, 1)
@@ -87,4 +82,9 @@ func (svc *Service) Name() string {
 func (svc *Service) Reset() error {
 	// todo: implement
 	return nil
+}
+
+// AddListener adds event listeners to the service.
+func (svc *Service) AddListener(listener util.EventListener) {
+	svc.events.AddListener(listener)
 }

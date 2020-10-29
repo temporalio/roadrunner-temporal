@@ -14,3 +14,7 @@ require (
 	go.uber.org/zap v1.16.0
 	golang.org/x/image v0.0.0-20200927104501-e162460cd6b5 // indirect
 )
+
+replace (
+	github.com/spiral/roadrunner/v2 v2.0.0-alpha14 => ../roadrunner
+)

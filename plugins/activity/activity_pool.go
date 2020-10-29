@@ -3,7 +3,6 @@ package activity
 import (
 	"context"
 	"encoding/json"
-	"github.com/fatih/color"
 	"github.com/spiral/endure/errors"
 	"github.com/spiral/roadrunner/v2"
 	"github.com/spiral/roadrunner/v2/plugins/app"
@@ -13,7 +12,6 @@ import (
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
-	"log"
 	"sync/atomic"
 )
 
@@ -42,12 +40,6 @@ func NewActivityPool(ctx context.Context, poolConfig roadrunner.Config, factory 
 	wp.AddListener(func(event interface{}) {
 		if _, ok := event.(roadrunner.PoolEvent); ok {
 			return
-		}
-
-		// todo: forward logs to the parent service
-		if event.(roadrunner.WorkerEvent).Event == roadrunner.EventWorkerLog {
-			// todo: recreate pool
-			log.Print(color.RedString(string(event.(roadrunner.WorkerEvent).Payload.([]byte))))
 		}
 	})
 

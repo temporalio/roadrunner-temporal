@@ -44,7 +44,7 @@ func (mq *messageQueue) pushError(id uint64, err error) {
 
 	//	cmd := rrt.Message{
 	//		ID:    id,
-	//		Error: err.Error(),
+	//		Payload: err.Payload(),
 	//}
 	//log.Println("error!", err)
 	//wp.mq = append(wp.mq, cmd)
