@@ -24,6 +24,8 @@ const (
 	RegisterQueryHandlerCommand  = "RegisterQueryHandler"
 	ExecuteChildWorkflowCommand  = "ExecuteChildWorkflow"
 	GetVersionCommand            = "GetVersion"
+	CancelTimerCommand           = "CancelTimer"
+	CancelActivityCommand        = "CancelActivity"
 
 	// todo: cancelling?
 )
