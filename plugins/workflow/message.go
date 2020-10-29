@@ -13,11 +13,17 @@ import (
 )
 
 const (
-	DestroyWorkflowCommand  = "DestroyWorkflow"
-	StartWorkflowCommand    = "StartWorkflow"
-	ExecuteActivityCommand  = "ExecuteActivity"
-	NewTimerCommand         = "NewTimer"
-	CompleteWorkflowCommand = "CompleteWorkflow"
+	DestroyWorkflowCommand       = "DestroyWorkflow"
+	StartWorkflowCommand         = "StartWorkflow"
+	ExecuteActivityCommand       = "ExecuteActivity"
+	NewTimerCommand              = "NewTimer"
+	CompleteWorkflowCommand      = "CompleteWorkflow"
+	SideEffectCommand            = "SideEffect"
+	RegisterSignalHandlerCommand = "RegisterSignalHandler"
+	RegisterQueryHandlerCommand  = "RegisterQueryHandler"
+	ExecuteChildWorkflowCommand  = "ExecuteChildWorkflow"
+
+	// todo: cancelling?
 )
 
 // DestroyWorkflow asks worker to offload workflow from memory.
