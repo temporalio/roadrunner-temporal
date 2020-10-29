@@ -38,11 +38,11 @@ type DestroyWorkflow struct {
 
 // StartWorkflow sends worker command to start workflow.
 type StartWorkflow struct {
-	Name      string `json:"name"`
-	Wid       string `json:"wid"`
-	Rid       string `json:"rid"`
-	TaskQueue string `json:"taskQueue"`
-	Info      *workflow.Info
+	Name      string            `json:"name"`
+	Wid       string            `json:"wid"`
+	Rid       string            `json:"rid"`
+	TaskQueue string            `json:"taskQueue"`
+	Info      *workflow.Info    `json:"info"`
 	Input     []json.RawMessage `json:"args"`
 }
 
