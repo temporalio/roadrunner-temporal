@@ -6,6 +6,7 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/goccy/go-graphviz v0.0.8 // indirect
 	github.com/json-iterator/go v1.1.10
+	github.com/prometheus/common v0.4.0
 	github.com/spf13/cobra v1.1.0
 	github.com/spiral/endure v1.0.0-beta10
 	github.com/spiral/roadrunner/v2 v2.0.0-alpha14
@@ -15,6 +16,4 @@ require (
 	golang.org/x/image v0.0.0-20200927104501-e162460cd6b5 // indirect
 )
 
-replace (
-	github.com/spiral/roadrunner/v2 v2.0.0-alpha14 => ../roadrunner
-)
+replace github.com/spiral/roadrunner/v2 v2.0.0-alpha14 => ../roadrunner

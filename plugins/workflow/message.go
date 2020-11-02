@@ -41,6 +41,7 @@ type StartWorkflow struct {
 	Name      string            `json:"name"`
 	Wid       string            `json:"wid"`
 	Rid       string            `json:"rid"`
+	ProcessID string            `json:"processID"`
 	TaskQueue string            `json:"taskQueue"`
 	Info      *workflow.Info    `json:"info"`
 	Input     []json.RawMessage `json:"args"`
@@ -52,6 +53,7 @@ func (start *StartWorkflow) FromEnvironment(env internalbindings.WorkflowEnviron
 
 	start.Name = info.WorkflowType.Name
 	start.Wid = info.WorkflowExecution.ID
+	start.ProcessID = info.WorkflowExecution.RunID
 	start.Rid = info.WorkflowExecution.RunID
 	start.TaskQueue = info.TaskQueueName
 	start.Info = env.WorkflowInfo()
@@ -81,10 +83,13 @@ func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment) bind
 		// todo: implement mapping
 		ExecuteActivityOptions: bindings.ExecuteActivityOptions{
 			TaskQueueName:          env.WorkflowInfo().TaskQueueName,
-			ScheduleToCloseTimeout: time.Second * 60,
-			ScheduleToStartTimeout: time.Second * 60,
-			StartToCloseTimeout:    time.Second * 60,
-			HeartbeatTimeout:       time.Second * 10,
+			ScheduleToCloseTimeout: time.Minute * 60,
+			ScheduleToStartTimeout: time.Minute * 60,
+			HeartbeatTimeout:       time.Minute * 60, // WTF?
+			StartToCloseTimeout:    time.Minute * 5,  // WTF?
+			RetryPolicy: &commonpb.RetryPolicy{
+				MaximumAttempts: 1,
+			},
 		},
 		ActivityType: bindings.ActivityType{Name: cmd.Name},
 		Input:        cmd.ArgsPayload,

@@ -111,9 +111,9 @@ func (r *rpc) ExecuteWorkflow(in ExecuteWorkflowIn, out *ExecuteWorkflowOut) err
 	wr, err := r.srv.client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
 		ID:                       in.Options.ID,
 		TaskQueue:                in.Options.TaskQueue,
-		WorkflowExecutionTimeout: time.Minute, //in.Info.WorkflowExecutionTimeout,
-		WorkflowRunTimeout:       time.Minute, //in.Info.WorkflowRunTimeout,
-		WorkflowTaskTimeout:      time.Minute, //in.Info.WorkflowTaskTimeout,
+		WorkflowExecutionTimeout: time.Minute * 10, //in.Info.WorkflowExecutionTimeout,
+		WorkflowRunTimeout:       time.Minute * 10, //in.Info.WorkflowRunTimeout,
+		WorkflowTaskTimeout:      time.Minute * 2,  //in.Info.WorkflowTaskTimeout,
 	}, in.Name, in.Input...)
 	if err != nil {
 		return err

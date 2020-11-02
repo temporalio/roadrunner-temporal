@@ -82,11 +82,12 @@ type WorkerOptions struct {
 // TemporalOptions converts options to the temporal worker options.
 func (opt WorkerOptions) TemporalOptions() worker.Options {
 	return worker.Options{
-		MaxConcurrentActivityExecutionSize:      opt.MaxConcurrentActivityExecutionSize,
-		WorkerActivitiesPerSecond:               opt.WorkerActivitiesPerSecond,
-		MaxConcurrentLocalActivityExecutionSize: opt.MaxConcurrentActivityExecutionSize,
-		TaskQueueActivitiesPerSecond:            opt.TaskQueueActivitiesPerSecond,
-		MaxConcurrentActivityTaskPollers:        opt.MaxConcurrentActivityTaskPollers,
+		MaxConcurrentWorkflowTaskPollers: 20,
+		//MaxConcurrentActivityExecutionSize:      opt.MaxConcurrentActivityExecutionSize,
+		//WorkerActivitiesPerSecond:               opt.WorkerActivitiesPerSecond,
+		//MaxConcurrentLocalActivityExecutionSize: opt.MaxConcurrentActivityExecutionSize,
+		//TaskQueueActivitiesPerSecond:            opt.TaskQueueActivitiesPerSecond,
+		//MaxConcurrentActivityTaskPollers:        opt.MaxConcurrentActivityTaskPollers,
 	}
 }
 
