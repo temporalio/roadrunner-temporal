@@ -2,11 +2,12 @@ package roadrunner_temporal
 
 import (
 	"encoding/json"
-	"github.com/fatih/color"
-	"github.com/spiral/endure/errors"
-	"github.com/spiral/roadrunner/v2"
 	"log"
 	"time"
+
+	"github.com/fatih/color"
+	"github.com/spiral/errors"
+	"github.com/spiral/roadrunner/v2"
 )
 
 // Endpoint provides the ability to send and receive messages.

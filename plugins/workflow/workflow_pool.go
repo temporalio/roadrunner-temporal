@@ -2,7 +2,10 @@ package workflow
 
 import (
 	"context"
-	"github.com/spiral/endure/errors"
+	"log"
+	"sync"
+
+	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2"
 	"github.com/spiral/roadrunner/v2/plugins/app"
 	"github.com/spiral/roadrunner/v2/util"
@@ -11,8 +14,6 @@ import (
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
-	"log"
-	"sync"
 )
 
 // workflowPool manages workflowProcess executions between worker restarts.

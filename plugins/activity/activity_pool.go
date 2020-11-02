@@ -3,7 +3,9 @@ package activity
 import (
 	"context"
 	"encoding/json"
-	"github.com/spiral/endure/errors"
+	"sync/atomic"
+
+	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2"
 	"github.com/spiral/roadrunner/v2/plugins/app"
 	"github.com/spiral/roadrunner/v2/util"
@@ -12,7 +14,6 @@ import (
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
-	"sync/atomic"
 )
 
 // activityPool manages set of RR and Temporal activity workers and their cancellation contexts.

@@ -2,7 +2,8 @@ package roadrunner_temporal
 
 import (
 	"encoding/json"
-	"github.com/spiral/endure/errors"
+
+	"github.com/spiral/errors"
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/converter"
 )

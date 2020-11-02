@@ -2,7 +2,9 @@ package workflow
 
 import (
 	"encoding/json"
-	"github.com/spiral/endure/errors"
+	"time"
+
+	"github.com/spiral/errors"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	"go.temporal.io/api/common/v1"
 	commonpb "go.temporal.io/api/common/v1"
@@ -10,7 +12,6 @@ import (
 	"go.temporal.io/sdk/internalbindings"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
-	"time"
 )
 
 const (

@@ -50,7 +50,6 @@ func handler(cmd *cobra.Command, args []string) error {
 				}
 			}
 		case <-c:
-			os.Exit(1)
 			err = Container.Stop()
 			if err != nil {
 				return err
