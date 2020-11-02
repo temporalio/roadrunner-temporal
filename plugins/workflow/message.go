@@ -15,19 +15,23 @@ import (
 )
 
 const (
-	DestroyWorkflowCommand       = "DestroyWorkflow"
-	StartWorkflowCommand         = "StartWorkflow"
-	ExecuteActivityCommand       = "ExecuteActivity"
-	NewTimerCommand              = "NewTimer"
-	CompleteWorkflowCommand      = "CompleteWorkflow"
-	SideEffectCommand            = "SideEffect"
-	RegisterSignalHandlerCommand = "RegisterSignalHandler"
-	RegisterQueryHandlerCommand  = "RegisterQueryHandler"
-	ExecuteChildWorkflowCommand  = "ExecuteChildWorkflow"
-	GetVersionCommand            = "GetVersion"
-	CancelTimerCommand           = "CancelTimer"
-	CancelActivityCommand        = "CancelActivity"
-	InvokeSignalCommand          = "InvokeSignal"
+	DestroyWorkflowCommand  = "DestroyWorkflow"
+	StartWorkflowCommand    = "StartWorkflow"
+	ExecuteActivityCommand  = "ExecuteActivity"
+	NewTimerCommand         = "NewTimer"
+	CompleteWorkflowCommand = "CompleteWorkflow"
+	SideEffectCommand       = "SideEffect"
+	InvokeSignalCommand     = "InvokeSignal"
+	InvokeQueryCommand      = "InvokeQuery"
+	GetVersionCommand       = "GetVersion"
+
+	// desert
+	ExecuteChildWorkflowCommand = "ExecuteChildWorkflow"
+
+	// cancels
+	CancelTimerCommand    = "CancelTimer"
+	CancelActivityCommand = "CancelActivity"
+	// cancel external workflow
 
 	// todo: cancelling?
 )

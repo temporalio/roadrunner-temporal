@@ -2,10 +2,10 @@ package workflow
 
 import (
 	"encoding/json"
+	"fmt"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
-	"log"
 )
 
 // wraps single workflow process
@@ -99,7 +99,7 @@ func (wp *workflowProcess) getContext() rrt.Context {
 	}
 }
 
-// todo: schedule?
+// todo: MUST BE SCHEDULED
 func (wp *workflowProcess) handleQuery(queryType string, queryArgs *commonpb.Payloads) (*commonpb.Payloads, error) {
 	cmd := &InvokeQuery{
 		RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
@@ -110,9 +110,24 @@ func (wp *workflowProcess) handleQuery(queryType string, queryArgs *commonpb.Pay
 		return nil, err
 	}
 
-	log.Println(cmd)
+	// we can trigger signal immediately on arrival, todo: double check that
+	_, msg, err := wp.mq.makeCommand(InvokeQueryCommand, cmd)
 
-	return nil, nil
+	result, err := rrt.Execute(wp.pool, wp.getContext(), msg)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(result) != 1 {
+		return nil, fmt.Errorf("unexpected worker response")
+	}
+
+	out := &commonpb.Payloads{}
+	if err := rrt.ToPayloads(wp.env.GetDataConverter(), result[0].Result, out); err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }
 
 // todo: schedule?

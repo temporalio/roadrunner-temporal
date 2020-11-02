@@ -169,7 +169,7 @@ type SignalWorkflowIn struct {
 
 // SignalWorkflow sends a signals to a workflow in execution
 // - workflow ID of the workflow.
-// - runID can be default(empty string). if empty string then it will pick the running execution of that workflow ID.
+// - runID can be default(empс ty string). if empty string then it will pick the running execution of that workflow ID.
 // - signalName name to identify the signal.
 // The errors it can return:
 //	- EntityNotExistsError
@@ -447,17 +447,20 @@ type QueryWorkflowIn struct {
 //  - InternalServiceError
 //  - EntityNotExistError
 //  - QueryFailError
-func (r *rpc) QueryWorkflow(in QueryWorkflowIn, out *payload.RRPayload) error {
+func (r *rpc) QueryWorkflow(in QueryWorkflowIn, out *interface{}) error {
 	ctx := context.Background()
 	ev, err := r.srv.client.QueryWorkflow(ctx, in.WorkflowId, in.WorkflowRunId, in.QueryType, in.Args...)
 	if err != nil {
 		return err
 	}
 
-	out = &payload.RRPayload{} // init and clear
-	err = ev.Get(out)
+	raw := payload.RRPayload{} // init and clear
+	err = ev.Get(&raw)
 	if err != nil {
 		return err
 	}
+
+	*out = raw.Data[0]
+
 	return nil
 }
