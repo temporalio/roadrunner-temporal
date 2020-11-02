@@ -161,10 +161,10 @@ func (r *rpc) GetWorkflow(in GetWorkflowIn, out *GetWorkflowResult) error {
 }
 
 type SignalWorkflowIn struct {
-	WorkflowId    string        `json:"wid"`
-	WorkflowRunId string        `json:"rid,omitempty"`
-	SignalName    string        `json:"signal_name"`
-	Args          []interface{} `json:"args"`
+	WorkflowId    string      `json:"wid"`
+	WorkflowRunId string      `json:"rid,omitempty"`
+	SignalName    string      `json:"signal_name"`
+	Args          interface{} `json:"args"`
 }
 
 // SignalWorkflow sends a signals to a workflow in execution

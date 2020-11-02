@@ -27,6 +27,7 @@ const (
 	GetVersionCommand            = "GetVersion"
 	CancelTimerCommand           = "CancelTimer"
 	CancelActivityCommand        = "CancelActivity"
+	InvokeSignalCommand          = "InvokeSignal"
 
 	// todo: cancelling?
 )
@@ -39,27 +40,27 @@ type DestroyWorkflow struct {
 
 // StartWorkflow sends worker command to start workflow.
 type StartWorkflow struct {
-	Name      string            `json:"name"`
-	Wid       string            `json:"wid"`
-	Rid       string            `json:"rid"`
-	ProcessID string            `json:"processID"`
-	TaskQueue string            `json:"taskQueue"`
-	Info      *workflow.Info    `json:"info"`
-	Input     []json.RawMessage `json:"args"`
+	Info  *workflow.Info    `json:"info"`
+	Input []json.RawMessage `json:"args"`
 }
 
 // FromEnvironment maps start command from environment.
 func (start *StartWorkflow) FromEnvironment(env internalbindings.WorkflowEnvironment, input *common.Payloads) error {
-	info := env.WorkflowInfo()
-
-	start.Name = info.WorkflowType.Name
-	start.Wid = info.WorkflowExecution.ID
-	start.ProcessID = info.WorkflowExecution.RunID
-	start.Rid = info.WorkflowExecution.RunID
-	start.TaskQueue = info.TaskQueueName
 	start.Info = env.WorkflowInfo()
 
-	return rrt.FromPayload(env.GetDataConverter(), input, &start.Input)
+	return rrt.FromPayloads(env.GetDataConverter(), input, &start.Input)
+}
+
+type InvokeQuery struct {
+	RunID string            `json:"runId"`
+	Name  string            `json:"name"`
+	Args  []json.RawMessage `json:"args"`
+}
+
+type InvokeSignal struct {
+	RunID string            `json:"runId"`
+	Name  string            `json:"name"`
+	Args  []json.RawMessage `json:"args"`
 }
 
 // ExecuteActivity command by workflow worker.
@@ -130,7 +131,7 @@ func parseCommand(dc converter.DataConverter, name string, params json.RawMessag
 		}
 
 		cmd.ArgsPayload = &commonpb.Payloads{}
-		if err := rrt.ToPayload(dc, cmd.Args, cmd.ArgsPayload); err != nil {
+		if err := rrt.ToPayloads(dc, cmd.Args, cmd.ArgsPayload); err != nil {
 			return nil, err
 		}
 
@@ -151,7 +152,7 @@ func parseCommand(dc converter.DataConverter, name string, params json.RawMessag
 		}
 
 		cmd.ResultPayload = &commonpb.Payloads{}
-		if err := rrt.ToPayload(dc, cmd.Result, cmd.ResultPayload); err != nil {
+		if err := rrt.ToPayloads(dc, cmd.Result, cmd.ResultPayload); err != nil {
 			return nil, err
 		}
 

@@ -5,6 +5,7 @@ import (
 	rrt "github.com/temporalio/roadrunner-temporal"
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
+	"log"
 )
 
 // wraps single workflow process
@@ -26,6 +27,9 @@ func (wp *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *com
 		if err := start.FromEnvironment(env, input); err != nil {
 			return err
 		}
+
+		env.RegisterSignalHandler(wp.handleSignal)
+		env.RegisterQueryHandler(wp.handleQuery)
 
 		_, err := wp.mq.pushCommand(StartWorkflowCommand, start)
 		return err
@@ -95,6 +99,43 @@ func (wp *workflowProcess) getContext() rrt.Context {
 	}
 }
 
+// todo: schedule?
+func (wp *workflowProcess) handleQuery(queryType string, queryArgs *commonpb.Payloads) (*commonpb.Payloads, error) {
+	cmd := &InvokeQuery{
+		RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
+		Name:  queryType,
+	}
+
+	if err := rrt.FromPayloads(wp.env.GetDataConverter(), queryArgs, &cmd.Args); err != nil {
+		return nil, err
+	}
+
+	log.Println(cmd)
+
+	return nil, nil
+}
+
+// todo: schedule?
+func (wp *workflowProcess) handleSignal(name string, input *commonpb.Payloads) {
+	cmd := &InvokeQuery{
+		RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
+		Name:  name,
+	}
+
+	if err := rrt.FromPayloads(wp.env.GetDataConverter(), input, &cmd.Args); err != nil {
+		// todo: what to do about this panic?
+		panic(err)
+	}
+
+	// we can trigger signal immediately on arrival, todo: double check that
+	_, msg, err := wp.mq.makeCommand(InvokeSignalCommand, cmd)
+
+	_, err = rrt.Execute(wp.pool, wp.getContext(), msg)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func (wp *workflowProcess) handleCommand(id uint64, name string, params json.RawMessage) error {
 	rawCmd, err := parseCommand(wp.env.GetDataConverter(), name, params)
 	if err != nil {
@@ -125,7 +166,7 @@ func (wp *workflowProcess) createCallback(id uint64) bindings.ResultHandler {
 		}
 
 		var data []json.RawMessage
-		if err = rrt.FromPayload(wp.env.GetDataConverter(), result, &data); err != nil {
+		if err = rrt.FromPayloads(wp.env.GetDataConverter(), result, &data); err != nil {
 			return err
 		}
 

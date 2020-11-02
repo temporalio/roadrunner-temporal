@@ -35,6 +35,17 @@ func (mq *messageQueue) pushCommand(cmd string, params interface{}) (id uint64, 
 	return id, nil
 }
 
+func (mq *messageQueue) makeCommand(cmd string, params interface{}) (id uint64, msg rrt.Message, err error) {
+	msg = rrt.Message{ID: atomic.AddUint64(mq.seqID, 1), Command: cmd}
+
+	msg.Params, err = json.Marshal(params)
+	if err != nil {
+		return 0, rrt.Message{}, err
+	}
+
+	return id, msg, nil
+}
+
 func (mq *messageQueue) pushResponse(id uint64, result []json.RawMessage) {
 	mq.queue = append(mq.queue, rrt.Message{ID: id, Result: result})
 }

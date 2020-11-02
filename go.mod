@@ -9,6 +9,7 @@ require (
 	github.com/prometheus/common v0.4.0
 	github.com/spf13/cobra v1.1.0
 	github.com/spiral/endure v1.0.0-beta10
+	github.com/spiral/errors v1.0.0
 	github.com/spiral/roadrunner/v2 v2.0.0-alpha14
 	go.temporal.io/api v1.0.0
 	go.temporal.io/sdk v1.1.0

@@ -9,7 +9,7 @@ import (
 )
 
 // TODO: OPTIMIZE
-func FromPayload(dc converter.DataConverter, payloads *commonpb.Payloads, values *[]json.RawMessage) error {
+func FromPayloads(dc converter.DataConverter, payloads *commonpb.Payloads, values *[]json.RawMessage) error {
 	if payloads == nil {
 		return nil
 
@@ -35,7 +35,7 @@ func FromPayload(dc converter.DataConverter, payloads *commonpb.Payloads, values
 }
 
 // TODO: OPTIMIZE
-func ToPayload(dc converter.DataConverter, values []json.RawMessage, result *commonpb.Payloads) error {
+func ToPayloads(dc converter.DataConverter, values []json.RawMessage, result *commonpb.Payloads) error {
 	if len(values) == 0 {
 		return nil
 	}
