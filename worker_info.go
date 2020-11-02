@@ -2,9 +2,10 @@ package roadrunner_temporal
 
 import (
 	"encoding/json"
-	"github.com/spiral/endure/errors"
-	"go.temporal.io/sdk/worker"
 	"time"
+
+	"github.com/spiral/errors"
+	"go.temporal.io/sdk/worker"
 )
 
 const getWorkerInfo = "GetWorkerInfo"

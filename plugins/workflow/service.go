@@ -2,7 +2,8 @@ package workflow
 
 import (
 	"context"
-	"github.com/spiral/endure/errors"
+
+	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/plugins/app"
 	"github.com/spiral/roadrunner/v2/util"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
