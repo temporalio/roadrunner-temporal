@@ -41,7 +41,6 @@ func handler(cmd *cobra.Command, args []string) error {
 		select {
 		case e := <-errCh:
 			Logger.Error(e.Error.Error(), zap.String("service", e.VertexID))
-			os.Exit(1)
 			er := Container.Stop()
 			if er != nil {
 				Logger.Error(e.Error.Error(), zap.String("service", e.VertexID))

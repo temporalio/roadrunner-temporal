@@ -1,10 +1,10 @@
 package roadrunner_temporal
 
 import (
-	//"encoding/json"
 	"errors"
 	"fmt"
-	json "github.com/json-iterator/go"
+
+	jsoniter "github.com/json-iterator/go"
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/converter"
 )
@@ -49,7 +49,7 @@ func (r *DataConverter) ToPayload(value interface{}) (*commonpb.Payload, error) 
 	case []byte:
 		// according to the doc []byte encodes as a base64-encoded string
 		// TODO bad operation converting bytes to string in such way
-		b, err := json.Marshal(string(v))
+		b, err := jsoniter.Marshal(string(v))
 		if err != nil {
 			return nil, err
 		}
@@ -61,7 +61,7 @@ func (r *DataConverter) ToPayload(value interface{}) (*commonpb.Payload, error) 
 		}
 		return payload, nil
 	default:
-		b, err := json.Marshal(v)
+		b, err := jsoniter.Marshal(v)
 		if err != nil {
 			return nil, err
 		}
@@ -97,7 +97,7 @@ func (r *DataConverter) FromPayload(payload *commonpb.Payload, valuePtr interfac
 	case *RRPayload:
 		var data interface{}
 		// TODO: BYPASS MARSHAL AND SEND IT AS IT IS
-		err := json.Unmarshal(payload.GetData(), &data)
+		err := jsoniter.Unmarshal(payload.GetData(), &data)
 		if err != nil {
 			return fmt.Errorf(
 				"unable to decode argument: %T, with error: %v", valuePtr, err)

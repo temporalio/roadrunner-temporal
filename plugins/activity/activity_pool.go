@@ -2,8 +2,9 @@ package activity
 
 import (
 	"context"
-	"encoding/json"
 	"sync/atomic"
+
+	jsoniter "github.com/json-iterator/go"
 
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2"
@@ -129,7 +130,7 @@ func (pool *activityPool) executeActivity(ctx context.Context, input rrt.RRPaylo
 
 	// todo: optimize
 	for _, value := range input.Data {
-		vData, err := json.Marshal(value)
+		vData, err := jsoniter.Marshal(value)
 		if err != nil {
 			return rrt.RRPayload{}, err
 		}
@@ -137,7 +138,7 @@ func (pool *activityPool) executeActivity(ctx context.Context, input rrt.RRPaylo
 		cmd.Args = append(cmd.Args, vData)
 	}
 
-	msg.Params, err = json.Marshal(cmd)
+	msg.Params, err = jsoniter.Marshal(cmd)
 	if err != nil {
 		return rrt.RRPayload{}, err
 	}
@@ -159,7 +160,7 @@ func (pool *activityPool) executeActivity(ctx context.Context, input rrt.RRPaylo
 	out := rrt.RRPayload{}
 	for _, raw := range result[0].Result {
 		var value interface{}
-		err := json.Unmarshal(raw, &value)
+		err := jsoniter.Unmarshal(raw, &value)
 		if err != nil {
 			return rrt.RRPayload{}, err
 		}

@@ -1,11 +1,11 @@
 package roadrunner_temporal
 
 import (
-	"encoding/json"
 	"log"
 	"time"
 
 	"github.com/fatih/color"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2"
 )
@@ -42,10 +42,10 @@ type Message struct {
 	Command string `json:"command,omitempty"`
 
 	// Command parameters (free form).
-	Params json.RawMessage `json:"params,omitempty"`
+	Params jsoniter.RawMessage `json:"params,omitempty"`
 
 	// Result always contains array of values.
-	Result []json.RawMessage `json:"result,omitempty"`
+	Result []jsoniter.RawMessage `json:"result,omitempty"`
 
 	// Error associated with command id.
 	Error interface{} `json:"error,omitempty"`
@@ -65,7 +65,7 @@ type Error struct {
 
 // String converts message into string.
 func (msg Message) String() string {
-	data, err := json.Marshal(msg)
+	data, err := jsoniter.Marshal(msg)
 	if err != nil {
 		return err.Error()
 	}
@@ -90,12 +90,12 @@ func Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 		p.Context = []byte("null")
 	}
 
-	p.Context, err = json.Marshal(ctx)
+	p.Context, err = jsoniter.Marshal(ctx)
 	if err != nil {
 		return nil, errors.E(errors.Op("encodeContext"), err)
 	}
 
-	p.Body, err = json.Marshal(msg)
+	p.Body, err = jsoniter.Marshal(msg)
 	if err != nil {
 		return nil, errors.E(errors.Op("encodePayload"), err)
 	}
@@ -111,7 +111,7 @@ func Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 
 	log.Print(color.HiYellowString(string(out.Body)))
 
-	err = json.Unmarshal(out.Body, &result)
+	err = jsoniter.Unmarshal(out.Body, &result)
 	if err != nil {
 		return nil, errors.E(errors.Op("parseResponse"), err)
 	}

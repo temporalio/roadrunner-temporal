@@ -1,20 +1,19 @@
 package roadrunner_temporal
 
 import (
-	"encoding/json"
-
+	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/converter"
 )
 
 // TODO: OPTIMIZE
-func FromPayloads(dc converter.DataConverter, payloads *commonpb.Payloads, values *[]json.RawMessage) error {
+func FromPayloads(dc converter.DataConverter, payloads *commonpb.Payloads, values *[]jsoniter.RawMessage) error {
 	if payloads == nil {
 		return nil
 
 	}
-	*values = make([]json.RawMessage, 0, len(payloads.Payloads))
+	*values = make([]jsoniter.RawMessage, 0, len(payloads.Payloads))
 
 	payload := RRPayload{}
 	if err := dc.FromPayloads(payloads, &payload); err != nil {
@@ -23,7 +22,7 @@ func FromPayloads(dc converter.DataConverter, payloads *commonpb.Payloads, value
 
 	// this is double serialization, we should remove it
 	for _, value := range payload.Data {
-		data, err := json.Marshal(value)
+		data, err := jsoniter.Marshal(value)
 		if err != nil {
 			return errors.E(errors.Op("encodeResult"), err)
 		}
@@ -35,7 +34,7 @@ func FromPayloads(dc converter.DataConverter, payloads *commonpb.Payloads, value
 }
 
 // TODO: OPTIMIZE
-func ToPayloads(dc converter.DataConverter, values []json.RawMessage, result *commonpb.Payloads) error {
+func ToPayloads(dc converter.DataConverter, values []jsoniter.RawMessage, result *commonpb.Payloads) error {
 	if len(values) == 0 {
 		return nil
 	}
@@ -47,7 +46,7 @@ func ToPayloads(dc converter.DataConverter, values []json.RawMessage, result *co
 	for _, value := range values {
 		var raw interface{}
 
-		err := json.Unmarshal(value, &raw)
+		err := jsoniter.Unmarshal(value, &raw)
 		if err != nil {
 			return err
 		}

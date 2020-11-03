@@ -70,7 +70,6 @@ func (svc *Service) Stop() error {
 	if svc.pool != nil {
 		svc.pool.Destroy(context.Background())
 	}
-
 	return nil
 }
 

@@ -1,8 +1,10 @@
 package workflow
 
 import (
-	"encoding/json"
 	"fmt"
+
+	jsoniter "github.com/json-iterator/go"
+
 	rrt "github.com/temporalio/roadrunner-temporal"
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
@@ -151,7 +153,7 @@ func (wp *workflowProcess) handleSignal(name string, input *commonpb.Payloads) {
 	}
 }
 
-func (wp *workflowProcess) handleCommand(id uint64, name string, params json.RawMessage) error {
+func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter.RawMessage) error {
 	rawCmd, err := parseCommand(wp.env.GetDataConverter(), name, params)
 	if err != nil {
 		return err
@@ -166,7 +168,7 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params json.Raw
 
 	case CompleteWorkflow:
 		wp.completed = true
-		wp.mq.pushResponse(id, []json.RawMessage{[]byte("true")})
+		wp.mq.pushResponse(id, []jsoniter.RawMessage{[]byte("true")})
 		wp.env.Complete(cmd.ResultPayload, nil)
 	}
 
@@ -180,7 +182,7 @@ func (wp *workflowProcess) createCallback(id uint64) bindings.ResultHandler {
 			return nil
 		}
 
-		var data []json.RawMessage
+		var data []jsoniter.RawMessage
 		if err = rrt.FromPayloads(wp.env.GetDataConverter(), result, &data); err != nil {
 			return err
 		}

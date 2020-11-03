@@ -1,22 +1,24 @@
 package cli
 
 import (
-	"github.com/spiral/roadrunner/v2/plugins/config"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/spiral/roadrunner/v2/plugins/config"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/spf13/cobra"
 	"github.com/spiral/endure"
 )
 
 var (
-	CfgFile, WorkDir string
-	Container        endure.Container
-	Logger           *zap.Logger
-	rootCmd          = &cobra.Command{
+	WorkDir   string
+	CfgFile   string
+	Container endure.Container
+	Logger    *zap.Logger
+	rootCmd   = &cobra.Command{
 		Use:           "rr",
 		SilenceErrors: true,
 		SilenceUsage:  true,
@@ -25,7 +27,7 @@ var (
 
 // InitApp with a list of provided services.
 func InitApp(service ...interface{}) (err error) {
-	Container, err = endure.NewContainer(endure.ErrorLevel, endure.RetryOnFail(false))
+	Container, err = endure.NewContainer(nil, endure.RetryOnFail(false), endure.SetLogLevel(endure.DebugLevel))
 	if err != nil {
 		return err
 	}

@@ -1,9 +1,9 @@
 package workflow
 
 import (
-	"encoding/json"
 	"time"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	"go.temporal.io/api/common/v1"
@@ -44,8 +44,8 @@ type DestroyWorkflow struct {
 
 // StartWorkflow sends worker command to start workflow.
 type StartWorkflow struct {
-	Info  *workflow.Info    `json:"info"`
-	Input []json.RawMessage `json:"args"`
+	Info  *workflow.Info        `json:"info"`
+	Input []jsoniter.RawMessage `json:"args"`
 }
 
 // FromEnvironment maps start command from environment.
@@ -56,15 +56,15 @@ func (start *StartWorkflow) FromEnvironment(env internalbindings.WorkflowEnviron
 }
 
 type InvokeQuery struct {
-	RunID string            `json:"runId"`
-	Name  string            `json:"name"`
-	Args  []json.RawMessage `json:"args"`
+	RunID string                `json:"runId"`
+	Name  string                `json:"name"`
+	Args  []jsoniter.RawMessage `json:"args"`
 }
 
 type InvokeSignal struct {
-	RunID string            `json:"runId"`
-	Name  string            `json:"name"`
-	Args  []json.RawMessage `json:"args"`
+	RunID string                `json:"runId"`
+	Name  string                `json:"name"`
+	Args  []jsoniter.RawMessage `json:"args"`
 }
 
 // ExecuteActivity command by workflow worker.
@@ -73,7 +73,7 @@ type ExecuteActivity struct {
 	Name string `json:"name"`
 
 	// Args to pass to the activity.
-	Args []json.RawMessage `json:"arguments"`
+	Args []jsoniter.RawMessage `json:"arguments"`
 
 	// Info to run activity as.
 	// todo: implement
@@ -116,7 +116,7 @@ func (t NewTimer) ToDuration() time.Duration {
 // CompleteWorkflow sent by worker to complete workflow.
 type CompleteWorkflow struct {
 	// Result defines workflow execution result.
-	Result []json.RawMessage `json:"result"`
+	Result []jsoniter.RawMessage `json:"result"`
 
 	// todo: need error!!
 
@@ -125,12 +125,12 @@ type CompleteWorkflow struct {
 }
 
 // maps worker parameters into internal command representation.
-func parseCommand(dc converter.DataConverter, name string, params json.RawMessage) (interface{}, error) {
+func parseCommand(dc converter.DataConverter, name string, params jsoniter.RawMessage) (interface{}, error) {
 	switch name {
 	case ExecuteActivityCommand:
 		cmd := ExecuteActivity{}
 
-		if err := json.Unmarshal(params, &cmd); err != nil {
+		if err := jsoniter.Unmarshal(params, &cmd); err != nil {
 			return nil, err
 		}
 
@@ -143,7 +143,7 @@ func parseCommand(dc converter.DataConverter, name string, params json.RawMessag
 
 	case NewTimerCommand:
 		cmd := NewTimer{}
-		if err := json.Unmarshal(params, &cmd); err != nil {
+		if err := jsoniter.Unmarshal(params, &cmd); err != nil {
 			return nil, err
 		}
 
@@ -151,7 +151,7 @@ func parseCommand(dc converter.DataConverter, name string, params json.RawMessag
 
 	case CompleteWorkflowCommand:
 		cmd := CompleteWorkflow{}
-		if err := json.Unmarshal(params, &cmd); err != nil {
+		if err := jsoniter.Unmarshal(params, &cmd); err != nil {
 			return nil, err
 		}
 

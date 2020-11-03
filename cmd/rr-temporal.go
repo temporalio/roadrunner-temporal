@@ -1,13 +1,14 @@
 package main
 
 import (
+	"log"
+
 	"github.com/spiral/roadrunner/v2/plugins/app"
 	"github.com/spiral/roadrunner/v2/plugins/logger"
 	"github.com/spiral/roadrunner/v2/plugins/rpc"
 	"github.com/temporalio/roadrunner-temporal/plugins/activity"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	"github.com/temporalio/roadrunner-temporal/plugins/workflow"
-	"log"
 
 	"github.com/temporalio/roadrunner-temporal/cmd/cli"
 )

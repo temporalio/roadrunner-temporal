@@ -1,7 +1,8 @@
 package activity
 
 import (
-	"encoding/json"
+	jsoniter "github.com/json-iterator/go"
+
 	"go.temporal.io/sdk/activity"
 )
 
@@ -18,5 +19,5 @@ type InvokeActivity struct {
 	Info activity.Info `json:"info"`
 
 	// Args contain activity call arguments.
-	Args []json.RawMessage `json:"args"`
+	Args []jsoniter.RawMessage `json:"args"`
 }
