@@ -26,7 +26,8 @@ var (
 )
 
 // InitApp with a list of provided services.
-func InitApp(service ...interface{}) (err error) {
+func InitApp(service ...interface{}) error {
+	var err error
 	Container, err = endure.NewContainer(nil, endure.RetryOnFail(false), endure.SetLogLevel(endure.DebugLevel))
 	if err != nil {
 		return err
