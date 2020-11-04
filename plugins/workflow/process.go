@@ -166,6 +166,11 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 	case NewTimer:
 		wp.env.NewTimer(cmd.ToDuration(), wp.createCallback(id))
 
+	case SideEffect:
+		wp.env.SideEffect(func() (*commonpb.Payloads, error) {
+			return cmd.Payloads, nil
+		}, wp.createCallback(id))
+
 	case CompleteWorkflow:
 		wp.completed = true
 		wp.mq.pushResponse(id, []jsoniter.RawMessage{[]byte("true")})

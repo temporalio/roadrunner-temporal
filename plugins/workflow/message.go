@@ -31,6 +31,7 @@ const (
 	// cancels
 	CancelTimerCommand    = "CancelTimer"
 	CancelActivityCommand = "CancelActivity"
+
 	// cancel external workflow
 
 	// todo: cancelling?
@@ -162,9 +163,28 @@ func parseCommand(dc converter.DataConverter, name string, params jsoniter.RawMe
 
 		return cmd, nil
 
-		// todo: map other commands
+	// todo: map other commands
+
+	case SideEffectCommand:
+		cmd := SideEffect{}
+		if err := jsoniter.Unmarshal(params, &cmd); err != nil {
+			return nil, err
+		}
+
+		cmd.Payloads = &commonpb.Payloads{}
+		if err := rrt.ToPayloads(dc, []jsoniter.RawMessage{cmd.Value}, cmd.Payloads); err != nil {
+			return nil, err
+		}
+
+		return cmd, nil
 
 	default:
 		return nil, errors.E(errors.Op("parseCommand"), "undefined command type", errors.Str(name))
 	}
+}
+
+// SideEffect to be recorded into the history.
+type SideEffect struct {
+	Value    jsoniter.RawMessage `json:"value"`
+	Payloads *commonpb.Payloads
 }
