@@ -23,9 +23,9 @@ func main() {
 		&rpc.Service{},
 
 		// Temporal extension.
-		&temporal.Server{},
-		&activity.Service{},
-		&workflow.Service{},
+		&temporal.Plugin{},
+		&activity.Plugin{},
+		&workflow.Plugin{},
 	)
 
 	if err != nil {

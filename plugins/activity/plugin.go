@@ -1,4 +1,4 @@
-package workflow
+package activity
 
 import (
 	"context"
@@ -12,36 +12,42 @@ import (
 
 const (
 	// ServiceName defines public service name.
-	ServiceName = "workflows"
+	ServiceName = "activities"
 
 	// RRMode sets as RR_MODE env variable to let worker know about the mode to run.
-	RRMode = "temporal/workflow"
+	RRMode = "temporal/activity"
 )
 
-// Service manages workflows and workers.
-type Service struct {
+// Plugin to manage activity execution.
+type Plugin struct {
 	temporal temporal.Temporal
 	events   *util.EventHandler
 	app      app.WorkerFactory
 	log      *zap.Logger
-	pool     *workflowPool
+	pool     *activityPool
 }
 
-// logger dep also
-func (svc *Service) Init(temporal temporal.Temporal, app app.WorkerFactory, log *zap.Logger) error {
+// Init configures activity service.
+func (svc *Plugin) Init(temporal temporal.Temporal, app app.WorkerFactory, log *zap.Logger) error {
+	if temporal.GetConfig().Activities == nil {
+		// no need to serve activities
+		return errors.E(errors.Disabled)
+	}
+
 	svc.temporal = temporal
 	svc.app = app
 	svc.log = log
+
 	return nil
 }
 
-// Serve starts workflow service.
-func (svc *Service) Serve() chan error {
+// Serve activities with underlying workers.
+func (svc *Plugin) Serve() chan error {
 	errCh := make(chan error, 1)
 
-	pool, err := NewWorkflowPool(context.Background(), svc.app)
+	pool, err := NewActivityPool(context.Background(), *svc.temporal.GetConfig().Activities, svc.app)
 	if err != nil {
-		errCh <- errors.E(errors.Op("newWorkflowPool"), err)
+		errCh <- errors.E(errors.Op("newActivityPool"), err)
 		return errCh
 	}
 
@@ -49,45 +55,36 @@ func (svc *Service) Serve() chan error {
 
 	err = pool.Start(context.Background(), svc.temporal)
 	if err != nil {
-		errCh <- errors.E(errors.Op("startWorkflowPool"), err)
+		errCh <- errors.E(errors.Op("startActivityPool"), err)
 		return errCh
 	}
 
 	svc.pool = pool
 
-	var workflows []string
-	for name, _ := range pool.workflows {
-		workflows = append(workflows, name)
-	}
-
-	svc.log.Debug("Started workflow processing", zap.Any("workflows", workflows))
+	svc.log.Debug("Started activity processing", zap.Any("activities", pool.activities))
 
 	return errCh
 }
 
-// Stop workflow service.
-func (svc *Service) Stop() error {
+func (svc *Plugin) Stop() error {
 	if svc.pool != nil {
 		svc.pool.Destroy(context.Background())
 	}
-
 	return nil
 }
 
 // Name of the service.
-func (svc *Service) Name() string {
+func (svc *Plugin) Name() string {
 	return ServiceName
 }
 
 // Reset resets underlying workflow pool with new copy.
-func (svc *Service) Reset() error {
+func (svc *Plugin) Reset() error {
 	// todo: implement
 	return nil
 }
 
 // AddListener adds event listeners to the service.
-func (svc *Service) AddListener(listener util.EventListener) {
+func (svc *Plugin) AddListener(listener util.EventListener) {
 	svc.events.AddListener(listener)
 }
-
-// todo: workers method

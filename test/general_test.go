@@ -35,7 +35,7 @@ func TestGeneral(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = cont.Register(&temporal.Server{})
+	err = cont.Register(&temporal.Plugin{})
 	if err != nil {
 		t.Fatal(err)
 	}

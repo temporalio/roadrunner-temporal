@@ -66,7 +66,7 @@ type StartWorkflowOptions struct {
 - the method has return type error.
 */
 type rpc struct {
-	srv *Server
+	srv *Plugin
 }
 
 // ExecuteWorkflow starts a workflow execution and return a WorkflowRun instance and error
