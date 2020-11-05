@@ -76,7 +76,7 @@ func init() {
 		}
 
 		// todo: config is global, not only for serve
-		conf := &config.ViperProvider{}
+		conf := &config.Viper{}
 		conf.Path = CfgFile
 		conf.Prefix = "rr"
 
