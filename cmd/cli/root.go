@@ -28,7 +28,7 @@ var (
 // InitApp with a list of provided services.
 func InitApp(service ...interface{}) error {
 	var err error
-	Container, err = endure.NewContainer(endure.ErrorLevel, endure.RetryOnFail(false)) //, endure.SetLogLevel(endure.DebugLevel))
+	Container, err = endure.NewContainer(initLogger(), endure.RetryOnFail(false))
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func init() {
 func initLogger() *zap.Logger {
 	// todo: we do not need it
 	cfg := zap.Config{
-		Level:    zap.NewAtomicLevelAt(zap.DebugLevel),
+		Level:    zap.NewAtomicLevelAt(zap.ErrorLevel),
 		Encoding: "console",
 		EncoderConfig: zapcore.EncoderConfig{
 			MessageKey:    "message",

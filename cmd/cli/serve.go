@@ -40,10 +40,10 @@ func handler(cmd *cobra.Command, args []string) error {
 	for {
 		select {
 		case e := <-errCh:
-			Logger.Error(e.Error.Err.Error(), zap.String("service", e.VertexID))
+			Logger.Error(e.Error.Error(), zap.String("service", e.VertexID))
 			er := Container.Stop()
 			if er != nil {
-				Logger.Error(e.Error.Err.Error(), zap.String("service", e.VertexID))
+				Logger.Error(e.Error.Error(), zap.String("service", e.VertexID))
 				if er != nil {
 					panic(er)
 				}
