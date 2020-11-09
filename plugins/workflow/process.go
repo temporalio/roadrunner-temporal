@@ -3,7 +3,6 @@ package workflow
 import (
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
-
 	rrt "github.com/temporalio/roadrunner-temporal"
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
@@ -55,10 +54,8 @@ func (wp *workflowProcess) OnWorkflowTaskStarted() {
 	}
 
 	for len(wp.pipeline) > 0 {
-		n := len(wp.pipeline) - 1
-
-		msg := wp.pipeline[n]
-		wp.pipeline = wp.pipeline[:n]
+		msg := wp.pipeline[0]
+		wp.pipeline = wp.pipeline[1:]
 
 		if msg.IsCommand() {
 			err = wp.handleCommand(msg.ID, msg.Command, msg.Params)
