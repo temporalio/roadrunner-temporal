@@ -3,6 +3,7 @@ package temporal
 import (
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2"
+	"github.com/spiral/roadrunner/v2/log"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	"go.temporal.io/sdk/client"
@@ -30,12 +31,12 @@ type Temporal interface {
 type Plugin struct {
 	cfg    Config
 	dc     converter.DataConverter
-	log    *zap.Logger
+	log    log.Logger
 	client client.Client
 }
 
 // logger dep also
-func (srv *Plugin) Init(cfg config.Provider, log *zap.Logger) error {
+func (srv *Plugin) Init(cfg config.Configurer, log log.Logger) error {
 	srv.log = log
 	srv.dc = rrt.NewDataConverter()
 	return cfg.UnmarshalKey(ServiceName, &srv.cfg)
@@ -57,7 +58,7 @@ func (srv *Plugin) Serve() chan error {
 	var err error
 
 	srv.client, err = client.NewClient(client.Options{
-		Logger:        &ZapAdapter{zl: srv.log},
+		Logger:        srv.log,
 		HostPort:      srv.cfg.Address,
 		Namespace:     srv.cfg.Namespace,
 		DataConverter: srv.dc,

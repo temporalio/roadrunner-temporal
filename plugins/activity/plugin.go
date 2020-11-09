@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/spiral/errors"
+	"github.com/spiral/roadrunner/v2/log"
 	"github.com/spiral/roadrunner/v2/plugins/app"
 	"github.com/spiral/roadrunner/v2/util"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
@@ -23,12 +24,12 @@ type Plugin struct {
 	temporal temporal.Temporal
 	events   *util.EventHandler
 	app      app.WorkerFactory
-	log      *zap.Logger
+	log      log.Logger
 	pool     *activityPool
 }
 
 // Init configures activity service.
-func (svc *Plugin) Init(temporal temporal.Temporal, app app.WorkerFactory, log *zap.Logger) error {
+func (svc *Plugin) Init(temporal temporal.Temporal, app app.WorkerFactory, log log.Logger) error {
 	if temporal.GetConfig().Activities == nil {
 		// no need to serve activities
 		return errors.E(errors.Disabled)
