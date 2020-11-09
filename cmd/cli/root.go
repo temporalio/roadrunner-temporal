@@ -16,7 +16,7 @@ import (
 var (
 	WorkDir   string
 	CfgFile   string
-	Container endure.Container
+	Container *endure.Endure
 	Logger    *zap.Logger
 	rootCmd   = &cobra.Command{
 		Use:           "rr",
@@ -28,7 +28,7 @@ var (
 // InitApp with a list of provided services.
 func InitApp(service ...interface{}) error {
 	var err error
-	Container, err = endure.NewContainer(nil, endure.RetryOnFail(false), endure.SetLogLevel(endure.DebugLevel))
+	Container, err = endure.NewContainer(endure.ErrorLevel, endure.RetryOnFail(false)) //, endure.SetLogLevel(endure.DebugLevel))
 	if err != nil {
 		return err
 	}

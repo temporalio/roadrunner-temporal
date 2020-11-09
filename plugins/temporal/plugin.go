@@ -35,7 +35,7 @@ type Plugin struct {
 }
 
 // logger dep also
-func (srv *Plugin) Init(cfg config.Configurer, log *zap.Logger) error {
+func (srv *Plugin) Init(cfg config.Provider, log *zap.Logger) error {
 	srv.log = log
 	srv.dc = rrt.NewDataConverter()
 	return cfg.UnmarshalKey(ServiceName, &srv.cfg)

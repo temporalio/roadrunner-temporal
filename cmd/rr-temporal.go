@@ -19,8 +19,8 @@ func main() {
 		&logger.ZapLogger{},
 
 		// PHP application init.
-		&app.Plugin{},
-		&rpc.Plugin{},
+		&app.App{},
+		&rpc.Service{},
 
 		// Temporal extension.
 		&temporal.Plugin{},

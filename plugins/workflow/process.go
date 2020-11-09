@@ -2,7 +2,6 @@ package workflow
 
 import (
 	"fmt"
-
 	jsoniter "github.com/json-iterator/go"
 
 	rrt "github.com/temporalio/roadrunner-temporal"
@@ -15,8 +14,10 @@ type workflowProcess struct {
 	pool      *workflowPool
 	env       bindings.WorkflowEnvironment
 	mq        *messageQueue
+	pipeline  []rrt.Message
 	callbacks []func() error
 	completed bool
+	// queue
 }
 
 // Execute workflow, bootstraps process.
@@ -38,7 +39,7 @@ func (wp *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *com
 	})
 }
 
-// OnWorkflowTaskStarted handles single workflow tick and batch of messages from temporal server.
+// OnWorkflowTaskStarted handles single workflow tick and batch of pipeline from temporal server.
 func (wp *workflowProcess) OnWorkflowTaskStarted() {
 	var err error
 	for _, callback := range wp.callbacks {
@@ -49,25 +50,31 @@ func (wp *workflowProcess) OnWorkflowTaskStarted() {
 	}
 	wp.callbacks = nil
 
-	messages, err := rrt.Execute(wp.pool, wp.getContext(), wp.mq.queue...)
-	wp.mq.flush()
-	if err != nil {
+	if err := wp.flushQueue(); err != nil {
 		panic(err)
 	}
 
-	for _, msg := range messages {
-		if msg.Command == "" {
-			// handle responses, unclear if we need it here
-			continue
+	for len(wp.pipeline) > 0 {
+		n := len(wp.pipeline) - 1
+
+		msg := wp.pipeline[n]
+		wp.pipeline = wp.pipeline[:n]
+
+		if msg.IsCommand() {
+			err = wp.handleCommand(msg.ID, msg.Command, msg.Params)
+		} else {
+			err = wp.handleResponse(msg.ID, msg.Result, msg.Error)
 		}
 
-		if err := wp.handleCommand(msg.ID, msg.Command, msg.Params); err != nil {
+		if err != nil {
 			panic(err)
 		}
 	}
 }
 
 func (wp *workflowProcess) StackTrace() string {
+	// blocking flush (?)
+
 	// TODO: IDEAL - debug_stacktrace()
 
 	return "todo: needs to be implemented"
@@ -87,7 +94,7 @@ func (wp *workflowProcess) Close() {
 		}
 	}
 
-	_, err := rrt.Execute(wp.pool, wp.getContext(), wp.mq.queue...)
+	_, err := wp.discardQueue()
 	if err != nil {
 		panic(err)
 	}
@@ -101,58 +108,53 @@ func (wp *workflowProcess) getContext() rrt.Context {
 	}
 }
 
-// todo: MUST BE SCHEDULED
+// Handle query in blocking mode.
 func (wp *workflowProcess) handleQuery(queryType string, queryArgs *commonpb.Payloads) (*commonpb.Payloads, error) {
 	cmd := &InvokeQuery{
 		RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
 		Name:  queryType,
 	}
 
-	if err := rrt.FromPayloads(wp.env.GetDataConverter(), queryArgs, &cmd.Args); err != nil {
-		return nil, err
-	}
-
-	// we can trigger signal immediately on arrival, todo: double check that
-	_, msg, err := wp.mq.makeCommand(InvokeQueryCommand, cmd)
-
-	result, err := rrt.Execute(wp.pool, wp.getContext(), msg)
+	err := rrt.FromPayloads(wp.env.GetDataConverter(), queryArgs, &cmd.Args)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(result) != 1 {
-		return nil, fmt.Errorf("unexpected worker response")
+	result, err := wp.runCommand(InvokeQueryCommand, cmd)
+	if err != nil {
+		return nil, err
 	}
 
 	out := &commonpb.Payloads{}
-	if err := rrt.ToPayloads(wp.env.GetDataConverter(), result[0].Result, out); err != nil {
+
+	err = rrt.ToPayloads(wp.env.GetDataConverter(), result.Result, out)
+	if err != nil {
 		return nil, err
 	}
 
 	return out, nil
 }
 
-// todo: schedule?
+// schedule the signal processing
 func (wp *workflowProcess) handleSignal(name string, input *commonpb.Payloads) {
 	cmd := &InvokeQuery{
 		RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
 		Name:  name,
 	}
 
-	if err := rrt.FromPayloads(wp.env.GetDataConverter(), input, &cmd.Args); err != nil {
+	err := rrt.FromPayloads(wp.env.GetDataConverter(), input, &cmd.Args)
+	if err != nil {
 		// todo: what to do about this panic?
 		panic(err)
 	}
 
-	// we can trigger signal immediately on arrival, todo: double check that
-	_, msg, err := wp.mq.makeCommand(InvokeSignalCommand, cmd)
-
-	_, err = rrt.Execute(wp.pool, wp.getContext(), msg)
+	_, err = wp.mq.pushCommand(InvokeSignalCommand, cmd)
 	if err != nil {
 		panic(err)
 	}
 }
 
+// process incoming command
 func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter.RawMessage) error {
 	rawCmd, err := parseCommand(wp.env.GetDataConverter(), name, params)
 	if err != nil {
@@ -167,9 +169,10 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 		wp.env.NewTimer(cmd.ToDuration(), wp.createCallback(id))
 
 	case SideEffect:
-		wp.env.SideEffect(func() (*commonpb.Payloads, error) {
-			return cmd.Payloads, nil
-		}, wp.createCallback(id))
+		wp.env.SideEffect(
+			func() (*commonpb.Payloads, error) { return cmd.Payloads, nil },
+			wp.createBlockingCallback(id),
+		)
 
 	case CompleteWorkflow:
 		wp.completed = true
@@ -177,6 +180,11 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 		wp.env.Complete(cmd.ResultPayload, nil)
 	}
 
+	return nil
+}
+
+// process incoming command
+func (wp *workflowProcess) handleResponse(id uint64, result []jsoniter.RawMessage, error interface{}) error {
 	return nil
 }
 
@@ -188,8 +196,10 @@ func (wp *workflowProcess) createCallback(id uint64) bindings.ResultHandler {
 		}
 
 		var data []jsoniter.RawMessage
-		if err = rrt.FromPayloads(wp.env.GetDataConverter(), result, &data); err != nil {
-			return err
+		err = rrt.FromPayloads(wp.env.GetDataConverter(), result, &data)
+
+		if err != nil {
+			panic(err)
 		}
 
 		wp.mq.pushResponse(id, data)
@@ -201,4 +211,70 @@ func (wp *workflowProcess) createCallback(id uint64) bindings.ResultHandler {
 			return callback(result, err)
 		})
 	}
+}
+
+// callback to be called inside the queue processing, adds new messages at the end of the queue
+func (wp *workflowProcess) createBlockingCallback(id uint64) bindings.ResultHandler {
+	callback := func(result *commonpb.Payloads, err error) {
+		if err != nil {
+			wp.mq.pushError(id, err)
+			return
+		}
+
+		var data []jsoniter.RawMessage
+		err = rrt.FromPayloads(wp.env.GetDataConverter(), result, &data)
+		if err != nil {
+			panic(err)
+		}
+
+		wp.mq.pushResponse(id, data)
+		err = wp.flushQueue()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	return func(result *commonpb.Payloads, err error) {
+		callback(result, err)
+	}
+}
+
+// Exchange messages between host and worker processes.
+func (wp *workflowProcess) flushQueue() error {
+	messages, err := rrt.Execute(wp.pool, wp.getContext(), wp.mq.queue...)
+	wp.mq.flush()
+	if err != nil {
+		return err
+	}
+
+	wp.pipeline = append(wp.pipeline, messages...)
+
+	return nil
+}
+
+// Exchange messages between host and worker processes without adding them to queue.
+func (wp *workflowProcess) discardQueue() ([]rrt.Message, error) {
+	messages, err := rrt.Execute(wp.pool, wp.getContext(), wp.mq.queue...)
+	wp.mq.flush()
+	if err != nil {
+		return nil, err
+	}
+
+	return messages, nil
+}
+
+// Exchange messages between host and worker processes without adding them to queue.
+func (wp *workflowProcess) runCommand(command string, params interface{}) (rrt.Message, error) {
+	_, msg, err := wp.mq.makeCommand(InvokeQueryCommand, params)
+
+	result, err := rrt.Execute(wp.pool, wp.getContext(), msg)
+	if err != nil {
+		return rrt.Message{}, err
+	}
+
+	if len(result) != 1 {
+		return rrt.Message{}, fmt.Errorf("unexpected worker response")
+	}
+
+	return result[0], nil
 }

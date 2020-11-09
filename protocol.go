@@ -63,6 +63,10 @@ type Error struct {
 	Data interface{} `json:"data"`
 }
 
+func (msg Message) IsCommand() bool {
+	return msg.Command != ""
+}
+
 // String converts message into string.
 func (msg Message) String() string {
 	data, err := jsoniter.Marshal(msg)
@@ -101,7 +105,7 @@ func Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 	}
 
 	// todo: debug flag?
-	log.Print(color.MagentaString(string(p.Context)))
+	//log.Print(color.MagentaString(string(p.Context)))
 	log.Print(color.GreenString(string(p.Body)))
 
 	out, err := e.Exec(p)
