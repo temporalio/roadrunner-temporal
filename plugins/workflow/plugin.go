@@ -83,7 +83,30 @@ func (svc *Plugin) Name() string {
 // Reset resets underlying workflow pool with new copy.
 func (svc *Plugin) Reset() error {
 	svc.log.Debug("Reset workflow pool")
-	// todo: implement
+
+	pool, err := NewWorkflowPool(context.Background(), svc.app)
+	if err != nil {
+		return errors.E(errors.Op("newWorkflowPool"), err)
+	}
+
+	// todo: proxy events
+
+	err = pool.Start(context.Background(), svc.temporal)
+	if err != nil {
+		return errors.E(errors.Op("startWorkflowPool"), err)
+	}
+
+	previous := svc.pool
+	svc.pool = pool
+
+	var workflows []string
+	for workflow, _ := range pool.workflows {
+		workflows = append(workflows, workflow)
+	}
+
+	svc.log.Debug("Started workflow processing", zap.Any("workflows", workflows))
+	previous.Destroy(context.Background())
+
 	return nil
 }
 

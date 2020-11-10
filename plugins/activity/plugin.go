@@ -85,13 +85,13 @@ func (svc *Plugin) Reset() error {
 
 	pool, err := NewActivityPool(context.Background(), *svc.temporal.GetConfig().Activities, svc.app)
 	if err != nil {
-		return err
+		return errors.E(errors.Op("newActivityPool"), err)
 	}
 
 	// todo: proxy events
 	err = pool.Start(context.Background(), svc.temporal)
 	if err != nil {
-		return err
+		return errors.E(errors.Op("startActivityPool"), err)
 	}
 
 	previous := svc.pool
