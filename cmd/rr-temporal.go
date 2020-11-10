@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/temporalio/roadrunner-temporal/plugins/resetter"
 	"log"
 
 	"github.com/spiral/roadrunner/v2/plugins/app"
@@ -17,6 +18,9 @@ func main() {
 	err := cli.InitApp(
 		// todo: move to root
 		&logger.ZapLogger{},
+
+		// Helpers
+		&resetter.Plugin{},
 
 		// PHP application init.
 		&app.Plugin{},

@@ -1,7 +1,11 @@
 package cli
 
 import (
+	"github.com/spiral/errors"
+	"github.com/spiral/goridge/v2"
+	rpcPlugin "github.com/spiral/roadrunner/v2/plugins/rpc"
 	"log"
+	"net/rpc"
 	"os"
 	"path/filepath"
 
@@ -18,7 +22,8 @@ var (
 	CfgFile   string
 	Container *endure.Endure
 	Logger    *zap.Logger
-	rootCmd   = &cobra.Command{
+	cfg       *config.Viper
+	root      = &cobra.Command{
 		Use:           "rr",
 		SilenceErrors: true,
 		SilenceUsage:  true,
@@ -44,15 +49,15 @@ func InitApp(service ...interface{}) error {
 }
 
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := root.Execute(); err != nil {
 		// exit with error, fatal invoke os.Exit(1)
 		log.Fatal(err)
 	}
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&CfgFile, "config", "c", ".rr.yaml", "config file (default is .rr.yaml)")
-	rootCmd.PersistentFlags().StringVarP(&WorkDir, "WorkDir", "w", "", "work directory")
+	root.PersistentFlags().StringVarP(&CfgFile, "config", "c", ".rr.yaml", "config file (default is .rr.yaml)")
+	root.PersistentFlags().StringVarP(&WorkDir, "WorkDir", "w", "", "work directory")
 
 	// todo: properly handle debug level
 	Logger = initLogger()
@@ -76,15 +81,44 @@ func init() {
 		}
 
 		// todo: config is global, not only for serve
-		conf := &config.Viper{}
-		conf.Path = CfgFile
-		conf.Prefix = "rr"
+		cfg = &config.Viper{}
+		cfg.Path = CfgFile
+		cfg.Prefix = "rr"
 
-		err := Container.Register(conf)
+		err := Container.Register(cfg)
 		if err != nil {
 			panic(err)
 		}
 	})
+}
+
+// todo: improve
+func RPCClient() (*rpc.Client, error) {
+	rpcConfig := &rpcPlugin.Config{}
+
+	err := cfg.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	if cfg.Has(rpcPlugin.ServiceName) {
+		err := cfg.UnmarshalKey(rpcPlugin.ServiceName, rpcConfig)
+		if err != nil {
+			return nil, err
+		}
+	}
+	rpcConfig.InitDefaults()
+
+	if rpcConfig.Disabled {
+		return nil, errors.E("rpc service disabled")
+	}
+
+	conn, err := rpcConfig.Dialer()
+	if err != nil {
+		return nil, err
+	}
+
+	return rpc.NewClientWithCodec(goridge.NewClientCodec(conn)), nil
 }
 
 func initLogger() *zap.Logger {
