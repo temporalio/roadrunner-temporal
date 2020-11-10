@@ -11,7 +11,7 @@ require (
 	github.com/spiral/errors v1.0.2
 	github.com/spiral/goridge/v2 v2.4.6 // indirect
 	github.com/spiral/roadrunner/v2 v2.0.0-alpha15
-	go.temporal.io/api v1.0.0
+	go.temporal.io/api v1.1.0
 	go.temporal.io/sdk v1.1.0
 	go.uber.org/zap v1.16.0
 )

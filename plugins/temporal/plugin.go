@@ -38,7 +38,8 @@ type Plugin struct {
 // logger dep also
 func (srv *Plugin) Init(cfg config.Configurer, log log.Logger) error {
 	srv.log = log
-	srv.dc = rrt.NewDataConverter()
+	srv.dc = rrt.NewDataConverter(converter.GetDefaultDataConverter())
+
 	return cfg.UnmarshalKey(ServiceName, &srv.cfg)
 }
 

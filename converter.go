@@ -10,14 +10,15 @@ import (
 )
 
 type DataConverter struct {
+	fallback converter.DataConverter
 }
 
 type RRPayload struct {
 	Data []interface{} `json:"data"`
 }
 
-func NewDataConverter() converter.DataConverter {
-	return &DataConverter{}
+func NewDataConverter(fallback converter.DataConverter) converter.DataConverter {
+	return &DataConverter{fallback: fallback}
 }
 
 func (r *DataConverter) ToPayloads(values ...interface{}) (*commonpb.Payloads, error) {
@@ -40,45 +41,19 @@ func (r *DataConverter) ToPayloads(values ...interface{}) (*commonpb.Payloads, e
 		}
 		res.Payloads = append(res.Payloads, payload)
 	}
+
 	return res, nil
 }
 
 func (r *DataConverter) ToPayload(value interface{}) (*commonpb.Payload, error) {
-	switch v := value.(type) {
-	// special case
-	case []byte:
-		// according to the doc []byte encodes as a base64-encoded string
-		// TODO bad operation converting bytes to string in such way
-		b, err := jsoniter.Marshal(string(v))
-		if err != nil {
-			return nil, err
-		}
-		payload := &commonpb.Payload{
-			Metadata: map[string][]byte{
-				converter.MetadataEncoding: []byte(converter.MetadataEncodingBinary),
-			},
-			Data: b,
-		}
-		return payload, nil
-	default:
-		b, err := jsoniter.Marshal(v)
-		if err != nil {
-			return nil, err
-		}
-		payload := &commonpb.Payload{
-			Metadata: map[string][]byte{
-				converter.MetadataEncoding: []byte(converter.MetadataEncodingJSON),
-			},
-			Data: b,
-		}
-		return payload, nil
-	}
+	return r.fallback.ToPayload(value)
 }
 
 func (r *DataConverter) FromPayloads(payloads *commonpb.Payloads, valuePtrs ...interface{}) error {
 	if payloads == nil {
 		return nil
 	}
+
 	if len(valuePtrs) < 1 {
 		return errors.New("valuePTRs len less than 0")
 	}
@@ -89,6 +64,7 @@ func (r *DataConverter) FromPayloads(payloads *commonpb.Payloads, valuePtrs ...i
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -104,15 +80,15 @@ func (r *DataConverter) FromPayload(payload *commonpb.Payload, valuePtr interfac
 		}
 		res.Data = append(res.Data, data)
 	default:
-		// todo: fallback to default converter
+		return r.fallback.FromPayload(payload, valuePtr)
 	}
 	return nil
 }
 
 func (r *DataConverter) ToString(input *commonpb.Payload) string {
-	panic("implement me")
+	return r.fallback.ToString(input)
 }
 
 func (r *DataConverter) ToStrings(input *commonpb.Payloads) []string {
-	panic("implement me")
+	return r.fallback.ToStrings(input)
 }
