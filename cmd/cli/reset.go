@@ -3,8 +3,11 @@ package cli
 import (
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/mattn/go-runewidth"
 	"github.com/spf13/cobra"
-	"strings"
+	"github.com/vbauerster/mpb/v5"
+	"github.com/vbauerster/mpb/v5/decor"
+	"sync"
 )
 
 func init() {
@@ -22,21 +25,69 @@ func resetHandler(cmd *cobra.Command, args []string) error {
 	}
 	defer client.Close()
 
-	var list []string
-	err = client.Call("resetter.List", true, &list)
+	var services []string
+	err = client.Call("resetter.List", true, &services)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Resetting [%s]... ", color.YellowString(strings.Join(list, " ")))
+	var wg sync.WaitGroup
+	pr := mpb.New(mpb.WithWaitGroup(&wg), mpb.WithWidth(6))
+	wg.Add(len(services))
 
-	err = client.Call("resetter.ResetAll", true, &list)
-	if err != nil {
-		fmt.Println(color.RedString(err.Error()))
-		return err
+	for _, service := range services {
+
+		var (
+			bar    *mpb.Bar
+			name   = runewidth.FillRight(fmt.Sprintf("Reset [%s]", color.HiYellowString(service)), 27)
+			result = make(chan interface{})
+		)
+
+		bar = pr.AddSpinner(
+			1,
+			mpb.SpinnerOnMiddle,
+			mpb.SpinnerStyle([]string{"∙∙∙", "●∙∙", "∙●∙", "∙∙●", "∙∙∙"}),
+			mpb.PrependDecorators(decor.Name(name)),
+			mpb.AppendDecorators(onComplete(result)),
+		)
+
+		// simulating some work
+		go func(service string, result chan interface{}) {
+			defer wg.Done()
+			defer bar.Increment()
+
+			var done bool
+			err = client.Call("resetter.Reset", service, &done)
+			if err != nil {
+				result <- err
+				return
+			}
+			result <- nil
+		}(service, result)
 	}
 
-	fmt.Println(color.GreenString("done"))
-
+	pr.Wait()
 	return nil
+}
+
+func onComplete(result chan interface{}) decor.Decorator {
+	var (
+		msg = ""
+		fn  = func(s decor.Statistics) string {
+			select {
+			case r := <-result:
+				if err, ok := r.(error); ok {
+					msg = color.HiRedString(err.Error())
+					return msg
+				}
+
+				msg = color.HiGreenString("done")
+				return msg
+			default:
+				return msg
+			}
+		}
+	)
+
+	return decor.Any(fn)
 }
