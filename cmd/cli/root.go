@@ -101,17 +101,15 @@ func RPCClient() (*rpc.Client, error) {
 		return nil, err
 	}
 
-	if cfg.Has(rpcPlugin.ServiceName) {
-		err := cfg.UnmarshalKey(rpcPlugin.ServiceName, rpcConfig)
-		if err != nil {
-			return nil, err
-		}
-	}
-	rpcConfig.InitDefaults()
-
-	if rpcConfig.Disabled {
+	if !cfg.Has(rpcPlugin.ServiceName) {
 		return nil, errors.E("rpc service disabled")
 	}
+
+	err = cfg.UnmarshalKey(rpcPlugin.ServiceName, rpcConfig)
+	if err != nil {
+		return nil, err
+	}
+	rpcConfig.InitDefaults()
 
 	conn, err := rpcConfig.Dialer()
 	if err != nil {
