@@ -48,7 +48,7 @@ type Message struct {
 	Result []jsoniter.RawMessage `json:"result,omitempty"`
 
 	// Error associated with command id.
-	Error interface{} `json:"error,omitempty"`
+	Error *Error `json:"error,omitempty"`
 }
 
 // Error from underlying worker. todo: implement
@@ -63,6 +63,12 @@ type Error struct {
 	Data interface{} `json:"data"`
 }
 
+// Error returns error as string.
+func (e Error) Error() string {
+	return e.Message
+}
+
+// IsCommand returns true if message carries request.
 func (msg Message) IsCommand() bool {
 	return msg.Command != ""
 }

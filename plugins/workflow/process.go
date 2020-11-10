@@ -122,8 +122,11 @@ func (wp *workflowProcess) handleQuery(queryType string, queryArgs *commonpb.Pay
 		return nil, err
 	}
 
-	out := &commonpb.Payloads{}
+	if result.Error != nil {
+		return nil, result.Error
+	}
 
+	out := &commonpb.Payloads{}
 	err = rrt.ToPayloads(wp.env.GetDataConverter(), result.Result, out)
 	if err != nil {
 		return nil, err
