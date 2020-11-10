@@ -81,7 +81,24 @@ func (svc *Plugin) Name() string {
 
 // Reset resets underlying workflow pool with new copy.
 func (svc *Plugin) Reset() error {
-	// todo: implement
+	svc.log.Debug("Reset activity worker pool")
+
+	pool, err := NewActivityPool(context.Background(), *svc.temporal.GetConfig().Activities, svc.app)
+	if err != nil {
+		return err
+	}
+
+	// todo: proxy events
+	err = pool.Start(context.Background(), svc.temporal)
+	if err != nil {
+		return err
+	}
+
+	previous := svc.pool
+	svc.pool = pool
+
+	previous.Destroy(context.Background())
+
 	return nil
 }
 

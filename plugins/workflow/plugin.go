@@ -82,6 +82,7 @@ func (svc *Plugin) Name() string {
 
 // Reset resets underlying workflow pool with new copy.
 func (svc *Plugin) Reset() error {
+	svc.log.Debug("Reset workflow pool")
 	// todo: implement
 	return nil
 }
