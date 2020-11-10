@@ -69,12 +69,24 @@ func (wp *workflowProcess) OnWorkflowTaskStarted() {
 	}
 }
 
+// StackTrace renders workflow stack trace.
 func (wp *workflowProcess) StackTrace() string {
-	// blocking flush (?)
+	result, err := wp.runCommand(
+		StackTraceCommand,
+		&GetBacktrace{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID},
+	)
 
-	// TODO: IDEAL - debug_stacktrace()
+	if err != nil {
+		return err.Error()
+	}
 
-	return "todo: needs to be implemented"
+	var stacktrace string
+	err = jsoniter.Unmarshal(result.Result[0], &stacktrace)
+	if err != nil {
+		return err.Error()
+	}
+
+	return stacktrace
 }
 
 // Close the workflow.
@@ -265,7 +277,7 @@ func (wp *workflowProcess) discardQueue() ([]rrt.Message, error) {
 
 // Exchange messages between host and worker processes without adding them to queue.
 func (wp *workflowProcess) runCommand(command string, params interface{}) (rrt.Message, error) {
-	_, msg, err := wp.mq.makeCommand(InvokeQueryCommand, params)
+	_, msg, err := wp.mq.makeCommand(command, params)
 
 	result, err := rrt.Execute(wp.pool, wp.getContext(), msg)
 	if err != nil {

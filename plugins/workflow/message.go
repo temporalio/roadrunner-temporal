@@ -23,7 +23,7 @@ const (
 	SideEffectCommand       = "SideEffect"
 	InvokeSignalCommand     = "InvokeSignal"
 	InvokeQueryCommand      = "InvokeQuery"
-	GetVersionCommand       = "GetVersion"
+	StackTraceCommand       = "StackTrace"
 
 	// desert
 	ExecuteChildWorkflowCommand = "ExecuteChildWorkflow"
@@ -36,6 +36,12 @@ const (
 
 	// todo: cancelling?
 )
+
+// GetBacktrace asks worker to offload workflow from memory.
+type GetBacktrace struct {
+	// RunID workflow run id.
+	RunID string `json:"runId"`
+}
 
 // DestroyWorkflow asks worker to offload workflow from memory.
 type DestroyWorkflow struct {
