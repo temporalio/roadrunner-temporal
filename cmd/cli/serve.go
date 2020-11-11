@@ -19,7 +19,7 @@ func init() {
 
 func handler(cmd *cobra.Command, args []string) error {
 	/*
-		We need to have path to the config at the Register stage
+		We need to have path to the config at the RegisterTarget stage
 		But after cobra.Execute, because cobra fills up cli variables on this stage
 	*/
 	err := Container.Init()

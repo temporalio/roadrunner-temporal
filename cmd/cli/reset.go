@@ -26,9 +26,13 @@ func resetHandler(cmd *cobra.Command, args []string) error {
 	defer client.Close()
 
 	var services []string
-	err = client.Call("resetter.List", true, &services)
-	if err != nil {
-		return err
+	if len(args) != 0 {
+		services = args
+	} else {
+		err = client.Call("resetter.List", true, &services)
+		if err != nil {
+			return err
+		}
 	}
 
 	var wg sync.WaitGroup
@@ -36,7 +40,6 @@ func resetHandler(cmd *cobra.Command, args []string) error {
 	wg.Add(len(services))
 
 	for _, service := range services {
-
 		var (
 			bar    *mpb.Bar
 			name   = runewidth.FillRight(fmt.Sprintf("Reset [%s]", color.HiYellowString(service)), 27)

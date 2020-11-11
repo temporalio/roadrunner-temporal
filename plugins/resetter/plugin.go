@@ -1,20 +1,22 @@
 package resetter
 
-import "github.com/spiral/errors"
+import (
+	"github.com/spiral/errors"
+)
 
 const ServiceName = "resetter"
 
-type NamedResetter interface {
+type ResetTarget interface {
 	Name() string
 	Reset() error
 }
 
 type Plugin struct {
-	registry map[string]NamedResetter
+	registry map[string]ResetTarget
 }
 
 func (p *Plugin) Init() error {
-	p.registry = make(map[string]NamedResetter)
+	p.registry = make(map[string]ResetTarget)
 	return nil
 }
 
@@ -28,8 +30,8 @@ func (p *Plugin) Reset(name string) error {
 	return svc.Reset()
 }
 
-// Register resettable service.
-func (p *Plugin) Register(r NamedResetter) error {
+// RegisterTarget resettable service.
+func (p *Plugin) RegisterTarget(r ResetTarget) error {
 	p.registry[r.Name()] = r
 	return nil
 }
@@ -37,7 +39,7 @@ func (p *Plugin) Register(r NamedResetter) error {
 // Collects declares services to be collected.
 func (p *Plugin) Collects() []interface{} {
 	return []interface{}{
-		p.Register,
+		p.RegisterTarget,
 	}
 }
 
