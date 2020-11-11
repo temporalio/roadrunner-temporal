@@ -3,10 +3,12 @@ module github.com/temporalio/roadrunner-temporal
 go 1.15
 
 require (
+	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/color v1.10.0
 	github.com/json-iterator/go v1.1.10
 	github.com/kless/term v0.0.0-20161130133337-e551c64f56c0 // indirect
 	github.com/mattn/go-runewidth v0.0.9
+	github.com/olekukonko/tablewriter v0.0.4
 	github.com/sethgrid/curse v0.0.0-20181231162520-d4ee583ebf0f // indirect
 	github.com/shirou/gopsutil v3.20.10+incompatible // indirect
 	github.com/spf13/cobra v1.1.0

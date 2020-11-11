@@ -1,6 +1,8 @@
 package informer
 
-import "github.com/spiral/roadrunner/v2"
+import (
+	"github.com/spiral/roadrunner/v2"
+)
 
 type rpc struct {
 	srv *Plugin
