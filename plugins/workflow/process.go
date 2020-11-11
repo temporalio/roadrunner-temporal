@@ -6,6 +6,7 @@ import (
 	rrt "github.com/temporalio/roadrunner-temporal"
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
+	"go.temporal.io/sdk/workflow"
 )
 
 // wraps single workflow process
@@ -179,6 +180,20 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 
 	case NewTimer:
 		wp.env.NewTimer(cmd.ToDuration(), wp.createCallback(id))
+
+	case GetVersion:
+		version := wp.env.GetVersion(cmd.ChangeID, workflow.Version(cmd.MinSupported), workflow.Version(cmd.MaxSupported))
+
+		result, err := jsoniter.Marshal(version)
+		if err != nil {
+			return err
+		}
+
+		wp.mq.pushResponse(id, []jsoniter.RawMessage{result})
+		err = wp.flushQueue()
+		if err != nil {
+			panic(err)
+		}
 
 	case SideEffect:
 		wp.env.SideEffect(

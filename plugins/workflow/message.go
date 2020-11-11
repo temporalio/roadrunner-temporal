@@ -24,6 +24,7 @@ const (
 	InvokeSignalCommand     = "InvokeSignal"
 	InvokeQueryCommand      = "InvokeQuery"
 	StackTraceCommand       = "StackTrace"
+	GetVersionCommand       = "GetVersion"
 
 	// desert
 	ExecuteChildWorkflowCommand = "ExecuteChildWorkflow"
@@ -31,10 +32,6 @@ const (
 	// cancels
 	CancelTimerCommand    = "CancelTimer"
 	CancelActivityCommand = "CancelActivity"
-
-	// cancel external workflow
-
-	// todo: cancelling?
 )
 
 // GetBacktrace asks worker to offload workflow from memory.
@@ -171,6 +168,14 @@ func parseCommand(dc converter.DataConverter, name string, params jsoniter.RawMe
 
 	// todo: map other commands
 
+	case GetVersionCommand:
+		cmd := GetVersion{}
+		if err := jsoniter.Unmarshal(params, &cmd); err != nil {
+			return nil, err
+		}
+
+		return cmd, nil
+
 	case SideEffectCommand:
 		cmd := SideEffect{}
 		if err := jsoniter.Unmarshal(params, &cmd); err != nil {
@@ -193,4 +198,11 @@ func parseCommand(dc converter.DataConverter, name string, params jsoniter.RawMe
 type SideEffect struct {
 	Value    jsoniter.RawMessage `json:"value"`
 	Payloads *commonpb.Payloads
+}
+
+// NewTimer starts new timer.
+type GetVersion struct {
+	ChangeID     string `json:"changeID"`
+	MinSupported int    `json:"minSupported"`
+	MaxSupported int    `json:"maxSupported"`
 }
