@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/temporalio/roadrunner-temporal/plugins/informer"
 	"github.com/temporalio/roadrunner-temporal/plugins/resetter"
 	"log"
 
@@ -21,6 +22,7 @@ func main() {
 
 		// Helpers
 		&resetter.Plugin{},
+		&informer.Plugin{},
 
 		// PHP application init.
 		&app.Plugin{},

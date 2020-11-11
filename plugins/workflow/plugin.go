@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"github.com/spiral/roadrunner/v2"
 
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/log"
@@ -78,6 +79,11 @@ func (svc *Plugin) Stop() error {
 // Name of the service.
 func (svc *Plugin) Name() string {
 	return PluginName
+}
+
+// Name of the service.
+func (svc *Plugin) Workers() []roadrunner.WorkerBase {
+	return []roadrunner.WorkerBase{svc.pool.worker}
 }
 
 // Reset resets underlying workflow pool with new copy.
