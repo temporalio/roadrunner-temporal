@@ -12,7 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const ServiceName = "temporal"
+const PluginName = "temporal"
 
 type Config struct {
 	Address    string
@@ -40,7 +40,7 @@ func (srv *Plugin) Init(cfg config.Configurer, log log.Logger) error {
 	srv.log = log
 	srv.dc = rrt.NewDataConverter(converter.GetDefaultDataConverter())
 
-	return cfg.UnmarshalKey(ServiceName, &srv.cfg)
+	return cfg.UnmarshalKey(PluginName, &srv.cfg)
 }
 
 // GetConfig returns temporal configuration.
@@ -99,7 +99,7 @@ func (srv *Plugin) CreateWorker(tq string, options worker.Options) (worker.Worke
 
 // Name of the service.
 func (srv *Plugin) Name() string {
-	return ServiceName
+	return PluginName
 }
 
 // RPCService returns associated rpc service.

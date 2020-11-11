@@ -4,7 +4,7 @@ import (
 	"github.com/spiral/errors"
 )
 
-const ServiceName = "resetter"
+const PluginName = "resetter"
 
 type ResetTarget interface {
 	Name() string
@@ -45,7 +45,7 @@ func (p *Plugin) Collects() []interface{} {
 
 // Name of the service.
 func (p *Plugin) Name() string {
-	return ServiceName
+	return PluginName
 }
 
 // RPCService returns associated rpc service.

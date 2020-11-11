@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	// ServiceName defines public service name.
-	ServiceName = "workflows"
+	// PluginName defines public service name.
+	PluginName = "workflows"
 
 	// RRMode sets as RR_MODE env variable to let worker know about the mode to run.
 	RRMode = "temporal/workflow"
@@ -77,7 +77,7 @@ func (svc *Plugin) Stop() error {
 
 // Name of the service.
 func (svc *Plugin) Name() string {
-	return ServiceName
+	return PluginName
 }
 
 // Reset resets underlying workflow pool with new copy.
