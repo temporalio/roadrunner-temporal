@@ -153,7 +153,11 @@ func (pool *activityPool) executeActivity(ctx context.Context, input rrt.RRPaylo
 	}
 
 	if result[0].Error != nil {
-		return rrt.RRPayload{}, errors.E("got error, marshaling is required")
+		if result[0].Error.Message == "doNotCompleteOnReturn" {
+			return rrt.RRPayload{}, activity.ErrResultPending
+		}
+
+		return rrt.RRPayload{}, errors.E(result[0].Error.Message)
 	}
 
 	// todo: optimize

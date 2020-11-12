@@ -326,8 +326,9 @@ func (r *rpc) GetWorkflowHistory(in GetWorkflowHistoryIn, out *GetWorkflowHistor
 }
 
 type CompleteActivityIn struct {
-	TaskToken []byte `json:"task_token"`
-	Err       string `json:"err,omitempty"`
+	TaskToken []byte      `json:"taskToken"`
+	Result    interface{} `json:"result"`
+	Error     string      `json:"error,omitempty"`
 }
 
 type CompleteActivityOut struct {
@@ -349,26 +350,28 @@ type CompleteActivityOut struct {
 // The activity can fail with below errors ErrorWithDetails, TimeoutError, CanceledError.
 func (r *rpc) CompleteActivity(in CompleteActivityIn, out *CompleteActivityOut) error {
 	ctx := context.Background()
+
 	var err error
 	var res interface{}
-	if in.Err != "" {
+
+	if in.Error != "" {
 		// complete with error
-		err = r.srv.client.CompleteActivity(ctx, in.TaskToken, &res, errors.New(in.Err))
+		err = r.srv.client.CompleteActivity(ctx, in.TaskToken, &res, errors.New(in.Error))
 		if err != nil {
 			return err
 		}
 
-		(*out).Result = res
+		(*out).Result = nil
 		return nil
 	}
 
 	// just complete
-	err = r.srv.client.CompleteActivity(ctx, in.TaskToken, &res, nil)
+	err = r.srv.client.CompleteActivity(ctx, in.TaskToken, in.Result, nil)
 	if err != nil {
 		return err
 	}
 
-	(*out).Result = res
+	(*out).Result = in.Result
 	return nil
 }
 

@@ -203,7 +203,7 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 
 	case CompleteWorkflow:
 		wp.completed = true
-		wp.mq.pushResponse(id, []jsoniter.RawMessage{[]byte("true")})
+		wp.mq.pushResponse(id, []jsoniter.RawMessage{[]byte("\"completed\"")})
 		wp.env.Complete(cmd.ResultPayload, nil)
 	}
 
