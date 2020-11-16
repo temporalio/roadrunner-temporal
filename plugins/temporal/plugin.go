@@ -102,6 +102,6 @@ func (srv *Plugin) Name() string {
 }
 
 // RPCService returns associated rpc service.
-func (srv *Plugin) RPCService() (interface{}, error) {
-	return &rpc{srv: srv}, nil
+func (srv *Plugin) RPC() interface{} {
+	return &rpc{srv: srv}
 }
