@@ -1,23 +1,23 @@
 package informer
 
 import (
+	"github.com/spiral/endure"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2"
 )
 
 const PluginName = "informer"
 
-type InformTarget interface {
-	Name() string
+type Informer interface {
 	Workers() []roadrunner.WorkerBase
 }
 
 type Plugin struct {
-	registry map[string]InformTarget
+	registry map[string]Informer
 }
 
 func (p *Plugin) Init() error {
-	p.registry = make(map[string]InformTarget)
+	p.registry = make(map[string]Informer)
 	return nil
 }
 
@@ -32,8 +32,8 @@ func (p *Plugin) Workers(name string) ([]roadrunner.WorkerBase, error) {
 }
 
 // RegisterTarget resettable service.
-func (p *Plugin) RegisterTarget(r InformTarget) error {
-	p.registry[r.Name()] = r
+func (p *Plugin) RegisterTarget(name endure.Named, r Informer) error {
+	p.registry[name.Name()] = r
 	return nil
 }
 
@@ -50,6 +50,6 @@ func (p *Plugin) Name() string {
 }
 
 // RPCService returns associated rpc service.
-func (p *Plugin) RPCService() (interface{}, error) {
-	return &rpc{srv: p}, nil
+func (p *Plugin) RPC() interface{} {
+	return &rpc{srv: p}
 }

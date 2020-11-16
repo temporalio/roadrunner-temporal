@@ -12,10 +12,10 @@ require (
 	github.com/sethgrid/curse v0.0.0-20181231162520-d4ee583ebf0f // indirect
 	github.com/shirou/gopsutil v3.20.10+incompatible // indirect
 	github.com/spf13/cobra v1.1.0
-	github.com/spiral/endure v1.0.0-beta15
-	github.com/spiral/errors v1.0.2
+	github.com/spiral/endure v1.0.0-beta19
+	github.com/spiral/errors v1.0.4
 	github.com/spiral/goridge/v2 v2.4.6
-	github.com/spiral/roadrunner/v2 v2.0.0-alpha15
+	github.com/spiral/roadrunner/v2 v2.0.0-alpha18
 	github.com/tredoe/term v0.0.0-20161130133337-e551c64f56c0 // indirect
 	github.com/vbauerster/mpb v3.4.0+incompatible // indirect
 	github.com/vbauerster/mpb/v5 v5.3.0

@@ -8,7 +8,7 @@ import (
 
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2"
-	"github.com/spiral/roadrunner/v2/plugins/app"
+	"github.com/spiral/roadrunner/v2/interfaces/server"
 	"github.com/spiral/roadrunner/v2/util"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
@@ -21,14 +21,14 @@ import (
 type activityPool struct {
 	dc         converter.DataConverter
 	seqID      uint64
-	events     *util.EventHandler
+	events     util.EventsHandler
 	activities []string
 	wp         roadrunner.Pool
 	tWorkers   []worker.Worker
 }
 
 // NewActivityPool
-func NewActivityPool(ctx context.Context, poolConfig roadrunner.Config, factory app.WorkerFactory) (*activityPool, error) {
+func NewActivityPool(ctx context.Context, poolConfig roadrunner.PoolConfig, factory server.WorkerFactory) (*activityPool, error) {
 	wp, err := factory.NewWorkerPool(
 		context.Background(),
 		poolConfig,

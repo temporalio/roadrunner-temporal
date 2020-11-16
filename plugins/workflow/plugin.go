@@ -2,11 +2,12 @@ package workflow
 
 import (
 	"context"
+
 	"github.com/spiral/roadrunner/v2"
 
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner/v2/log"
-	"github.com/spiral/roadrunner/v2/plugins/app"
+	"github.com/spiral/roadrunner/v2/interfaces/log"
+	"github.com/spiral/roadrunner/v2/interfaces/server"
 	"github.com/spiral/roadrunner/v2/util"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	"go.uber.org/zap"
@@ -23,16 +24,16 @@ const (
 // Plugin manages workflows and workers.
 type Plugin struct {
 	temporal temporal.Temporal
-	events   *util.EventHandler
-	app      app.WorkerFactory
+	events   util.EventsHandler
+	server   server.WorkerFactory
 	log      log.Logger
 	pool     *workflowPool
 }
 
 // logger dep also
-func (svc *Plugin) Init(temporal temporal.Temporal, app app.WorkerFactory, log log.Logger) error {
+func (svc *Plugin) Init(temporal temporal.Temporal, server server.WorkerFactory, log log.Logger) error {
 	svc.temporal = temporal
-	svc.app = app
+	svc.server = server
 	svc.log = log
 	return nil
 }
@@ -41,7 +42,7 @@ func (svc *Plugin) Init(temporal temporal.Temporal, app app.WorkerFactory, log l
 func (svc *Plugin) Serve() chan error {
 	errCh := make(chan error, 1)
 
-	pool, err := NewWorkflowPool(context.Background(), svc.app)
+	pool, err := NewWorkflowPool(context.Background(), svc.server)
 	if err != nil {
 		errCh <- errors.E(errors.Op("newWorkflowPool"), err)
 		return errCh
@@ -90,7 +91,7 @@ func (svc *Plugin) Workers() []roadrunner.WorkerBase {
 func (svc *Plugin) Reset() error {
 	svc.log.Debug("Reset workflow pool")
 
-	pool, err := NewWorkflowPool(context.Background(), svc.app)
+	pool, err := NewWorkflowPool(context.Background(), svc.server)
 	if err != nil {
 		return errors.E(errors.Op("newWorkflowPool"), err)
 	}

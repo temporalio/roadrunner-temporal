@@ -1,22 +1,22 @@
 package resetter
 
 import (
+	"github.com/spiral/endure"
 	"github.com/spiral/errors"
 )
 
 const PluginName = "resetter"
 
-type ResetTarget interface {
-	Name() string
+type Resetter interface {
 	Reset() error
 }
 
 type Plugin struct {
-	registry map[string]ResetTarget
+	registry map[string]Resetter
 }
 
 func (p *Plugin) Init() error {
-	p.registry = make(map[string]ResetTarget)
+	p.registry = make(map[string]Resetter)
 	return nil
 }
 
@@ -31,8 +31,8 @@ func (p *Plugin) Reset(name string) error {
 }
 
 // RegisterTarget resettable service.
-func (p *Plugin) RegisterTarget(r ResetTarget) error {
-	p.registry[r.Name()] = r
+func (p *Plugin) RegisterTarget(name endure.Named, r Resetter) error {
+	p.registry[name.Name()] = r
 	return nil
 }
 
@@ -49,6 +49,6 @@ func (p *Plugin) Name() string {
 }
 
 // RPCService returns associated rpc service.
-func (p *Plugin) RPCService() (interface{}, error) {
-	return &rpc{srv: p}, nil
+func (p *Plugin) RPC() interface{} {
+	return &rpc{srv: p}
 }

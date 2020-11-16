@@ -7,7 +7,7 @@ import (
 
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2"
-	"github.com/spiral/roadrunner/v2/plugins/app"
+	"github.com/spiral/roadrunner/v2/interfaces/server"
 	"github.com/spiral/roadrunner/v2/util"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
@@ -18,7 +18,7 @@ import (
 
 // workflowPool manages workflowProcess executions between worker restarts.
 type workflowPool struct {
-	events    *util.EventHandler
+	events    util.EventsHandler
 	seqID     uint64
 	workflows map[string]rrt.WorkflowInfo
 	tWorkers  []worker.Worker
@@ -27,7 +27,7 @@ type workflowPool struct {
 }
 
 // NewWorkflowPool creates new workflow pool.
-func NewWorkflowPool(ctx context.Context, factory app.WorkerFactory) (*workflowPool, error) {
+func NewWorkflowPool(ctx context.Context, factory server.WorkerFactory) (*workflowPool, error) {
 	w, err := factory.NewWorker(
 		context.Background(),
 		map[string]string{"RR_MODE": RRMode},

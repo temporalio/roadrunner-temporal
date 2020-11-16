@@ -2,11 +2,12 @@ package activity
 
 import (
 	"context"
+
 	"github.com/spiral/roadrunner/v2"
 
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner/v2/log"
-	"github.com/spiral/roadrunner/v2/plugins/app"
+	"github.com/spiral/roadrunner/v2/interfaces/log"
+	"github.com/spiral/roadrunner/v2/interfaces/server"
 	"github.com/spiral/roadrunner/v2/util"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	"go.uber.org/zap"
@@ -23,21 +24,21 @@ const (
 // Plugin to manage activity execution.
 type Plugin struct {
 	temporal temporal.Temporal
-	events   *util.EventHandler
-	app      app.WorkerFactory
+	events   util.EventsHandler
+	server   server.WorkerFactory
 	log      log.Logger
 	pool     *activityPool
 }
 
 // Init configures activity service.
-func (svc *Plugin) Init(temporal temporal.Temporal, app app.WorkerFactory, log log.Logger) error {
+func (svc *Plugin) Init(temporal temporal.Temporal, server server.WorkerFactory, log log.Logger) error {
 	if temporal.GetConfig().Activities == nil {
 		// no need to serve activities
 		return errors.E(errors.Disabled)
 	}
 
 	svc.temporal = temporal
-	svc.app = app
+	svc.server = server
 	svc.log = log
 
 	return nil
@@ -47,7 +48,7 @@ func (svc *Plugin) Init(temporal temporal.Temporal, app app.WorkerFactory, log l
 func (svc *Plugin) Serve() chan error {
 	errCh := make(chan error, 1)
 
-	pool, err := NewActivityPool(context.Background(), *svc.temporal.GetConfig().Activities, svc.app)
+	pool, err := NewActivityPool(context.Background(), *svc.temporal.GetConfig().Activities, svc.server)
 	if err != nil {
 		errCh <- errors.E(errors.Op("newActivityPool"), err)
 		return errCh
@@ -90,7 +91,7 @@ func (svc *Plugin) Workers() []roadrunner.WorkerBase {
 func (svc *Plugin) Reset() error {
 	svc.log.Debug("Reset activity worker pool")
 
-	pool, err := NewActivityPool(context.Background(), *svc.temporal.GetConfig().Activities, svc.app)
+	pool, err := NewActivityPool(context.Background(), *svc.temporal.GetConfig().Activities, svc.server)
 	if err != nil {
 		return errors.E(errors.Op("newActivityPool"), err)
 	}

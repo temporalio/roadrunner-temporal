@@ -3,13 +3,12 @@ package temporal
 import (
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2"
-	"github.com/spiral/roadrunner/v2/log"
+	"github.com/spiral/roadrunner/v2/interfaces/log"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
-	"go.uber.org/zap"
 )
 
 const PluginName = "temporal"
@@ -17,7 +16,7 @@ const PluginName = "temporal"
 type Config struct {
 	Address    string
 	Namespace  string
-	Activities *roadrunner.Config
+	Activities *roadrunner.PoolConfig
 }
 
 type Temporal interface {
@@ -65,7 +64,7 @@ func (srv *Plugin) Serve() chan error {
 		DataConverter: srv.dc,
 	})
 
-	srv.log.Debug("Connected to temporal server", zap.String("Plugin", srv.cfg.Address))
+	srv.log.Debug("Connected to temporal server", "Plugin", srv.cfg.Address)
 
 	if err != nil {
 		errCh <- errors.E(errors.Op("srv connect"), err)

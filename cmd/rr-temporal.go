@@ -1,13 +1,14 @@
 package main
 
 import (
-	"github.com/temporalio/roadrunner-temporal/plugins/informer"
-	"github.com/temporalio/roadrunner-temporal/plugins/resetter"
 	"log"
 
-	"github.com/spiral/roadrunner/v2/plugins/app"
+	"github.com/temporalio/roadrunner-temporal/plugins/informer"
+	"github.com/temporalio/roadrunner-temporal/plugins/resetter"
+
 	"github.com/spiral/roadrunner/v2/plugins/logger"
 	"github.com/spiral/roadrunner/v2/plugins/rpc"
+	"github.com/spiral/roadrunner/v2/plugins/server"
 	"github.com/temporalio/roadrunner-temporal/plugins/activity"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	"github.com/temporalio/roadrunner-temporal/plugins/workflow"
@@ -25,7 +26,7 @@ func main() {
 		&informer.Plugin{},
 
 		// PHP application init.
-		&app.Plugin{},
+		&server.Plugin{},
 		&rpc.Plugin{},
 
 		// Temporal extension.
