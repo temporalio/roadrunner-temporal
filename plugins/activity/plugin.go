@@ -25,13 +25,13 @@ const (
 type Plugin struct {
 	temporal temporal.Temporal
 	events   util.EventsHandler
-	server   server.WorkerFactory
+	server   server.Server
 	log      log.Logger
 	pool     *activityPool
 }
 
 // Init configures activity service.
-func (svc *Plugin) Init(temporal temporal.Temporal, server server.WorkerFactory, log log.Logger) error {
+func (svc *Plugin) Init(temporal temporal.Temporal, server server.Server, log log.Logger) error {
 	if temporal.GetConfig().Activities == nil {
 		// no need to serve activities
 		return errors.E(errors.Disabled)

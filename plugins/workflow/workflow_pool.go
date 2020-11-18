@@ -27,7 +27,7 @@ type workflowPool struct {
 }
 
 // NewWorkflowPool creates new workflow pool.
-func NewWorkflowPool(ctx context.Context, factory server.WorkerFactory) (*workflowPool, error) {
+func NewWorkflowPool(ctx context.Context, factory server.Server) (*workflowPool, error) {
 	w, err := factory.NewWorker(
 		context.Background(),
 		map[string]string{"RR_MODE": RRMode},

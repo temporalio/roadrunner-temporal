@@ -28,8 +28,8 @@ type activityPool struct {
 }
 
 // NewActivityPool
-func NewActivityPool(ctx context.Context, poolConfig roadrunner.PoolConfig, factory server.WorkerFactory) (*activityPool, error) {
-	wp, err := factory.NewWorkerPool(
+func NewActivityPool(ctx context.Context, poolConfig roadrunner.PoolConfig, server server.Server) (*activityPool, error) {
+	wp, err := server.NewWorkerPool(
 		context.Background(),
 		poolConfig,
 		map[string]string{"RR_MODE": RRMode},

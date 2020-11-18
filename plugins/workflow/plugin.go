@@ -25,13 +25,13 @@ const (
 type Plugin struct {
 	temporal temporal.Temporal
 	events   util.EventsHandler
-	server   server.WorkerFactory
+	server   server.Server
 	log      log.Logger
 	pool     *workflowPool
 }
 
 // logger dep also
-func (svc *Plugin) Init(temporal temporal.Temporal, server server.WorkerFactory, log log.Logger) error {
+func (svc *Plugin) Init(temporal temporal.Temporal, server server.Server, log log.Logger) error {
 	svc.temporal = temporal
 	svc.server = server
 	svc.log = log
