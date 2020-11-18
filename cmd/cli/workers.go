@@ -2,15 +2,16 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"github.com/spiral/roadrunner/v2"
-	"github.com/temporalio/roadrunner-temporal/plugins/informer"
-	"os"
-	"strconv"
-	"time"
+	"github.com/spiral/roadrunner/v2/plugins/informer"
 )
 
 func init() {

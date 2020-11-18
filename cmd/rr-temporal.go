@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
-	"github.com/temporalio/roadrunner-temporal/plugins/informer"
-	"github.com/temporalio/roadrunner-temporal/plugins/resetter"
+	"github.com/spiral/roadrunner/v2/plugins/informer"
+	"github.com/spiral/roadrunner/v2/plugins/resetter"
 
 	"github.com/spiral/roadrunner/v2/plugins/logger"
 	"github.com/spiral/roadrunner/v2/plugins/rpc"
