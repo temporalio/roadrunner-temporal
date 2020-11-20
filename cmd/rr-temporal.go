@@ -3,64 +3,42 @@ package main
 import (
 	"log"
 
-	"github.com/spiral/endure"
-	"github.com/spiral/roadrunner/v2/plugins/factory"
-	"github.com/temporalio/roadrunner-temporal/cmd/subcommands"
+	"github.com/spiral/roadrunner/v2/plugins/informer"
+	"github.com/spiral/roadrunner/v2/plugins/resetter"
+
+	"github.com/spiral/roadrunner/v2/plugins/logger"
+	"github.com/spiral/roadrunner/v2/plugins/rpc"
+	"github.com/spiral/roadrunner/v2/plugins/server"
+	"github.com/temporalio/roadrunner-temporal/plugins/activity"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
+	"github.com/temporalio/roadrunner-temporal/plugins/workflow"
+
+	"github.com/temporalio/roadrunner-temporal/cmd/cli"
 )
 
 func main() {
-	// LOG LEVEL SHOULD BE SET BY CLI
-	cfg := zap.Config{
-		Level:    zap.NewAtomicLevelAt(zap.DebugLevel),
-		Encoding: "console",
-		EncoderConfig: zapcore.EncoderConfig{
-			MessageKey:    "message",
-			LevelKey:      "level",
-			TimeKey:       "time",
-			CallerKey:     "caller",
-			StacktraceKey: "stack",
-			EncodeLevel:   zapcore.CapitalLevelEncoder,
-			EncodeTime:    zapcore.ISO8601TimeEncoder,
-			EncodeCaller:  zapcore.ShortCallerEncoder,
-		},
-		OutputPaths:      []string{"stderr"},
-		ErrorOutputPaths: []string{"stderr"},
-	}
+	err := cli.InitApp(
+		// todo: move to root
+		&logger.ZapLogger{},
 
-	logger, err := cfg.Build(zap.AddCaller())
+		// Helpers
+		&resetter.Plugin{},
+		&informer.Plugin{},
+
+		// PHP application init.
+		&server.Plugin{},
+		&rpc.Plugin{},
+
+		// Temporal extension.
+		&temporal.Plugin{},
+		&activity.Plugin{},
+		&workflow.Plugin{},
+	)
+
 	if err != nil {
-		// os.Exit(1) here
-		log.Fatal("failed to initialize logger")
-	}
-
-
-	subcommands.Container, err = endure.NewContainer(endure.DebugLevel, endure.RetryOnFail(false))
-	if err != nil {
-		logger.Fatal("failed to instantiate endure container", zap.Error(err))
+		log.Fatal(err)
 		return
 	}
 
-	err = subcommands.Container.Register(&temporal.Plugin{})
-	if err != nil {
-		logger.Fatal("failed to register temporal plugin", zap.Error(err))
-		return
-	}
-
-	err = subcommands.Container.Register(&factory.WFactory{})
-	if err != nil {
-		logger.Fatal("failed to register WFactory", zap.Error(err))
-		return
-	}
-
-	err = subcommands.Container.Register(&factory.App{})
-	if err != nil {
-		logger.Fatal("failed to factory App", zap.Error(err))
-		return
-	}
-
-	// exec
-	subcommands.Execute()
+	cli.Execute()
 }
