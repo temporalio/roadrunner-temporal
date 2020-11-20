@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"github.com/spiral/errors"
+	"log"
 
 	jsoniter "github.com/json-iterator/go"
 	rrt "github.com/temporalio/roadrunner-temporal"
@@ -200,18 +201,37 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 
 	switch cmd := rawCmd.(type) {
 	case ExecuteActivity:
-		//acvitityID :=
-		wp.env.ExecuteActivity(cmd.ActivityParams(wp.env), wp.createCallback(id))
+		activityID := wp.env.ExecuteActivity(cmd.ActivityParams(wp.env), wp.createCallback(id))
+		wp.canceller.register(id, func() error {
+			log.Print("cancel", activityID)
+			wp.env.RequestCancelActivity("activityID") // todo: wait for SDk fix
+			return nil
+		})
 
+		/**
+		 	ActivityID = make public (scheduleID, activityID)
+			LocalActivityID = make public (activityID)
+			TimerInfo(timerID string)
+		*/
+
+		//wp.env.RequestCancelActivity()
+
+		// todo: generate id
+		//wp.env.ExecuteChildWorkflow()
+
+		//wp.env.RequestCancelChildWorkflow()
 		//wp.canceller.register(id, acvitityID)
 
 		// todo: local activity
 		// todo: child workflow
 
 	case NewTimer:
-		//timerInfo := wp.env.NewTimer(cmd.ToDuration(), wp.createCallback(id))
-
-		wp.canceller.register(id, wp.env.NewTimer(cmd.ToDuration(), wp.createCallback(id)))
+		timerID := wp.env.NewTimer(cmd.ToDuration(), wp.createCallback(id))
+		wp.canceller.register(id, func() error {
+			log.Print("cancel", timerID)
+			wp.env.RequestCancelTimer("timerID") // todo: wait for SDk fix
+			return nil
+		})
 
 	case GetVersion:
 		version := wp.env.GetVersion(
@@ -258,7 +278,7 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 		wp.env.RequestCancelExternalWorkflow(cmd.Namespace, cmd.WorkflowID, cmd.RunID, wp.createCallback(id))
 
 	case Cancel:
-		err = wp.canceller.cancel(wp.env, cmd.RequestIDs...)
+		err = wp.canceller.cancel(wp.env, cmd.CommandIDs...)
 		if err != nil {
 			return err
 		}

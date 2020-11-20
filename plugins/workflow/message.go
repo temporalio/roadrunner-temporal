@@ -161,8 +161,8 @@ type (
 
 	// Cancel one or multiple internal promises (activities, local activities, timers, child workflows).
 	Cancel struct {
-		// RequestIDs to be cancelled.
-		RequestIDs []uint64 `json:"requestIDs"`
+		// CommandIDs to be cancelled.
+		CommandIDs []uint64 `json:"ids"`
 	}
 )
 
