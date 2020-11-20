@@ -121,5 +121,3 @@ func (svc *Plugin) Reset() error {
 func (svc *Plugin) AddListener(listener util.EventListener) {
 	svc.events.AddListener(listener)
 }
-
-// todo: workers method

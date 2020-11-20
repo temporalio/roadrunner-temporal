@@ -84,7 +84,7 @@ func (pool *workflowPool) Destroy(ctx context.Context) {
 
 	// todo: pass via event callback
 	//if err := pool.worker.Stop(ctx); err != nil {
-	//	pool.events.Push()
+	//	pool.events.register()
 	//}
 }
 

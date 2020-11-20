@@ -1,7 +1,7 @@
 package workflow
 
 import (
-	"fmt"
+	"github.com/spiral/errors"
 
 	jsoniter "github.com/json-iterator/go"
 	rrt "github.com/temporalio/roadrunner-temporal"
@@ -18,24 +18,32 @@ type workflowProcess struct {
 	pipeline  []rrt.Message
 	callbacks []func() error
 	completed bool
-	// queue
+	canceller *canceller
 }
 
 // Execute workflow, bootstraps process.
 func (wp *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *commonpb.Header, input *commonpb.Payloads) {
 	wp.callbacks = append(wp.callbacks, func() error {
 		wp.env = env
+		wp.canceller = &canceller{}
+
+		// sequenceID shared for all worker workflows
 		wp.mq = newMessageQueue(&wp.pool.seqID)
 
-		start := StartWorkflow{}
-		if err := start.FromEnvironment(env, input); err != nil {
+		start := StartWorkflow{
+			Info: env.WorkflowInfo(),
+		}
+
+		err := rrt.FromPayloads(env.GetDataConverter(), input, &start.Input)
+		if err != nil {
 			return err
 		}
 
+		env.RegisterCancelHandler(wp.handleCancel)
 		env.RegisterSignalHandler(wp.handleSignal)
 		env.RegisterQueryHandler(wp.handleQuery)
 
-		_, err := wp.mq.pushCommand(StartWorkflowCommand, start)
+		_, err = wp.mq.pushCommand(StartWorkflowCommand, start)
 		return err
 	})
 }
@@ -74,8 +82,8 @@ func (wp *workflowProcess) OnWorkflowTaskStarted() {
 // StackTrace renders workflow stack trace.
 func (wp *workflowProcess) StackTrace() string {
 	result, err := wp.runCommand(
-		StackTraceCommand,
-		&GetBacktrace{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID},
+		GetStackTraceCommand,
+		&GetStackTrace{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID},
 	)
 
 	if err != nil {
@@ -84,6 +92,7 @@ func (wp *workflowProcess) StackTrace() string {
 
 	var stacktrace string
 	err = jsoniter.Unmarshal(result.Result[0], &stacktrace)
+
 	if err != nil {
 		return err.Error()
 	}
@@ -94,7 +103,7 @@ func (wp *workflowProcess) StackTrace() string {
 // Close the workflow.
 func (wp *workflowProcess) Close() {
 	if !wp.completed {
-		//offloaded from memory
+		// offloaded from memory
 		_, err := wp.mq.pushCommand(
 			DestroyWorkflowCommand,
 			DestroyWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID},
@@ -111,11 +120,44 @@ func (wp *workflowProcess) Close() {
 	}
 }
 
+// execution context.
 func (wp *workflowProcess) getContext() rrt.Context {
 	return rrt.Context{
 		TaskQueue: wp.env.WorkflowInfo().TaskQueueName,
 		TickTime:  wp.env.Now(),
 		Replay:    wp.env.IsReplaying(),
+	}
+}
+
+// schedule cancel command
+func (wp *workflowProcess) handleCancel() {
+	_, err := wp.mq.pushCommand(
+		CancelWorkflowCommand,
+		&CancelWorkflow{
+			RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
+		},
+	)
+
+	if err != nil {
+		panic(err)
+	}
+}
+
+// schedule the signal processing
+func (wp *workflowProcess) handleSignal(name string, input *commonpb.Payloads) {
+	cmd := &InvokeQuery{
+		RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
+		Name:  name,
+	}
+
+	err := rrt.FromPayloads(wp.env.GetDataConverter(), input, &cmd.Args)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = wp.mq.pushCommand(InvokeSignalCommand, cmd)
+	if err != nil {
+		panic(err)
 	}
 }
 
@@ -149,25 +191,6 @@ func (wp *workflowProcess) handleQuery(queryType string, queryArgs *commonpb.Pay
 	return out, nil
 }
 
-// schedule the signal processing
-func (wp *workflowProcess) handleSignal(name string, input *commonpb.Payloads) {
-	cmd := &InvokeQuery{
-		RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
-		Name:  name,
-	}
-
-	err := rrt.FromPayloads(wp.env.GetDataConverter(), input, &cmd.Args)
-	if err != nil {
-		// todo: what to do about this panic?
-		panic(err)
-	}
-
-	_, err = wp.mq.pushCommand(InvokeSignalCommand, cmd)
-	if err != nil {
-		panic(err)
-	}
-}
-
 // process incoming command
 func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter.RawMessage) error {
 	rawCmd, err := parseCommand(wp.env.GetDataConverter(), name, params)
@@ -177,13 +200,25 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 
 	switch cmd := rawCmd.(type) {
 	case ExecuteActivity:
+		//acvitityID :=
 		wp.env.ExecuteActivity(cmd.ActivityParams(wp.env), wp.createCallback(id))
 
+		//wp.canceller.register(id, acvitityID)
+
+		// todo: local activity
+		// todo: child workflow
+
 	case NewTimer:
-		wp.env.NewTimer(cmd.ToDuration(), wp.createCallback(id))
+		//timerInfo := wp.env.NewTimer(cmd.ToDuration(), wp.createCallback(id))
+
+		wp.canceller.register(id, wp.env.NewTimer(cmd.ToDuration(), wp.createCallback(id)))
 
 	case GetVersion:
-		version := wp.env.GetVersion(cmd.ChangeID, workflow.Version(cmd.MinSupported), workflow.Version(cmd.MaxSupported))
+		version := wp.env.GetVersion(
+			cmd.ChangeID,
+			workflow.Version(cmd.MinSupported),
+			workflow.Version(cmd.MaxSupported),
+		)
 
 		result, err := jsoniter.Marshal(version)
 		if err != nil {
@@ -198,16 +233,35 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 
 	case SideEffect:
 		wp.env.SideEffect(
-			func() (*commonpb.Payloads, error) { return cmd.Payloads, nil },
-			wp.createBlockingCallback(id),
+			func() (*commonpb.Payloads, error) { return cmd.rawPayload, nil },
+			wp.createImmediateCallback(id),
 		)
 
 	case CompleteWorkflow:
 		wp.completed = true
 		wp.mq.pushResponse(id, []jsoniter.RawMessage{[]byte("\"completed\"")})
-		wp.env.Complete(cmd.ResultPayload, nil)
+		wp.env.Complete(cmd.rawPayload, cmd.Error)
 
-		// todo: child workflow
+	case SignalExternalWorkflow:
+		wp.env.SignalExternalWorkflow(
+			cmd.Namespace,
+			cmd.WorkflowID,
+			cmd.RunID,
+			cmd.Signal,
+			cmd.rawPayload,
+			nil,
+			cmd.ChildWorkflowOnly,
+			wp.createCallback(id),
+		)
+
+	case CancelExternalWorkflow:
+		wp.env.RequestCancelExternalWorkflow(cmd.Namespace, cmd.WorkflowID, cmd.RunID, wp.createCallback(id))
+
+	case Cancel:
+		err = wp.canceller.cancel(wp.env, cmd.RequestIDs...)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -215,11 +269,14 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 
 // process incoming command
 func (wp *workflowProcess) handleResponse(id uint64, result []jsoniter.RawMessage, error interface{}) error {
+	// not used in current implementation
 	return nil
 }
 
 func (wp *workflowProcess) createCallback(id uint64) bindings.ResultHandler {
 	callback := func(result *commonpb.Payloads, err error) error {
+		wp.canceller.discard(id)
+
 		if err != nil {
 			wp.mq.pushError(id, err)
 			return nil
@@ -244,8 +301,10 @@ func (wp *workflowProcess) createCallback(id uint64) bindings.ResultHandler {
 }
 
 // callback to be called inside the queue processing, adds new messages at the end of the queue
-func (wp *workflowProcess) createBlockingCallback(id uint64) bindings.ResultHandler {
+func (wp *workflowProcess) createImmediateCallback(id uint64) bindings.ResultHandler {
 	callback := func(result *commonpb.Payloads, err error) {
+		wp.canceller.discard(id)
+
 		if err != nil {
 			wp.mq.pushError(id, err)
 			return
@@ -269,10 +328,11 @@ func (wp *workflowProcess) createBlockingCallback(id uint64) bindings.ResultHand
 	}
 }
 
-// Exchange messages between host and worker processes.
+// Exchange messages between host and worker processes and add new commands to the queue.
 func (wp *workflowProcess) flushQueue() error {
 	messages, err := rrt.Execute(wp.pool, wp.getContext(), wp.mq.queue...)
 	wp.mq.flush()
+
 	if err != nil {
 		return err
 	}
@@ -282,10 +342,11 @@ func (wp *workflowProcess) flushQueue() error {
 	return nil
 }
 
-// Exchange messages between host and worker processes without adding them to queue.
+// Exchange messages between host and worker processes without adding new commands to the queue.
 func (wp *workflowProcess) discardQueue() ([]rrt.Message, error) {
 	messages, err := rrt.Execute(wp.pool, wp.getContext(), wp.mq.queue...)
 	wp.mq.flush()
+
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +354,7 @@ func (wp *workflowProcess) discardQueue() ([]rrt.Message, error) {
 	return messages, nil
 }
 
-// Exchange messages between host and worker processes without adding them to queue.
+// Run single command and return single result.
 func (wp *workflowProcess) runCommand(command string, params interface{}) (rrt.Message, error) {
 	_, msg, err := wp.mq.makeCommand(command, params)
 
@@ -303,7 +364,7 @@ func (wp *workflowProcess) runCommand(command string, params interface{}) (rrt.M
 	}
 
 	if len(result) != 1 {
-		return rrt.Message{}, fmt.Errorf("unexpected worker response")
+		return rrt.Message{}, errors.E("unexpected worker response")
 	}
 
 	return result[0], nil

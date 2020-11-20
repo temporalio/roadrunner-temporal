@@ -83,7 +83,7 @@ func (svc *Plugin) Name() string {
 
 // Name of the service.
 func (svc *Plugin) Workers() []roadrunner.WorkerBase {
-	// todo: mutex
+	// todo: mutex when secondary pool added
 	return svc.pool.wp.Workers()
 }
 

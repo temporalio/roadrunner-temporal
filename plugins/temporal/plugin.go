@@ -13,26 +13,27 @@ import (
 
 const PluginName = "temporal"
 
-type Config struct {
-	Address    string
-	Namespace  string
-	Activities *roadrunner.PoolConfig
-}
+type (
+	Temporal interface {
+		GetClient() (client.Client, error)
+		GetDataConverter() converter.DataConverter
+		GetConfig() Config
+		CreateWorker(taskQueue string, options worker.Options) (worker.Worker, error)
+	}
 
-type Temporal interface {
-	GetClient() (client.Client, error)
-	GetDataConverter() converter.DataConverter
-	GetConfig() Config
-	CreateWorker(taskQueue string, options worker.Options) (worker.Worker, error)
-}
+	Config struct {
+		Address    string
+		Namespace  string
+		Activities *roadrunner.PoolConfig
+	}
 
-// inherit roadrunner.rpc.Plugin interface
-type Plugin struct {
-	cfg    Config
-	dc     converter.DataConverter
-	log    log.Logger
-	client client.Client
-}
+	Plugin struct {
+		cfg    Config
+		dc     converter.DataConverter
+		log    log.Logger
+		client client.Client
+	}
+)
 
 // logger dep also
 func (srv *Plugin) Init(cfg config.Configurer, log log.Logger) error {

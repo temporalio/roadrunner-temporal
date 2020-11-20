@@ -6,11 +6,10 @@ import (
 	"time"
 
 	payload "github.com/temporalio/roadrunner-temporal"
-	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/client"
 )
 
-// TODO heavy return payloads, we should figure out, what exactly do we need in response
+// TODO DEPRECATE IN FAVOR OF NATIVE CLIENT.
 /*
 RecordActivityHeartbeat(ctx context.Context, taskToken []byte, details ...interface{}) error
 RecordActivityHeartbeatByID(ctx context.Context, namespace, workflowID, runID, activityID string, details ...interface{}) error
@@ -268,58 +267,6 @@ func (r *rpc) TerminateWorkflow(in TerminateWorkflowIn, _ *EmptyStruct) error {
 	err := r.srv.client.TerminateWorkflow(ctx, in.WorkflowId, in.WorkflowRunId, in.Reason, in.Details...)
 	if err != nil {
 		return err
-	}
-
-	return nil
-}
-
-type HistoryEventFilterType int32
-
-const (
-	HISTORY_EVENT_FILTER_TYPE_UNSPECIFIED HistoryEventFilterType = 0
-	HISTORY_EVENT_FILTER_TYPE_ALL_EVENT   HistoryEventFilterType = 1
-	HISTORY_EVENT_FILTER_TYPE_CLOSE_EVENT HistoryEventFilterType = 2
-)
-
-type GetWorkflowHistoryIn struct {
-	WorkflowId    string                 `json:"wid"`
-	WorkflowRunId string                 `json:"rid"`
-	FilterType    HistoryEventFilterType `json:"filter_type"` // int32
-}
-
-type HistoryEvent struct {
-	EventId   int64  `json:"event_id"`
-	EventTime string `json:"event_time"` // time in UNIX date format
-	EventType string `json:"event_type"`
-	TaskId    int64  `json:"task_id"`
-	Version   int64  `json:"version"`
-}
-
-type GetWorkflowHistoryOut struct {
-	HistoryEvents []HistoryEvent `json:"history_events"`
-}
-
-func (r *rpc) GetWorkflowHistory(in GetWorkflowHistoryIn, out *GetWorkflowHistoryOut) error {
-	if in.FilterType < 0 || in.FilterType > 2 {
-		return errors.New("filter type should be between 0 and 2 inclusive")
-	}
-	ctx := context.Background()
-	iterator := r.srv.client.GetWorkflowHistory(ctx, in.WorkflowId, in.WorkflowRunId, false, enums.HistoryEventFilterType(in.FilterType))
-
-	(*out).HistoryEvents = make([]HistoryEvent, 0, 10)
-	for iterator.HasNext() {
-		historyEvent, err := iterator.Next()
-		if err != nil {
-			return err
-		}
-
-		(*out).HistoryEvents = append((*out).HistoryEvents, HistoryEvent{
-			EventId:   historyEvent.EventId,
-			EventTime: historyEvent.EventTime.Format(time.UnixDate),
-			EventType: historyEvent.EventType.String(),
-			TaskId:    historyEvent.TaskId,
-			Version:   historyEvent.Version,
-		})
 	}
 
 	return nil

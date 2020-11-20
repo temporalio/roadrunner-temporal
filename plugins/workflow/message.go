@@ -6,140 +6,203 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	rrt "github.com/temporalio/roadrunner-temporal"
-	"go.temporal.io/api/common/v1"
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/converter"
-	"go.temporal.io/sdk/internalbindings"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
 )
 
 const (
-	DestroyWorkflowCommand  = "DestroyWorkflow"
-	StartWorkflowCommand    = "StartWorkflow"
-	ExecuteActivityCommand  = "ExecuteActivity"
-	NewTimerCommand         = "NewTimer"
-	CompleteWorkflowCommand = "CompleteWorkflow"
-	SideEffectCommand       = "SideEffect"
-	InvokeSignalCommand     = "InvokeSignal"
-	InvokeQueryCommand      = "InvokeQuery"
-	StackTraceCommand       = "StackTrace"
-	GetVersionCommand       = "GetVersion"
+	// Commands send by the host process to the worker.
+	StartWorkflowCommand   = "StartWorkflow"
+	InvokeSignalCommand    = "InvokeSignal"
+	InvokeQueryCommand     = "InvokeQuery"
+	DestroyWorkflowCommand = "DestroyWorkflow"
+	CancelWorkflowCommand  = "CancelWorkflow"
+	GetStackTraceCommand   = "StackTrace"
 
-	// desert
+	// Commands send by worker to host process.
+	ExecuteActivityCommand      = "ExecuteActivity"
+	ExecuteLocalActivityCommand = "ExecuteLocalActivity"
 	ExecuteChildWorkflowCommand = "ExecuteChildWorkflow"
+	NewTimerCommand             = "NewTimer"
+	SideEffectCommand           = "SideEffect"
+	GetVersionCommand           = "GetVersion"
+	CompleteWorkflowCommand     = "CompleteWorkflow"
 
-	// cancels
-	CancelTimerCommand    = "CancelTimer"
-	CancelActivityCommand = "CancelActivity"
+	// External workflows
+	SignalExternalWorkflowCommand = "SignalExternalWorkflow"
+	CancelExternalWorkflowCommand = "CancelExternalWorkflow"
+
+	// Unified.
+	CancelCommand = "Cancel"
 )
 
-// GetBacktrace asks worker to offload workflow from memory.
-type GetBacktrace struct {
-	// RunID workflow run id.
-	RunID string `json:"runId"`
-}
+type (
+	// StartWorkflow sends worker command to start workflow.
+	StartWorkflow struct {
+		// Info to define workflow context.
+		Info *workflow.Info `json:"info"`
+		// Input arguments.
+		Input []jsoniter.RawMessage `json:"args"`
+	}
 
-// DestroyWorkflow asks worker to offload workflow from memory.
-type DestroyWorkflow struct {
-	// RunID workflow run id.
-	RunID string `json:"runId"`
-}
+	// InvokeQuery invokes signal with a set of arguments.
+	InvokeSignal struct {
+		// RunID workflow run id.
+		RunID string `json:"runId"`
+		// Name of the signal.
+		Name string `json:"name"`
+		// Args of the call.
+		Args []jsoniter.RawMessage `json:"args"`
+	}
 
-// StartWorkflow sends worker command to start workflow.
-type StartWorkflow struct {
-	Info  *workflow.Info        `json:"info"`
-	Input []jsoniter.RawMessage `json:"args"`
-}
+	// InvokeQuery invokes query with a set of arguments.
+	InvokeQuery struct {
+		// RunID workflow run id.
+		RunID string `json:"runId"`
+		// Name of the query.
+		Name string `json:"name"`
+		// Args of the call.
+		Args []jsoniter.RawMessage `json:"args"`
+	}
 
-// FromEnvironment maps start command from environment.
-func (start *StartWorkflow) FromEnvironment(env internalbindings.WorkflowEnvironment, input *common.Payloads) error {
-	start.Info = env.WorkflowInfo()
+	// CancelWorkflow asks worker to gracefully stop workflow, if possible (signal).
+	CancelWorkflow struct {
+		// RunID workflow run id.
+		RunID string `json:"runId"`
+	}
 
-	return rrt.FromPayloads(env.GetDataConverter(), input, &start.Input)
-}
+	// DestroyWorkflow asks worker to offload workflow from memory.
+	DestroyWorkflow struct {
+		// RunID workflow run id.
+		RunID string `json:"runId"`
+	}
 
-type InvokeQuery struct {
-	RunID string                `json:"runId"`
-	Name  string                `json:"name"`
-	Args  []jsoniter.RawMessage `json:"args"`
-}
+	// GetStackTrace asks worker to offload workflow from memory.
+	GetStackTrace struct {
+		// RunID workflow run id.
+		RunID string `json:"runId"`
+	}
 
-type InvokeSignal struct {
-	RunID string                `json:"runId"`
-	Name  string                `json:"name"`
-	Args  []jsoniter.RawMessage `json:"args"`
-}
+	// ExecuteActivity command by workflow worker.
+	ExecuteActivity struct {
+		// Name defines activity name.
+		Name string `json:"name"`
 
-// ExecuteActivity command by workflow worker.
-type ExecuteActivity struct {
-	// Name defines activity name.
-	Name string `json:"name"`
+		// Args to pass to the activity.
+		Args []jsoniter.RawMessage `json:"arguments"`
 
-	// Args to pass to the activity.
-	Args []jsoniter.RawMessage `json:"arguments"`
+		// Options to run activity.
+		Options bindings.ExecuteActivityOptions `json:"options,omitempty"`
 
-	// Info to run activity as.
-	// todo: implement
-	//Info workflow.ActivityOptions `json:"options,omitempty"`
+		// rawPayload represents Args converted into Temporal payload format.
+		rawPayload *commonpb.Payloads
+	}
 
-	// ArgsPayload represents Args converted into Temporal payload format.
-	ArgsPayload *commonpb.Payloads
-}
+	// ExecuteLocalActivity executes activity on the same node.
+	ExecuteLocalActivity struct {
+	}
+
+	// ExecuteChildWorkflow executes child workflow.
+	ExecuteChildWorkflow struct {
+	}
+
+	// NewTimer starts new timer.
+	NewTimer struct {
+		// Milliseconds defines timer duration.
+		Milliseconds int `json:"ms"`
+	}
+
+	// SideEffect to be recorded into the history.
+	SideEffect struct {
+		Value      jsoniter.RawMessage `json:"value"`
+		rawPayload *commonpb.Payloads
+	}
+
+	// NewTimer starts new timer.
+	GetVersion struct {
+		ChangeID     string `json:"changeID"`
+		MinSupported int    `json:"minSupported"`
+		MaxSupported int    `json:"maxSupported"`
+	}
+
+	// CompleteWorkflow sent by worker to complete workflow.
+	CompleteWorkflow struct {
+		// Result defines workflow execution result.
+		Result []jsoniter.RawMessage `json:"result"`
+
+		// Error (if any).
+		Error *rrt.Error `json:"error"`
+
+		// rawPayload represents Result converted into Temporal payload format.
+		rawPayload *commonpb.Payloads
+	}
+
+	// SignalExternalWorkflow sends signal to external workflow.
+	SignalExternalWorkflow struct {
+		Namespace         string                `json:"namespace"`
+		WorkflowID        string                `json:"workflowID"`
+		RunID             string                `json:"runID"`
+		Signal            string                `json:"signal"`
+		ChildWorkflowOnly bool                  `json:"childWorkflowOnly"`
+		Args              []jsoniter.RawMessage `json:"args"`
+
+		// rawPayload represents Args converted into Temporal payload format.
+		rawPayload *commonpb.Payloads
+	}
+
+	// CancelExternalWorkflow canceller external workflow.
+	CancelExternalWorkflow struct {
+		Namespace  string `json:"namespace"`
+		WorkflowID string `json:"workflowID"`
+		RunID      string `json:"runID"`
+	}
+
+	// Cancel one or multiple internal promises (activities, local activities, timers, child workflows).
+	Cancel struct {
+		// RequestIDs to be cancelled.
+		RequestIDs []uint64 `json:"requestIDs"`
+	}
+)
 
 // ActivityParams maps activity command to activity params.
 func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment) bindings.ExecuteActivityParams {
-	return bindings.ExecuteActivityParams{
-		// todo: implement mapping
-		ExecuteActivityOptions: bindings.ExecuteActivityOptions{
-			TaskQueueName:          env.WorkflowInfo().TaskQueueName,
-			ScheduleToCloseTimeout: time.Minute * 60,
-			ScheduleToStartTimeout: time.Minute * 60,
-			HeartbeatTimeout:       time.Minute * 60, // WTF?
-			StartToCloseTimeout:    time.Minute * 5,  // WTF?
-			RetryPolicy: &commonpb.RetryPolicy{
-				MaximumAttempts: 1,
-			},
-		},
-		ActivityType: bindings.ActivityType{Name: cmd.Name},
-		Input:        cmd.ArgsPayload,
+	params := bindings.ExecuteActivityParams{
+		ExecuteActivityOptions: cmd.Options,
+		ActivityType:           bindings.ActivityType{Name: cmd.Name},
+		Input:                  cmd.rawPayload,
 	}
-}
 
-// NewTimer starts new timer.
-type NewTimer struct {
-	// Milliseconds defines timer duration.
-	Milliseconds int `json:"ms"`
+	if params.TaskQueueName == "" {
+		params.TaskQueueName = env.WorkflowInfo().TaskQueueName
+	}
+
+	return params
 }
 
 // ToDuration converts timer command to time.Duration.
-func (t NewTimer) ToDuration() time.Duration {
-	return time.Millisecond * time.Duration(t.Milliseconds)
-}
-
-// CompleteWorkflow sent by worker to complete workflow.
-type CompleteWorkflow struct {
-	// Result defines workflow execution result.
-	Result []jsoniter.RawMessage `json:"result"`
-
-	// todo: need error!!
-
-	// ResultPayload represents Result converted into Temporal payload format.
-	ResultPayload *commonpb.Payloads
+func (cmd NewTimer) ToDuration() time.Duration {
+	return time.Millisecond * time.Duration(cmd.Milliseconds)
 }
 
 // maps worker parameters into internal command representation.
 func parseCommand(dc converter.DataConverter, name string, params jsoniter.RawMessage) (interface{}, error) {
+	var err error
+
 	switch name {
 	case ExecuteActivityCommand:
-		cmd := ExecuteActivity{}
+		cmd := ExecuteActivity{
+			rawPayload: &commonpb.Payloads{},
+		}
 
-		if err := jsoniter.Unmarshal(params, &cmd); err != nil {
+		err = jsoniter.Unmarshal(params, &cmd)
+		if err != nil {
 			return nil, err
 		}
 
-		cmd.ArgsPayload = &commonpb.Payloads{}
-		if err := rrt.ToPayloads(dc, cmd.Args, cmd.ArgsPayload); err != nil {
+		err := rrt.ToPayloads(dc, cmd.Args, cmd.rawPayload)
+		if err != nil {
 			return nil, err
 		}
 
@@ -147,62 +210,96 @@ func parseCommand(dc converter.DataConverter, name string, params jsoniter.RawMe
 
 	case NewTimerCommand:
 		cmd := NewTimer{}
-		if err := jsoniter.Unmarshal(params, &cmd); err != nil {
+
+		err = jsoniter.Unmarshal(params, &cmd)
+		if err != nil {
 			return nil, err
 		}
 
 		return cmd, nil
-
-	case CompleteWorkflowCommand:
-		cmd := CompleteWorkflow{}
-		if err := jsoniter.Unmarshal(params, &cmd); err != nil {
-			return nil, err
-		}
-
-		cmd.ResultPayload = &commonpb.Payloads{}
-		if err := rrt.ToPayloads(dc, cmd.Result, cmd.ResultPayload); err != nil {
-			return nil, err
-		}
-
-		return cmd, nil
-
-	// todo: map other commands
 
 	case GetVersionCommand:
 		cmd := GetVersion{}
-		if err := jsoniter.Unmarshal(params, &cmd); err != nil {
+
+		err = jsoniter.Unmarshal(params, &cmd)
+		if err != nil {
 			return nil, err
 		}
 
 		return cmd, nil
 
 	case SideEffectCommand:
-		cmd := SideEffect{}
-		if err := jsoniter.Unmarshal(params, &cmd); err != nil {
+		cmd := SideEffect{
+			rawPayload: &commonpb.Payloads{},
+		}
+
+		err = jsoniter.Unmarshal(params, &cmd)
+		if err != nil {
 			return nil, err
 		}
 
-		cmd.Payloads = &commonpb.Payloads{}
-		if err := rrt.ToPayloads(dc, []jsoniter.RawMessage{cmd.Value}, cmd.Payloads); err != nil {
+		err = rrt.ToPayloads(dc, []jsoniter.RawMessage{cmd.Value}, cmd.rawPayload)
+		if err != nil {
+			return nil, err
+		}
+
+		return cmd, nil
+
+	case CompleteWorkflowCommand:
+		cmd := CompleteWorkflow{
+			rawPayload: &commonpb.Payloads{},
+		}
+
+		err = jsoniter.Unmarshal(params, &cmd)
+		if err != nil {
+			return nil, err
+		}
+
+		err = rrt.ToPayloads(dc, cmd.Result, cmd.rawPayload)
+		if err != nil {
+			return nil, err
+		}
+
+		return cmd, nil
+
+	case SignalExternalWorkflowCommand:
+		cmd := SignalExternalWorkflow{
+			rawPayload: &commonpb.Payloads{},
+		}
+
+		err = jsoniter.Unmarshal(params, &cmd)
+		if err != nil {
+			return nil, err
+		}
+
+		err = rrt.ToPayloads(dc, cmd.Args, cmd.rawPayload)
+		if err != nil {
+			return nil, err
+		}
+
+		return cmd, nil
+
+	case CancelExternalWorkflowCommand:
+		cmd := CancelExternalWorkflow{}
+
+		err = jsoniter.Unmarshal(params, &cmd)
+		if err != nil {
+			return nil, err
+		}
+
+		return cmd, nil
+
+	case CancelCommand:
+		cmd := Cancel{}
+
+		err = jsoniter.Unmarshal(params, &cmd)
+		if err != nil {
 			return nil, err
 		}
 
 		return cmd, nil
 
 	default:
-		return nil, errors.E(errors.Op("parseCommand"), "undefined command type", errors.Str(name))
+		return nil, errors.E(errors.Op("parseCommand"), "undefined command type", name)
 	}
-}
-
-// SideEffect to be recorded into the history.
-type SideEffect struct {
-	Value    jsoniter.RawMessage `json:"value"`
-	Payloads *commonpb.Payloads
-}
-
-// NewTimer starts new timer.
-type GetVersion struct {
-	ChangeID     string `json:"changeID"`
-	MinSupported int    `json:"minSupported"`
-	MaxSupported int    `json:"maxSupported"`
 }
