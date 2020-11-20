@@ -9,37 +9,39 @@ import (
 const getWorkerInfo = "GetWorkerInfo"
 
 // WorkerInfo outlines information about every available worker and it's TaskQueues.
-type WorkerInfo struct {
-	// TaskQueue assigned to the worker.
-	TaskQueue string `json:"taskQueue"`
+type (
+	WorkerInfo struct {
+		// TaskQueue assigned to the worker.
+		TaskQueue string `json:"taskQueue"`
 
-	// Options describe worker options.
-	Options worker.Options `json:"options,omitempty"`
+		// Options describe worker options.
+		Options worker.Options `json:"options,omitempty"`
 
-	// Workflows provided by the worker.
-	Workflows []WorkflowInfo
+		// Workflows provided by the worker.
+		Workflows []WorkflowInfo
 
-	// Activities provided by the worker.
-	Activities []ActivityInfo
-}
+		// Activities provided by the worker.
+		Activities []ActivityInfo
+	}
 
-// WorkflowInfo describes single worker workflow.
-type WorkflowInfo struct {
-	// Name of the workflow.
-	Name string `json:"name"`
+	// WorkflowInfo describes single worker workflow.
+	WorkflowInfo struct {
+		// Name of the workflow.
+		Name string `json:"name"`
 
-	// Queries pre-defined for the workflow type.
-	Queries []string `json:"queries"`
+		// Queries pre-defined for the workflow type.
+		Queries []string `json:"queries"`
 
-	// Signals pre-defined for the workflow type.
-	Signals []string `json:"signals"`
-}
+		// Signals pre-defined for the workflow type.
+		Signals []string `json:"signals"`
+	}
 
-// ActivityInfo describes single worker activity.
-type ActivityInfo struct {
-	// Name describes public activity name.
-	Name string `json:"name"`
-}
+	// ActivityInfo describes single worker activity.
+	ActivityInfo struct {
+		// Name describes public activity name.
+		Name string `json:"name"`
+	}
+)
 
 // GetWorkerInfo fetches information about all underlying workers (can be multiplexed inside single process).
 func GetWorkerInfo(e Endpoint) ([]WorkerInfo, error) {

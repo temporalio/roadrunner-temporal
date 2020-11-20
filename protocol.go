@@ -2,53 +2,67 @@ package roadrunner_temporal
 
 import (
 	"github.com/fatih/color"
-	"log"
-	"time"
-
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2"
+	"log"
+	"time"
 )
 
-// Endpoint provides the ability to send and receive messages.
-type Endpoint interface {
-	// ExecWithContext allow to set ExecTTL
-	Exec(p roadrunner.Payload) (roadrunner.Payload, error)
-}
+type (
 
-// Context provides worker information about currently. Context can be empty for server level commands.
-type Context struct {
-	// TaskQueue associates message batch with the specific task queue in underlying worker.
-	TaskQueue string `json:"taskQueue,omitempty"`
+	// Endpoint provides the ability to send and receive messages.
+	Endpoint interface {
+		// ExecWithContext allow to set ExecTTL
+		Exec(p roadrunner.Payload) (roadrunner.Payload, error)
+	}
 
-	// TickTime associated current or historical time with message batch.
-	TickTime time.Time `json:"tickTime,omitempty"`
+	// Context provides worker information about currently. Context can be empty for server level commands.
+	Context struct {
+		// TaskQueue associates message batch with the specific task queue in underlying worker.
+		TaskQueue string `json:"taskQueue,omitempty"`
 
-	// Replay indicates that current message batch is historical.
-	Replay bool `json:"replay,omitempty"`
-}
+		// TickTime associated current or historical time with message batch.
+		TickTime time.Time `json:"tickTime,omitempty"`
+
+		// Replay indicates that current message batch is historical.
+		Replay bool `json:"replay,omitempty"`
+	}
+
+	// Messages used to exchange the send commands and receive responses from underlying workers.
+	Message struct {
+		// ID contains ID of the command, response or error.
+		ID uint64 `json:"id"`
+
+		// Command name. Optional.
+		Command string `json:"command,omitempty"`
+
+		// Command parameters (free form).
+		Params jsoniter.RawMessage `json:"params,omitempty"`
+
+		// Result always contains array of values.
+		Result []jsoniter.RawMessage `json:"result,omitempty"`
+
+		// Error associated with command id.
+		Error *Error `json:"error,omitempty"`
+	}
+
+	// Error from underlying worker.
+	Error struct {
+		// Code of the error.
+		Code int `json:"code"`
+
+		// Message contains exception message.
+		Message string `json:"message"`
+
+		// Data contains additional error context. Typically stack trace.
+		Data interface{} `json:"data"`
+	}
+)
 
 // IsEmpty only check if task queue set.
 func (ctx Context) IsEmpty() bool {
 	return ctx.TaskQueue == ""
-}
-
-// Messages used to exchange the send commands and receive responses from underlying workers.
-type Message struct {
-	// ID contains ID of the command, response or error.
-	ID uint64 `json:"id"`
-
-	// Command name. Optional.
-	Command string `json:"command,omitempty"`
-
-	// Command parameters (free form).
-	Params jsoniter.RawMessage `json:"params,omitempty"`
-
-	// Result always contains array of values.
-	Result []jsoniter.RawMessage `json:"result,omitempty"`
-
-	// Error associated with command id.
-	Error *Error `json:"error,omitempty"`
 }
 
 // IsCommand returns true if message carries request.
@@ -69,18 +83,6 @@ func (msg Message) String() string {
 	}
 
 	return string(data)
-}
-
-// Error from underlying worker.
-type Error struct {
-	// Code of the error.
-	Code int `json:"code"`
-
-	// Message contains exception message.
-	Message string `json:"message"`
-
-	// Data contains additional error context. Typically stack trace.
-	Data interface{} `json:"data"`
 }
 
 // Error returns error as string.
