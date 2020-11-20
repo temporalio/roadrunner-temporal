@@ -93,7 +93,7 @@ func (pool *activityPool) initWorkers(ctx context.Context, temporal temporal.Tem
 	pool.tWorkers = make([]worker.Worker, 0)
 
 	for _, info := range workerInfo {
-		w, err := temporal.CreateWorker(info.TaskQueue, info.Options.TemporalOptions())
+		w, err := temporal.CreateWorker(info.TaskQueue, info.Options)
 		if err != nil {
 			pool.Destroy(ctx)
 			return errors.E(errors.Op("createTemporalWorker"), err)

@@ -1,10 +1,10 @@
 package roadrunner_temporal
 
 import (
+	"github.com/fatih/color"
 	"log"
 	"time"
 
-	"github.com/fatih/color"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2"
@@ -51,26 +51,14 @@ type Message struct {
 	Error *Error `json:"error,omitempty"`
 }
 
-// Error from underlying worker. todo: implement
-type Error struct {
-	// Code of the error.
-	Code int `json:"code"`
-
-	// Message contains exception message.
-	Message string `json:"message"`
-
-	// Data contains additional error context.
-	Data interface{} `json:"data"`
-}
-
-// Error returns error as string.
-func (e Error) Error() string {
-	return e.Message
-}
-
 // IsCommand returns true if message carries request.
 func (msg Message) IsCommand() bool {
 	return msg.Command != ""
+}
+
+// IsError returns true if message carries error.
+func (msg Message) IsError() bool {
+	return msg.Error != nil
 }
 
 // String converts message into string.
@@ -81,6 +69,23 @@ func (msg Message) String() string {
 	}
 
 	return string(data)
+}
+
+// Error from underlying worker.
+type Error struct {
+	// Code of the error.
+	Code int `json:"code"`
+
+	// Message contains exception message.
+	Message string `json:"message"`
+
+	// Data contains additional error context. Typically stack trace.
+	Data interface{} `json:"data"`
+}
+
+// Error returns error as string.
+func (e Error) Error() string {
+	return e.Message
 }
 
 // Exchange commands with worker.
@@ -110,8 +115,7 @@ func Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 		return nil, errors.E(errors.Op("encodePayload"), err)
 	}
 
-	// todo: debug flag?
-	//log.Print(color.MagentaString(string(p.Context)))
+	// todo: REMOVE once complete
 	log.Print(color.GreenString(string(p.Body)))
 
 	out, err := e.Exec(p)
@@ -119,6 +123,7 @@ func Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 		return nil, errors.E(errors.Op("execute"), err)
 	}
 
+	// todo: REMOVE once complete
 	log.Print(color.HiYellowString(string(out.Body)))
 
 	err = jsoniter.Unmarshal(out.Body, &result)
