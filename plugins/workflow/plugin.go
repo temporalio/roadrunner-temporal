@@ -2,6 +2,8 @@ package workflow
 
 import (
 	"context"
+	"sync"
+	"time"
 
 	"github.com/spiral/roadrunner/v2"
 
@@ -10,7 +12,6 @@ import (
 	"github.com/spiral/roadrunner/v2/interfaces/server"
 	"github.com/spiral/roadrunner/v2/util"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
-	"go.uber.org/zap"
 )
 
 const (
@@ -23,11 +24,13 @@ const (
 
 // Plugin manages workflows and workers.
 type Plugin struct {
-	temporal temporal.Temporal
-	events   util.EventsHandler
-	server   server.Server
-	log      log.Logger
-	pool     *workflowPool
+	temporal  temporal.Temporal
+	events    util.EventsHandler
+	server    server.Server
+	log       log.Logger
+	mu        sync.Mutex
+	lastReset time.Time
+	pool      *workflowPool
 }
 
 // logger dep also
@@ -40,30 +43,18 @@ func (svc *Plugin) Init(temporal temporal.Temporal, server server.Server, log lo
 
 // Serve starts workflow service.
 func (svc *Plugin) Serve() chan error {
+	svc.mu.Lock()
+	defer svc.mu.Unlock()
+
 	errCh := make(chan error, 1)
 
-	pool, err := NewWorkflowPool(context.Background(), svc.server)
+	pool, err := svc.initPool()
 	if err != nil {
-		errCh <- errors.E(errors.Op("newWorkflowPool"), err)
-		return errCh
-	}
-
-	// todo: proxy events
-
-	err = pool.Start(context.Background(), svc.temporal)
-	if err != nil {
-		errCh <- errors.E(errors.Op("startWorkflowPool"), err)
+		errCh <- errors.E("initPool", err)
 		return errCh
 	}
 
 	svc.pool = pool
-
-	var workflows []string
-	for workflow, _ := range pool.workflows {
-		workflows = append(workflows, workflow)
-	}
-
-	svc.log.Debug("Started workflow processing", zap.Any("workflows", workflows))
 
 	return errCh
 }
@@ -71,7 +62,8 @@ func (svc *Plugin) Serve() chan error {
 // Stop workflow service.
 func (svc *Plugin) Stop() error {
 	if svc.pool != nil {
-		svc.pool.Destroy(context.Background())
+		// todo: atomic pool
+		return svc.pool.Destroy(context.Background())
 	}
 
 	return nil
@@ -87,32 +79,39 @@ func (svc *Plugin) Workers() []roadrunner.WorkerBase {
 	return []roadrunner.WorkerBase{svc.pool.worker}
 }
 
+// Pool returns currently pool.
+func (svc *Plugin) Pool() *workflowPool {
+	svc.mu.Lock()
+	defer svc.mu.Unlock()
+
+	return svc.pool
+}
+
 // Reset resets underlying workflow pool with new copy.
 func (svc *Plugin) Reset() error {
-	svc.log.Debug("Reset workflow pool")
+	lastReset := time.Now()
 
-	pool, err := NewWorkflowPool(context.Background(), svc.server)
-	if err != nil {
-		return errors.E(errors.Op("newWorkflowPool"), err)
+	svc.mu.Lock()
+	defer svc.mu.Unlock()
+
+	if svc.lastReset.Before(lastReset) {
+		return nil
 	}
 
-	// todo: proxy events
+	svc.lastReset = lastReset
 
-	err = pool.Start(context.Background(), svc.temporal)
+	pool, err := svc.initPool()
 	if err != nil {
-		return errors.E(errors.Op("startWorkflowPool"), err)
+		return errors.E(errors.Op("newWorkflowPool"), err)
 	}
 
 	previous := svc.pool
 	svc.pool = pool
 
-	var workflows []string
-	for workflow, _ := range pool.workflows {
-		workflows = append(workflows, workflow)
+	errD := previous.Destroy(context.Background())
+	if errD != nil {
+		return errors.E(errors.Op("destroyWorkflowPool"), errD, previous)
 	}
-
-	svc.log.Debug("Started workflow processing", zap.Any("workflows", workflows))
-	previous.Destroy(context.Background())
 
 	return nil
 }
@@ -120,4 +119,28 @@ func (svc *Plugin) Reset() error {
 // AddListener adds event listeners to the service.
 func (svc *Plugin) AddListener(listener util.EventListener) {
 	svc.events.AddListener(listener)
+}
+
+// AddListener adds event listeners to the service.
+func (svc *Plugin) poolListener(event interface{}) {
+	// todo: custom logic
+
+	svc.events.Push(event)
+}
+
+// AddListener adds event listeners to the service.
+func (svc *Plugin) initPool() (*workflowPool, error) {
+	pool, err := NewWorkflowPool(context.Background(), svc.poolListener, svc.server)
+	if err != nil {
+		return nil, errors.E(errors.Op("initWorkflowPool"), err)
+	}
+
+	err = pool.Start(context.Background(), svc.temporal)
+	if err != nil {
+		return nil, errors.E(errors.Op("startWorkflowPool"), err)
+	}
+
+	svc.log.Debug("Started workflow processing", pool.workflows)
+
+	return pool, nil
 }

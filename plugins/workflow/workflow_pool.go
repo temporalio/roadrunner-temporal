@@ -2,7 +2,6 @@ package workflow
 
 import (
 	"context"
-	"log"
 	"sync"
 
 	"github.com/spiral/errors"
@@ -16,6 +15,17 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
+const (
+	EventWorkerError = iota + 8390
+	EventNewWorkflowProcess
+)
+
+type PoolEvent struct {
+	Event   int
+	Context interface{}
+	Caused  error
+}
+
 // workflowPool manages workflowProcess executions between worker restarts.
 type workflowPool struct {
 	events    util.EventsHandler
@@ -27,7 +37,7 @@ type workflowPool struct {
 }
 
 // NewWorkflowPool creates new workflow pool.
-func NewWorkflowPool(ctx context.Context, factory server.Server) (*workflowPool, error) {
+func NewWorkflowPool(ctx context.Context, listener util.EventListener, factory server.Server) (*workflowPool, error) {
 	w, err := factory.NewWorker(
 		context.Background(),
 		map[string]string{"RR_MODE": RRMode},
@@ -38,12 +48,12 @@ func NewWorkflowPool(ctx context.Context, factory server.Server) (*workflowPool,
 	}
 
 	go func() {
-		// todo: move into pool start
-		// todo: must be supervised
-		// todo: report to parent supervisor
+		w.AddListener(listener)
 
 		err := w.Wait(ctx)
-		log.Print(err)
+		if err != nil {
+			listener(PoolEvent{Event: EventWorkerError, Caused: err})
+		}
 	}()
 
 	sw, err := roadrunner.NewSyncWorker(w)
@@ -77,20 +87,20 @@ func (pool *workflowPool) Start(ctx context.Context, temporal temporal.Temporal)
 }
 
 // Destroy stops all temporal workers and application worker.
-func (pool *workflowPool) Destroy(ctx context.Context) {
+func (pool *workflowPool) Destroy(ctx context.Context) error {
 	for i := 0; i < len(pool.tWorkers); i++ {
 		pool.tWorkers[i].Stop()
 	}
 
-	// todo: pass via event callback
-	//if err := pool.worker.Stop(ctx); err != nil {
-	//	pool.events.register()
-	//}
+	if err := pool.worker.Stop(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // NewWorkflowDefinition initiates new workflow process.
 func (pool *workflowPool) NewWorkflowDefinition() bindings.WorkflowDefinition {
-	// todo: add logging or event listener?
 	return &workflowProcess{pool: pool}
 }
 
@@ -116,8 +126,7 @@ func (pool *workflowPool) initWorkers(ctx context.Context, temporal temporal.Tem
 		w, err := temporal.CreateWorker(info.TaskQueue, info.Options)
 		//worker.SetStickyWorkflowCacheSize(1)
 		if err != nil {
-			pool.Destroy(ctx)
-			return errors.E(errors.Op("createTemporalWorker"), err)
+			return errors.E(errors.Op("createTemporalWorker"), err, pool.Destroy(ctx))
 		}
 
 		pool.tWorkers = append(pool.tWorkers, w)

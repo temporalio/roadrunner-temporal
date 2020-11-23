@@ -230,14 +230,7 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 
 	//wp.env.RequestCancelActivity()
 
-	// todo: generate id
-	//wp.env.ExecuteChildWorkflow()
-
-	//wp.env.RequestCancelChildWorkflow()
-	//wp.canceller.register(id, acvitityID)
-
 	// todo: local activity
-	// todo: child workflow
 
 	case ExecuteChildWorkflow:
 		params := cmd.WorkflowParams(wp.env)
@@ -248,9 +241,10 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 			params.WorkflowID = wp.env.WorkflowInfo().WorkflowExecution.RunID + "_" + strconv.Itoa(int(nextID))
 		}
 
-		//wp.env.ExecuteChildWorkflow(params, wp.createCallback(id), func(r interface{}, e error) {
-		//
-		//})
+		// todo: implement
+		wp.env.ExecuteChildWorkflow(params, wp.createCallback(id), func(r bindings.WorkflowExecution, e error) {
+			// todo: re
+		})
 
 		wp.canceller.register(id, func() error {
 			log.Print("cancel", params.WorkflowID)
