@@ -123,6 +123,16 @@ func (svc *Plugin) AddListener(listener util.EventListener) {
 
 // AddListener adds event listeners to the service.
 func (svc *Plugin) poolListener(event interface{}) {
+	switch p := event.(type) {
+	case PoolEvent:
+		if p.Event == EventWorkerError {
+			svc.log.Error("Workflow pool error", p.Caused)
+
+			// todo: how to handle error here?
+			//svc.Reset()
+		}
+	}
+
 	// todo: custom logic
 
 	svc.events.Push(event)
