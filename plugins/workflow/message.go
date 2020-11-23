@@ -106,6 +106,14 @@ type (
 
 	// ExecuteChildWorkflow executes child workflow.
 	ExecuteChildWorkflow struct {
+		// Name defines workflow name.
+		Name string `json:"name"`
+
+		// Input to pass to the workflow.
+		Input []jsoniter.RawMessage `json:"input"`
+
+		// Options to run activity.
+		Options bindings.WorkflowOptions `json:"options,omitempty"`
 	}
 
 	// NewTimer starts new timer.
@@ -179,6 +187,36 @@ func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment) bind
 	}
 
 	return params
+}
+
+// ActivityParams maps activity command to activity params.
+//func (cmd ExecuteLocalActivity) ActivityParams(env bindings.WorkflowEnvironment) bindings.ExecuteLocalActivityOptions {
+//	params := bindings.ExecuteActivityParams{
+//		ExecuteActivityOptions: cmd.Options,
+//		ActivityType:           bindings.ActivityType{Name: cmd.Name},
+//		Input:                  cmd.rawPayload,
+//	}
+//
+//	if params.TaskQueueName == "" {
+//		params.TaskQueueName = env.WorkflowInfo().TaskQueueName
+//	}
+//
+//	return params
+//}
+
+// ActivityParams maps activity command to activity params.
+func (cmd ExecuteChildWorkflow) WorkflowParams(env bindings.WorkflowEnvironment) bindings.ExecuteWorkflowParams {
+	//params := bindings.ExecuteActivityParams{
+	//	ExecuteActivityOptions: cmd.Options,
+	//	ActivityType:           bindings.ActivityType{Name: cmd.Name},
+	//	Input:                  cmd.rawPayload,
+	//}
+	//
+	//if params.TaskQueueName == "" {
+	//	params.TaskQueueName = env.WorkflowInfo().TaskQueueName
+	//}
+
+	return bindings.ExecuteWorkflowParams{}
 }
 
 // ToDuration converts timer command to time.Duration.
