@@ -36,8 +36,8 @@ type workflowPool struct {
 	worker    roadrunner.SyncWorker
 }
 
-// NewWorkflowPool creates new workflow pool.
-func NewWorkflowPool(ctx context.Context, listener util.EventListener, factory server.Server) (*workflowPool, error) {
+// newWorkflowPool creates new workflow pool.
+func newWorkflowPool(ctx context.Context, listener util.EventListener, factory server.Server) (*workflowPool, error) {
 	w, err := factory.NewWorker(
 		context.Background(),
 		map[string]string{"RR_MODE": RRMode},
@@ -93,7 +93,7 @@ func (pool *workflowPool) Destroy(ctx context.Context) error {
 	}
 
 	if err := pool.worker.Stop(ctx); err != nil {
-		return err
+		return errors.E(errors.Op("stopWorkflowWorker"), err)
 	}
 
 	return nil

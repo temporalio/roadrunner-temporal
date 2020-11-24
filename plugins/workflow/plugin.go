@@ -91,9 +91,6 @@ func (svc *Plugin) Pool() *workflowPool {
 func (svc *Plugin) Reset() error {
 	lastReset := time.Now()
 
-	svc.mu.Lock()
-	defer svc.mu.Unlock()
-
 	if svc.lastReset.Before(lastReset) {
 		return nil
 	}
@@ -128,19 +125,16 @@ func (svc *Plugin) poolListener(event interface{}) {
 		if p.Event == EventWorkerError {
 			svc.log.Error("Workflow pool error", p.Caused)
 
-			// todo: how to handle error here?
-			//svc.Reset()
+			// todo: handle pool error
 		}
 	}
-
-	// todo: custom logic
 
 	svc.events.Push(event)
 }
 
 // AddListener adds event listeners to the service.
 func (svc *Plugin) initPool() (*workflowPool, error) {
-	pool, err := NewWorkflowPool(context.Background(), svc.poolListener, svc.server)
+	pool, err := newWorkflowPool(context.Background(), svc.poolListener, svc.server)
 	if err != nil {
 		return nil, errors.E(errors.Op("initWorkflowPool"), err)
 	}

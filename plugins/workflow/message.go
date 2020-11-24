@@ -190,32 +190,8 @@ func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment) bind
 }
 
 // ActivityParams maps activity command to activity params.
-//func (cmd ExecuteLocalActivity) ActivityParams(env bindings.WorkflowEnvironment) bindings.ExecuteLocalActivityOptions {
-//	params := bindings.ExecuteActivityParams{
-//		ExecuteActivityOptions: cmd.Options,
-//		ActivityType:           bindings.ActivityType{Name: cmd.Name},
-//		Input:                  cmd.rawPayload,
-//	}
-//
-//	if params.TaskQueueName == "" {
-//		params.TaskQueueName = env.WorkflowInfo().TaskQueueName
-//	}
-//
-//	return params
-//}
-
-// ActivityParams maps activity command to activity params.
 func (cmd ExecuteChildWorkflow) WorkflowParams(env bindings.WorkflowEnvironment) bindings.ExecuteWorkflowParams {
-	//params := bindings.ExecuteActivityParams{
-	//	ExecuteActivityOptions: cmd.Options,
-	//	ActivityType:           bindings.ActivityType{Name: cmd.Name},
-	//	Input:                  cmd.rawPayload,
-	//}
-	//
-	//if params.TaskQueueName == "" {
-	//	params.TaskQueueName = env.WorkflowInfo().TaskQueueName
-	//}
-
+	// todo: implement
 	return bindings.ExecuteWorkflowParams{}
 }
 

@@ -214,23 +214,7 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 		})
 
 	case ExecuteLocalActivity:
-	// todo: param options are private
-	//localID := wp.env.ExecuteLocalActivity(&bindings.ExecuteLocalActivityOptions{}, wp.createCallback(id))
-	//wp.canceller.register(id, func() error {
-	//	log.Print("cancel", localID)
-	//	wp.env.RequestCancelActivity("activityID") // todo: wait for SDk fix
-	//	return nil
-	//})
-
-	/**
-	 	ActivityID = make public (scheduleID, activityID)
-		LocalActivityID = make public (activityID)
-		TimerInfo(timerID string)
-	*/
-
-	//wp.env.RequestCancelActivity()
-
-	// todo: local activity
+		// todo: local activity
 
 	case ExecuteChildWorkflow:
 		params := cmd.WorkflowParams(wp.env)
