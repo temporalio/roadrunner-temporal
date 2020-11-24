@@ -60,9 +60,9 @@ func newWorkflowPool(ctx context.Context, listener util.EventListener, factory s
 		return nil, errors.E(errors.Op("newWorker"), err)
 	}
 
-	go func() {
-		w.AddListener(listener)
+	w.AddListener(listener)
 
+	go func() {
 		err := w.Wait(ctx)
 		if err != nil {
 			listener(PoolEvent{Event: EventWorkerError, Caused: err})
