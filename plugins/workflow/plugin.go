@@ -30,7 +30,7 @@ type Plugin struct {
 	log       log.Logger
 	mu        sync.Mutex
 	lastReset time.Time
-	pool      *workflowPool
+	pool      workflowPool
 }
 
 // logger dep also
@@ -61,9 +61,10 @@ func (svc *Plugin) Serve() chan error {
 
 // Stop workflow service.
 func (svc *Plugin) Stop() error {
-	if svc.pool != nil {
-		// todo: atomic pool
-		return svc.pool.Destroy(context.Background())
+	pool := svc.getPool()
+	if pool != nil {
+		svc.pool = nil
+		return pool.Destroy(context.Background())
 	}
 
 	return nil
@@ -76,15 +77,7 @@ func (svc *Plugin) Name() string {
 
 // Name of the service.
 func (svc *Plugin) Workers() []roadrunner.WorkerBase {
-	return []roadrunner.WorkerBase{svc.pool.worker}
-}
-
-// Pool returns currently pool.
-func (svc *Plugin) Pool() *workflowPool {
-	svc.mu.Lock()
-	defer svc.mu.Unlock()
-
-	return svc.pool
+	return svc.pool.Workers()
 }
 
 // Reset resets underlying workflow pool with new copy.
@@ -133,7 +126,7 @@ func (svc *Plugin) poolListener(event interface{}) {
 }
 
 // AddListener adds event listeners to the service.
-func (svc *Plugin) initPool() (*workflowPool, error) {
+func (svc *Plugin) initPool() (workflowPool, error) {
 	pool, err := newWorkflowPool(context.Background(), svc.poolListener, svc.server)
 	if err != nil {
 		return nil, errors.E(errors.Op("initWorkflowPool"), err)
@@ -144,7 +137,15 @@ func (svc *Plugin) initPool() (*workflowPool, error) {
 		return nil, errors.E(errors.Op("startWorkflowPool"), err)
 	}
 
-	svc.log.Debug("Started workflow processing", pool.workflows)
+	svc.log.Debug("Started workflow processing", pool.WorkflowNames())
 
 	return pool, nil
+}
+
+// getPool returns currently pool.
+func (svc *Plugin) getPool() workflowPool {
+	svc.mu.Lock()
+	defer svc.mu.Unlock()
+
+	return svc.pool
 }

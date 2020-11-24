@@ -14,7 +14,7 @@ import (
 
 // wraps single workflow process
 type workflowProcess struct {
-	pool      *workflowPool
+	pool      workflowPool
 	env       bindings.WorkflowEnvironment
 	mq        *messageQueue
 	seqID     uint64
@@ -32,7 +32,7 @@ func (wp *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *com
 		wp.canceller = &canceller{}
 
 		// sequenceID shared for all worker workflows
-		wp.mq = newMessageQueue(&wp.pool.seqID)
+		wp.mq = newMessageQueue(wp.pool.SeqID)
 
 		start := StartWorkflow{
 			Info: env.WorkflowInfo(),

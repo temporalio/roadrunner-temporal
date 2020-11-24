@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2"
@@ -20,24 +21,36 @@ const (
 	EventNewWorkflowProcess
 )
 
-type PoolEvent struct {
-	Event   int
-	Context interface{}
-	Caused  error
-}
+type (
+	workflowPool interface {
+		AddListener(listener util.EventListener)
+		Exec(p roadrunner.Payload) (roadrunner.Payload, error)
+		Start(ctx context.Context, temporal temporal.Temporal) error
+		Destroy(ctx context.Context) error
+		WorkflowNames() []string
+		SeqID() uint64
+		Workers() []roadrunner.WorkerBase
+	}
 
-// workflowPool manages workflowProcess executions between worker restarts.
-type workflowPool struct {
-	events    util.EventsHandler
-	seqID     uint64
-	workflows map[string]rrt.WorkflowInfo
-	tWorkers  []worker.Worker
-	mu        sync.Mutex
-	worker    roadrunner.SyncWorker
-}
+	PoolEvent struct {
+		Event   int
+		Context interface{}
+		Caused  error
+	}
+
+	// workflowPoolImpl manages workflowProcess executions between worker restarts.
+	workflowPoolImpl struct {
+		events    util.EventsHandler
+		seqID     uint64
+		workflows map[string]rrt.WorkflowInfo
+		tWorkers  []worker.Worker
+		mu        sync.Mutex
+		worker    roadrunner.SyncWorker
+	}
+)
 
 // newWorkflowPool creates new workflow pool.
-func newWorkflowPool(ctx context.Context, listener util.EventListener, factory server.Server) (*workflowPool, error) {
+func newWorkflowPool(ctx context.Context, listener util.EventListener, factory server.Server) (workflowPool, error) {
 	w, err := factory.NewWorker(
 		context.Background(),
 		map[string]string{"RR_MODE": RRMode},
@@ -61,16 +74,16 @@ func newWorkflowPool(ctx context.Context, listener util.EventListener, factory s
 		return nil, errors.E(errors.Op("newSyncWorker"), err)
 	}
 
-	return &workflowPool{worker: sw}, nil
+	return &workflowPoolImpl{worker: sw}, nil
 }
 
 // AddListener adds event listeners to the workflow pool.
-func (pool *workflowPool) AddListener(listener util.EventListener) {
+func (pool *workflowPoolImpl) AddListener(listener util.EventListener) {
 	pool.events.AddListener(listener)
 }
 
 // Start the pool in non blocking mode. TODO: capture worker errors.
-func (pool *workflowPool) Start(ctx context.Context, temporal temporal.Temporal) error {
+func (pool *workflowPoolImpl) Start(ctx context.Context, temporal temporal.Temporal) error {
 	err := pool.initWorkers(ctx, temporal)
 	if err != nil {
 		return errors.E(errors.Op("initWorkers"), err)
@@ -87,7 +100,7 @@ func (pool *workflowPool) Start(ctx context.Context, temporal temporal.Temporal)
 }
 
 // Destroy stops all temporal workers and application worker.
-func (pool *workflowPool) Destroy(ctx context.Context) error {
+func (pool *workflowPoolImpl) Destroy(ctx context.Context) error {
 	for i := 0; i < len(pool.tWorkers); i++ {
 		pool.tWorkers[i].Stop()
 	}
@@ -100,20 +113,38 @@ func (pool *workflowPool) Destroy(ctx context.Context) error {
 }
 
 // NewWorkflowDefinition initiates new workflow process.
-func (pool *workflowPool) NewWorkflowDefinition() bindings.WorkflowDefinition {
+func (pool *workflowPoolImpl) NewWorkflowDefinition() bindings.WorkflowDefinition {
 	return &workflowProcess{pool: pool}
 }
 
+// NewWorkflowDefinition initiates new workflow process.
+func (pool *workflowPoolImpl) SeqID() uint64 {
+	return atomic.AddUint64(&pool.seqID, 1)
+}
+
 // Exec set of commands in thread safe move.
-func (pool *workflowPool) Exec(p roadrunner.Payload) (roadrunner.Payload, error) {
+func (pool *workflowPoolImpl) Exec(p roadrunner.Payload) (roadrunner.Payload, error) {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
 	return pool.worker.Exec(p)
 }
 
+func (pool *workflowPoolImpl) WorkflowNames() []string {
+	names := make([]string, 0, len(pool.workflows))
+	for name, _ := range pool.workflows {
+		names = append(names, name)
+	}
+
+	return names
+}
+
+func (pool *workflowPoolImpl) Workers() []roadrunner.WorkerBase {
+	return []roadrunner.WorkerBase{pool.worker}
+}
+
 // initWorkers request workers workflows from underlying PHP and configures temporal workers linked to the pool.
-func (pool *workflowPool) initWorkers(ctx context.Context, temporal temporal.Temporal) error {
+func (pool *workflowPoolImpl) initWorkers(ctx context.Context, temporal temporal.Temporal) error {
 	workerInfo, err := rrt.GetWorkerInfo(pool)
 	if err != nil {
 		return err
