@@ -208,8 +208,7 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 		activityID := wp.env.ExecuteActivity(params, wp.createCallback(id))
 
 		wp.canceller.register(id, func() error {
-			log.Print("cancel", activityID)
-			wp.env.RequestCancelActivity("activityID") // todo: wait for SDk fix
+			wp.env.RequestCancelActivity(activityID)
 			return nil
 		})
 
@@ -239,8 +238,9 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 	case NewTimer:
 		timerID := wp.env.NewTimer(cmd.ToDuration(), wp.createCallback(id))
 		wp.canceller.register(id, func() error {
-			log.Print("cancel", timerID)
-			wp.env.RequestCancelTimer("timerID") // todo: wait for SDk fix
+			if timerID != nil {
+				wp.env.RequestCancelTimer(*timerID)
+			}
 			return nil
 		})
 
