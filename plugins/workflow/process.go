@@ -1,20 +1,23 @@
 package workflow
 
 import (
-	"github.com/spiral/errors"
-
 	jsoniter "github.com/json-iterator/go"
+	"github.com/spiral/errors"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
+	"log"
+	"strconv"
+	"sync/atomic"
 )
 
 // wraps single workflow process
 type workflowProcess struct {
-	pool      *workflowPool
+	pool      workflowPool
 	env       bindings.WorkflowEnvironment
 	mq        *messageQueue
+	seqID     uint64
 	pipeline  []rrt.Message
 	callbacks []func() error
 	completed bool
@@ -25,10 +28,11 @@ type workflowProcess struct {
 func (wp *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *commonpb.Header, input *commonpb.Payloads) {
 	wp.callbacks = append(wp.callbacks, func() error {
 		wp.env = env
+		wp.seqID = 0
 		wp.canceller = &canceller{}
 
 		// sequenceID shared for all worker workflows
-		wp.mq = newMessageQueue(&wp.pool.seqID)
+		wp.mq = newMessageQueue(wp.pool.SeqID)
 
 		start := StartWorkflow{
 			Info: env.WorkflowInfo(),
@@ -200,18 +204,45 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 
 	switch cmd := rawCmd.(type) {
 	case ExecuteActivity:
-		//acvitityID :=
-		wp.env.ExecuteActivity(cmd.ActivityParams(wp.env), wp.createCallback(id))
+		params := cmd.ActivityParams(wp.env)
+		activityID := wp.env.ExecuteActivity(params, wp.createCallback(id))
 
-		//wp.canceller.register(id, acvitityID)
+		wp.canceller.register(id, func() error {
+			log.Print("cancel", activityID)
+			wp.env.RequestCancelActivity("activityID") // todo: wait for SDk fix
+			return nil
+		})
 
+	case ExecuteLocalActivity:
 		// todo: local activity
-		// todo: child workflow
+
+	case ExecuteChildWorkflow:
+		params := cmd.WorkflowParams(wp.env)
+
+		// always use deterministic id
+		if params.WorkflowID == "" {
+			nextID := atomic.AddUint64(&wp.seqID, 1)
+			params.WorkflowID = wp.env.WorkflowInfo().WorkflowExecution.RunID + "_" + strconv.Itoa(int(nextID))
+		}
+
+		// todo: implement
+		wp.env.ExecuteChildWorkflow(params, wp.createCallback(id), func(r bindings.WorkflowExecution, e error) {
+			// todo: re
+		})
+
+		wp.canceller.register(id, func() error {
+			log.Print("cancel", params.WorkflowID)
+			wp.env.RequestCancelChildWorkflow(params.Namespace, params.WorkflowID)
+			return nil
+		})
 
 	case NewTimer:
-		//timerInfo := wp.env.NewTimer(cmd.ToDuration(), wp.createCallback(id))
-
-		wp.canceller.register(id, wp.env.NewTimer(cmd.ToDuration(), wp.createCallback(id)))
+		timerID := wp.env.NewTimer(cmd.ToDuration(), wp.createCallback(id))
+		wp.canceller.register(id, func() error {
+			log.Print("cancel", timerID)
+			wp.env.RequestCancelTimer("timerID") // todo: wait for SDk fix
+			return nil
+		})
 
 	case GetVersion:
 		version := wp.env.GetVersion(
@@ -234,7 +265,7 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 	case SideEffect:
 		wp.env.SideEffect(
 			func() (*commonpb.Payloads, error) { return cmd.rawPayload, nil },
-			wp.createImmediateCallback(id),
+			wp.createContinuableCallback(id),
 		)
 
 	case CompleteWorkflow:
@@ -258,7 +289,7 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 		wp.env.RequestCancelExternalWorkflow(cmd.Namespace, cmd.WorkflowID, cmd.RunID, wp.createCallback(id))
 
 	case Cancel:
-		err = wp.canceller.cancel(wp.env, cmd.RequestIDs...)
+		err = wp.canceller.cancel(wp.env, cmd.CommandIDs...)
 		if err != nil {
 			return err
 		}
@@ -301,7 +332,7 @@ func (wp *workflowProcess) createCallback(id uint64) bindings.ResultHandler {
 }
 
 // callback to be called inside the queue processing, adds new messages at the end of the queue
-func (wp *workflowProcess) createImmediateCallback(id uint64) bindings.ResultHandler {
+func (wp *workflowProcess) createContinuableCallback(id uint64) bindings.ResultHandler {
 	callback := func(result *commonpb.Payloads, err error) {
 		wp.canceller.discard(id)
 

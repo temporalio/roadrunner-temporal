@@ -106,6 +106,14 @@ type (
 
 	// ExecuteChildWorkflow executes child workflow.
 	ExecuteChildWorkflow struct {
+		// Name defines workflow name.
+		Name string `json:"name"`
+
+		// Input to pass to the workflow.
+		Input []jsoniter.RawMessage `json:"input"`
+
+		// Options to run activity.
+		Options bindings.WorkflowOptions `json:"options,omitempty"`
 	}
 
 	// NewTimer starts new timer.
@@ -161,8 +169,8 @@ type (
 
 	// Cancel one or multiple internal promises (activities, local activities, timers, child workflows).
 	Cancel struct {
-		// RequestIDs to be cancelled.
-		RequestIDs []uint64 `json:"requestIDs"`
+		// CommandIDs to be cancelled.
+		CommandIDs []uint64 `json:"ids"`
 	}
 )
 
@@ -179,6 +187,12 @@ func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment) bind
 	}
 
 	return params
+}
+
+// ActivityParams maps activity command to activity params.
+func (cmd ExecuteChildWorkflow) WorkflowParams(env bindings.WorkflowEnvironment) bindings.ExecuteWorkflowParams {
+	// todo: implement
+	return bindings.ExecuteWorkflowParams{}
 }
 
 // ToDuration converts timer command to time.Duration.

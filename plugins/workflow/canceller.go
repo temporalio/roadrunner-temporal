@@ -5,26 +5,16 @@ import (
 	"sync"
 )
 
-const (
-	activityType = iota + 900
-	localActivityType
-	timerType
-	childWorkflowType
-)
-
 type (
 	canceller struct {
 		ids sync.Map
 	}
 
-	entry struct {
-		id uint64
-		tp int
-	}
+	cancellable func() error
 )
 
-func (c *canceller) register(id uint64, target interface{}) {
-	c.ids.Store(id, target)
+func (c *canceller) register(id uint64, cancel cancellable) {
+	c.ids.Store(id, cancel)
 }
 
 func (c *canceller) discard(id uint64) {
@@ -32,17 +22,18 @@ func (c *canceller) discard(id uint64) {
 }
 
 func (c *canceller) cancel(env bindings.WorkflowEnvironment, ids ...uint64) error {
-	//for _, id := range ids {
-	//	target, ok := c.ids.LoadAndDelete(id)
-	//	if ok == false {
-	//		continue
-	//	}
+	var err error
+	for _, id := range ids {
+		cancel, ok := c.ids.LoadAndDelete(id)
+		if ok == false {
+			continue
+		}
 
-	//switch target.(type) {
-	//case *bindings.ActivityID:
-	//case *TimerInfo:
-	//}
-	//}
+		err = cancel.(cancellable)()
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

@@ -1,19 +1,17 @@
 package workflow
 
 import (
-	"sync/atomic"
-
 	jsoniter "github.com/json-iterator/go"
 
 	rrt "github.com/temporalio/roadrunner-temporal"
 )
 
 type messageQueue struct {
-	seqID *uint64
+	seqID func() uint64
 	queue []rrt.Message
 }
 
-func newMessageQueue(sedID *uint64) *messageQueue {
+func newMessageQueue(sedID func() uint64) *messageQueue {
 	return &messageQueue{
 		seqID: sedID,
 		queue: make([]rrt.Message, 0, 5),
@@ -25,7 +23,7 @@ func (mq *messageQueue) flush() {
 }
 
 func (mq *messageQueue) makeCommand(cmd string, params interface{}) (id uint64, msg rrt.Message, err error) {
-	msg = rrt.Message{ID: atomic.AddUint64(mq.seqID, 1), Command: cmd}
+	msg = rrt.Message{ID: mq.seqID(), Command: cmd}
 
 	msg.Params, err = jsoniter.Marshal(params)
 	if err != nil {
