@@ -23,7 +23,6 @@ const (
 
 	// Commands send by worker to host process.
 	ExecuteActivityCommand      = "ExecuteActivity"
-	ExecuteLocalActivityCommand = "ExecuteLocalActivity"
 	ExecuteChildWorkflowCommand = "ExecuteChildWorkflow"
 	NewTimerCommand             = "NewTimer"
 	SideEffectCommand           = "SideEffect"
@@ -100,10 +99,6 @@ type (
 		rawPayload *commonpb.Payloads
 	}
 
-	// ExecuteLocalActivity executes activity on the same node.
-	ExecuteLocalActivity struct {
-	}
-
 	// ExecuteChildWorkflow executes child workflow.
 	ExecuteChildWorkflow struct {
 		// Name defines workflow name.
@@ -114,6 +109,9 @@ type (
 
 		// Options to run activity.
 		Options bindings.WorkflowOptions `json:"options,omitempty"`
+
+		// rawPayload represents Args converted into Temporal payload format.
+		rawPayload *commonpb.Payloads
 	}
 
 	// NewTimer starts new timer.
@@ -216,6 +214,23 @@ func parseCommand(dc converter.DataConverter, name string, params jsoniter.RawMe
 		}
 
 		err := rrt.ToPayloads(dc, cmd.Args, cmd.rawPayload)
+		if err != nil {
+			return nil, err
+		}
+
+		return cmd, nil
+
+	case ExecuteChildWorkflowCommand:
+		cmd := ExecuteChildWorkflow{
+			rawPayload: &commonpb.Payloads{},
+		}
+
+		err = jsoniter.Unmarshal(params, &cmd)
+		if err != nil {
+			return nil, err
+		}
+
+		err := rrt.ToPayloads(dc, cmd.Input, cmd.rawPayload)
 		if err != nil {
 			return nil, err
 		}

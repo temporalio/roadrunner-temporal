@@ -7,7 +7,6 @@ import (
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
-	"log"
 	"strconv"
 	"sync/atomic"
 )
@@ -73,8 +72,6 @@ func (wp *workflowProcess) OnWorkflowTaskStarted() {
 
 		if msg.IsCommand() {
 			err = wp.handleCommand(msg.ID, msg.Command, msg.Params)
-		} else {
-			err = wp.handleResponse(msg.ID, msg.Result, msg.Error)
 		}
 
 		if err != nil {
@@ -212,9 +209,6 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 			return nil
 		})
 
-	case ExecuteLocalActivity:
-		// todo: local activity
-
 	case ExecuteChildWorkflow:
 		params := cmd.WorkflowParams(wp.env)
 
@@ -224,13 +218,11 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 			params.WorkflowID = wp.env.WorkflowInfo().WorkflowExecution.RunID + "_" + strconv.Itoa(int(nextID))
 		}
 
-		// todo: implement
 		wp.env.ExecuteChildWorkflow(params, wp.createCallback(id), func(r bindings.WorkflowExecution, e error) {
 			// todo: re
 		})
 
 		wp.canceller.register(id, func() error {
-			log.Print("cancel", params.WorkflowID)
 			wp.env.RequestCancelChildWorkflow(params.Namespace, params.WorkflowID)
 			return nil
 		})
@@ -295,12 +287,6 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 		}
 	}
 
-	return nil
-}
-
-// process incoming command
-func (wp *workflowProcess) handleResponse(id uint64, result []jsoniter.RawMessage, error interface{}) error {
-	// not used in current implementation
 	return nil
 }
 
