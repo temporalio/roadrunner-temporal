@@ -43,9 +43,6 @@ func (svc *Plugin) Init(temporal temporal.Temporal, server server.Server, log lo
 
 // Serve starts workflow service.
 func (svc *Plugin) Serve() chan error {
-	svc.mu.Lock()
-	defer svc.mu.Unlock()
-
 	errCh := make(chan error, 1)
 
 	pool, err := svc.initPool()
