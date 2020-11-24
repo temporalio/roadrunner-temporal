@@ -189,8 +189,17 @@ func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment) bind
 
 // ActivityParams maps activity command to activity params.
 func (cmd ExecuteChildWorkflow) WorkflowParams(env bindings.WorkflowEnvironment) bindings.ExecuteWorkflowParams {
-	// todo: implement
-	return bindings.ExecuteWorkflowParams{}
+	params := bindings.ExecuteWorkflowParams{
+		WorkflowOptions: cmd.Options,
+		WorkflowType:    &bindings.WorkflowType{Name: cmd.Name},
+		Input:           cmd.rawPayload,
+	}
+
+	if params.TaskQueueName == "" {
+		params.TaskQueueName = env.WorkflowInfo().TaskQueueName
+	}
+
+	return params
 }
 
 // ToDuration converts timer command to time.Duration.
