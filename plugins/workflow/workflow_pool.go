@@ -44,7 +44,7 @@ func newWorkflowPool(ctx context.Context, listener util.EventListener, factory s
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, errors.E(errors.Op("newWorker"), err)
 	}
 
 	go func() {
@@ -58,7 +58,7 @@ func newWorkflowPool(ctx context.Context, listener util.EventListener, factory s
 
 	sw, err := roadrunner.NewSyncWorker(w)
 	if err != nil {
-		return nil, err
+		return nil, errors.E(errors.Op("newSyncWorker"), err)
 	}
 
 	return &workflowPool{worker: sw}, nil
@@ -73,13 +73,13 @@ func (pool *workflowPool) AddListener(listener util.EventListener) {
 func (pool *workflowPool) Start(ctx context.Context, temporal temporal.Temporal) error {
 	err := pool.initWorkers(ctx, temporal)
 	if err != nil {
-		return err
+		return errors.E(errors.Op("initWorkers"), err)
 	}
 
 	for i := 0; i < len(pool.tWorkers); i++ {
 		err := pool.tWorkers[i].Start()
 		if err != nil {
-			return err
+			return errors.E(errors.Op("startTemporalWorker"), err)
 		}
 	}
 
