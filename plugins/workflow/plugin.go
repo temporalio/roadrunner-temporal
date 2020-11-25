@@ -2,16 +2,15 @@ package workflow
 
 import (
 	"context"
-	"sync"
-	"time"
-
-	"github.com/spiral/roadrunner/v2"
-
+	"github.com/cenkalti/backoff/v4"
 	"github.com/spiral/errors"
+	"github.com/spiral/roadrunner/v2"
 	"github.com/spiral/roadrunner/v2/interfaces/log"
 	"github.com/spiral/roadrunner/v2/interfaces/server"
 	"github.com/spiral/roadrunner/v2/util"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
+	"sync"
+	"time"
 )
 
 const (
@@ -20,17 +19,20 @@ const (
 
 	// RRMode sets as RR_MODE env variable to let worker know about the mode to run.
 	RRMode = "temporal/workflow"
+
+	// MaxBackoffTime to replace workflow pool in case of error.
+	MaxBackoffTime = time.Minute * 30
 )
 
 // Plugin manages workflows and workers.
 type Plugin struct {
-	temporal  temporal.Temporal
-	events    util.EventsHandler
-	server    server.Server
-	log       log.Logger
-	mu        sync.Mutex
-	lastReset time.Time
-	pool      workflowPool
+	temporal temporal.Temporal
+	events   util.EventsHandler
+	server   server.Server
+	log      log.Logger
+	mu       sync.Mutex
+	reset    chan struct{}
+	pool     workflowPool
 }
 
 // logger dep also
@@ -38,6 +40,7 @@ func (svc *Plugin) Init(temporal temporal.Temporal, server server.Server, log lo
 	svc.temporal = temporal
 	svc.server = server
 	svc.log = log
+	svc.reset = make(chan struct{})
 	return nil
 }
 
@@ -53,6 +56,26 @@ func (svc *Plugin) Serve() chan error {
 
 	svc.pool = pool
 
+	go func() {
+		for {
+			select {
+			case <-svc.reset:
+				err := svc.replacePool()
+				if err == nil {
+					continue
+				}
+
+				bkoff := backoff.NewExponentialBackOff()
+				bkoff.MaxElapsedTime = MaxBackoffTime
+
+				err = backoff.Retry(svc.replacePool, bkoff)
+				if err != nil {
+					errCh <- errors.E("deadPool", err)
+				}
+			}
+		}
+	}()
+
 	return errCh
 }
 
@@ -63,6 +86,8 @@ func (svc *Plugin) Stop() error {
 		svc.pool = nil
 		return pool.Destroy(context.Background())
 	}
+
+	close(svc.reset)
 
 	return nil
 }
@@ -79,26 +104,7 @@ func (svc *Plugin) Workers() []roadrunner.WorkerBase {
 
 // Reset resets underlying workflow pool with new copy.
 func (svc *Plugin) Reset() error {
-	lastReset := time.Now()
-
-	if svc.lastReset.Before(lastReset) {
-		return nil
-	}
-
-	svc.lastReset = lastReset
-
-	pool, err := svc.initPool()
-	if err != nil {
-		return errors.E(errors.Op("newWorkflowPool"), err)
-	}
-
-	previous := svc.pool
-	svc.pool = pool
-
-	errD := previous.Destroy(context.Background())
-	if errD != nil {
-		return errors.E(errors.Op("destroyWorkflowPool"), errD, previous)
-	}
+	svc.reset <- struct{}{}
 
 	return nil
 }
@@ -113,9 +119,8 @@ func (svc *Plugin) poolListener(event interface{}) {
 	switch p := event.(type) {
 	case PoolEvent:
 		if p.Event == EventWorkerError {
-			svc.log.Error("Workflow pool error", p.Caused)
-
-			// todo: handle pool error
+			svc.log.Error("Workflow pool error", "error", p.Caused)
+			svc.reset <- struct{}{}
 		}
 	}
 
@@ -134,9 +139,30 @@ func (svc *Plugin) initPool() (workflowPool, error) {
 		return nil, errors.E(errors.Op("startWorkflowPool"), err)
 	}
 
-	svc.log.Debug("Started workflow processing", pool.WorkflowNames())
+	svc.log.Debug("Started workflow processing", "workflows", pool.WorkflowNames())
 
 	return pool, nil
+}
+
+func (svc *Plugin) replacePool() error {
+	pool, err := svc.initPool()
+	if err != nil {
+		return errors.E(errors.Op("newWorkflowPool"), err)
+	}
+
+	var previous workflowPool
+	previous, svc.pool = svc.pool, pool
+
+	errD := previous.Destroy(context.Background())
+	if errD != nil {
+		svc.log.Error(
+			"Unable to destroy expired workflow pool",
+			"error",
+			errors.E(errors.Op("destroyWorkflowPool"), err),
+		)
+	}
+
+	return nil
 }
 
 // getPool returns currently pool.

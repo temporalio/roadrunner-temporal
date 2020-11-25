@@ -2,7 +2,6 @@ package workflow
 
 import (
 	jsoniter "github.com/json-iterator/go"
-
 	rrt "github.com/temporalio/roadrunner-temporal"
 )
 
