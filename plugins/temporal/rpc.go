@@ -9,7 +9,6 @@ import (
 	"go.temporal.io/sdk/client"
 )
 
-// TODO DEPRECATE IN FAVOR OF NATIVE CLIENT.
 /*
 RecordActivityHeartbeat(ctx context.Context, taskToken []byte, details ...interface{}) error
 RecordActivityHeartbeatByID(ctx context.Context, namespace, workflowID, runID, activityID string, details ...interface{}) error

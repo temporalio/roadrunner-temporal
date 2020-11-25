@@ -281,7 +281,7 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 		wp.env.RequestCancelExternalWorkflow(cmd.Namespace, cmd.WorkflowID, cmd.RunID, wp.createCallback(id))
 
 	case Cancel:
-		err = wp.canceller.cancel(wp.env, cmd.CommandIDs...)
+		err = wp.canceller.cancel(cmd.CommandIDs...)
 		if err != nil {
 			return err
 		}

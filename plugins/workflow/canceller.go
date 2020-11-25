@@ -1,16 +1,15 @@
 package workflow
 
 import (
-	bindings "go.temporal.io/sdk/internalbindings"
 	"sync"
 )
 
 type (
+	cancellable func() error
+
 	canceller struct {
 		ids sync.Map
 	}
-
-	cancellable func() error
 )
 
 func (c *canceller) register(id uint64, cancel cancellable) {
@@ -21,7 +20,7 @@ func (c *canceller) discard(id uint64) {
 	c.ids.Delete(id)
 }
 
-func (c *canceller) cancel(env bindings.WorkflowEnvironment, ids ...uint64) error {
+func (c *canceller) cancel(ids ...uint64) error {
 	var err error
 	for _, id := range ids {
 		cancel, ok := c.ids.LoadAndDelete(id)
