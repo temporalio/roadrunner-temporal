@@ -9,6 +9,7 @@ require (
 	github.com/fatih/color v1.10.0
 	github.com/json-iterator/go v1.1.10
 	github.com/mattn/go-runewidth v0.0.9
+	github.com/nsf/termbox-go v0.0.0-20201124104050-ed494de23a00 // indirect
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/spf13/cobra v1.1.0
 	github.com/spiral/endure v1.0.0-beta20

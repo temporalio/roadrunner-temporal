@@ -35,8 +35,10 @@ type Plugin struct {
 func (svc *Plugin) Init(temporal temporal.Temporal, server server.Server, log log.Logger) error {
 	svc.temporal = temporal
 	svc.server = server
+	svc.events = util.NewEventsHandler()
 	svc.log = log
 	svc.reset = make(chan struct{})
+
 	return nil
 }
 

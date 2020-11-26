@@ -42,7 +42,9 @@ func (svc *Plugin) Init(temporal temporal.Temporal, server server.Server, log lo
 
 	svc.temporal = temporal
 	svc.server = server
+	svc.events = util.NewEventsHandler()
 	svc.log = log
+	svc.reset = make(chan struct{})
 
 	return nil
 }
