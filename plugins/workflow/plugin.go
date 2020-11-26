@@ -10,7 +10,6 @@ import (
 	"github.com/spiral/roadrunner/v2/util"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	"sync"
-	"time"
 )
 
 const (
@@ -19,9 +18,6 @@ const (
 
 	// RRMode sets as RR_MODE env variable to let worker know about the mode to run.
 	RRMode = "temporal/workflow"
-
-	// MaxBackoffTime to replace workflow pool in case of error.
-	MaxBackoffTime = time.Minute * 30
 )
 
 // Plugin manages workflows and workers.
@@ -66,7 +62,6 @@ func (svc *Plugin) Serve() chan error {
 				}
 
 				bkoff := backoff.NewExponentialBackOff()
-				bkoff.MaxElapsedTime = MaxBackoffTime
 
 				err = backoff.Retry(svc.replacePool, bkoff)
 				if err != nil {
@@ -145,13 +140,18 @@ func (svc *Plugin) initPool() (workflowPool, error) {
 }
 
 func (svc *Plugin) replacePool() error {
+	svc.log.Debug("Replace workflow pool")
+
 	pool, err := svc.initPool()
 	if err != nil {
 		return errors.E(errors.Op("newWorkflowPool"), err)
 	}
 
 	var previous workflowPool
+
+	svc.mu.Lock()
 	previous, svc.pool = svc.pool, pool
+	svc.mu.Unlock()
 
 	errD := previous.Destroy(context.Background())
 	if errD != nil {

@@ -23,13 +23,12 @@ const (
 
 type (
 	workflowPool interface {
-		AddListener(listener util.EventListener)
+		SeqID() uint64
 		Exec(p roadrunner.Payload) (roadrunner.Payload, error)
 		Start(ctx context.Context, temporal temporal.Temporal) error
 		Destroy(ctx context.Context) error
-		WorkflowNames() []string
-		SeqID() uint64
 		Workers() []roadrunner.WorkerBase
+		WorkflowNames() []string
 	}
 
 	PoolEvent struct {
@@ -75,11 +74,6 @@ func newWorkflowPool(ctx context.Context, listener util.EventListener, factory s
 	}
 
 	return &workflowPoolImpl{worker: sw}, nil
-}
-
-// AddListener adds event listeners to the workflow pool.
-func (pool *workflowPoolImpl) AddListener(listener util.EventListener) {
-	pool.events.AddListener(listener)
 }
 
 // Start the pool in non blocking mode. TODO: capture worker errors.
@@ -130,6 +124,10 @@ func (pool *workflowPoolImpl) Exec(p roadrunner.Payload) (roadrunner.Payload, er
 	return pool.worker.Exec(p)
 }
 
+func (pool *workflowPoolImpl) Workers() []roadrunner.WorkerBase {
+	return []roadrunner.WorkerBase{pool.worker}
+}
+
 func (pool *workflowPoolImpl) WorkflowNames() []string {
 	names := make([]string, 0, len(pool.workflows))
 	for name, _ := range pool.workflows {
@@ -137,10 +135,6 @@ func (pool *workflowPoolImpl) WorkflowNames() []string {
 	}
 
 	return names
-}
-
-func (pool *workflowPoolImpl) Workers() []roadrunner.WorkerBase {
-	return []roadrunner.WorkerBase{pool.worker}
 }
 
 // initWorkers request workers workflows from underlying PHP and configures temporal workers linked to the pool.

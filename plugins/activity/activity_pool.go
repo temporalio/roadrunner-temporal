@@ -17,18 +17,26 @@ import (
 	"go.temporal.io/sdk/worker"
 )
 
-// activityPool manages set of RR and Temporal activity workers and their cancellation contexts.
-type activityPool struct {
-	dc         converter.DataConverter
-	seqID      uint64
-	events     util.EventsHandler
-	activities []string
-	wp         roadrunner.Pool
-	tWorkers   []worker.Worker
-}
+type (
+	activityPool interface {
+		Start(ctx context.Context, temporal temporal.Temporal) error
+		Destroy(ctx context.Context) error
+		Workers() []roadrunner.WorkerBase
+		ActivityNames() []string
+	}
 
-// NewActivityPool
-func NewActivityPool(ctx context.Context, poolConfig roadrunner.PoolConfig, server server.Server) (*activityPool, error) {
+	activityPoolImpl struct {
+		dc         converter.DataConverter
+		seqID      uint64
+		events     util.EventsHandler
+		activities []string
+		wp         roadrunner.Pool
+		tWorkers   []worker.Worker
+	}
+)
+
+// newActivityPool
+func newActivityPool(ctx context.Context, listener util.EventListener, poolConfig roadrunner.PoolConfig, server server.Server) (activityPool, error) {
 	wp, err := server.NewWorkerPool(
 		context.Background(),
 		poolConfig,
@@ -39,22 +47,13 @@ func NewActivityPool(ctx context.Context, poolConfig roadrunner.PoolConfig, serv
 		return nil, err
 	}
 
-	wp.AddListener(func(event interface{}) {
-		if _, ok := event.(roadrunner.PoolEvent); ok {
-			return
-		}
-	})
+	wp.AddListener(listener)
 
-	return &activityPool{wp: wp}, nil
-}
-
-// AddListener adds event listeners to the workflow pool.
-func (pool *activityPool) AddListener(listener util.EventListener) {
-	pool.events.AddListener(listener)
+	return &activityPoolImpl{wp: wp}, nil
 }
 
 // initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
-func (pool *activityPool) Start(ctx context.Context, temporal temporal.Temporal) error {
+func (pool *activityPoolImpl) Start(ctx context.Context, temporal temporal.Temporal) error {
 	pool.dc = temporal.GetDataConverter()
 
 	err := pool.initWorkers(ctx, temporal)
@@ -73,17 +72,25 @@ func (pool *activityPool) Start(ctx context.Context, temporal temporal.Temporal)
 }
 
 // initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
-func (pool *activityPool) Destroy(ctx context.Context) {
+func (pool *activityPoolImpl) Destroy(ctx context.Context) error {
 	for i := 0; i < len(pool.tWorkers); i++ {
 		pool.tWorkers[i].Stop()
 	}
 
-	// TODO add ctx.Done in RR for timeouts
 	pool.wp.Destroy(ctx)
+	return nil
+}
+
+func (pool *activityPoolImpl) Workers() []roadrunner.WorkerBase {
+	return pool.wp.Workers()
+}
+
+func (pool *activityPoolImpl) ActivityNames() []string {
+	return pool.activities
 }
 
 // initWorkers request workers workflows from underlying PHP and configures temporal workers linked to the pool.
-func (pool *activityPool) initWorkers(ctx context.Context, temporal temporal.Temporal) error {
+func (pool *activityPoolImpl) initWorkers(ctx context.Context, temporal temporal.Temporal) error {
 	workerInfo, err := rrt.GetWorkerInfo(pool.wp)
 	if err != nil {
 		return err
@@ -95,8 +102,7 @@ func (pool *activityPool) initWorkers(ctx context.Context, temporal temporal.Tem
 	for _, info := range workerInfo {
 		w, err := temporal.CreateWorker(info.TaskQueue, info.Options)
 		if err != nil {
-			pool.Destroy(ctx)
-			return errors.E(errors.Op("createTemporalWorker"), err)
+			return errors.E(errors.Op("createTemporalWorker"), err, pool.Destroy(ctx))
 		}
 
 		pool.tWorkers = append(pool.tWorkers, w)
@@ -114,7 +120,7 @@ func (pool *activityPool) initWorkers(ctx context.Context, temporal temporal.Tem
 }
 
 // executes activity with underlying worker.
-func (pool *activityPool) executeActivity(ctx context.Context, input rrt.RRPayload) (rrt.RRPayload, error) {
+func (pool *activityPoolImpl) executeActivity(ctx context.Context, input rrt.RRPayload) (rrt.RRPayload, error) {
 	var (
 		err  error
 		info = activity.GetInfo(ctx)
@@ -127,6 +133,10 @@ func (pool *activityPool) executeActivity(ctx context.Context, input rrt.RRPaylo
 			Info: info,
 		}
 	)
+
+	/*
+		TODO: next iteration should avoid processing payloads anyhow, the processing should be done on PHP end.
+	*/
 
 	// todo: optimize
 	for _, value := range input.Data {
@@ -172,6 +182,5 @@ func (pool *activityPool) executeActivity(ctx context.Context, input rrt.RRPaylo
 		out.Data = append(out.Data, value)
 	}
 
-	// todo: handle error and async commands
 	return out, nil
 }

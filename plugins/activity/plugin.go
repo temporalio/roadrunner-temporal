@@ -2,6 +2,8 @@ package activity
 
 import (
 	"context"
+	"github.com/cenkalti/backoff/v4"
+	"sync"
 
 	"github.com/spiral/roadrunner/v2"
 
@@ -10,7 +12,6 @@ import (
 	"github.com/spiral/roadrunner/v2/interfaces/server"
 	"github.com/spiral/roadrunner/v2/util"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
-	"go.uber.org/zap"
 )
 
 const (
@@ -27,7 +28,9 @@ type Plugin struct {
 	events   util.EventsHandler
 	server   server.Server
 	log      log.Logger
-	pool     *activityPool
+	mu       sync.Mutex
+	reset    chan struct{}
+	pool     activityPool
 }
 
 // Init configures activity service.
@@ -48,31 +51,45 @@ func (svc *Plugin) Init(temporal temporal.Temporal, server server.Server, log lo
 func (svc *Plugin) Serve() chan error {
 	errCh := make(chan error, 1)
 
-	pool, err := NewActivityPool(context.Background(), *svc.temporal.GetConfig().Activities, svc.server)
+	pool, err := svc.initPool()
 	if err != nil {
-		errCh <- errors.E(errors.Op("newActivityPool"), err)
-		return errCh
-	}
-
-	// todo: proxy events
-
-	err = pool.Start(context.Background(), svc.temporal)
-	if err != nil {
-		errCh <- errors.E(errors.Op("startActivityPool"), err)
+		errCh <- errors.E("initPool", err)
 		return errCh
 	}
 
 	svc.pool = pool
 
-	svc.log.Debug("Started activity processing", zap.Any("activities", pool.activities))
+	go func() {
+		for {
+			select {
+			case <-svc.reset:
+				err := svc.replacePool()
+				if err == nil {
+					continue
+				}
+
+				bkoff := backoff.NewExponentialBackOff()
+
+				err = backoff.Retry(svc.replacePool, bkoff)
+				if err != nil {
+					errCh <- errors.E("deadPool", err)
+				}
+			}
+		}
+	}()
 
 	return errCh
 }
 
 func (svc *Plugin) Stop() error {
-	if svc.pool != nil {
-		svc.pool.Destroy(context.Background())
+	pool := svc.getPool()
+	if pool != nil {
+		svc.pool = nil
+		return pool.Destroy(context.Background())
 	}
+
+	close(svc.reset)
+
 	return nil
 }
 
@@ -81,31 +98,14 @@ func (svc *Plugin) Name() string {
 	return PluginName
 }
 
-// Name of the service.
+// Workers returns pool workers.
 func (svc *Plugin) Workers() []roadrunner.WorkerBase {
-	// todo: mutex when secondary pool added
-	return svc.pool.wp.Workers()
+	return svc.getPool().Workers()
 }
 
 // Reset resets underlying workflow pool with new copy.
 func (svc *Plugin) Reset() error {
-	svc.log.Debug("Reset activity worker pool")
-
-	pool, err := NewActivityPool(context.Background(), *svc.temporal.GetConfig().Activities, svc.server)
-	if err != nil {
-		return errors.E(errors.Op("newActivityPool"), err)
-	}
-
-	// todo: proxy events
-	err = pool.Start(context.Background(), svc.temporal)
-	if err != nil {
-		return errors.E(errors.Op("startActivityPool"), err)
-	}
-
-	previous := svc.pool
-	svc.pool = pool
-
-	previous.Destroy(context.Background())
+	svc.reset <- struct{}{}
 
 	return nil
 }
@@ -113,4 +113,74 @@ func (svc *Plugin) Reset() error {
 // AddListener adds event listeners to the service.
 func (svc *Plugin) AddListener(listener util.EventListener) {
 	svc.events.AddListener(listener)
+}
+
+// AddListener adds event listeners to the service.
+func (svc *Plugin) poolListener(event interface{}) {
+	switch p := event.(type) {
+	case roadrunner.PoolEvent:
+		if p.Event == roadrunner.EventPoolError {
+			svc.log.Error("Activity pool error", "error", p.Payload.(error))
+			svc.reset <- struct{}{}
+		}
+	}
+
+	svc.events.Push(event)
+}
+
+// AddListener adds event listeners to the service.
+func (svc *Plugin) initPool() (activityPool, error) {
+	pool, err := newActivityPool(
+		context.Background(),
+		svc.poolListener,
+		*svc.temporal.GetConfig().Activities,
+		svc.server,
+	)
+
+	if err != nil {
+		return nil, errors.E(errors.Op("newActivityPool"), err)
+	}
+
+	err = pool.Start(context.Background(), svc.temporal)
+	if err != nil {
+		return nil, errors.E(errors.Op("startActivityPool"), err)
+	}
+
+	svc.log.Debug("Started activity processing", "activities", pool.ActivityNames())
+
+	return pool, nil
+}
+
+func (svc *Plugin) replacePool() error {
+	svc.log.Debug("Replace activity pool")
+
+	pool, err := svc.initPool()
+	if err != nil {
+		return errors.E(errors.Op("newActivityPool"), err)
+	}
+
+	var previous activityPool
+
+	svc.mu.Lock()
+	previous, svc.pool = svc.pool, pool
+	svc.mu.Unlock()
+
+	errD := previous.Destroy(context.Background())
+	if errD != nil {
+		svc.log.Error(
+			"Unable to destroy expired activity pool",
+			"error",
+			errors.E(errors.Op("destroyActivityPool"), err),
+		)
+	}
+
+	return nil
+}
+
+// getPool returns currently pool.
+func (svc *Plugin) getPool() activityPool {
+	svc.mu.Lock()
+	defer svc.mu.Unlock()
+
+	return svc.pool
 }
