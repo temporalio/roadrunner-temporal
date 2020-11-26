@@ -130,12 +130,7 @@ func (svc *Plugin) poolListener(event interface{}) {
 
 // AddListener adds event listeners to the service.
 func (svc *Plugin) initPool() (activityPool, error) {
-	pool, err := newActivityPool(
-		context.Background(),
-		svc.poolListener,
-		*svc.temporal.GetConfig().Activities,
-		svc.server,
-	)
+	pool, err := newActivityPool(svc.poolListener, *svc.temporal.GetConfig().Activities, svc.server)
 
 	if err != nil {
 		return nil, errors.E(errors.Op("newActivityPool"), err)

@@ -36,7 +36,7 @@ type (
 )
 
 // newActivityPool
-func newActivityPool(ctx context.Context, listener util.EventListener, poolConfig roadrunner.PoolConfig, server server.Server) (activityPool, error) {
+func newActivityPool(listener util.EventListener, poolConfig roadrunner.PoolConfig, server server.Server) (activityPool, error) {
 	wp, err := server.NewWorkerPool(
 		context.Background(),
 		poolConfig,

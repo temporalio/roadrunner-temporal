@@ -49,7 +49,7 @@ type (
 )
 
 // newWorkflowPool creates new workflow pool.
-func newWorkflowPool(ctx context.Context, listener util.EventListener, factory server.Server) (workflowPool, error) {
+func newWorkflowPool(listener util.EventListener, factory server.Server) (workflowPool, error) {
 	w, err := factory.NewWorker(
 		context.Background(),
 		map[string]string{"RR_MODE": RRMode},
@@ -62,7 +62,7 @@ func newWorkflowPool(ctx context.Context, listener util.EventListener, factory s
 	w.AddListener(listener)
 
 	go func() {
-		err := w.Wait(ctx)
+		err := w.Wait()
 		if err != nil {
 			listener(PoolEvent{Event: EventWorkerError, Caused: err})
 		}
