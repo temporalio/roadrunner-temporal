@@ -10,6 +10,7 @@ import (
 	"github.com/spiral/roadrunner/v2/util"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	"sync"
+	"sync/atomic"
 )
 
 const (
@@ -29,6 +30,7 @@ type Plugin struct {
 	mu       sync.Mutex
 	reset    chan struct{}
 	pool     workflowPool
+	closing  int64
 }
 
 // logger dep also
@@ -46,9 +48,9 @@ func (svc *Plugin) Init(temporal temporal.Temporal, server server.Server, log lo
 func (svc *Plugin) Serve() chan error {
 	errCh := make(chan error, 1)
 
-	pool, err := svc.initPool()
+	pool, err := svc.startPool()
 	if err != nil {
-		errCh <- errors.E("initPool", err)
+		errCh <- errors.E("startPool", err)
 		return errCh
 	}
 
@@ -58,6 +60,10 @@ func (svc *Plugin) Serve() chan error {
 		for {
 			select {
 			case <-svc.reset:
+				if atomic.LoadInt64(&svc.closing) == 1 {
+					return
+				}
+
 				err := svc.replacePool()
 				if err == nil {
 					continue
@@ -78,13 +84,13 @@ func (svc *Plugin) Serve() chan error {
 
 // Stop workflow service.
 func (svc *Plugin) Stop() error {
+	atomic.StoreInt64(&svc.closing, 1)
+
 	pool := svc.getPool()
 	if pool != nil {
 		svc.pool = nil
 		return pool.Destroy(context.Background())
 	}
-
-	close(svc.reset)
 
 	return nil
 }
@@ -115,7 +121,7 @@ func (svc *Plugin) AddListener(listener util.EventListener) {
 func (svc *Plugin) poolListener(event interface{}) {
 	switch p := event.(type) {
 	case PoolEvent:
-		if p.Event == EventWorkerError {
+		if p.Event == EventWorkerExit {
 			svc.log.Error("Workflow pool error", "error", p.Caused)
 			svc.reset <- struct{}{}
 		}
@@ -125,7 +131,7 @@ func (svc *Plugin) poolListener(event interface{}) {
 }
 
 // AddListener adds event listeners to the service.
-func (svc *Plugin) initPool() (workflowPool, error) {
+func (svc *Plugin) startPool() (workflowPool, error) {
 	pool, err := newWorkflowPool(svc.poolListener, svc.server)
 	if err != nil {
 		return nil, errors.E(errors.Op("initWorkflowPool"), err)
@@ -144,7 +150,7 @@ func (svc *Plugin) initPool() (workflowPool, error) {
 func (svc *Plugin) replacePool() error {
 	svc.log.Debug("Replace workflow pool")
 
-	pool, err := svc.initPool()
+	pool, err := svc.startPool()
 	if err != nil {
 		return errors.E(errors.Op("newWorkflowPool"), err)
 	}
@@ -160,7 +166,7 @@ func (svc *Plugin) replacePool() error {
 		svc.log.Error(
 			"Unable to destroy expired workflow pool",
 			"error",
-			errors.E(errors.Op("destroyWorkflowPool"), err),
+			errors.E(errors.Op("destroyWorkflowPool"), errD),
 		)
 	}
 

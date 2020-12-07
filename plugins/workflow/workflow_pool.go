@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	EventWorkerError = iota + 8390
+	EventWorkerExit = iota + 8390
 	EventNewWorkflowProcess
 )
 
@@ -63,9 +63,7 @@ func newWorkflowPool(listener util.EventListener, factory server.Server) (workfl
 
 	go func() {
 		err := w.Wait()
-		if err != nil {
-			listener(PoolEvent{Event: EventWorkerError, Caused: err})
-		}
+		listener(PoolEvent{Event: EventWorkerExit, Caused: err})
 	}()
 
 	sw, err := roadrunner.NewSyncWorker(w)
@@ -76,7 +74,7 @@ func newWorkflowPool(listener util.EventListener, factory server.Server) (workfl
 	return &workflowPoolImpl{worker: sw}, nil
 }
 
-// Start the pool in non blocking mode. TODO: capture worker errors.
+// Start the pool in non blocking mode.
 func (pool *workflowPoolImpl) Start(ctx context.Context, temporal temporal.Temporal) error {
 	err := pool.initWorkers(ctx, temporal)
 	if err != nil {

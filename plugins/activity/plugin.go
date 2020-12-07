@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cenkalti/backoff/v4"
 	"sync"
+	"sync/atomic"
 
 	"github.com/spiral/roadrunner/v2"
 
@@ -31,6 +32,7 @@ type Plugin struct {
 	mu       sync.Mutex
 	reset    chan struct{}
 	pool     activityPool
+	closing  int64
 }
 
 // Init configures activity service.
@@ -53,9 +55,9 @@ func (svc *Plugin) Init(temporal temporal.Temporal, server server.Server, log lo
 func (svc *Plugin) Serve() chan error {
 	errCh := make(chan error, 1)
 
-	pool, err := svc.initPool()
+	pool, err := svc.startPool()
 	if err != nil {
-		errCh <- errors.E("initPool", err)
+		errCh <- errors.E("startPool", err)
 		return errCh
 	}
 
@@ -65,6 +67,10 @@ func (svc *Plugin) Serve() chan error {
 		for {
 			select {
 			case <-svc.reset:
+				if atomic.LoadInt64(&svc.closing) == 1 {
+					return
+				}
+
 				err := svc.replacePool()
 				if err == nil {
 					continue
@@ -84,13 +90,13 @@ func (svc *Plugin) Serve() chan error {
 }
 
 func (svc *Plugin) Stop() error {
+	atomic.StoreInt64(&svc.closing, 1)
+
 	pool := svc.getPool()
 	if pool != nil {
 		svc.pool = nil
 		return pool.Destroy(context.Background())
 	}
-
-	close(svc.reset)
 
 	return nil
 }
@@ -131,7 +137,7 @@ func (svc *Plugin) poolListener(event interface{}) {
 }
 
 // AddListener adds event listeners to the service.
-func (svc *Plugin) initPool() (activityPool, error) {
+func (svc *Plugin) startPool() (activityPool, error) {
 	pool, err := newActivityPool(svc.poolListener, *svc.temporal.GetConfig().Activities, svc.server)
 
 	if err != nil {
@@ -151,7 +157,7 @@ func (svc *Plugin) initPool() (activityPool, error) {
 func (svc *Plugin) replacePool() error {
 	svc.log.Debug("Replace activity pool")
 
-	pool, err := svc.initPool()
+	pool, err := svc.startPool()
 	if err != nil {
 		return errors.E(errors.Op("newActivityPool"), err)
 	}
@@ -167,7 +173,7 @@ func (svc *Plugin) replacePool() error {
 		svc.log.Error(
 			"Unable to destroy expired activity pool",
 			"error",
-			errors.E(errors.Op("destroyActivityPool"), err),
+			errors.E(errors.Op("destroyActivityPool"), errD),
 		)
 	}
 
