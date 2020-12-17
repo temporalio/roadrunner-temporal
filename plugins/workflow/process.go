@@ -25,14 +25,14 @@ type workflowProcess struct {
 
 // Execute workflow, bootstraps process.
 func (wp *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *commonpb.Header, input *commonpb.Payloads) {
+	wp.env = env
+	wp.seqID = 0
+	wp.canceller = &canceller{}
+
+	// sequenceID shared for all worker workflows
+	wp.mq = newMessageQueue(wp.pool.SeqID)
+
 	wp.callbacks = append(wp.callbacks, func() error {
-		wp.env = env
-		wp.seqID = 0
-		wp.canceller = &canceller{}
-
-		// sequenceID shared for all worker workflows
-		wp.mq = newMessageQueue(wp.pool.SeqID)
-
 		start := StartWorkflow{
 			Info: env.WorkflowInfo(),
 		}
@@ -103,6 +103,10 @@ func (wp *workflowProcess) StackTrace() string {
 
 // Close the workflow.
 func (wp *workflowProcess) Close() {
+	if wp.env == nil {
+		return
+	}
+
 	if !wp.completed {
 		// offloaded from memory
 		_, err := wp.mq.pushCommand(

@@ -15,6 +15,7 @@ class SimpleActivity
         return strtoupper($input);
     }
 
+    #[ActivityMethod]
     public function lower(string $input): string
     {
         return strtolower($input);

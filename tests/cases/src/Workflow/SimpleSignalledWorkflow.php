@@ -18,10 +18,10 @@ class SimpleSignalledWorkflow
 {
     private $counter;
 
-    #[Workflow\SignalMethod]
-    public function add()
+    #[Workflow\SignalMethod(name: "add")]
+    public function add(int $value)
     {
-        $this->counter++;
+        $this->counter += $value;
     }
 
     #[WorkflowMethod(name: 'SimpleSignalledWorkflow')]

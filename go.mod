@@ -11,6 +11,7 @@ require (
 	github.com/magiconair/properties v1.8.1
 	github.com/mattn/go-runewidth v0.0.9
 	github.com/olekukonko/tablewriter v0.0.4
+	github.com/pborman/uuid v1.2.1
 	github.com/spf13/cobra v1.1.0
 	github.com/spiral/endure v1.0.0-beta20
 	github.com/spiral/errors v1.0.4

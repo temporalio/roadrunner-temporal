@@ -12,6 +12,9 @@ func Test_VerifyRegistration(t *testing.T) {
 	defer s.MustClose()
 
 	assert.Contains(t, s.workflows.WorkflowNames(), "SimpleWorkflow")
+	assert.Contains(t, s.workflows.WorkflowNames(), "SimpleSignalledWorkflow")
+	assert.Contains(t, s.workflows.WorkflowNames(), "ParallelScopesWorkflow")
+
 	assert.Contains(t, s.activities.ActivityNames(), "SimpleActivity.echo")
 
 	// todo: fix bug
@@ -35,4 +38,23 @@ func Test_ExecuteSimpleWorkflow(t *testing.T) {
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "HELLO WORLD", result)
+}
+
+func Test_ExecuteWorkflowWithParallelScopes(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"ParallelScopesWorkflow",
+		"Hello World",
+	)
+	assert.NoError(t, err)
+
+	var result string
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "HELLO WORLD|Hello World|hello world", result)
 }
