@@ -108,6 +108,8 @@ func (t *TestServer) Client() client.Client {
 }
 
 func (t *TestServer) MustClose() {
+	os.Chdir("..")
+
 	err := t.container.Stop()
 	if err != nil {
 		panic(err)

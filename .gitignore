@@ -20,3 +20,4 @@ app/vendor
 
 .rr.local.yaml
 tests/cases/composer.lock
+tests/cases/vendor

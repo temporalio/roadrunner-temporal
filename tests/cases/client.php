@@ -12,6 +12,7 @@ $worker = new Worker(RoadRunner::pipes());
 
 $worker->createAndRegister()
     ->addWorkflow(Tests\Workflow\SimpleWorkflow::class)
+    ->addWorkflow(Tests\Workflow\SimpleSignalledWorkflow::class)
     ->addActivity(Tests\Activity\SimpleActivity::class);
 
 $worker->run();
