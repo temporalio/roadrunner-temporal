@@ -111,6 +111,11 @@ func (svc *Plugin) Workers() []roadrunner.WorkerBase {
 	return svc.getPool().Workers()
 }
 
+// ActivityNames returns list of all available activities.
+func (svc *Plugin) ActivityNames() []string {
+	return svc.pool.ActivityNames()
+}
+
 // Reset resets underlying workflow pool with new copy.
 func (svc *Plugin) Reset() error {
 	svc.reset <- struct{}{}

@@ -122,6 +122,8 @@ func (pool *activityPoolImpl) initWorkers(ctx context.Context, temporal temporal
 // executes activity with underlying worker.
 func (pool *activityPoolImpl) executeActivity(ctx context.Context, input rrt.RRPayload) (rrt.RRPayload, error) {
 	var (
+		// todo: activity.getHeartBeatDetails
+
 		err  error
 		info = activity.GetInfo(ctx)
 		msg  = rrt.Message{
