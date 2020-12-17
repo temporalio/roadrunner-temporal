@@ -14,12 +14,11 @@ namespace Temporal\Tests\Workflow;
 use Temporal\Client\Workflow;
 use Temporal\Client\Workflow\WorkflowMethod;
 
-class DelayedWorkflow
+class SimpleWorkflow
 {
-    #[WorkflowMethod(name: 'DelayedWorkflow')]
+    #[WorkflowMethod(name: 'SimpleWorkflow')]
     public function handler(): iterable
     {
-        yield Workflow::timer(1);
 
         return 'OK';
     }

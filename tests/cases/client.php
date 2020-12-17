@@ -11,6 +11,7 @@ require __DIR__ . '/vendor/autoload.php';
 $worker = new Worker(RoadRunner::pipes());
 
 $worker->createAndRegister()
-    ->addWorkflow(Tests\Workflow\DelayedWorkflow::class);
+    ->addWorkflow(Tests\Workflow\SimpleWorkflow::class)
+    ->addActivity(Tests\Activity\SimpleActivity::class);
 
 $worker->run();
