@@ -16,6 +16,7 @@ $worker->createAndRegister()
     ->addWorkflow(Tests\Workflow\ParallelScopesWorkflow::class)
     ->addWorkflow(Tests\Workflow\TimerWorkflow::class)
     ->addWorkflow(Tests\Workflow\SideEffectWorkflow::class)
+    ->addWorkflow(Tests\Workflow\SimpleSignalledWorkflowWithSleep::class)
     ->addActivity(Tests\Activity\SimpleActivity::class);
 
 $worker->run();

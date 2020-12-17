@@ -32,23 +32,20 @@ func (wp *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *com
 	// sequenceID shared for all worker workflows
 	wp.mq = newMessageQueue(wp.pool.SeqID)
 
-	wp.callbacks = append(wp.callbacks, func() error {
-		start := StartWorkflow{
-			Info: env.WorkflowInfo(),
-		}
+	env.RegisterCancelHandler(wp.handleCancel)
+	env.RegisterSignalHandler(wp.handleSignal)
+	env.RegisterQueryHandler(wp.handleQuery)
 
-		err := rrt.FromPayloads(env.GetDataConverter(), input, &start.Input)
-		if err != nil {
-			return err
-		}
+	start := StartWorkflow{
+		Info: env.WorkflowInfo(),
+	}
 
-		env.RegisterCancelHandler(wp.handleCancel)
-		env.RegisterSignalHandler(wp.handleSignal)
-		env.RegisterQueryHandler(wp.handleQuery)
+	err := rrt.FromPayloads(env.GetDataConverter(), input, &start.Input)
+	if err != nil {
+		panic(err)
+	}
 
-		_, err = wp.mq.pushCommand(StartWorkflowCommand, start)
-		return err
-	})
+	_, err = wp.mq.pushCommand(StartWorkflowCommand, start)
 }
 
 // OnWorkflowTaskStarted handles single workflow tick and batch of pipeline from temporal server.

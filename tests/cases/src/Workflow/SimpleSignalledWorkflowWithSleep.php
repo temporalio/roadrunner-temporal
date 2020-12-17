@@ -14,7 +14,7 @@ namespace Temporal\Tests\Workflow;
 use Temporal\Client\Workflow;
 use Temporal\Client\Workflow\WorkflowMethod;
 
-class SimpleSignalledWorkflow
+class SimpleSignalledWorkflowWithSleep
 {
     private $counter = 0;
 
@@ -24,12 +24,13 @@ class SimpleSignalledWorkflow
         $this->counter += $value;
     }
 
-    #[WorkflowMethod(name: 'SimpleSignalledWorkflow')]
+    #[WorkflowMethod(name: 'SimpleSignalledWorkflowWithSleep')]
     public function handler(): iterable
     {
         // collect signals during one second
         yield Workflow::timer(1);
 
+        sleep(1);
         return $this->counter;
     }
 }
