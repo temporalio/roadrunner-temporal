@@ -12,6 +12,10 @@ package tests
 //		client.StartWorkflowOptions{
 //			TaskQueue:           "default",
 //			WorkflowTaskTimeout: time.Second,
+//			//RetryPolicy: &temporal.RetryPolicy{
+//			//	InitialInterval: time.Millisecond,
+//			//	MaximumInterval: time.Millisecond * 10,
+//			//},
 //		},
 //		"TimerWorkflow",
 //		"Hello World",
@@ -20,7 +24,7 @@ package tests
 //
 //	time.Sleep(time.Millisecond * 750)
 //
-//	// must fully recover
+//	// must fully recover with new worker
 //	assert.NoError(t, p.Kill())
 //
 //	var result string

@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"github.com/spiral/endure"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	"github.com/spiral/roadrunner/v2/plugins/informer"
@@ -11,10 +12,13 @@ import (
 	"github.com/temporalio/roadrunner-temporal/plugins/activity"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	"github.com/temporalio/roadrunner-temporal/plugins/workflow"
+	"go.temporal.io/api/enums/v1"
+	"go.temporal.io/api/history/v1"
 	"go.temporal.io/sdk/client"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"os"
+	"testing"
 )
 
 type TestServer struct {
@@ -150,4 +154,31 @@ func initLogger() *zap.Logger {
 	}
 
 	return l
+}
+
+func (s *TestServer) AssertContainsEvent(t *testing.T, w client.WorkflowRun, assert func(*history.HistoryEvent) bool) {
+	i := s.Client().GetWorkflowHistory(
+		context.Background(),
+		w.GetID(),
+		w.GetRunID(),
+		false,
+		enums.HISTORY_EVENT_FILTER_TYPE_ALL_EVENT,
+	)
+
+	for {
+		if !i.HasNext() {
+			t.Error("no more events and no match found")
+			break
+		}
+
+		e, err := i.Next()
+		if err != nil {
+			t.Error("unable to read history event")
+			break
+		}
+
+		if assert(e) {
+			break
+		}
+	}
 }

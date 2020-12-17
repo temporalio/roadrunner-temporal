@@ -15,6 +15,7 @@ $worker->createAndRegister()
     ->addWorkflow(Tests\Workflow\SimpleSignalledWorkflow::class)
     ->addWorkflow(Tests\Workflow\ParallelScopesWorkflow::class)
     ->addWorkflow(Tests\Workflow\TimerWorkflow::class)
+    ->addWorkflow(Tests\Workflow\SideEffectWorkflow::class)
     ->addActivity(Tests\Activity\SimpleActivity::class);
 
 $worker->run();
