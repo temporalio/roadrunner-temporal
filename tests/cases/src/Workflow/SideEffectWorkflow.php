@@ -18,10 +18,7 @@ class SideEffectWorkflow
     {
         $simple = Workflow::newActivityStub(
             SimpleActivity::class,
-            ActivityOptions::new()
-                ->withStartToCloseTimeout(
-                    DateInterval::parse(5, DateInterval::FORMAT_SECONDS)
-                )
+            ActivityOptions::new()->withStartToCloseTimeout(5)
         );
 
         $result = yield Workflow::sideEffect(function () use ($input) {

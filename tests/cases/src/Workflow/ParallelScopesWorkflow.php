@@ -25,10 +25,7 @@ class ParallelScopesWorkflow
     {
         $simple = Workflow::newActivityStub(
             SimpleActivity::class,
-            ActivityOptions::new()
-                ->withStartToCloseTimeout(
-                    DateInterval::parse(5, DateInterval::FORMAT_SECONDS)
-                )
+            ActivityOptions::new()->withStartToCloseTimeout(5)
         );
 
         $a = Workflow::newCancellationScope(function () use ($simple, $input) {

@@ -24,10 +24,7 @@ class TimerWorkflow
     {
         $simple = Workflow::newActivityStub(
             SimpleActivity::class,
-            ActivityOptions::new()
-                ->withStartToCloseTimeout(
-                    DateInterval::parse(5, DateInterval::FORMAT_SECONDS)
-                )
+            ActivityOptions::new()->withStartToCloseTimeout(5)
         );
 
         yield Workflow::timer(1);
