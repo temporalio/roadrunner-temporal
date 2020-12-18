@@ -7,6 +7,7 @@ import (
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
+	"log"
 	"strconv"
 	"sync/atomic"
 )
@@ -100,7 +101,8 @@ func (wp *workflowProcess) StackTrace() string {
 
 // Close the workflow.
 func (wp *workflowProcess) Close() {
-	if wp.env == nil {
+	if !wp.pool.Active() {
+		log.Print("unable to closed workflow since pool is already dead")
 		return
 	}
 

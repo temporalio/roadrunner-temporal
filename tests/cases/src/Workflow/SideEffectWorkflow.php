@@ -1,12 +1,9 @@
 <?php
 
-
 namespace Temporal\Tests\Workflow;
-
 
 use Temporal\Client\Activity\ActivityOptions;
 use Temporal\Client\Common\Uuid;
-use Temporal\Client\Internal\Support\DateInterval;
 use Temporal\Client\Workflow;
 use Temporal\Client\Workflow\WorkflowMethod;
 use Temporal\Tests\Activity\SimpleActivity;

@@ -29,6 +29,7 @@ type (
 		Destroy(ctx context.Context) error
 		Workers() []roadrunner.WorkerBase
 		WorkflowNames() []string
+		Active() bool
 	}
 
 	PoolEvent struct {
@@ -45,6 +46,7 @@ type (
 		tWorkers  []worker.Worker
 		mu        sync.Mutex
 		worker    roadrunner.SyncWorker
+		active    bool
 	}
 )
 
@@ -88,11 +90,19 @@ func (pool *workflowPoolImpl) Start(ctx context.Context, temporal temporal.Tempo
 		}
 	}
 
+	pool.active = true
+
 	return nil
+}
+
+// Active.
+func (pool *workflowPoolImpl) Active() bool {
+	return pool.active
 }
 
 // Destroy stops all temporal workers and application worker.
 func (pool *workflowPoolImpl) Destroy(ctx context.Context) error {
+	pool.active = false
 	for i := 0; i < len(pool.tWorkers); i++ {
 		pool.tWorkers[i].Stop()
 	}
@@ -147,7 +157,7 @@ func (pool *workflowPoolImpl) initWorkers(ctx context.Context, temporal temporal
 
 	for _, info := range workerInfo {
 		w, err := temporal.CreateWorker(info.TaskQueue, info.Options)
-		// worker.SetStickyWorkflowCacheSize(1)
+		//worker.SetStickyWorkflowCacheSize(1)
 		if err != nil {
 			return errors.E(errors.Op("createTemporalWorker"), err, pool.Destroy(ctx))
 		}
