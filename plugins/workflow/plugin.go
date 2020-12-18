@@ -2,15 +2,17 @@ package workflow
 
 import (
 	"context"
-	"github.com/cenkalti/backoff/v4"
-	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner/v2"
-	"github.com/spiral/roadrunner/v2/interfaces/log"
-	"github.com/spiral/roadrunner/v2/interfaces/server"
-	"github.com/spiral/roadrunner/v2/util"
-	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	"sync"
 	"sync/atomic"
+
+	"github.com/cenkalti/backoff/v4"
+	"github.com/spiral/errors"
+	"github.com/spiral/roadrunner/v2/interfaces/events"
+	"github.com/spiral/roadrunner/v2/interfaces/log"
+	"github.com/spiral/roadrunner/v2/interfaces/server"
+	rrWorker "github.com/spiral/roadrunner/v2/interfaces/worker"
+	eventsPkg "github.com/spiral/roadrunner/v2/pkg/events"
+	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 )
 
 const (
@@ -24,7 +26,7 @@ const (
 // Plugin manages workflows and workers.
 type Plugin struct {
 	temporal temporal.Temporal
-	events   util.EventsHandler
+	events   events.Handler
 	server   server.Server
 	log      log.Logger
 	mu       sync.Mutex
@@ -37,7 +39,7 @@ type Plugin struct {
 func (svc *Plugin) Init(temporal temporal.Temporal, server server.Server, log log.Logger) error {
 	svc.temporal = temporal
 	svc.server = server
-	svc.events = util.NewEventsHandler()
+	svc.events = eventsPkg.NewEventsHandler()
 	svc.log = log
 	svc.reset = make(chan struct{})
 
@@ -101,7 +103,7 @@ func (svc *Plugin) Name() string {
 }
 
 // Name of the service.
-func (svc *Plugin) Workers() []roadrunner.WorkerBase {
+func (svc *Plugin) Workers() []rrWorker.BaseProcess {
 	return svc.pool.Workers()
 }
 
@@ -118,7 +120,7 @@ func (svc *Plugin) Reset() error {
 }
 
 // AddListener adds event listeners to the service.
-func (svc *Plugin) AddListener(listener util.EventListener) {
+func (svc *Plugin) AddListener(listener events.EventListener) {
 	svc.events.AddListener(listener)
 }
 

@@ -2,16 +2,17 @@ package activity
 
 import (
 	"context"
-	"github.com/cenkalti/backoff/v4"
 	"sync"
 	"sync/atomic"
 
-	"github.com/spiral/roadrunner/v2"
+	"github.com/cenkalti/backoff/v4"
 
 	"github.com/spiral/errors"
+	"github.com/spiral/roadrunner/v2/interfaces/events"
 	"github.com/spiral/roadrunner/v2/interfaces/log"
 	"github.com/spiral/roadrunner/v2/interfaces/server"
-	"github.com/spiral/roadrunner/v2/util"
+	rrWorker "github.com/spiral/roadrunner/v2/interfaces/worker"
+	eventsPkg "github.com/spiral/roadrunner/v2/pkg/events"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 )
 
@@ -26,7 +27,7 @@ const (
 // Plugin to manage activity execution.
 type Plugin struct {
 	temporal temporal.Temporal
-	events   util.EventsHandler
+	events   events.Handler
 	server   server.Server
 	log      log.Logger
 	mu       sync.Mutex
@@ -44,7 +45,7 @@ func (svc *Plugin) Init(temporal temporal.Temporal, server server.Server, log lo
 
 	svc.temporal = temporal
 	svc.server = server
-	svc.events = util.NewEventsHandler()
+	svc.events = eventsPkg.NewEventsHandler()
 	svc.log = log
 	svc.reset = make(chan struct{})
 
@@ -107,7 +108,7 @@ func (svc *Plugin) Name() string {
 }
 
 // Workers returns pool workers.
-func (svc *Plugin) Workers() []roadrunner.WorkerBase {
+func (svc *Plugin) Workers() []rrWorker.BaseProcess {
 	return svc.getPool().Workers()
 }
 
@@ -124,15 +125,15 @@ func (svc *Plugin) Reset() error {
 }
 
 // AddListener adds event listeners to the service.
-func (svc *Plugin) AddListener(listener util.EventListener) {
+func (svc *Plugin) AddListener(listener events.EventListener) {
 	svc.events.AddListener(listener)
 }
 
 // AddListener adds event listeners to the service.
 func (svc *Plugin) poolListener(event interface{}) {
 	switch p := event.(type) {
-	case roadrunner.PoolEvent:
-		if p.Event == roadrunner.EventPoolError {
+	case events.PoolEvent:
+		if p.Event == events.EventPoolError {
 			svc.log.Error("Activity pool error", "error", p.Payload.(error))
 			svc.reset <- struct{}{}
 		}

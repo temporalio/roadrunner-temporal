@@ -2,8 +2,8 @@ package temporal
 
 import (
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner/v2"
 	"github.com/spiral/roadrunner/v2/interfaces/log"
+	"github.com/spiral/roadrunner/v2/pkg/pool"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	"go.temporal.io/sdk/client"
@@ -24,7 +24,7 @@ type (
 	Config struct {
 		Address    string
 		Namespace  string
-		Activities *roadrunner.PoolConfig
+		Activities *pool.Config
 	}
 
 	Plugin struct {

@@ -7,9 +7,11 @@ import (
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner/v2"
+	"github.com/spiral/roadrunner/v2/interfaces/events"
+	"github.com/spiral/roadrunner/v2/interfaces/pool"
 	"github.com/spiral/roadrunner/v2/interfaces/server"
-	"github.com/spiral/roadrunner/v2/util"
+	rrWorker "github.com/spiral/roadrunner/v2/interfaces/worker"
+	poolImpl "github.com/spiral/roadrunner/v2/pkg/pool"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	"go.temporal.io/sdk/activity"
@@ -21,22 +23,22 @@ type (
 	activityPool interface {
 		Start(ctx context.Context, temporal temporal.Temporal) error
 		Destroy(ctx context.Context) error
-		Workers() []roadrunner.WorkerBase
+		Workers() []rrWorker.BaseProcess
 		ActivityNames() []string
 	}
 
 	activityPoolImpl struct {
 		dc         converter.DataConverter
 		seqID      uint64
-		events     util.EventsHandler
+		events     events.Handler
 		activities []string
-		wp         roadrunner.Pool
+		wp         pool.Pool
 		tWorkers   []worker.Worker
 	}
 )
 
 // newActivityPool
-func newActivityPool(listener util.EventListener, poolConfig roadrunner.PoolConfig, server server.Server) (activityPool, error) {
+func newActivityPool(listener events.EventListener, poolConfig poolImpl.Config, server server.Server) (activityPool, error) {
 	wp, err := server.NewWorkerPool(
 		context.Background(),
 		poolConfig,
@@ -81,7 +83,7 @@ func (pool *activityPoolImpl) Destroy(ctx context.Context) error {
 	return nil
 }
 
-func (pool *activityPoolImpl) Workers() []roadrunner.WorkerBase {
+func (pool *activityPoolImpl) Workers() []rrWorker.BaseProcess {
 	return pool.wp.Workers()
 }
 

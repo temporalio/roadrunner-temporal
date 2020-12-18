@@ -4,7 +4,8 @@ import (
 	"github.com/fatih/color"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner/v2"
+	"github.com/spiral/roadrunner/v2/pkg/payload"
+
 	"log"
 	"time"
 )
@@ -14,7 +15,7 @@ type (
 	// Endpoint provides the ability to send and receive messages.
 	Endpoint interface {
 		// ExecWithContext allow to set ExecTTL
-		Exec(p roadrunner.Payload) (roadrunner.Payload, error)
+		Exec(p payload.Payload) (payload.Payload, error)
 	}
 
 	// Context provides worker information about currently. Context can be empty for server level commands.
@@ -101,7 +102,7 @@ func Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 		err    error
 	)
 
-	p := roadrunner.Payload{}
+	p := payload.Payload{}
 
 	if ctx.IsEmpty() {
 		p.Context = []byte("null")

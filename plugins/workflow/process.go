@@ -1,14 +1,15 @@
 package workflow
 
 import (
+	"strconv"
+	"sync/atomic"
+
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
-	"strconv"
-	"sync/atomic"
 )
 
 // wraps single workflow process
