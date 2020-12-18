@@ -168,6 +168,7 @@ func (svc *Plugin) replacePool() error {
 	previous, svc.pool = svc.pool, pool
 	svc.mu.Unlock()
 
+	// todo: move up
 	errD := previous.Destroy(context.Background())
 	if errD != nil {
 		svc.log.Error(

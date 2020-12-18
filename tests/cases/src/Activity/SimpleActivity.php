@@ -1,6 +1,5 @@
 <?php
 
-
 namespace Temporal\Tests\Activity;
 
 use Temporal\Client\Activity\ActivityInterface;

@@ -31,6 +31,7 @@ type (
 		Destroy(ctx context.Context) error
 		Workers() []rrWorker.BaseProcess
 		WorkflowNames() []string
+		Active() bool
 	}
 
 	PoolEvent struct {
@@ -90,11 +91,19 @@ func (pool *workflowPoolImpl) Start(ctx context.Context, temporal temporal.Tempo
 		}
 	}
 
+	pool.active = true
+
 	return nil
+}
+
+// Active.
+func (pool *workflowPoolImpl) Active() bool {
+	return pool.active
 }
 
 // Destroy stops all temporal workers and application worker.
 func (pool *workflowPoolImpl) Destroy(ctx context.Context) error {
+	pool.active = false
 	for i := 0; i < len(pool.tWorkers); i++ {
 		pool.tWorkers[i].Stop()
 	}
