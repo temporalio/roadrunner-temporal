@@ -17,7 +17,6 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"os"
 	"testing"
 )
 
@@ -48,11 +47,6 @@ func NewTestServer(opt ...ConfigOption) *TestServer {
 	w := &workflow.Plugin{}
 
 	if err := e.Register(initConfig(opt...)); err != nil {
-		panic(err)
-	}
-
-	// always work within the php/python/etc domain
-	if err := os.Chdir("cases"); err != nil {
 		panic(err)
 	}
 
@@ -112,8 +106,6 @@ func (t *TestServer) Client() client.Client {
 }
 
 func (t *TestServer) MustClose() {
-	os.Chdir("..")
-
 	err := t.container.Stop()
 	if err != nil {
 		panic(err)
