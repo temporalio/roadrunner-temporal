@@ -54,7 +54,12 @@ func Test_SendSignalDuringTimer(t *testing.T) {
 	assert.Equal(t, 9, result)
 
 	s.AssertContainsEvent(t, w, func(event *history.HistoryEvent) bool {
-		return event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED
+		if event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED {
+			attr := event.Attributes.(*history.HistoryEvent_WorkflowExecutionSignaledEventAttributes)
+			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == "add"
+		}
+
+		return false
 	})
 }
 
@@ -82,6 +87,11 @@ func Test_SendSignalBeforeCompletingWorkflow(t *testing.T) {
 	assert.Equal(t, -1, result)
 
 	s.AssertContainsEvent(t, w, func(event *history.HistoryEvent) bool {
-		return event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED
+		if event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED {
+			attr := event.Attributes.(*history.HistoryEvent_WorkflowExecutionSignaledEventAttributes)
+			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == "add"
+		}
+
+		return false
 	})
 }
