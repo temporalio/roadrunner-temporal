@@ -79,10 +79,16 @@ func (r *DataConverter) FromPayload(payload *commonpb.Payload, valuePtr interfac
 	switch res := valuePtr.(type) {
 	case *RRPayload:
 		var data interface{}
+
+		if len(payload.Data) == 0 {
+			res.Data = append(res.Data, nil)
+			return nil
+		}
+
 		// TODO: BYPASS MARSHAL AND SEND IT AS IT IS
 		err := jsoniter.Unmarshal(payload.GetData(), &data)
 		if err != nil {
-			return errors.E("unable to decode argument: %T, with error: %v", valuePtr, err)
+			return errors.E(fmt.Sprintf("unable to decode argument: %T, with error: %v", valuePtr, err))
 		}
 		res.Data = append(res.Data, data)
 	default:
