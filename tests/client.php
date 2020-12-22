@@ -18,6 +18,7 @@ $worker->createAndRegister()
     ->addWorkflow(Tests\Workflow\SideEffectWorkflow::class)
     ->addWorkflow(Tests\Workflow\SimpleSignalledWorkflowWithSleep::class)
     ->addWorkflow(Tests\Workflow\QueryWorkflow::class)
+    ->addWorkflow(Tests\Workflow\EmptyWorkflow::class)
     ->addActivity(Tests\Activity\SimpleActivity::class);
 
 $worker->run();
