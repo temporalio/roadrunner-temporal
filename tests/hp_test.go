@@ -27,6 +27,7 @@ func Test_VerifyRegistration(t *testing.T) {
 	assert.Contains(t, s.workflows.WorkflowNames(), "QueryWorkflow")
 	assert.Contains(t, s.workflows.WorkflowNames(), "EmptyWorkflow")
 	assert.Contains(t, s.workflows.WorkflowNames(), "RuntimeSignalWorkflow")
+	assert.Contains(t, s.workflows.WorkflowNames(), "WorkflowWithSignalledLoop")
 	assert.Contains(t, s.workflows.WorkflowNames(), "SimpleSignalledWorkflowWithSleep")
 	assert.Contains(t, s.activities.ActivityNames(), "SimpleActivity.echo")
 

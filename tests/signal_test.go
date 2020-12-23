@@ -125,3 +125,44 @@ func Test_RuntimeSignal(t *testing.T) {
 		return false
 	})
 }
+
+//func Test_RuntimeSignalLoop(t *testing.T) {
+//	s := NewTestServer()
+//	defer s.MustClose()
+//
+//	w, err := s.Client().ExecuteWorkflow(
+//		context.Background(),
+//		client.StartWorkflowOptions{
+//			TaskQueue: "default",
+//		},
+//		"WorkflowWithSignalledLoop",
+//	)
+//	assert.NoError(t, err)
+//
+//	err = s.Client().SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), "tick", true)
+//	assert.NoError(t, err)
+//
+//	err = s.Client().SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), "tick", true)
+//	assert.NoError(t, err)
+//
+//	err = s.Client().SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), "tick", true)
+//	assert.NoError(t, err)
+//
+//	err = s.Client().SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), "tick", "exit")
+//	assert.NoError(t, err)
+//
+//	var result int
+//	assert.NoError(t, w.Get(context.Background(), &result))
+//
+//	// 3 ticks
+//	assert.Equal(t, 3, result)
+//
+//	s.AssertContainsEvent(t, w, func(event *history.HistoryEvent) bool {
+//		if event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED {
+//			attr := event.Attributes.(*history.HistoryEvent_WorkflowExecutionSignaledEventAttributes)
+//			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == "tick"
+//		}
+//
+//		return false
+//	})
+//}
