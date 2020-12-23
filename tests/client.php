@@ -20,6 +20,7 @@ $worker->createAndRegister()
     ->addWorkflow(Tests\Workflow\QueryWorkflow::class)
     ->addWorkflow(Tests\Workflow\EmptyWorkflow::class)
     ->addWorkflow(Tests\Workflow\RuntimeSignalWorkflow::class)
+    ->addWorkflow(Tests\Workflow\WorkflowWithSignalledLoop::class)
     ->addActivity(Tests\Activity\SimpleActivity::class);
 
 $worker->run();
