@@ -95,3 +95,33 @@ func Test_SendSignalBeforeCompletingWorkflow(t *testing.T) {
 		return false
 	})
 }
+
+func Test_RuntimeSignal(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	w, err := s.Client().SignalWithStartWorkflow(
+		context.Background(),
+		"signalled-"+uuid.New(),
+		"add",
+		-1,
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"RuntimeSignalWorkflow",
+	)
+	assert.NoError(t, err)
+
+	var result int
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, -1, result)
+
+	s.AssertContainsEvent(t, w, func(event *history.HistoryEvent) bool {
+		if event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED {
+			attr := event.Attributes.(*history.HistoryEvent_WorkflowExecutionSignaledEventAttributes)
+			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == "add"
+		}
+
+		return false
+	})
+}

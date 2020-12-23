@@ -19,6 +19,7 @@ $worker->createAndRegister()
     ->addWorkflow(Tests\Workflow\SimpleSignalledWorkflowWithSleep::class)
     ->addWorkflow(Tests\Workflow\QueryWorkflow::class)
     ->addWorkflow(Tests\Workflow\EmptyWorkflow::class)
+    ->addWorkflow(Tests\Workflow\RuntimeSignalWorkflow::class)
     ->addActivity(Tests\Activity\SimpleActivity::class);
 
 $worker->run();
