@@ -9,7 +9,6 @@ import (
 	"github.com/spiral/roadrunner/v2/interfaces/server"
 	"github.com/spiral/roadrunner/v2/util"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
-	"go.temporal.io/sdk/worker"
 	"sync"
 	"sync/atomic"
 )
@@ -139,7 +138,7 @@ func (svc *Plugin) poolListener(event interface{}) {
 // AddListener adds event listeners to the service.
 func (svc *Plugin) startPool() (workflowPool, error) {
 	// we always expect to run workflow pool with empty cache
-	worker.PurgeStickyWorkflowCache()
+	//worker.PurgeStickyWorkflowCache()
 
 	pool, err := newWorkflowPool(svc.poolListener, svc.server)
 	if err != nil {
