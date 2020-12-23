@@ -29,6 +29,10 @@ func Test_ListQueries(t *testing.T) {
 	assert.Error(t, err)
 
 	assert.Contains(t, err.Error(), "KnownQueryTypes=[get]")
+
+	var r int
+	assert.NoError(t, w.Get(context.Background(), &r))
+	assert.Equal(t, 0, r)
 }
 
 func Test_GetQuery(t *testing.T) {
@@ -54,5 +58,8 @@ func Test_GetQuery(t *testing.T) {
 
 	var r int
 	assert.NoError(t, v.Get(&r))
+	assert.Equal(t, 88, r)
+
+	assert.NoError(t, w.Get(context.Background(), &r))
 	assert.Equal(t, 88, r)
 }
