@@ -1,11 +1,9 @@
 package roadrunner_temporal
 
 import (
-	"github.com/fatih/color"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2"
-	"log"
 	"time"
 )
 
@@ -118,7 +116,7 @@ func Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 	}
 
 	// todo: REMOVE once complete
-	log.Print(color.GreenString(string(p.Body)))
+	//log.Print(color.GreenString(string(p.Body)))
 
 	out, err := e.Exec(p)
 	if err != nil {
@@ -126,7 +124,7 @@ func Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 	}
 
 	// todo: REMOVE once complete
-	log.Print(color.HiYellowString(string(out.Body)))
+	//log.Print(color.HiYellowString(string(out.Body)))
 
 	err = jsoniter.Unmarshal(out.Body, &result)
 	if err != nil {

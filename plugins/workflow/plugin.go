@@ -9,6 +9,7 @@ import (
 	"github.com/spiral/roadrunner/v2/interfaces/server"
 	"github.com/spiral/roadrunner/v2/util"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
+	"go.temporal.io/sdk/worker"
 	"sync"
 	"sync/atomic"
 )
@@ -137,6 +138,9 @@ func (svc *Plugin) poolListener(event interface{}) {
 
 // AddListener adds event listeners to the service.
 func (svc *Plugin) startPool() (workflowPool, error) {
+	// we always expect to run workflow pool with empty cache
+	worker.PurgeStickyWorkflowCache()
+
 	pool, err := newWorkflowPool(svc.poolListener, svc.server)
 	if err != nil {
 		return nil, errors.E(errors.Op("initWorkflowPool"), err)
@@ -153,28 +157,29 @@ func (svc *Plugin) startPool() (workflowPool, error) {
 }
 
 func (svc *Plugin) replacePool() error {
+	svc.mu.Lock()
+	defer svc.mu.Unlock()
+
 	svc.log.Debug("Replace workflow pool")
+
+	if svc.pool != nil {
+		errD := svc.pool.Destroy(context.Background())
+		svc.pool = nil
+		if errD != nil {
+			svc.log.Error(
+				"Unable to destroy expired workflow pool",
+				"error",
+				errors.E(errors.Op("destroyWorkflowPool"), errD),
+			)
+		}
+	}
 
 	pool, err := svc.startPool()
 	if err != nil {
 		return errors.E(errors.Op("newWorkflowPool"), err)
 	}
 
-	var previous workflowPool
-
-	svc.mu.Lock()
-	previous, svc.pool = svc.pool, pool
-	svc.mu.Unlock()
-
-	// todo: move up
-	errD := previous.Destroy(context.Background())
-	if errD != nil {
-		svc.log.Error(
-			"Unable to destroy expired workflow pool",
-			"error",
-			errors.E(errors.Op("destroyWorkflowPool"), errD),
-		)
-	}
+	svc.pool = pool
 
 	return nil
 }

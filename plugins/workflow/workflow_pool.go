@@ -157,7 +157,6 @@ func (pool *workflowPoolImpl) initWorkers(ctx context.Context, temporal temporal
 
 	for _, info := range workerInfo {
 		w, err := temporal.CreateWorker(info.TaskQueue, info.Options)
-		//worker.SetStickyWorkflowCacheSize(1)
 		if err != nil {
 			return errors.E(errors.Op("createTemporalWorker"), err, pool.Destroy(ctx))
 		}

@@ -29,6 +29,7 @@ func Test_VerifyRegistration(t *testing.T) {
 	assert.Contains(t, s.workflows.WorkflowNames(), "RuntimeSignalWorkflow")
 	assert.Contains(t, s.workflows.WorkflowNames(), "WorkflowWithSignalledLoop")
 	assert.Contains(t, s.workflows.WorkflowNames(), "SimpleSignalledWorkflowWithSleep")
+	assert.Contains(t, s.workflows.WorkflowNames(), "CancelledScopeWorkflow")
 	assert.Contains(t, s.activities.ActivityNames(), "SimpleActivity.echo")
 
 	// todo: fix bug
@@ -52,6 +53,25 @@ func Test_ExecuteSimpleWorkflow(t *testing.T) {
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "HELLO WORLD", result)
+}
+
+func Test_ExecuteSimpleWorkflowWithSequenceInBatch(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"WorkflowWithSequence",
+		"Hello World",
+	)
+	assert.NoError(t, err)
+
+	var result string
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "OK", result)
 }
 
 func Test_MultipleWorkflowsInSingleWorker(t *testing.T) {

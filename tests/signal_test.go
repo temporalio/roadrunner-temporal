@@ -126,7 +126,7 @@ func Test_RuntimeSignal(t *testing.T) {
 	})
 }
 
-//func Test_RuntimeSignalLoop(t *testing.T) {
+//func Test_RuntimeLoop(t *testing.T) {
 //	s := NewTestServer()
 //	defer s.MustClose()
 //
@@ -166,3 +166,45 @@ func Test_RuntimeSignal(t *testing.T) {
 //		return false
 //	})
 //}
+
+func Test_SignalSteps(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"WorkflowWithSignalledSteps",
+	)
+	assert.NoError(t, err)
+
+	err = s.Client().SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), "begin", true)
+	assert.NoError(t, err)
+
+	err = s.Client().SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), "next1", true)
+	assert.NoError(t, err)
+
+	v, err := s.Client().QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "value", nil)
+	assert.NoError(t, err)
+
+	var r int
+	assert.NoError(t, v.Get(&r))
+	assert.Equal(t, 2, r)
+
+	err = s.Client().SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), "next2", true)
+	assert.NoError(t, err)
+
+	v, err = s.Client().QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "value", nil)
+	assert.NoError(t, err)
+
+	assert.NoError(t, v.Get(&r))
+	assert.Equal(t, 3, r)
+
+	var result int
+	assert.NoError(t, w.Get(context.Background(), &result))
+
+	// 3 ticks
+	assert.Equal(t, 3, result)
+}
