@@ -174,3 +174,30 @@ func (s *TestServer) AssertContainsEvent(t *testing.T, w client.WorkflowRun, ass
 		}
 	}
 }
+
+func (s *TestServer) AssertNotContainsEvent(t *testing.T, w client.WorkflowRun, assert func(*history.HistoryEvent) bool) {
+	i := s.Client().GetWorkflowHistory(
+		context.Background(),
+		w.GetID(),
+		w.GetRunID(),
+		false,
+		enums.HISTORY_EVENT_FILTER_TYPE_ALL_EVENT,
+	)
+
+	for {
+		if !i.HasNext() {
+			break
+		}
+
+		e, err := i.Next()
+		if err != nil {
+			t.Error("unable to read history event")
+			break
+		}
+
+		if assert(e) {
+			t.Error("found unexpected event")
+			break
+		}
+	}
+}
