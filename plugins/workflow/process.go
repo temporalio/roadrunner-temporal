@@ -100,12 +100,6 @@ func (wp *workflowProcess) StackTrace() string {
 
 // Close the workflow.
 func (wp *workflowProcess) Close() {
-	if !wp.pool.Active() {
-		// parent worker is already dead
-		// todo: move into pool
-		return
-	}
-
 	if !wp.completed {
 		// offloaded from memory
 		_, err := wp.mq.pushCommand(

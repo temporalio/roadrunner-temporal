@@ -29,7 +29,6 @@ type (
 		Destroy(ctx context.Context) error
 		Workers() []roadrunner.WorkerBase
 		WorkflowNames() []string
-		Active() bool
 	}
 
 	PoolEvent struct {
@@ -78,6 +77,10 @@ func newWorkflowPool(listener util.EventListener, factory server.Server) (workfl
 
 // Start the pool in non blocking mode.
 func (pool *workflowPoolImpl) Start(ctx context.Context, temporal temporal.Temporal) error {
+	pool.mu.Lock()
+	pool.active = true
+	pool.mu.Unlock()
+
 	err := pool.initWorkers(ctx, temporal)
 	if err != nil {
 		return errors.E(errors.Op("initWorkers"), err)
@@ -90,8 +93,6 @@ func (pool *workflowPoolImpl) Start(ctx context.Context, temporal temporal.Tempo
 		}
 	}
 
-	pool.active = true
-
 	return nil
 }
 
@@ -102,6 +103,9 @@ func (pool *workflowPoolImpl) Active() bool {
 
 // Destroy stops all temporal workers and application worker.
 func (pool *workflowPoolImpl) Destroy(ctx context.Context) error {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+
 	pool.active = false
 	for i := 0; i < len(pool.tWorkers); i++ {
 		pool.tWorkers[i].Stop()
@@ -128,6 +132,10 @@ func (pool *workflowPoolImpl) SeqID() uint64 {
 func (pool *workflowPoolImpl) Exec(p roadrunner.Payload) (roadrunner.Payload, error) {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
+
+	if !pool.active {
+		return roadrunner.EmptyPayload, nil
+	}
 
 	return pool.worker.Exec(p)
 }
