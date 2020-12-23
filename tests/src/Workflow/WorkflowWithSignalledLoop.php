@@ -17,7 +17,7 @@ class WorkflowWithSignalledLoop
         // tick on every signal until exit signal
         $counter = 0;
         while (true) {
-            // todo: add to Workflow
+            // todo: add to Workflow ?
             $value = yield $this->waitSignal('tick');
             error_log(print_r($value, true));
 
@@ -32,10 +32,14 @@ class WorkflowWithSignalledLoop
         return $counter;
     }
 
+    // is this correct?
     private function waitSignal(string $name): PromiseInterface
     {
         $signal = new Deferred();
-        Workflow::registerSignal($name, [$signal, 'resolve']);
+        Workflow::registerSignal($name, function ($value) use ($signal) {
+            $signal->resolve($value);
+            error_log("got signal");
+        });
 
         return $signal->promise();
     }
