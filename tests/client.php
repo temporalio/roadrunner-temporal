@@ -22,6 +22,8 @@ $worker->createAndRegister()
     ->addWorkflow(Tests\Workflow\RuntimeSignalWorkflow::class)
     ->addWorkflow(Tests\Workflow\WorkflowWithSignalledLoop::class)
     ->addWorkflow(Tests\Workflow\CancelledScopeWorkflow::class)
+    ->addWorkflow(Tests\Workflow\WorkflowWithSignalledSteps::class)
+    ->addWorkflow(Tests\Workflow\WorkflowWithSequence::class)
     ->addActivity(Tests\Activity\SimpleActivity::class);
 
 $worker->run();
