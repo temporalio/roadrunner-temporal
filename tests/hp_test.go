@@ -191,3 +191,22 @@ func Test_EmptyWorkflow(t *testing.T) {
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, 42, result)
 }
+
+func Test_PromiseChaining(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"ChainedWorkflow",
+		"Hello World",
+	)
+	assert.NoError(t, err)
+
+	var result string
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "result:hello world", result)
+}

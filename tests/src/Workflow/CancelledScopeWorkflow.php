@@ -1,8 +1,6 @@
 <?php
 
-
 namespace Temporal\Tests\Workflow;
-
 
 use Temporal\Client\Activity\ActivityOptions;
 use Temporal\Client\Workflow;
@@ -30,6 +28,7 @@ class CancelledScopeWorkflow
 
         yield Workflow::timer(1);
         $scope->cancel();
+        yield Workflow::timer(1);
 
         return $cancelled;
     }

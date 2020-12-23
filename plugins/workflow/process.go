@@ -286,6 +286,8 @@ func (wp *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 		if err != nil {
 			return err
 		}
+
+		wp.mq.pushResponse(id, []jsoniter.RawMessage{[]byte("\"cancelled\"")})
 	}
 
 	return nil
