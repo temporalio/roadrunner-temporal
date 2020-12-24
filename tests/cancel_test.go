@@ -25,7 +25,7 @@ func Test_CancellableWorkflow(t *testing.T) {
 
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
-	assert.Equal(t, "ok", result)
+	assert.Equal(t, "yes", result)
 
 	s.AssertContainsEvent(t, w, func(event *history.HistoryEvent) bool {
 		return event.EventType == enums.EVENT_TYPE_TIMER_CANCELED
