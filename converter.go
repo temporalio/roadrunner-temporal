@@ -1,7 +1,8 @@
-package roadrunner_temporal
+package roadrunner_temporal //nolint:golint,stylecheck
 
 import (
 	"fmt"
+
 	"github.com/spiral/errors"
 
 	jsoniter "github.com/json-iterator/go"
@@ -111,7 +112,6 @@ func (r *DataConverter) ToStrings(input *commonpb.Payloads) []string {
 func FromPayloads(dc converter.DataConverter, payloads *commonpb.Payloads, values *[]jsoniter.RawMessage) error {
 	if payloads == nil {
 		return nil
-
 	}
 	*values = make([]jsoniter.RawMessage, 0, len(payloads.Payloads))
 

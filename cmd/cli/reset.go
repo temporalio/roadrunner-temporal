@@ -2,12 +2,13 @@ package cli
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/fatih/color"
 	"github.com/mattn/go-runewidth"
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb/v5"
 	"github.com/vbauerster/mpb/v5/decor"
-	"sync"
 )
 
 func init() {

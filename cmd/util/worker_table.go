@@ -4,15 +4,15 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter"
+	"github.com/spiral/roadrunner/v2/tools"
+
 	"io"
 	"strconv"
 	"time"
-
-	"github.com/spiral/roadrunner/v2"
 )
 
 // WorkerTable renders table with information about rr server workers.
-func WorkerTable(writer io.Writer, workers []roadrunner.ProcessState) *tablewriter.Table {
+func WorkerTable(writer io.Writer, workers []tools.ProcessState) *tablewriter.Table {
 	tw := tablewriter.NewWriter(writer)
 	tw.SetHeader([]string{"PID", "Status", "Execs", "Memory", "Created"})
 	tw.SetColMinWidth(0, 7)

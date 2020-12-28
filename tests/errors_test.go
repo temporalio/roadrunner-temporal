@@ -2,11 +2,12 @@ package tests
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
-	"go.temporal.io/sdk/client"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"go.temporal.io/sdk/client"
 )
 
 func Test_WorkerError_DisasterRecovery(t *testing.T) {
@@ -19,7 +20,7 @@ func Test_WorkerError_DisasterRecovery(t *testing.T) {
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
 		client.StartWorkflowOptions{
-			TaskQueue:           "default",
+			TaskQueue: "default",
 		},
 		"TimerWorkflow",
 		"Hello World",

@@ -1,14 +1,15 @@
 package workflow
 
 import (
+	"strconv"
+	"sync/atomic"
+
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
-	"strconv"
-	"sync/atomic"
 )
 
 // wraps single workflow process
@@ -40,12 +41,16 @@ func (wf *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *com
 		Info: env.WorkflowInfo(),
 	}
 
+	// TODO no PANICS!
 	err := rrt.FromPayloads(env.GetDataConverter(), input, &start.Input)
 	if err != nil {
 		panic(err)
 	}
 
 	_, err = wf.mq.pushCommand(StartWorkflowCommand, start)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // OnWorkflowTaskStarted handles single workflow tick and batch of pipeline from temporal server.
@@ -191,6 +196,7 @@ func (wf *workflowProcess) handleQuery(queryType string, queryArgs *commonpb.Pay
 
 // process incoming command
 func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter.RawMessage) error {
+	const op = errors.Op("handle command")
 	rawCmd, err := parseCommand(wf.env.GetDataConverter(), name, params)
 	if err != nil {
 		return err
@@ -242,7 +248,7 @@ func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 
 		result, err := jsoniter.Marshal(version)
 		if err != nil {
-			return err
+			return errors.E(op, err)
 		}
 
 		wf.mq.pushResponse(id, []jsoniter.RawMessage{result})
@@ -284,7 +290,7 @@ func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 	case Cancel:
 		err = wf.canceller.cancel(cmd.CommandIDs...)
 		if err != nil {
-			return err
+			return errors.E(op, err)
 		}
 
 		wf.mq.pushResponse(id, []jsoniter.RawMessage{[]byte("\"cancelled\"")})
@@ -350,11 +356,12 @@ func (wf *workflowProcess) createContinuableCallback(id uint64) bindings.ResultH
 
 // Exchange messages between host and worker processes and add new commands to the queue.
 func (wf *workflowProcess) flushQueue() error {
+	const op = errors.Op("flush queue")
 	messages, err := rrt.Execute(wf.pool, wf.getContext(), wf.mq.queue...)
 	wf.mq.flush()
 
 	if err != nil {
-		return err
+		return errors.E(op, err)
 	}
 
 	wf.pipeline = append(wf.pipeline, messages...)
@@ -364,11 +371,12 @@ func (wf *workflowProcess) flushQueue() error {
 
 // Exchange messages between host and worker processes without adding new commands to the queue.
 func (wf *workflowProcess) discardQueue() ([]rrt.Message, error) {
+	const op = errors.Op("discard queue")
 	messages, err := rrt.Execute(wf.pool, wf.getContext(), wf.mq.queue...)
 	wf.mq.flush()
 
 	if err != nil {
-		return nil, err
+		return nil, errors.E(op, err)
 	}
 
 	return messages, nil
@@ -376,11 +384,15 @@ func (wf *workflowProcess) discardQueue() ([]rrt.Message, error) {
 
 // Run single command and return single result.
 func (wf *workflowProcess) runCommand(command string, params interface{}) (rrt.Message, error) {
+	const op = errors.Op("run command")
 	_, msg, err := wf.mq.makeCommand(command, params)
+	if err != nil {
+		return rrt.Message{}, err
+	}
 
 	result, err := rrt.Execute(wf.pool, wf.getContext(), msg)
 	if err != nil {
-		return rrt.Message{}, err
+		return rrt.Message{}, errors.E(op, err)
 	}
 
 	if len(result) != 1 {

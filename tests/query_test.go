@@ -2,10 +2,11 @@ package tests
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
-	"go.temporal.io/sdk/client"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"go.temporal.io/sdk/client"
 )
 
 func Test_ListQueries(t *testing.T) {

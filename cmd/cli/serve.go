@@ -1,10 +1,12 @@
 package cli
 
 import (
-	"go.uber.org/zap"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/spiral/errors"
+	"go.uber.org/zap"
 
 	"github.com/spf13/cobra"
 )
@@ -18,18 +20,19 @@ func init() {
 }
 
 func handler(cmd *cobra.Command, args []string) error {
+	const op = errors.Op("serve handler")
 	/*
 		We need to have path to the config at the RegisterTarget stage
 		But after cobra.Execute, because cobra fills up cli variables on this stage
 	*/
 	err := Container.Init()
 	if err != nil {
-		return err
+		return errors.E(op, err)
 	}
 
 	errCh, err := Container.Serve()
 	if err != nil {
-		return err
+		return errors.E(op, err)
 	}
 
 	// https://golang.org/pkg/os/signal/#Notify
@@ -51,7 +54,7 @@ func handler(cmd *cobra.Command, args []string) error {
 		case <-c:
 			err = Container.Stop()
 			if err != nil {
-				return err
+				return errors.E(op, err)
 			}
 			return nil
 		}

@@ -1,13 +1,14 @@
 package cli
 
 import (
-	"github.com/spiral/errors"
-	"github.com/spiral/goridge/v2"
-	rpcPlugin "github.com/spiral/roadrunner/v2/plugins/rpc"
 	"log"
 	"net/rpc"
 	"os"
 	"path/filepath"
+
+	"github.com/spiral/errors"
+	goridgeRpc "github.com/spiral/goridge/v3/pkg/rpc"
+	rpcPlugin "github.com/spiral/roadrunner/v2/plugins/rpc"
 
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	"go.uber.org/zap"
@@ -101,11 +102,11 @@ func RPCClient() (*rpc.Client, error) {
 		return nil, err
 	}
 
-	if !cfg.Has(rpcPlugin.ServiceName) {
+	if !cfg.Has(rpcPlugin.PluginName) {
 		return nil, errors.E("rpc service disabled")
 	}
 
-	err = cfg.UnmarshalKey(rpcPlugin.ServiceName, rpcConfig)
+	err = cfg.UnmarshalKey(rpcPlugin.PluginName, rpcConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +117,7 @@ func RPCClient() (*rpc.Client, error) {
 		return nil, err
 	}
 
-	return rpc.NewClientWithCodec(goridge.NewClientCodec(conn)), nil
+	return rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn)), nil
 }
 
 func initLogger() *zap.Logger {

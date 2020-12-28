@@ -2,13 +2,14 @@ package tests
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/fatih/color"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
 	"go.temporal.io/sdk/client"
-	"testing"
-	"time"
 )
 
 func init() {
@@ -37,7 +38,7 @@ func Test_VerifyRegistration(t *testing.T) {
 	assert.Contains(t, s.activities.ActivityNames(), "HeartBeatActivity.doSomething")
 
 	// todo: fix bug
-	//assert.Contains(t, s.activities.ActivityNames(), "SimpleActivity.lower")
+	// assert.Contains(t, s.activities.ActivityNames(), "SimpleActivity.lower")
 }
 
 func Test_ExecuteSimpleWorkflow(t *testing.T) {
