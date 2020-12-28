@@ -1,6 +1,7 @@
 package temporal
 
 import (
+	"fmt"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/interfaces/log"
 	"github.com/spiral/roadrunner/v2/pkg/pool"
@@ -9,6 +10,8 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
+	"os"
+	"sync/atomic"
 )
 
 const PluginName = "temporal"
@@ -28,10 +31,11 @@ type (
 	}
 
 	Plugin struct {
-		cfg    Config
-		dc     converter.DataConverter
-		log    log.Logger
-		client client.Client
+		workerID int32
+		cfg      Config
+		dc       converter.DataConverter
+		log      log.Logger
+		client   client.Client
 	}
 )
 
@@ -94,6 +98,21 @@ func (srv *Plugin) CreateWorker(tq string, options worker.Options) (worker.Worke
 		return nil, errors.E("unable to create worker, invalid temporal srv")
 	}
 
+	if options.Identity == "" {
+		if tq == "" {
+			tq = client.DefaultNamespace
+		}
+
+		// ensures unique worker IDs
+		options.Identity = fmt.Sprintf(
+			"%d@%s@%s@%v",
+			os.Getpid(),
+			getHostName(),
+			tq,
+			atomic.AddInt32(&srv.workerID, 1),
+		)
+	}
+
 	return worker.New(srv.client, tq, options), nil
 }
 
@@ -105,4 +124,12 @@ func (srv *Plugin) Name() string {
 // RPCService returns associated rpc service.
 func (srv *Plugin) RPC() interface{} {
 	return &rpc{srv: srv}
+}
+
+func getHostName() string {
+	hostName, err := os.Hostname()
+	if err != nil {
+		hostName = "Unknown"
+	}
+	return hostName
 }

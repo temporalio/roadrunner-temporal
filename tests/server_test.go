@@ -17,7 +17,6 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"os"
 	"testing"
 )
 
@@ -48,11 +47,6 @@ func NewTestServer(opt ...ConfigOption) *TestServer {
 	w := &workflow.Plugin{}
 
 	if err := e.Register(initConfig(opt...)); err != nil {
-		panic(err)
-	}
-
-	// always work within the php/python/etc domain
-	if err := os.Chdir("cases"); err != nil {
 		panic(err)
 	}
 
@@ -112,8 +106,6 @@ func (t *TestServer) Client() client.Client {
 }
 
 func (t *TestServer) MustClose() {
-	os.Chdir("..")
-
 	err := t.container.Stop()
 	if err != nil {
 		panic(err)
@@ -178,6 +170,33 @@ func (s *TestServer) AssertContainsEvent(t *testing.T, w client.WorkflowRun, ass
 		}
 
 		if assert(e) {
+			break
+		}
+	}
+}
+
+func (s *TestServer) AssertNotContainsEvent(t *testing.T, w client.WorkflowRun, assert func(*history.HistoryEvent) bool) {
+	i := s.Client().GetWorkflowHistory(
+		context.Background(),
+		w.GetID(),
+		w.GetRunID(),
+		false,
+		enums.HISTORY_EVENT_FILTER_TYPE_ALL_EVENT,
+	)
+
+	for {
+		if !i.HasNext() {
+			break
+		}
+
+		e, err := i.Next()
+		if err != nil {
+			t.Error("unable to read history event")
+			break
+		}
+
+		if assert(e) {
+			t.Error("found unexpected event")
 			break
 		}
 	}

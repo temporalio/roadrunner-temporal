@@ -24,8 +24,17 @@ func Test_VerifyRegistration(t *testing.T) {
 	assert.Contains(t, s.workflows.WorkflowNames(), "ParallelScopesWorkflow")
 	assert.Contains(t, s.workflows.WorkflowNames(), "TimerWorkflow")
 	assert.Contains(t, s.workflows.WorkflowNames(), "SideEffectWorkflow")
+	assert.Contains(t, s.workflows.WorkflowNames(), "QueryWorkflow")
+	assert.Contains(t, s.workflows.WorkflowNames(), "EmptyWorkflow")
+	assert.Contains(t, s.workflows.WorkflowNames(), "RuntimeSignalWorkflow")
 	assert.Contains(t, s.workflows.WorkflowNames(), "SimpleSignalledWorkflowWithSleep")
+	assert.Contains(t, s.workflows.WorkflowNames(), "WithChildWorkflow")
+	assert.Contains(t, s.workflows.WorkflowNames(), "WithChildStubWorkflow")
+	assert.Contains(t, s.workflows.WorkflowNames(), "CancelledScopeWorkflow")
+	assert.Contains(t, s.workflows.WorkflowNames(), "SimpleHeartbeatWorkflow")
+
 	assert.Contains(t, s.activities.ActivityNames(), "SimpleActivity.echo")
+	assert.Contains(t, s.activities.ActivityNames(), "HeartBeatActivity.doSomething")
 
 	// todo: fix bug
 	//assert.Contains(t, s.activities.ActivityNames(), "SimpleActivity.lower")
@@ -48,6 +57,25 @@ func Test_ExecuteSimpleWorkflow(t *testing.T) {
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "HELLO WORLD", result)
+}
+
+func Test_ExecuteSimpleWorkflowWithSequenceInBatch(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"WorkflowWithSequence",
+		"Hello World",
+	)
+	assert.NoError(t, err)
+
+	var result string
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "OK", result)
 }
 
 func Test_MultipleWorkflowsInSingleWorker(t *testing.T) {
@@ -147,4 +175,61 @@ func Test_SideEffect(t *testing.T) {
 	s.AssertContainsEvent(t, w, func(event *history.HistoryEvent) bool {
 		return event.EventType == enums.EVENT_TYPE_MARKER_RECORDED
 	})
+}
+
+func Test_EmptyWorkflow(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"EmptyWorkflow",
+		"Hello World",
+	)
+	assert.NoError(t, err)
+
+	var result int
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, 42, result)
+}
+
+func Test_PromiseChaining(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"ChainedWorkflow",
+		"Hello World",
+	)
+	assert.NoError(t, err)
+
+	var result string
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "result:hello world", result)
+}
+
+func Test_ActivityHeartbeat(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"SimpleHeartbeatWorkflow",
+		3,
+	)
+	assert.NoError(t, err)
+
+	var result string
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "OK", result)
 }

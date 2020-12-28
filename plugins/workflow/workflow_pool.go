@@ -78,6 +78,10 @@ func newWorkflowPool(listener events.EventListener, factory server.Server) (work
 
 // Start the pool in non blocking mode.
 func (pool *workflowPoolImpl) Start(ctx context.Context, temporal temporal.Temporal) error {
+	pool.mu.Lock()
+	pool.active = true
+	pool.mu.Unlock()
+
 	err := pool.initWorkers(ctx, temporal)
 	if err != nil {
 		return errors.E(errors.Op("initWorkers"), err)
@@ -88,16 +92,12 @@ func (pool *workflowPoolImpl) Start(ctx context.Context, temporal temporal.Tempo
 		if err != nil {
 			return errors.E(errors.Op("startTemporalWorker"), err)
 		}
-	}
-	
-	return nil
-}
 
-// Destroy stops all temporal workers and application worker.
-func (pool *workflowPoolImpl) Destroy(ctx context.Context) error {
 	for i := 0; i < len(pool.tWorkers); i++ {
 		pool.tWorkers[i].Stop()
 	}
+
+	worker.PurgeStickyWorkflowCache()
 
 	if err := pool.worker.Stop(ctx); err != nil {
 		return errors.E(errors.Op("stopWorkflowWorker"), err)
@@ -120,6 +120,10 @@ func (pool *workflowPoolImpl) SeqID() uint64 {
 func (pool *workflowPoolImpl) Exec(p payload.Payload) (payload.Payload, error) {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
+
+	if !pool.active {
+		return roadrunner.EmptyPayload, nil
+	}
 
 	return pool.worker.Exec(p)
 }
@@ -147,9 +151,7 @@ func (pool *workflowPoolImpl) initWorkers(ctx context.Context, temporal temporal
 	pool.workflows = make(map[string]rrt.WorkflowInfo)
 	pool.tWorkers = make([]worker.Worker, 0)
 
-	for _, info := range workerInfo {
-		w, err := temporal.CreateWorker(info.TaskQueue, info.Options)
-		// worker.SetStickyWorkflowCacheSize(1)
+
 		if err != nil {
 			return errors.E(errors.Op("createTemporalWorker"), err, pool.Destroy(ctx))
 		}

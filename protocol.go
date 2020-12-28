@@ -119,11 +119,17 @@ func Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 	}
 
 	// todo: REMOVE once complete
+	//log.Print(color.MagentaString(string(p.Context)))
 	log.Print(color.GreenString(string(p.Body)))
 
 	out, err := e.Exec(p)
 	if err != nil {
 		return nil, errors.E(errors.Op("execute"), err)
+	}
+
+	if len(out.Body) == 0 {
+		// worker inactive or closed
+		return nil, nil
 	}
 
 	// todo: REMOVE once complete
