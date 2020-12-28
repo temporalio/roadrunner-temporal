@@ -26,6 +26,8 @@ $worker->createAndRegister()
     ->addWorkflow(Tests\Workflow\ChainedWorkflow::class)
     ->addWorkflow(Tests\Workflow\WithChildWorkflow::class)
     ->addWorkflow(Tests\Workflow\WithChildStubWorkflow::class)
-    ->addActivity(Tests\Activity\SimpleActivity::class);
+    ->addWorkflow(Tests\Workflow\SimpleHeartbeatWorkflow::class)
+    ->addActivity(Tests\Activity\SimpleActivity::class)
+    ->addActivity(Tests\Activity\HeartBeatActivity::class);
 
 $worker->run();
