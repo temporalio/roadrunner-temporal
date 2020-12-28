@@ -21,7 +21,7 @@ class CancelledScopeWorkflow
 
         $scope = Workflow::newCancellationScope(function () use ($simple) {
             yield Workflow::timer(2);
-            yield $simple->echo('hello');
+            yield $simple->echo('hell o');
         })->onCancel(function () use (&$cancelled) {
             $cancelled = 'yes';
         });

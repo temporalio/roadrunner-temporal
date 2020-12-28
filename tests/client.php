@@ -24,6 +24,8 @@ $worker->createAndRegister()
     ->addWorkflow(Tests\Workflow\WorkflowWithSignalledSteps::class)
     ->addWorkflow(Tests\Workflow\WorkflowWithSequence::class)
     ->addWorkflow(Tests\Workflow\ChainedWorkflow::class)
+    ->addWorkflow(Tests\Workflow\WithChildWorkflow::class)
+    ->addWorkflow(Tests\Workflow\WithChildStubWorkflow::class)
     ->addActivity(Tests\Activity\SimpleActivity::class);
 
 $worker->run();
