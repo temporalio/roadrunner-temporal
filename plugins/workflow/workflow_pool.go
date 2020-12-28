@@ -111,6 +111,8 @@ func (pool *workflowPoolImpl) Destroy(ctx context.Context) error {
 		pool.tWorkers[i].Stop()
 	}
 
+	worker.PurgeStickyWorkflowCache()
+
 	if err := pool.worker.Stop(ctx); err != nil {
 		return errors.E(errors.Op("stopWorkflowWorker"), err)
 	}
