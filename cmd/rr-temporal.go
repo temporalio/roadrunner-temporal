@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	"github.com/spiral/endure"
 	"github.com/spiral/roadrunner/v2/plugins/informer"
 	"github.com/spiral/roadrunner/v2/plugins/resetter"
 
@@ -17,7 +18,13 @@ import (
 )
 
 func main() {
-	err := cli.InitApp(
+	var err error
+	cli.Container, err = endure.NewContainer(cli.InitLogger(), endure.RetryOnFail(false))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = cli.Container.RegisterAll(
 		// todo: move to root
 		&logger.ZapLogger{},
 

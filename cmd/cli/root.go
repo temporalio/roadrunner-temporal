@@ -31,24 +31,6 @@ var (
 	}
 )
 
-// InitApp with a list of provided services.
-func InitApp(service ...interface{}) error {
-	var err error
-	Container, err = endure.NewContainer(initLogger(), endure.RetryOnFail(false))
-	if err != nil {
-		return err
-	}
-
-	for _, svc := range service {
-		err = Container.Register(svc)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func Execute() {
 	if err := root.Execute(); err != nil {
 		// exit with error, fatal invoke os.Exit(1)
@@ -61,7 +43,7 @@ func init() {
 	root.PersistentFlags().StringVarP(&WorkDir, "WorkDir", "w", "", "work directory")
 
 	// todo: properly handle debug level
-	Logger = initLogger()
+	Logger = InitLogger()
 
 	cobra.OnInitialize(func() {
 		if CfgFile != "" {
@@ -120,7 +102,7 @@ func RPCClient() (*rpc.Client, error) {
 	return rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn)), nil
 }
 
-func initLogger() *zap.Logger {
+func InitLogger() *zap.Logger {
 	// todo: we do not need it
 	cfg := zap.Config{
 		Level:    zap.NewAtomicLevelAt(zap.ErrorLevel),
