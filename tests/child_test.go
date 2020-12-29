@@ -2,9 +2,10 @@ package tests
 
 import (
 	"context"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/client"
-	"testing"
 )
 
 func Test_ExecuteChildWorkflow(t *testing.T) {

@@ -2,13 +2,14 @@ package tests
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
 	"go.temporal.io/sdk/client"
-	"testing"
-	"time"
 )
 
 func Test_SignalsWithoutSignals(t *testing.T) {

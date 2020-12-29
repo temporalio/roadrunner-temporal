@@ -2,15 +2,17 @@ package workflow
 
 import (
 	"context"
-	"github.com/cenkalti/backoff/v4"
-	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner/v2"
-	"github.com/spiral/roadrunner/v2/interfaces/log"
-	"github.com/spiral/roadrunner/v2/interfaces/server"
-	"github.com/spiral/roadrunner/v2/util"
-	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	"sync"
 	"sync/atomic"
+
+	"github.com/cenkalti/backoff/v4"
+	"github.com/spiral/errors"
+	"github.com/spiral/roadrunner/v2/interfaces/events"
+	"github.com/spiral/roadrunner/v2/interfaces/worker"
+	eventsImpl "github.com/spiral/roadrunner/v2/pkg/events"
+	"github.com/spiral/roadrunner/v2/plugins/logger"
+	"github.com/spiral/roadrunner/v2/plugins/server"
+	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 )
 
 const (
@@ -24,9 +26,9 @@ const (
 // Plugin manages workflows and workers.
 type Plugin struct {
 	temporal temporal.Temporal
-	events   util.EventsHandler
+	events   events.Handler
 	server   server.Server
-	log      log.Logger
+	log      logger.Logger
 	mu       sync.Mutex
 	reset    chan struct{}
 	pool     workflowPool
@@ -34,10 +36,10 @@ type Plugin struct {
 }
 
 // logger dep also
-func (svc *Plugin) Init(temporal temporal.Temporal, server server.Server, log log.Logger) error {
+func (svc *Plugin) Init(temporal temporal.Temporal, server server.Server, log logger.Logger) error {
 	svc.temporal = temporal
 	svc.server = server
-	svc.events = util.NewEventsHandler()
+	svc.events = eventsImpl.NewEventsHandler()
 	svc.log = log
 	svc.reset = make(chan struct{})
 
@@ -101,7 +103,7 @@ func (svc *Plugin) Name() string {
 }
 
 // Name of the service.
-func (svc *Plugin) Workers() []roadrunner.WorkerBase {
+func (svc *Plugin) Workers() []worker.BaseProcess {
 	return svc.pool.Workers()
 }
 
@@ -118,16 +120,15 @@ func (svc *Plugin) Reset() error {
 }
 
 // AddListener adds event listeners to the service.
-func (svc *Plugin) AddListener(listener util.EventListener) {
+func (svc *Plugin) AddListener(listener events.Listener) {
 	svc.events.AddListener(listener)
 }
 
 // AddListener adds event listeners to the service.
 func (svc *Plugin) poolListener(event interface{}) {
-	switch p := event.(type) {
-	case PoolEvent:
-		if p.Event == EventWorkerExit {
-			svc.log.Error("Workflow pool error", "error", p.Caused)
+	if ev, ok := event.(PoolEvent); ok {
+		if ev.Event == EventWorkerExit {
+			svc.log.Error("Workflow pool error", "error", ev.Caused)
 			svc.reset <- struct{}{}
 		}
 	}

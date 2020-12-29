@@ -2,11 +2,12 @@ package tests
 
 import (
 	"context"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
 	"go.temporal.io/sdk/client"
-	"testing"
 )
 
 func Test_CancellableWorkflow(t *testing.T) {

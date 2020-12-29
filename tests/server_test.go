@@ -2,6 +2,8 @@ package tests
 
 import (
 	"context"
+	"testing"
+
 	"github.com/spiral/endure"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	"github.com/spiral/roadrunner/v2/plugins/informer"
@@ -17,7 +19,6 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"testing"
 )
 
 type TestServer struct {
@@ -96,8 +97,8 @@ func NewTestServer(opt ...ConfigOption) *TestServer {
 	return &TestServer{container: e, temporal: t, activities: a, workflows: w}
 }
 
-func (t *TestServer) Client() client.Client {
-	c, err := t.temporal.GetClient()
+func (s *TestServer) Client() client.Client {
+	c, err := s.temporal.GetClient()
 	if err != nil {
 		panic(err)
 	}
@@ -105,8 +106,8 @@ func (t *TestServer) Client() client.Client {
 	return c
 }
 
-func (t *TestServer) MustClose() {
-	err := t.container.Stop()
+func (s *TestServer) MustClose() {
+	err := s.container.Stop()
 	if err != nil {
 		panic(err)
 	}

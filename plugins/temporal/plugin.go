@@ -2,16 +2,17 @@ package temporal
 
 import (
 	"fmt"
+	"os"
+	"sync/atomic"
+
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner/v2"
-	"github.com/spiral/roadrunner/v2/interfaces/log"
+	poolImpl "github.com/spiral/roadrunner/v2/pkg/pool"
 	"github.com/spiral/roadrunner/v2/plugins/config"
+	"github.com/spiral/roadrunner/v2/plugins/logger"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
-	"os"
-	"sync/atomic"
 )
 
 const PluginName = "temporal"
@@ -27,20 +28,20 @@ type (
 	Config struct {
 		Address    string
 		Namespace  string
-		Activities *roadrunner.PoolConfig
+		Activities *poolImpl.Config
 	}
 
 	Plugin struct {
 		workerID int32
 		cfg      Config
 		dc       converter.DataConverter
-		log      log.Logger
+		log      logger.Logger
 		client   client.Client
 	}
 )
 
 // logger dep also
-func (srv *Plugin) Init(cfg config.Configurer, log log.Logger) error {
+func (srv *Plugin) Init(cfg config.Configurer, log logger.Logger) error {
 	srv.log = log
 	srv.dc = rrt.NewDataConverter(converter.GetDefaultDataConverter())
 

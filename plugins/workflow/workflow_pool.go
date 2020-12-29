@@ -6,9 +6,11 @@ import (
 	"sync/atomic"
 
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner/v2"
-	"github.com/spiral/roadrunner/v2/interfaces/server"
-	"github.com/spiral/roadrunner/v2/util"
+	"github.com/spiral/roadrunner/v2/interfaces/events"
+	rrWorker "github.com/spiral/roadrunner/v2/interfaces/worker"
+	"github.com/spiral/roadrunner/v2/pkg/payload"
+	syncWorker "github.com/spiral/roadrunner/v2/pkg/worker"
+	"github.com/spiral/roadrunner/v2/plugins/server"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	bindings "go.temporal.io/sdk/internalbindings"
@@ -24,10 +26,10 @@ const (
 type (
 	workflowPool interface {
 		SeqID() uint64
-		Exec(p roadrunner.Payload) (roadrunner.Payload, error)
+		Exec(p payload.Payload) (payload.Payload, error)
 		Start(ctx context.Context, temporal temporal.Temporal) error
 		Destroy(ctx context.Context) error
-		Workers() []roadrunner.WorkerBase
+		Workers() []rrWorker.BaseProcess
 		WorkflowNames() []string
 	}
 
@@ -39,35 +41,34 @@ type (
 
 	// workflowPoolImpl manages workflowProcess executions between worker restarts.
 	workflowPoolImpl struct {
-		events    util.EventsHandler
 		seqID     uint64
 		workflows map[string]rrt.WorkflowInfo
 		tWorkers  []worker.Worker
 		mu        sync.Mutex
-		worker    roadrunner.SyncWorker
+		worker    rrWorker.SyncWorker
 		active    bool
 	}
 )
 
 // newWorkflowPool creates new workflow pool.
-func newWorkflowPool(listener util.EventListener, factory server.Server) (workflowPool, error) {
+func newWorkflowPool(listener events.Listener, factory server.Server) (workflowPool, error) {
 	w, err := factory.NewWorker(
 		context.Background(),
 		map[string]string{"RR_MODE": RRMode},
+		listener,
 	)
 
 	if err != nil {
 		return nil, errors.E(errors.Op("newWorker"), err)
 	}
 
-	w.AddListener(listener)
-
+	// TODO: listener race ??
 	go func() {
 		err := w.Wait()
 		listener(PoolEvent{Event: EventWorkerExit, Caused: err})
 	}()
 
-	sw, err := roadrunner.NewSyncWorker(w)
+	sw, err := syncWorker.From(w)
 	if err != nil {
 		return nil, errors.E(errors.Op("newSyncWorker"), err)
 	}
@@ -113,7 +114,7 @@ func (pool *workflowPoolImpl) Destroy(ctx context.Context) error {
 
 	worker.PurgeStickyWorkflowCache()
 
-	if err := pool.worker.Stop(ctx); err != nil {
+	if err := pool.worker.Stop(); err != nil {
 		return errors.E(errors.Op("stopWorkflowWorker"), err)
 	}
 
@@ -131,24 +132,24 @@ func (pool *workflowPoolImpl) SeqID() uint64 {
 }
 
 // Exec set of commands in thread safe move.
-func (pool *workflowPoolImpl) Exec(p roadrunner.Payload) (roadrunner.Payload, error) {
+func (pool *workflowPoolImpl) Exec(p payload.Payload) (payload.Payload, error) {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
 	if !pool.active {
-		return roadrunner.EmptyPayload, nil
+		return payload.Payload{}, nil
 	}
 
 	return pool.worker.Exec(p)
 }
 
-func (pool *workflowPoolImpl) Workers() []roadrunner.WorkerBase {
-	return []roadrunner.WorkerBase{pool.worker}
+func (pool *workflowPoolImpl) Workers() []rrWorker.BaseProcess {
+	return []rrWorker.BaseProcess{pool.worker}
 }
 
 func (pool *workflowPoolImpl) WorkflowNames() []string {
 	names := make([]string, 0, len(pool.workflows))
-	for name, _ := range pool.workflows {
+	for name := range pool.workflows {
 		names = append(names, name)
 	}
 
