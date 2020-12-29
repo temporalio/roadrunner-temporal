@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 use Temporal\Client\Worker;
 use Temporal\Client\Worker\Transport\RoadRunner;
+use Temporal\Client\Worker\Transport\Goridge;
 use Temporal\Tests;
+use Spiral\Goridge\Relay;
 
 require __DIR__ . '/vendor/autoload.php';
 
-$worker = new Worker(RoadRunner::pipes());
+$worker = new Worker(
+    new RoadRunner(Relay::create(Relay::PIPES)),
+    new Goridge(Relay::create('tcp://127.0.0.1:6001'))
+);
 
 $worker->createAndRegister()
     ->addWorkflow(Tests\Workflow\SimpleWorkflow::class)
