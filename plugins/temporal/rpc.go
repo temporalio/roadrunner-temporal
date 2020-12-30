@@ -18,7 +18,7 @@ ListWorkflow(ctx context.Context, request *workflowservice.ListWorkflowExecution
 ListArchivedWorkflow(ctx context.Context, request *workflowservice.ListArchivedWorkflowExecutionsRequest) (*workflowservice.ListArchivedWorkflowExecutionsResponse, error)
 ScanWorkflow(ctx context.Context, request *workflowservice.ScanWorkflowExecutionsRequest) (*workflowservice.ScanWorkflowExecutionsResponse, error)
 CountWorkflow(ctx context.Context, request *workflowservice.CountWorkflowExecutionsRequest) (*workflowservice.CountWorkflowExecutionsResponse, error)
-etSearchAttributes(ctx context.Context) (*workflowservice.GetSearchAttributesResponse, error)
+GetSearchAttributes(ctx context.Context) (*workflowservice.GetSearchAttributesResponse, error)
 QueryWorkflowWithOptions(ctx context.Context, request *QueryWorkflowWithOptionsRequest) (*QueryWorkflowWithOptionsResponse, error)
 DescribeTaskQueue(ctx context.Context, taskqueue string, taskqueueType enumspb.TaskQueueType) (*workflowservice.DescribeTaskQueueResponse, error)
 DescribeWorkflowExecution(ctx context.Context, WorkflowID, runID string) (*workflowservice.DescribeWorkflowExecutionResponse, error)

@@ -226,9 +226,19 @@ func Test_ActivityHeartbeat(t *testing.T) {
 			TaskQueue: "default",
 		},
 		"SimpleHeartbeatWorkflow",
-		3,
+		2,
 	)
 	assert.NoError(t, err)
+
+	time.Sleep(time.Second)
+
+	we, err := s.Client().DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
+	assert.NoError(t, err)
+	assert.Len(t, we.PendingActivities, 1)
+
+	act := we.PendingActivities[0]
+
+	assert.Equal(t, `{"value":2}`, string(act.HeartbeatDetails.Payloads[0].Data))
 
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))

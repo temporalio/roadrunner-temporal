@@ -26,24 +26,20 @@ class WorkflowWithSignalledSteps
             return $value;
         });
 
-        $begin = $this->waitSignal('begin');
-        $next1 = $this->waitSignal('next1');
-        $next2 = $this->waitSignal('next2');
-
-        yield $begin;
+        yield $this->promiseSignal('begin');
         $value++;
 
-        yield $next1;
+        yield $this->promiseSignal('next1');
         $value++;
 
-        yield $next2;
+        yield $this->promiseSignal('next2');
         $value++;
 
         return $value;
     }
 
     // is this correct?
-    private function waitSignal(string $name): PromiseInterface
+    private function promiseSignal(string $name): PromiseInterface
     {
         $signal = new Deferred();
         Workflow::registerSignal($name, function ($value) use ($signal) {

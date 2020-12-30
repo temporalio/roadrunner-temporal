@@ -28,7 +28,6 @@ class CancelledScopeWorkflow
 
         yield Workflow::timer(1);
         $scope->cancel();
-        yield Workflow::timer(1);
 
         return $cancelled;
     }

@@ -284,6 +284,18 @@ func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 			wf.createCallback(id),
 		)
 
+	//case GetResult:
+	//wf.env.SignalExternalWorkflow(
+	//	cmd.Namespace,
+	//	cmd.WorkflowID,
+	//	cmd.RunID,
+	//	cmd.Signal,
+	//	cmd.rawPayload,
+	//	nil,
+	//	cmd.ChildWorkflowOnly,
+	//	wf.createCallback(id),
+	//)
+
 	case CancelExternalWorkflow:
 		wf.env.RequestCancelExternalWorkflow(cmd.Namespace, cmd.WorkflowID, cmd.RunID, wf.createCallback(id))
 
@@ -325,6 +337,33 @@ func (wf *workflowProcess) createCallback(id uint64) bindings.ResultHandler {
 		})
 	}
 }
+
+//func (wf *workflowProcess) createLazyCallback(id uint64) bindings.ResultHandler {
+//callback := func(result *commonpb.Payloads, err error) error {
+//	wf.canceller.discard(id)
+//
+//	if err != nil {
+//		wf.mq.pushError(id, err)
+//		return nil
+//	}
+//
+//	var data []jsoniter.RawMessage
+//	err = rrt.FromPayloads(wf.env.GetDataConverter(), result, &data)
+//
+//	if err != nil {
+//		panic(err)
+//	}
+//
+//	wf.mq.pushResponse(id, data)
+//	return nil
+//}
+//
+//return func(result *commonpb.Payloads, err error) {
+//	wf.callbacks = append(wf.callbacks, func() error {
+//		return callback(result, err)
+//	})
+//}
+//}
 
 // callback to be called inside the queue processing, adds new messages at the end of the queue
 func (wf *workflowProcess) createContinuableCallback(id uint64) bindings.ResultHandler {
