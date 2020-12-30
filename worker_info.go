@@ -1,7 +1,7 @@
 package roadrunner_temporal //nolint:golint,stylecheck
 
 import (
-	"encoding/json"
+	"go.temporal.io/sdk/converter"
 
 	"github.com/spiral/errors"
 	"go.temporal.io/sdk/worker"
@@ -45,7 +45,7 @@ type (
 )
 
 // GetWorkerInfo fetches information about all underlying workers (can be multiplexed inside single process).
-func GetWorkerInfo(e Endpoint) ([]WorkerInfo, error) {
+func GetWorkerInfo(e Endpoint, dc converter.DataConverter) ([]WorkerInfo, error) {
 	op := errors.Op("getWorkerInfo")
 
 	result, err := Execute(e, Context{}, Message{ID: 0, Command: getWorkerInfo})
@@ -64,7 +64,7 @@ func GetWorkerInfo(e Endpoint) ([]WorkerInfo, error) {
 	var info []WorkerInfo
 	for _, data := range result[0].Result {
 		wi := WorkerInfo{}
-		if err := json.Unmarshal(data, &wi); err != nil {
+		if err := dc.FromPayload(data, &wi); err != nil {
 			return nil, errors.E(op, err)
 		}
 

@@ -17,11 +17,6 @@ class RuntimeSignalWorkflow
         $counter = 0;
 
         Workflow::registerSignal('add', function ($value) use (&$counter, $wait1, $wait2) {
-            if (is_array($value)) {
-                // todo: fix it
-                $value = $value[0];
-            }
-
             $counter += $value;
             $wait1->resolve($value);
             $wait2->resolve($value);

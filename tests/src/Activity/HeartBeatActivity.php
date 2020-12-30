@@ -17,4 +17,13 @@ class HeartBeatActivity
         sleep($value);
         return 'OK';
     }
+
+    #[ActivityMethod]
+    public function something(string $value): string
+    {
+        Activity::heartbeat(['value' => $value]);
+        sleep($value);
+        return 'OK';
+    }
+
 }

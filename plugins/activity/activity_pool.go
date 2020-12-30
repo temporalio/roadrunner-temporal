@@ -2,21 +2,20 @@ package activity
 
 import (
 	"context"
-	"sync/atomic"
-
 	jsoniter "github.com/json-iterator/go"
+	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/interfaces/events"
 	"github.com/spiral/roadrunner/v2/interfaces/pool"
-
-	"github.com/spiral/errors"
 	rrWorker "github.com/spiral/roadrunner/v2/interfaces/worker"
 	poolImpl "github.com/spiral/roadrunner/v2/pkg/pool"
 	"github.com/spiral/roadrunner/v2/plugins/server"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
+	"go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
+	"sync/atomic"
 )
 
 type (
@@ -91,7 +90,7 @@ func (pool *activityPoolImpl) ActivityNames() []string {
 
 // initWorkers request workers workflows from underlying PHP and configures temporal workers linked to the pool.
 func (pool *activityPoolImpl) initWorkers(ctx context.Context, temporal temporal.Temporal) error {
-	workerInfo, err := rrt.GetWorkerInfo(pool.wp)
+	workerInfo, err := rrt.GetWorkerInfo(pool.wp, temporal.GetDataConverter())
 	if err != nil {
 		return err
 	}
@@ -120,10 +119,10 @@ func (pool *activityPoolImpl) initWorkers(ctx context.Context, temporal temporal
 }
 
 // executes activity with underlying worker.
-func (pool *activityPoolImpl) executeActivity(ctx context.Context, input rrt.RRPayload) (rrt.RRPayload, error) {
-	var (
-		// todo: activity.getHeartBeatDetails
+func (pool *activityPoolImpl) executeActivity(ctx context.Context, args *common.Payloads) (*common.Payloads, error) {
 
+	var (
+		//	// todo: activity.getHeartBeatDetails
 		err  error
 		info = activity.GetInfo(ctx)
 		msg  = rrt.Message{
@@ -133,56 +132,32 @@ func (pool *activityPoolImpl) executeActivity(ctx context.Context, input rrt.RRP
 		cmd = InvokeActivity{
 			Name: info.ActivityType.Name,
 			Info: info,
+			Args: args.Payloads,
 		}
 	)
 
-	/*
-		TODO: next iteration should avoid processing payloads anyhow, the processing should be done on PHP end.
-	*/
-
-	// todo: optimize
-	for _, value := range input.Data {
-		vData, err := jsoniter.Marshal(value)
-		if err != nil {
-			return rrt.RRPayload{}, err
-		}
-
-		cmd.Args = append(cmd.Args, vData)
-	}
-
+	// todo: AnyOf in protobuf
 	msg.Params, err = jsoniter.Marshal(cmd)
 	if err != nil {
-		return rrt.RRPayload{}, err
+		return nil, err
 	}
 
 	result, err := rrt.Execute(pool.wp, rrt.Context{TaskQueue: info.TaskQueue}, msg)
 	if err != nil {
-		return rrt.RRPayload{}, err
+		return nil, err
 	}
 
 	if len(result) != 1 {
-		return rrt.RRPayload{}, errors.E(errors.Op("executeActivity"), "invalid activity worker response")
+		return nil, errors.E(errors.Op("executeActivity"), "invalid activity worker response")
 	}
 
 	if result[0].Error != nil {
 		if result[0].Error.Message == "doNotCompleteOnReturn" {
-			return rrt.RRPayload{}, activity.ErrResultPending
+			return nil, activity.ErrResultPending
 		}
 
-		return rrt.RRPayload{}, errors.E(result[0].Error.Message)
+		return nil, errors.E(result[0].Error.Message)
 	}
 
-	// todo: optimize
-	out := rrt.RRPayload{}
-	for _, raw := range result[0].Result {
-		var value interface{}
-		err := jsoniter.Unmarshal(raw, &value)
-		if err != nil {
-			return rrt.RRPayload{}, err
-		}
-
-		out.Data = append(out.Data, value)
-	}
-
-	return out, nil
+	return &common.Payloads{Payloads: result[0].Result}, nil
 }

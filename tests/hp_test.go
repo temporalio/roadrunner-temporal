@@ -33,6 +33,8 @@ func Test_VerifyRegistration(t *testing.T) {
 	assert.Contains(t, s.workflows.WorkflowNames(), "WithChildStubWorkflow")
 	assert.Contains(t, s.workflows.WorkflowNames(), "CancelledScopeWorkflow")
 	assert.Contains(t, s.workflows.WorkflowNames(), "SimpleHeartbeatWorkflow")
+	assert.Contains(t, s.workflows.WorkflowNames(), "ContinuableWorkflow")
+	assert.Contains(t, s.workflows.WorkflowNames(), "SimpleDTOWorkflow")
 
 	assert.Contains(t, s.activities.ActivityNames(), "SimpleActivity.echo")
 	assert.Contains(t, s.activities.ActivityNames(), "HeartBeatActivity.doSomething")
@@ -41,7 +43,7 @@ func Test_VerifyRegistration(t *testing.T) {
 	// assert.Contains(t, s.activities.ActivityNames(), "SimpleActivity.lower")
 }
 
-func Test_ExecuteSimpleWorkflow(t *testing.T) {
+func Test_ExecuteSimpleWorkflow_1(t *testing.T) {
 	s := NewTestServer()
 	defer s.MustClose()
 
@@ -58,6 +60,24 @@ func Test_ExecuteSimpleWorkflow(t *testing.T) {
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "HELLO WORLD", result)
+}
+
+func Test_ExecuteSimpleDTOWorkflow(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"SimpleDTOWorkflow",
+	)
+	assert.NoError(t, err)
+
+	var result string
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "OK", result)
 }
 
 func Test_ExecuteSimpleWorkflowWithSequenceInBatch(t *testing.T) {
@@ -244,3 +264,33 @@ func Test_ActivityHeartbeat(t *testing.T) {
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "OK", result)
 }
+
+//func Test_ContinueAsNew(t *testing.T) {
+//	s := NewTestServer()
+//	defer s.MustClose()
+//
+//	w, err := s.Client().ExecuteWorkflow(
+//		context.Background(),
+//		client.StartWorkflowOptions{
+//			TaskQueue: "default",
+//		},
+//		"ContinuableWorkflow",
+//		1,
+//	)
+//	assert.NoError(t, err)
+//
+//	//time.Sleep(time.Second)
+//	//
+//	//we, err := s.Client().DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
+//	//assert.NoError(t, err)
+//	//assert.Len(t, we.PendingActivities, 1)
+//	//
+//	//act := we.PendingActivities[0]
+//	//
+//	//assert.Equal(t, `{"value":2}`, string(act.HeartbeatDetails.Payloads[0].Data))
+//	//
+//
+//	var result string
+//	assert.NoError(t, w.Get(context.Background(), &result))
+//	assert.Equal(t, "OK", result)
+//}
