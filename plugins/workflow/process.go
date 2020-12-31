@@ -18,6 +18,7 @@ type workflowProcess struct {
 	env       bindings.WorkflowEnvironment
 	header    *commonpb.Header
 	mq        *messageQueue
+	ids       *idRegistry
 	seqID     uint64
 	pipeline  []rrt.Message
 	callbacks []func() error
@@ -34,6 +35,7 @@ func (wf *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *com
 
 	// sequenceID shared for all worker workflows
 	wf.mq = newMessageQueue(wf.pool.SeqID)
+	wf.ids = newIdRegistry()
 
 	env.RegisterCancelHandler(wf.handleCancel)
 	env.RegisterSignalHandler(wf.handleSignal)
@@ -213,12 +215,24 @@ func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 		}
 
 		wf.env.ExecuteChildWorkflow(params, wf.createCallback(id), func(r bindings.WorkflowExecution, e error) {
-			// todo: re
+			wf.ids.push(id, r, e)
 		})
 
 		wf.canceller.register(id, func() error {
 			wf.env.RequestCancelChildWorkflow(params.Namespace, params.WorkflowID)
 			return nil
+		})
+
+	case GetRunID:
+		wf.ids.listen(cmd.ID, func(w bindings.WorkflowExecution, err error) {
+			cl := wf.createCallback(id)
+
+			p, err := wf.env.GetDataConverter().ToPayloads(w)
+			if err != nil {
+				panic(err)
+			}
+
+			cl(p, err)
 		})
 
 	case NewTimer:
@@ -322,33 +336,6 @@ func (wf *workflowProcess) createCallback(id uint64) bindings.ResultHandler {
 		})
 	}
 }
-
-//func (wf *workflowProcess) createLazyCallback(id uint64) bindings.ResultHandler {
-//callback := func(result *commonpb.Payloads, err error) error {
-//	wf.canceller.discard(id)
-//
-//	if err != nil {
-//		wf.mq.pushError(id, err)
-//		return nil
-//	}
-//
-//	var data []jsoniter.RawMessage
-//	err = rrt.FromPayloads(wf.env.GetDataConverter(), result, &data)
-//
-//	if err != nil {
-//		panic(err)
-//	}
-//
-//	wf.mq.pushResponse(id, data)
-//	return nil
-//}
-//
-//return func(result *commonpb.Payloads, err error) {
-//	wf.callbacks = append(wf.callbacks, func() error {
-//		return callback(result, err)
-//	})
-//}
-//}
 
 // callback to be called inside the queue processing, adds new messages at the end of the queue
 func (wf *workflowProcess) createContinuableCallback(id uint64) bindings.ResultHandler {

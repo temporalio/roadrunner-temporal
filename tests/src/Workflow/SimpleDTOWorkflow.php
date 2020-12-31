@@ -19,7 +19,8 @@ class SimpleDTOWorkflow
     {
         $simple = Workflow::newActivityStub(
             SimpleActivity::class,
-            ActivityOptions::new()->withStartToCloseTimeout(5)
+            ActivityOptions::new()
+                ->withStartToCloseTimeout(5)
         );
 
         $u = new User();
@@ -31,6 +32,6 @@ class SimpleDTOWorkflow
             return "FAIL";
         }
 
-        return "OK";
+        return $value;
     }
 }

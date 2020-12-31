@@ -1,6 +1,6 @@
 {
   "require": {
-    "temporal/sdk": "dev-feature/data-converter"
+    "temporal/sdk": "dev-develop"
   },
   "autoload-dev": {
     "psr-4": {

@@ -23,11 +23,13 @@ const (
 	// Commands send by worker to host process.
 	ExecuteActivityCommand      = "ExecuteActivity"
 	ExecuteChildWorkflowCommand = "ExecuteChildWorkflow"
-	NewTimerCommand             = "NewTimer"
-	SideEffectCommand           = "SideEffect"
-	GetVersionCommand           = "GetVersion"
-	CompleteWorkflowCommand     = "CompleteWorkflow"
-	ContinueAsNewCommand        = "ContinueAsNew"
+	GetRunIDCommand             = "GetRunID"
+
+	NewTimerCommand         = "NewTimer"
+	SideEffectCommand       = "SideEffect"
+	GetVersionCommand       = "GetVersion"
+	CompleteWorkflowCommand = "CompleteWorkflow"
+	ContinueAsNewCommand    = "ContinueAsNew"
 
 	// External workflows
 	SignalExternalWorkflowCommand = "SignalExternalWorkflow"
@@ -102,6 +104,12 @@ type (
 		Input []*commonpb.Payload `json:"input"`
 		// Options to run activity.
 		Options bindings.WorkflowOptions `json:"options,omitempty"`
+	}
+
+	// GetRunID returns the WorkflowID and RunId of child workflow.
+	GetRunID struct {
+		// ID of child workflow command.
+		ID uint64
 	}
 
 	// NewTimer starts new timer.
@@ -219,6 +227,15 @@ func parseCommand(name string, params jsoniter.RawMessage) (interface{}, error) 
 
 	case ExecuteChildWorkflowCommand:
 		cmd := ExecuteChildWorkflow{}
+		err = jsoniter.Unmarshal(params, &cmd)
+		if err != nil {
+			return nil, err
+		}
+
+		return cmd, nil
+
+	case GetRunIDCommand:
+		cmd := GetRunID{}
 		err = jsoniter.Unmarshal(params, &cmd)
 		if err != nil {
 			return nil, err
