@@ -1,7 +1,6 @@
 package workflow
 
 import (
-	jsoniter "github.com/json-iterator/go"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	"go.temporal.io/api/common/v1"
 )
@@ -22,19 +21,14 @@ func (mq *messageQueue) flush() {
 	mq.queue = mq.queue[0:0]
 }
 
-func (mq *messageQueue) makeCommand(cmd string, params interface{}) (id uint64, msg rrt.Message, err error) {
+func (mq *messageQueue) allocateMessage(cmd interface{}) (id uint64, msg rrt.Message, err error) {
 	msg = rrt.Message{ID: mq.seqID(), Command: cmd}
 
-	msg.Params, err = jsoniter.Marshal(params)
-	if err != nil {
-		return 0, rrt.Message{}, err
-	}
-
-	return id, msg, nil
+	return msg.ID, msg, nil
 }
 
-func (mq *messageQueue) pushCommand(cmd string, params interface{}) (id uint64, err error) {
-	id, msg, err := mq.makeCommand(cmd, params)
+func (mq *messageQueue) pushCommand(cmd interface{}) (id uint64, err error) {
+	id, msg, err := mq.allocateMessage(cmd)
 	if err != nil {
 		return 0, err
 	}

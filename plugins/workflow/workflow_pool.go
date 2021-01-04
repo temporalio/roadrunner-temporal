@@ -158,7 +158,7 @@ func (pool *workflowPoolImpl) WorkflowNames() []string {
 
 // initWorkers request workers workflows from underlying PHP and configures temporal workers linked to the pool.
 func (pool *workflowPoolImpl) initWorkers(ctx context.Context, temporal temporal.Temporal) error {
-	workerInfo, err := rrt.GetWorkerInfo(pool, temporal.GetDataConverter())
+	workerInfo, err := rrt.FetchWorkerInfo(pool, temporal.GetDataConverter())
 	if err != nil {
 		return err
 	}

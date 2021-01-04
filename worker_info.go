@@ -6,8 +6,6 @@ import (
 	"go.temporal.io/sdk/worker"
 )
 
-const getWorkerInfo = "GetWorkerInfo"
-
 // WorkerInfo outlines information about every available worker and it's TaskQueues.
 type (
 	WorkerInfo struct {
@@ -43,11 +41,11 @@ type (
 	}
 )
 
-// GetWorkerInfo fetches information about all underlying workers (can be multiplexed inside single process).
-func GetWorkerInfo(e Endpoint, dc converter.DataConverter) ([]WorkerInfo, error) {
+// FetchWorkerInfo fetches information about all underlying workers (can be multiplexed inside single process).
+func FetchWorkerInfo(e Endpoint, dc converter.DataConverter) ([]WorkerInfo, error) {
 	op := errors.Op("getWorkerInfo")
 
-	result, err := Execute(e, Context{}, Message{ID: 0, Command: getWorkerInfo})
+	result, err := Execute(e, Context{}, Message{ID: 0, Command: GetWorkerInfo{}})
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +55,7 @@ func GetWorkerInfo(e Endpoint, dc converter.DataConverter) ([]WorkerInfo, error)
 	}
 
 	if result[0].ID != 0 {
-		return nil, errors.E(op, "GetWorkerInfo confirmation missing")
+		return nil, errors.E(op, "FetchWorkerInfo confirmation missing")
 	}
 
 	var info []WorkerInfo

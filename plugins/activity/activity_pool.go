@@ -2,7 +2,6 @@ package activity
 
 import (
 	"context"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/interfaces/events"
 	"github.com/spiral/roadrunner/v2/interfaces/pool"
@@ -90,9 +89,11 @@ func (pool *activityPoolImpl) ActivityNames() []string {
 
 // initWorkers request workers workflows from underlying PHP and configures temporal workers linked to the pool.
 func (pool *activityPoolImpl) initWorkers(ctx context.Context, temporal temporal.Temporal) error {
-	workerInfo, err := rrt.GetWorkerInfo(pool.wp, temporal.GetDataConverter())
+	const op = errors.Op("createTemporalWorker")
+
+	workerInfo, err := rrt.FetchWorkerInfo(pool.wp, temporal.GetDataConverter())
 	if err != nil {
-		return err
+		return errors.E(op, err)
 	}
 
 	pool.activities = make([]string, 0)
@@ -101,7 +102,7 @@ func (pool *activityPoolImpl) initWorkers(ctx context.Context, temporal temporal
 	for _, info := range workerInfo {
 		w, err := temporal.CreateWorker(info.TaskQueue, info.Options)
 		if err != nil {
-			return errors.E(errors.Op("createTemporalWorker"), err, pool.Destroy(ctx))
+			return errors.E(op, err, pool.Destroy(ctx))
 		}
 
 		pool.tWorkers = append(pool.tWorkers, w)
@@ -120,26 +121,20 @@ func (pool *activityPoolImpl) initWorkers(ctx context.Context, temporal temporal
 
 // executes activity with underlying worker.
 func (pool *activityPoolImpl) executeActivity(ctx context.Context, args *common.Payloads) (*common.Payloads, error) {
+	const op = errors.Op("executeActivity")
+
 	var (
-		// todo: activity.getHeartBeatDetails
-		err  error
 		info = activity.GetInfo(ctx)
 		msg  = rrt.Message{
-			Command: InvokeActivityCommand,
-			ID:      atomic.AddUint64(&pool.seqID, 1),
+			ID: atomic.AddUint64(&pool.seqID, 1),
+			Command: rrt.InvokeActivity{
+				Name: info.ActivityType.Name,
+				Info: info,
+				Args: args.Payloads,
+			},
 		}
-		cmd = InvokeActivity{
-			Name: info.ActivityType.Name,
-			Info: info,
-			Args: args.Payloads,
-		}
+		// todo: activity.getHeartBeatDetails
 	)
-
-	// todo: AnyOf in protobuf
-	msg.Params, err = jsoniter.Marshal(cmd)
-	if err != nil {
-		return nil, err
-	}
 
 	result, err := rrt.Execute(pool.wp, rrt.Context{TaskQueue: info.TaskQueue}, msg)
 	if err != nil {
@@ -147,7 +142,7 @@ func (pool *activityPoolImpl) executeActivity(ctx context.Context, args *common.
 	}
 
 	if len(result) != 1 {
-		return nil, errors.E(errors.Op("executeActivity"), "invalid activity worker response")
+		return nil, errors.E(op, "invalid activity worker response")
 	}
 
 	if result[0].Error != nil {

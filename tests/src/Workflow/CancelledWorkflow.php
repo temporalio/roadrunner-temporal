@@ -18,8 +18,10 @@ class CancelledWorkflow
             ActivityOptions::new()->withStartToCloseTimeout(5)
         );
 
+        // waits for 2 seconds
+        $slow = $simple->slow('DOING SLOW ACTIVITY');
+
         try {
-            $slow = $simple->slow('DOING SLOW ACTIVITY');
             return yield $slow;
         } catch (CancellationException $e) {
             $first = yield $slow;

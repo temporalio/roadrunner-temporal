@@ -1,17 +1,22 @@
-package workflow
+package roadrunner_temporal
 
 import (
-	"time"
-
-	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
-	rrt "github.com/temporalio/roadrunner-temporal"
+	"go.temporal.io/api/common/v1"
 	commonpb "go.temporal.io/api/common/v1"
+	"go.temporal.io/sdk/activity"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
+	"time"
 )
 
 const (
+	// GetWorkerInfo reads worker information.
+	GetWorkerInfoCommand = "GetWorkerInfo"
+
+	// InvokeActivityCommand send to worker to invoke activity.
+	InvokeActivityCommand = "InvokeActivity"
+
 	// Commands send by the host process to the worker.
 	StartWorkflowCommand   = "StartWorkflow"
 	InvokeSignalCommand    = "InvokeSignal"
@@ -40,6 +45,22 @@ const (
 )
 
 type (
+	// GetWorkerInfo reads worker information.
+	GetWorkerInfo struct {
+	}
+
+	// InvokeActivity invokes activity.
+	InvokeActivity struct {
+		// Name defines activity name.
+		Name string `json:"name"`
+
+		// Info contains execution context.
+		Info activity.Info `json:"info"`
+
+		// Args contain activity call arguments.
+		Args []*common.Payload `json:"args"`
+	}
+
 	// StartWorkflow sends worker command to start workflow.
 	StartWorkflow struct {
 		// Info to define workflow context.
@@ -136,7 +157,7 @@ type (
 		Result []*commonpb.Payload `json:"result"`
 
 		// Error (if any).
-		Error *rrt.Error `json:"error"`
+		Error *Error `json:"error"`
 	}
 
 	// ContinueAsNew restarts workflow with new running instance.
@@ -144,7 +165,7 @@ type (
 		// Result defines workflow execution result.
 		Name string `json:"name"`
 
-		// Result defines workflow execution result. todo: needed to be in form of Payload
+		// Result defines workflow execution result. todo: needed to be in form of Payload (?)
 		Input []*commonpb.Payload `json:"input"`
 	}
 
@@ -156,9 +177,6 @@ type (
 		Signal            string              `json:"signal"`
 		ChildWorkflowOnly bool                `json:"childWorkflowOnly"`
 		Args              []*commonpb.Payload `json:"args"`
-
-		// rawPayload represents Args converted into Temporal payload format.
-		rawPayload *commonpb.Payloads
 	}
 
 	// CancelExternalWorkflow canceller external workflow.
@@ -210,112 +228,113 @@ func (cmd NewTimer) ToDuration() time.Duration {
 	return time.Millisecond * time.Duration(cmd.Milliseconds)
 }
 
-// maps worker parameters into internal command representation.
-func parseCommand(name string, params jsoniter.RawMessage) (interface{}, error) {
-	var err error
+// returns command name
+func commandName(cmd interface{}) (string, error) {
+	switch cmd.(type) {
+	case GetWorkerInfo, *GetWorkerInfo:
+		return GetWorkerInfoCommand, nil
+	case StartWorkflow, *StartWorkflow:
+		return StartWorkflowCommand, nil
+	case InvokeSignal, *InvokeSignal:
+		return InvokeSignalCommand, nil
+	case InvokeQuery, *InvokeQuery:
+		return InvokeQueryCommand, nil
+	case DestroyWorkflow, *DestroyWorkflow:
+		return DestroyWorkflowCommand, nil
+	case CancelWorkflow, *CancelWorkflow:
+		return CancelWorkflowCommand, nil
+	case GetStackTrace, *GetStackTrace:
+		return GetStackTraceCommand, nil
+	case InvokeActivity, *InvokeActivity:
+		return InvokeActivityCommand, nil
+	case ExecuteActivity, *ExecuteActivity:
+		return ExecuteActivityCommand, nil
+	case ExecuteChildWorkflow, *ExecuteChildWorkflow:
+		return ExecuteChildWorkflowCommand, nil
+	case GetRunID, *GetRunID:
+		return GetRunIDCommand, nil
+	case NewTimer, *NewTimer:
+		return NewTimerCommand, nil
+	case GetVersion, *GetVersion:
+		return GetVersionCommand, nil
+	case SideEffect, *SideEffect:
+		return SideEffectCommand, nil
+	case CompleteWorkflow, *CompleteWorkflow:
+		return CompleteWorkflowCommand, nil
+	case ContinueAsNew, *ContinueAsNew:
+		return ContinueAsNewCommand, nil
+	case SignalExternalWorkflow, *SignalExternalWorkflow:
+		return SignalExternalWorkflowCommand, nil
+	case CancelExternalWorkflow, *CancelExternalWorkflow:
+		return CancelExternalWorkflowCommand, nil
+	case Cancel, *Cancel:
+		return CancelCommand, nil
+	default:
+		return "", errors.E(errors.Op("commandName"), "undefined command type", cmd)
+	}
+}
 
-	// todo: switch to Protobuf
+// reads command from binary payload
+func initCommand(name string, body []byte) (interface{}, error) {
 	switch name {
-	case ExecuteActivityCommand:
-		cmd := ExecuteActivity{}
-		err = jsoniter.Unmarshal(params, &cmd)
-		if err != nil {
-			return nil, err
-		}
+	case GetWorkerInfoCommand:
+		return &GetWorkerInfo{}, nil
 
-		return cmd, nil
+	case StartWorkflowCommand:
+		return &StartWorkflow{}, nil
+
+	case InvokeSignalCommand:
+		return &InvokeSignal{}, nil
+
+	case InvokeQueryCommand:
+		return &InvokeQuery{}, nil
+
+	case DestroyWorkflowCommand:
+		return &DestroyWorkflow{}, nil
+
+	case CancelWorkflowCommand:
+		return &CancelWorkflow{}, nil
+
+	case GetStackTraceCommand:
+		return &GetStackTrace{}, nil
+
+	case InvokeActivityCommand:
+		return &InvokeActivity{}, nil
+
+	case ExecuteActivityCommand:
+		return &ExecuteActivity{}, nil
 
 	case ExecuteChildWorkflowCommand:
-		cmd := ExecuteChildWorkflow{}
-		err = jsoniter.Unmarshal(params, &cmd)
-		if err != nil {
-			return nil, err
-		}
-
-		return cmd, nil
+		return &ExecuteChildWorkflow{}, nil
 
 	case GetRunIDCommand:
-		cmd := GetRunID{}
-		err = jsoniter.Unmarshal(params, &cmd)
-		if err != nil {
-			return nil, err
-		}
-
-		return cmd, nil
+		return &GetRunID{}, nil
 
 	case NewTimerCommand:
-		cmd := NewTimer{}
-		err = jsoniter.Unmarshal(params, &cmd)
-		if err != nil {
-			return nil, err
-		}
-
-		return cmd, nil
+		return &NewTimer{}, nil
 
 	case GetVersionCommand:
-		cmd := GetVersion{}
-		err = jsoniter.Unmarshal(params, &cmd)
-		if err != nil {
-			return nil, err
-		}
-
-		return cmd, nil
+		return &GetVersion{}, nil
 
 	case SideEffectCommand:
-		cmd := SideEffect{}
-		err = jsoniter.Unmarshal(params, &cmd)
-		if err != nil {
-			return nil, err
-		}
-
-		return cmd, nil
+		return &SideEffect{}, nil
 
 	case CompleteWorkflowCommand:
-		cmd := CompleteWorkflow{}
-		err = jsoniter.Unmarshal(params, &cmd)
-		if err != nil {
-			return nil, err
-		}
-
-		return cmd, nil
+		return &CompleteWorkflow{}, nil
 
 	case ContinueAsNewCommand:
-		cmd := ContinueAsNew{}
-		err = jsoniter.Unmarshal(params, &cmd)
-		if err != nil {
-			return nil, err
-		}
-
-		return cmd, nil
+		return &ContinueAsNew{}, nil
 
 	case SignalExternalWorkflowCommand:
-		cmd := SignalExternalWorkflow{}
-		err = jsoniter.Unmarshal(params, &cmd)
-		if err != nil {
-			return nil, err
-		}
-
-		return cmd, nil
+		return &SignalExternalWorkflow{}, nil
 
 	case CancelExternalWorkflowCommand:
-		cmd := CancelExternalWorkflow{}
-		err = jsoniter.Unmarshal(params, &cmd)
-		if err != nil {
-			return nil, err
-		}
-
-		return cmd, nil
+		return &CancelExternalWorkflow{}, nil
 
 	case CancelCommand:
-		cmd := Cancel{}
-		err = jsoniter.Unmarshal(params, &cmd)
-		if err != nil {
-			return nil, err
-		}
-
-		return cmd, nil
+		return &Cancel{}, nil
 
 	default:
-		return nil, errors.E(errors.Op("parseCommand"), "undefined command type", name)
+		return nil, errors.E(errors.Op("initCommand"), "undefined command type", name)
 	}
 }

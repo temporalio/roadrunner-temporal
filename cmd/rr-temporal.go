@@ -44,6 +44,7 @@ func main() {
 		&activity.Plugin{},
 		&workflow.Plugin{},
 	)
+
 	if err != nil {
 		log.Fatal(err)
 	}
