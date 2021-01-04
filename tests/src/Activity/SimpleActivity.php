@@ -27,4 +27,12 @@ class SimpleActivity
     {
         return new Message(sprintf("Hello %s <%s>", $user->name, $user->email));
     }
+
+    #[ActivityMethod]
+    public function slow(string $input): string
+    {
+        sleep(2);
+
+        return strtolower($input);
+    }
 }
