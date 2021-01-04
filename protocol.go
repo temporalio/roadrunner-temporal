@@ -4,7 +4,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/payload"
-
+	commonpb "go.temporal.io/api/common/v1"
 	"time"
 )
 
@@ -40,7 +40,7 @@ type (
 		Params jsoniter.RawMessage `json:"params,omitempty"`
 
 		// Result always contains array of values.
-		Result []jsoniter.RawMessage `json:"result,omitempty"`
+		Result []*commonpb.Payload `json:"result,omitempty"`
 
 		// Error associated with command id.
 		Error *Error `json:"error,omitempty"`

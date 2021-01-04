@@ -2,7 +2,7 @@
 
 namespace Temporal\Tests\Workflow;
 
-use Temporal\Client\Workflow\WorkflowMethod;
+use Temporal\Workflow\WorkflowMethod;
 
 class EmptyWorkflow
 {

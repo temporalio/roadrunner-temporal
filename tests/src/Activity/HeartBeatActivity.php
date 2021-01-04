@@ -3,9 +3,9 @@
 
 namespace Temporal\Tests\Activity;
 
-use Temporal\Client\Activity;
-use Temporal\Client\Activity\ActivityInterface;
-use Temporal\Client\Activity\ActivityMethod;
+use Temporal\Activity;
+use Temporal\Activity\ActivityInterface;
+use Temporal\Activity\ActivityMethod;
 
 #[ActivityInterface(prefix: "HeartBeatActivity.")]
 class HeartBeatActivity
@@ -17,4 +17,13 @@ class HeartBeatActivity
         sleep($value);
         return 'OK';
     }
+
+    #[ActivityMethod]
+    public function something(string $value): string
+    {
+        Activity::heartbeat(['value' => $value]);
+        sleep($value);
+        return 'OK';
+    }
+
 }

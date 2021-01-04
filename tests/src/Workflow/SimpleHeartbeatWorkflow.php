@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace Temporal\Tests\Workflow;
 
-use Temporal\Client\Activity\ActivityOptions;
-use Temporal\Client\Internal\Support\DateInterval;
-use Temporal\Client\Workflow;
-use Temporal\Client\Workflow\WorkflowMethod;
+use Temporal\Activity\ActivityOptions;
+use Temporal\Workflow;
+use Temporal\Workflow\WorkflowMethod;
 use Temporal\Tests\Activity\HeartBeatActivity;
-use Temporal\Tests\Activity\SimpleActivity;
 
 class SimpleHeartbeatWorkflow
 {

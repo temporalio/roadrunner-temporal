@@ -1,6 +1,7 @@
 {
   "require": {
-    "temporal/sdk": "dev-develop"
+    "temporal/sdk": "dev-develop",
+    "rybakit/msgpack": "^0.7.2"
   },
   "autoload-dev": {
     "psr-4": {

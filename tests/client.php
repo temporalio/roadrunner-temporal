@@ -2,15 +2,17 @@
 
 declare(strict_types=1);
 
-use Temporal\Client\Worker;
-use Temporal\Client\Worker\Transport\RoadRunner;
-use Temporal\Client\Worker\Transport\Goridge;
+use Temporal\DataConverter\DataConverter;
+use Temporal\Worker;
+use Temporal\Worker\Transport\RoadRunner;
+use Temporal\Worker\Transport\Goridge;
 use Temporal\Tests;
 use Spiral\Goridge\Relay;
 
 require __DIR__ . '/vendor/autoload.php';
 
 $worker = new Worker(
+    DataConverter::createDefault(),
     new RoadRunner(Relay::create(Relay::PIPES)),
     new Goridge(Relay::create('tcp://127.0.0.1:6001'))
 );
@@ -32,6 +34,9 @@ $worker->createAndRegister()
     ->addWorkflow(Tests\Workflow\WithChildWorkflow::class)
     ->addWorkflow(Tests\Workflow\WithChildStubWorkflow::class)
     ->addWorkflow(Tests\Workflow\SimpleHeartbeatWorkflow::class)
+    ->addWorkflow(Tests\Workflow\ContinuableWorkflow::class)
+    ->addWorkflow(Tests\Workflow\SimpleDTOWorkflow::class)
+    // activities
     ->addActivity(Tests\Activity\SimpleActivity::class)
     ->addActivity(Tests\Activity\HeartBeatActivity::class);
 

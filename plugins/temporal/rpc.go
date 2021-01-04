@@ -3,9 +3,9 @@ package temporal
 import (
 	"context"
 	"errors"
+	commonpb "go.temporal.io/api/common/v1"
 	"time"
 
-	payload "github.com/temporalio/roadrunner-temporal"
 	"go.temporal.io/sdk/client"
 )
 
@@ -402,13 +402,14 @@ func (r *rpc) QueryWorkflow(in QueryWorkflowIn, out *interface{}) error {
 		return err
 	}
 
-	raw := payload.RRPayload{} // init and clear
+	raw := &commonpb.Payloads{} // init and clear
 	err = ev.Get(&raw)
 	if err != nil {
 		return err
 	}
 
-	*out = raw.Data[0]
+	// todo: fix it
+	*out = raw.Payloads[0].Data
 
 	return nil
 }

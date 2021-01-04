@@ -16,7 +16,9 @@ import (
 type workflowProcess struct {
 	pool      workflowPool
 	env       bindings.WorkflowEnvironment
+	header    *commonpb.Header
 	mq        *messageQueue
+	ids       *idRegistry
 	seqID     uint64
 	pipeline  []rrt.Message
 	callbacks []func() error
@@ -27,27 +29,29 @@ type workflowProcess struct {
 // Execute workflow, bootstraps process.
 func (wf *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *commonpb.Header, input *commonpb.Payloads) {
 	wf.env = env
+	wf.header = header
 	wf.seqID = 0
 	wf.canceller = &canceller{}
 
 	// sequenceID shared for all worker workflows
 	wf.mq = newMessageQueue(wf.pool.SeqID)
+	wf.ids = newIdRegistry()
 
 	env.RegisterCancelHandler(wf.handleCancel)
 	env.RegisterSignalHandler(wf.handleSignal)
 	env.RegisterQueryHandler(wf.handleQuery)
 
-	start := StartWorkflow{
-		Info: env.WorkflowInfo(),
+	cmd := StartWorkflow{
+		Info:  env.WorkflowInfo(),
+		Input: []*commonpb.Payload{},
 	}
 
-	// TODO no PANICS!
-	err := rrt.FromPayloads(env.GetDataConverter(), input, &start.Input)
-	if err != nil {
-		panic(err)
+	if input != nil {
+		cmd.Input = input.Payloads
 	}
 
-	_, err = wf.mq.pushCommand(StartWorkflowCommand, start)
+	_, err := wf.mq.pushCommand(StartWorkflowCommand, cmd)
+
 	if err != nil {
 		panic(err)
 	}
@@ -86,7 +90,9 @@ func (wf *workflowProcess) OnWorkflowTaskStarted() {
 func (wf *workflowProcess) StackTrace() string {
 	result, err := wf.runCommand(
 		GetStackTraceCommand,
-		&GetStackTrace{RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID},
+		&GetStackTrace{
+			RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID,
+		},
 	)
 
 	if err != nil {
@@ -94,8 +100,7 @@ func (wf *workflowProcess) StackTrace() string {
 	}
 
 	var stacktrace string
-	err = jsoniter.Unmarshal(result.Result[0], &stacktrace)
-
+	err = wf.env.GetDataConverter().FromPayload(result.Result[0], &stacktrace)
 	if err != nil {
 		return err.Error()
 	}
@@ -109,7 +114,9 @@ func (wf *workflowProcess) Close() {
 		// offloaded from memory
 		_, err := wf.mq.pushCommand(
 			DestroyWorkflowCommand,
-			DestroyWorkflow{RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID},
+			DestroyWorkflow{
+				RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID,
+			},
 		)
 
 		if err != nil {
@@ -151,14 +158,10 @@ func (wf *workflowProcess) handleSignal(name string, input *commonpb.Payloads) {
 	cmd := &InvokeQuery{
 		RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID,
 		Name:  name,
+		Args:  input.Payloads,
 	}
 
-	err := rrt.FromPayloads(wf.env.GetDataConverter(), input, &cmd.Args)
-	if err != nil {
-		panic(err)
-	}
-
-	_, err = wf.mq.pushCommand(InvokeSignalCommand, cmd)
+	_, err := wf.mq.pushCommand(InvokeSignalCommand, cmd)
 	if err != nil {
 		panic(err)
 	}
@@ -169,11 +172,7 @@ func (wf *workflowProcess) handleQuery(queryType string, queryArgs *commonpb.Pay
 	cmd := &InvokeQuery{
 		RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID,
 		Name:  queryType,
-	}
-
-	err := rrt.FromPayloads(wf.env.GetDataConverter(), queryArgs, &cmd.Args)
-	if err != nil {
-		return nil, err
+		Args:  queryArgs.Payloads,
 	}
 
 	result, err := wf.runCommand(InvokeQueryCommand, cmd)
@@ -185,19 +184,13 @@ func (wf *workflowProcess) handleQuery(queryType string, queryArgs *commonpb.Pay
 		return nil, result.Error
 	}
 
-	out := &commonpb.Payloads{}
-	err = rrt.ToPayloads(wf.env.GetDataConverter(), result.Result, out)
-	if err != nil {
-		return nil, err
-	}
-
-	return out, nil
+	return &commonpb.Payloads{Payloads: result.Result}, nil
 }
 
 // process incoming command
 func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter.RawMessage) error {
 	const op = errors.Op("handle command")
-	rawCmd, err := parseCommand(wf.env.GetDataConverter(), name, params)
+	rawCmd, err := parseCommand(name, params)
 	if err != nil {
 		return err
 	}
@@ -222,12 +215,24 @@ func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 		}
 
 		wf.env.ExecuteChildWorkflow(params, wf.createCallback(id), func(r bindings.WorkflowExecution, e error) {
-			// todo: re
+			wf.ids.push(id, r, e)
 		})
 
 		wf.canceller.register(id, func() error {
 			wf.env.RequestCancelChildWorkflow(params.Namespace, params.WorkflowID)
 			return nil
+		})
+
+	case GetRunID:
+		wf.ids.listen(cmd.ID, func(w bindings.WorkflowExecution, err error) {
+			cl := wf.createCallback(id)
+
+			p, err := wf.env.GetDataConverter().ToPayloads(w)
+			if err != nil {
+				panic(err)
+			}
+
+			cl(p, err)
 		})
 
 	case NewTimer:
@@ -246,12 +251,12 @@ func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 			workflow.Version(cmd.MaxSupported),
 		)
 
-		result, err := jsoniter.Marshal(version)
+		result, err := wf.env.GetDataConverter().ToPayload(version)
 		if err != nil {
 			return errors.E(op, err)
 		}
 
-		wf.mq.pushResponse(id, []jsoniter.RawMessage{result})
+		wf.mq.pushResponse(id, []*commonpb.Payload{result})
 		err = wf.flushQueue()
 		if err != nil {
 			panic(err)
@@ -259,18 +264,30 @@ func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 
 	case SideEffect:
 		wf.env.SideEffect(
-			func() (*commonpb.Payloads, error) { return cmd.rawPayload, nil },
+			func() (*commonpb.Payloads, error) {
+				return &commonpb.Payloads{Payloads: []*commonpb.Payload{cmd.Value}}, nil
+			},
 			wf.createContinuableCallback(id),
 		)
 
 	case CompleteWorkflow:
 		wf.completed = true
-		wf.mq.pushResponse(id, []jsoniter.RawMessage{[]byte("\"completed\"")})
+
+		payload, _ := wf.env.GetDataConverter().ToPayload("completed")
+		wf.mq.pushResponse(id, []*commonpb.Payload{payload})
+
 		if cmd.Error == nil {
-			wf.env.Complete(cmd.rawPayload, nil)
+			wf.env.Complete(&commonpb.Payloads{Payloads: cmd.Result}, nil)
 		} else {
 			wf.env.Complete(nil, cmd.Error)
 		}
+
+	case ContinueAsNew:
+		wf.completed = true
+
+		payload, _ := wf.env.GetDataConverter().ToPayload("completed")
+		wf.mq.pushResponse(id, []*commonpb.Payload{payload})
+		wf.env.Complete(nil, errors.E("not implemented"))
 
 	case SignalExternalWorkflow:
 		wf.env.SignalExternalWorkflow(
@@ -284,18 +301,6 @@ func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 			wf.createCallback(id),
 		)
 
-	//case GetResult:
-	//wf.env.SignalExternalWorkflow(
-	//	cmd.Namespace,
-	//	cmd.WorkflowID,
-	//	cmd.RunID,
-	//	cmd.Signal,
-	//	cmd.rawPayload,
-	//	nil,
-	//	cmd.ChildWorkflowOnly,
-	//	wf.createCallback(id),
-	//)
-
 	case CancelExternalWorkflow:
 		wf.env.RequestCancelExternalWorkflow(cmd.Namespace, cmd.WorkflowID, cmd.RunID, wf.createCallback(id))
 
@@ -305,7 +310,8 @@ func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 			return errors.E(op, err)
 		}
 
-		wf.mq.pushResponse(id, []jsoniter.RawMessage{[]byte("\"cancelled\"")})
+		payload, _ := wf.env.GetDataConverter().ToPayload("completed")
+		wf.mq.pushResponse(id, []*commonpb.Payload{payload})
 	}
 
 	return nil
@@ -320,14 +326,7 @@ func (wf *workflowProcess) createCallback(id uint64) bindings.ResultHandler {
 			return nil
 		}
 
-		var data []jsoniter.RawMessage
-		err = rrt.FromPayloads(wf.env.GetDataConverter(), result, &data)
-
-		if err != nil {
-			panic(err)
-		}
-
-		wf.mq.pushResponse(id, data)
+		wf.mq.pushPayloadsResponse(id, result)
 		return nil
 	}
 
@@ -337,33 +336,6 @@ func (wf *workflowProcess) createCallback(id uint64) bindings.ResultHandler {
 		})
 	}
 }
-
-//func (wf *workflowProcess) createLazyCallback(id uint64) bindings.ResultHandler {
-//callback := func(result *commonpb.Payloads, err error) error {
-//	wf.canceller.discard(id)
-//
-//	if err != nil {
-//		wf.mq.pushError(id, err)
-//		return nil
-//	}
-//
-//	var data []jsoniter.RawMessage
-//	err = rrt.FromPayloads(wf.env.GetDataConverter(), result, &data)
-//
-//	if err != nil {
-//		panic(err)
-//	}
-//
-//	wf.mq.pushResponse(id, data)
-//	return nil
-//}
-//
-//return func(result *commonpb.Payloads, err error) {
-//	wf.callbacks = append(wf.callbacks, func() error {
-//		return callback(result, err)
-//	})
-//}
-//}
 
 // callback to be called inside the queue processing, adds new messages at the end of the queue
 func (wf *workflowProcess) createContinuableCallback(id uint64) bindings.ResultHandler {
@@ -375,13 +347,7 @@ func (wf *workflowProcess) createContinuableCallback(id uint64) bindings.ResultH
 			return
 		}
 
-		var data []jsoniter.RawMessage
-		err = rrt.FromPayloads(wf.env.GetDataConverter(), result, &data)
-		if err != nil {
-			panic(err)
-		}
-
-		wf.mq.pushResponse(id, data)
+		wf.mq.pushResponse(id, result.Payloads)
 		err = wf.flushQueue()
 		if err != nil {
 			panic(err)
