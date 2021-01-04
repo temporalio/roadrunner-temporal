@@ -26,9 +26,9 @@ const (
 	GetStackTraceCommand   = "StackTrace"
 
 	// Commands send by worker to host process.
-	ExecuteActivityCommand      = "ExecuteActivity"
-	ExecuteChildWorkflowCommand = "ExecuteChildWorkflow"
-	GetRunIDCommand             = "GetRunID"
+	ExecuteActivityCommand           = "ExecuteActivity"
+	ExecuteChildWorkflowCommand      = "ExecuteChildWorkflow"
+	GetChildWorkflowExecutionCommand = "GetChildWorkflowExecution"
 
 	NewTimerCommand         = "NewTimer"
 	SideEffectCommand       = "SideEffect"
@@ -127,10 +127,10 @@ type (
 		Options bindings.WorkflowOptions `json:"options,omitempty"`
 	}
 
-	// GetRunID returns the WorkflowID and RunId of child workflow.
-	GetRunID struct {
+	// GetChildWorkflowExecution returns the WorkflowID and RunId of child workflow.
+	GetChildWorkflowExecution struct {
 		// ID of child workflow command.
-		ID uint64
+		ID uint64 `json:"id"`
 	}
 
 	// NewTimer starts new timer.
@@ -251,8 +251,8 @@ func commandName(cmd interface{}) (string, error) {
 		return ExecuteActivityCommand, nil
 	case ExecuteChildWorkflow, *ExecuteChildWorkflow:
 		return ExecuteChildWorkflowCommand, nil
-	case GetRunID, *GetRunID:
-		return GetRunIDCommand, nil
+	case GetChildWorkflowExecution, *GetChildWorkflowExecution:
+		return GetChildWorkflowExecutionCommand, nil
 	case NewTimer, *NewTimer:
 		return NewTimerCommand, nil
 	case GetVersion, *GetVersion:
@@ -307,8 +307,8 @@ func initCommand(name string, body []byte) (interface{}, error) {
 	case ExecuteChildWorkflowCommand:
 		return &ExecuteChildWorkflow{}, nil
 
-	case GetRunIDCommand:
-		return &GetRunID{}, nil
+	case GetChildWorkflowExecutionCommand:
+		return &GetChildWorkflowExecution{}, nil
 
 	case NewTimerCommand:
 		return &NewTimer{}, nil

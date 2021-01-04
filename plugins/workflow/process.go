@@ -207,7 +207,7 @@ func (wf *workflowProcess) handleCommand(id uint64, cmd interface{}) error {
 			return nil
 		})
 
-	case *rrt.GetRunID:
+	case *rrt.GetChildWorkflowExecution:
 		wf.ids.listen(cmd.ID, func(w bindings.WorkflowExecution, err error) {
 			cl := wf.createCallback(id)
 
