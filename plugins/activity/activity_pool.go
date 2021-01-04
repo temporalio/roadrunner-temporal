@@ -2,59 +2,57 @@ package activity
 
 import (
 	"context"
-	"sync/atomic"
-
 	jsoniter "github.com/json-iterator/go"
-
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner/v2"
-	"github.com/spiral/roadrunner/v2/interfaces/server"
-	"github.com/spiral/roadrunner/v2/util"
+	"github.com/spiral/roadrunner/v2/interfaces/events"
+	"github.com/spiral/roadrunner/v2/interfaces/pool"
+	rrWorker "github.com/spiral/roadrunner/v2/interfaces/worker"
+	poolImpl "github.com/spiral/roadrunner/v2/pkg/pool"
+	"github.com/spiral/roadrunner/v2/plugins/server"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
+	"go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
+	"sync/atomic"
 )
 
-// activityPool manages set of RR and Temporal activity workers and their cancellation contexts.
-type activityPool struct {
-	dc         converter.DataConverter
-	seqID      uint64
-	events     util.EventsHandler
-	activities []string
-	wp         roadrunner.Pool
-	tWorkers   []worker.Worker
-}
+type (
+	activityPool interface {
+		Start(ctx context.Context, temporal temporal.Temporal) error
+		Destroy(ctx context.Context) error
+		Workers() []rrWorker.BaseProcess
+		ActivityNames() []string
+	}
 
-// NewActivityPool
-func NewActivityPool(ctx context.Context, poolConfig roadrunner.PoolConfig, server server.Server) (*activityPool, error) {
+	activityPoolImpl struct {
+		dc         converter.DataConverter
+		seqID      uint64
+		activities []string
+		wp         pool.Pool
+		tWorkers   []worker.Worker
+	}
+)
+
+// newActivityPool
+func newActivityPool(listener events.Listener, poolConfig poolImpl.Config, server server.Server) (activityPool, error) {
 	wp, err := server.NewWorkerPool(
 		context.Background(),
 		poolConfig,
 		map[string]string{"RR_MODE": RRMode},
+		listener,
 	)
 
 	if err != nil {
 		return nil, err
 	}
 
-	wp.AddListener(func(event interface{}) {
-		if _, ok := event.(roadrunner.PoolEvent); ok {
-			return
-		}
-	})
-
-	return &activityPool{wp: wp}, nil
-}
-
-// AddListener adds event listeners to the workflow pool.
-func (pool *activityPool) AddListener(listener util.EventListener) {
-	pool.events.AddListener(listener)
+	return &activityPoolImpl{wp: wp}, nil
 }
 
 // initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
-func (pool *activityPool) Start(ctx context.Context, temporal temporal.Temporal) error {
+func (pool *activityPoolImpl) Start(ctx context.Context, temporal temporal.Temporal) error {
 	pool.dc = temporal.GetDataConverter()
 
 	err := pool.initWorkers(ctx, temporal)
@@ -73,18 +71,26 @@ func (pool *activityPool) Start(ctx context.Context, temporal temporal.Temporal)
 }
 
 // initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
-func (pool *activityPool) Destroy(ctx context.Context) {
+func (pool *activityPoolImpl) Destroy(ctx context.Context) error {
 	for i := 0; i < len(pool.tWorkers); i++ {
 		pool.tWorkers[i].Stop()
 	}
 
-	// TODO add ctx.Done in RR for timeouts
 	pool.wp.Destroy(ctx)
+	return nil
+}
+
+func (pool *activityPoolImpl) Workers() []rrWorker.BaseProcess {
+	return pool.wp.Workers()
+}
+
+func (pool *activityPoolImpl) ActivityNames() []string {
+	return pool.activities
 }
 
 // initWorkers request workers workflows from underlying PHP and configures temporal workers linked to the pool.
-func (pool *activityPool) initWorkers(ctx context.Context, temporal temporal.Temporal) error {
-	workerInfo, err := rrt.GetWorkerInfo(pool.wp)
+func (pool *activityPoolImpl) initWorkers(ctx context.Context, temporal temporal.Temporal) error {
+	workerInfo, err := rrt.GetWorkerInfo(pool.wp, temporal.GetDataConverter())
 	if err != nil {
 		return err
 	}
@@ -95,8 +101,7 @@ func (pool *activityPool) initWorkers(ctx context.Context, temporal temporal.Tem
 	for _, info := range workerInfo {
 		w, err := temporal.CreateWorker(info.TaskQueue, info.Options)
 		if err != nil {
-			pool.Destroy(ctx)
-			return errors.E(errors.Op("createTemporalWorker"), err)
+			return errors.E(errors.Op("createTemporalWorker"), err, pool.Destroy(ctx))
 		}
 
 		pool.tWorkers = append(pool.tWorkers, w)
@@ -114,8 +119,9 @@ func (pool *activityPool) initWorkers(ctx context.Context, temporal temporal.Tem
 }
 
 // executes activity with underlying worker.
-func (pool *activityPool) executeActivity(ctx context.Context, input rrt.RRPayload) (rrt.RRPayload, error) {
+func (pool *activityPoolImpl) executeActivity(ctx context.Context, args *common.Payloads) (*common.Payloads, error) {
 	var (
+		// todo: activity.getHeartBeatDetails
 		err  error
 		info = activity.GetInfo(ctx)
 		msg  = rrt.Message{
@@ -125,53 +131,32 @@ func (pool *activityPool) executeActivity(ctx context.Context, input rrt.RRPaylo
 		cmd = InvokeActivity{
 			Name: info.ActivityType.Name,
 			Info: info,
+			Args: args.Payloads,
 		}
 	)
 
-	// todo: optimize
-	for _, value := range input.Data {
-		vData, err := jsoniter.Marshal(value)
-		if err != nil {
-			return rrt.RRPayload{}, err
-		}
-
-		cmd.Args = append(cmd.Args, vData)
-	}
-
+	// todo: AnyOf in protobuf
 	msg.Params, err = jsoniter.Marshal(cmd)
 	if err != nil {
-		return rrt.RRPayload{}, err
+		return nil, err
 	}
 
 	result, err := rrt.Execute(pool.wp, rrt.Context{TaskQueue: info.TaskQueue}, msg)
 	if err != nil {
-		return rrt.RRPayload{}, err
+		return nil, err
 	}
 
 	if len(result) != 1 {
-		return rrt.RRPayload{}, errors.E(errors.Op("executeActivity"), "invalid activity worker response")
+		return nil, errors.E(errors.Op("executeActivity"), "invalid activity worker response")
 	}
 
 	if result[0].Error != nil {
 		if result[0].Error.Message == "doNotCompleteOnReturn" {
-			return rrt.RRPayload{}, activity.ErrResultPending
+			return nil, activity.ErrResultPending
 		}
 
-		return rrt.RRPayload{}, errors.E(result[0].Error.Message)
+		return nil, errors.E(result[0].Error.Message)
 	}
 
-	// todo: optimize
-	out := rrt.RRPayload{}
-	for _, raw := range result[0].Result {
-		var value interface{}
-		err := jsoniter.Unmarshal(raw, &value)
-		if err != nil {
-			return rrt.RRPayload{}, err
-		}
-
-		out.Data = append(out.Data, value)
-	}
-
-	// todo: handle error and async commands
-	return out, nil
+	return &common.Payloads{Payloads: result[0].Result}, nil
 }

@@ -1,10 +1,14 @@
 package temporal
 
 import (
+	"fmt"
+	"os"
+	"sync/atomic"
+
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner/v2"
-	"github.com/spiral/roadrunner/v2/interfaces/log"
+	poolImpl "github.com/spiral/roadrunner/v2/pkg/pool"
 	"github.com/spiral/roadrunner/v2/plugins/config"
+	"github.com/spiral/roadrunner/v2/plugins/logger"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
@@ -24,19 +28,20 @@ type (
 	Config struct {
 		Address    string
 		Namespace  string
-		Activities *roadrunner.PoolConfig
+		Activities *poolImpl.Config
 	}
 
 	Plugin struct {
-		cfg    Config
-		dc     converter.DataConverter
-		log    log.Logger
-		client client.Client
+		workerID int32
+		cfg      Config
+		dc       converter.DataConverter
+		log      logger.Logger
+		client   client.Client
 	}
 )
 
 // logger dep also
-func (srv *Plugin) Init(cfg config.Configurer, log log.Logger) error {
+func (srv *Plugin) Init(cfg config.Configurer, log logger.Logger) error {
 	srv.log = log
 	srv.dc = rrt.NewDataConverter(converter.GetDefaultDataConverter())
 
@@ -94,6 +99,21 @@ func (srv *Plugin) CreateWorker(tq string, options worker.Options) (worker.Worke
 		return nil, errors.E("unable to create worker, invalid temporal srv")
 	}
 
+	if options.Identity == "" {
+		if tq == "" {
+			tq = client.DefaultNamespace
+		}
+
+		// ensures unique worker IDs
+		options.Identity = fmt.Sprintf(
+			"%d@%s@%s@%v",
+			os.Getpid(),
+			getHostName(),
+			tq,
+			atomic.AddInt32(&srv.workerID, 1),
+		)
+	}
+
 	return worker.New(srv.client, tq, options), nil
 }
 
@@ -105,4 +125,12 @@ func (srv *Plugin) Name() string {
 // RPCService returns associated rpc service.
 func (srv *Plugin) RPC() interface{} {
 	return &rpc{srv: srv}
+}
+
+func getHostName() string {
+	hostName, err := os.Hostname()
+	if err != nil {
+		hostName = "Unknown"
+	}
+	return hostName
 }

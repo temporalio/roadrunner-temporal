@@ -7,7 +7,6 @@ import (
 	"github.com/spiral/errors"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	commonpb "go.temporal.io/api/common/v1"
-	"go.temporal.io/sdk/converter"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
 )
@@ -23,12 +22,14 @@ const (
 
 	// Commands send by worker to host process.
 	ExecuteActivityCommand      = "ExecuteActivity"
-	ExecuteLocalActivityCommand = "ExecuteLocalActivity"
 	ExecuteChildWorkflowCommand = "ExecuteChildWorkflow"
-	NewTimerCommand             = "NewTimer"
-	SideEffectCommand           = "SideEffect"
-	GetVersionCommand           = "GetVersion"
-	CompleteWorkflowCommand     = "CompleteWorkflow"
+	GetRunIDCommand             = "GetRunID"
+
+	NewTimerCommand         = "NewTimer"
+	SideEffectCommand       = "SideEffect"
+	GetVersionCommand       = "GetVersion"
+	CompleteWorkflowCommand = "CompleteWorkflow"
+	ContinueAsNewCommand    = "ContinueAsNew"
 
 	// External workflows
 	SignalExternalWorkflowCommand = "SignalExternalWorkflow"
@@ -44,7 +45,7 @@ type (
 		// Info to define workflow context.
 		Info *workflow.Info `json:"info"`
 		// Input arguments.
-		Input []jsoniter.RawMessage `json:"args"`
+		Input []*commonpb.Payload `json:"args"`
 	}
 
 	// InvokeQuery invokes signal with a set of arguments.
@@ -54,7 +55,7 @@ type (
 		// Name of the signal.
 		Name string `json:"name"`
 		// Args of the call.
-		Args []jsoniter.RawMessage `json:"args"`
+		Args []*commonpb.Payload `json:"args"`
 	}
 
 	// InvokeQuery invokes query with a set of arguments.
@@ -64,7 +65,7 @@ type (
 		// Name of the query.
 		Name string `json:"name"`
 		// Args of the call.
-		Args []jsoniter.RawMessage `json:"args"`
+		Args []*commonpb.Payload `json:"args"`
 	}
 
 	// CancelWorkflow asks worker to gracefully stop workflow, if possible (signal).
@@ -89,31 +90,26 @@ type (
 	ExecuteActivity struct {
 		// Name defines activity name.
 		Name string `json:"name"`
-
 		// Args to pass to the activity.
-		Args []jsoniter.RawMessage `json:"arguments"`
-
+		Args []*commonpb.Payload `json:"arguments"`
 		// Options to run activity.
 		Options bindings.ExecuteActivityOptions `json:"options,omitempty"`
-
-		// rawPayload represents Args converted into Temporal payload format.
-		rawPayload *commonpb.Payloads
-	}
-
-	// ExecuteLocalActivity executes activity on the same node.
-	ExecuteLocalActivity struct {
 	}
 
 	// ExecuteChildWorkflow executes child workflow.
 	ExecuteChildWorkflow struct {
 		// Name defines workflow name.
 		Name string `json:"name"`
-
 		// Input to pass to the workflow.
-		Input []jsoniter.RawMessage `json:"input"`
-
+		Input []*commonpb.Payload `json:"input"`
 		// Options to run activity.
 		Options bindings.WorkflowOptions `json:"options,omitempty"`
+	}
+
+	// GetRunID returns the WorkflowID and RunId of child workflow.
+	GetRunID struct {
+		// ID of child workflow command.
+		ID uint64
 	}
 
 	// NewTimer starts new timer.
@@ -124,8 +120,7 @@ type (
 
 	// SideEffect to be recorded into the history.
 	SideEffect struct {
-		Value      jsoniter.RawMessage `json:"value"`
-		rawPayload *commonpb.Payloads
+		Value *commonpb.Payload `json:"value"`
 	}
 
 	// NewTimer starts new timer.
@@ -138,23 +133,29 @@ type (
 	// CompleteWorkflow sent by worker to complete workflow.
 	CompleteWorkflow struct {
 		// Result defines workflow execution result.
-		Result []jsoniter.RawMessage `json:"result"`
+		Result []*commonpb.Payload `json:"result"`
 
 		// Error (if any).
 		Error *rrt.Error `json:"error"`
+	}
 
-		// rawPayload represents Result converted into Temporal payload format.
-		rawPayload *commonpb.Payloads
+	// ContinueAsNew restarts workflow with new running instance.
+	ContinueAsNew struct {
+		// Result defines workflow execution result.
+		Name string `json:"name"`
+
+		// Result defines workflow execution result. todo: needed to be in form of Payload
+		Input []*commonpb.Payload `json:"input"`
 	}
 
 	// SignalExternalWorkflow sends signal to external workflow.
 	SignalExternalWorkflow struct {
-		Namespace         string                `json:"namespace"`
-		WorkflowID        string                `json:"workflowID"`
-		RunID             string                `json:"runID"`
-		Signal            string                `json:"signal"`
-		ChildWorkflowOnly bool                  `json:"childWorkflowOnly"`
-		Args              []jsoniter.RawMessage `json:"args"`
+		Namespace         string              `json:"namespace"`
+		WorkflowID        string              `json:"workflowID"`
+		RunID             string              `json:"runID"`
+		Signal            string              `json:"signal"`
+		ChildWorkflowOnly bool                `json:"childWorkflowOnly"`
+		Args              []*commonpb.Payload `json:"args"`
 
 		// rawPayload represents Args converted into Temporal payload format.
 		rawPayload *commonpb.Payloads
@@ -179,7 +180,7 @@ func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment) bind
 	params := bindings.ExecuteActivityParams{
 		ExecuteActivityOptions: cmd.Options,
 		ActivityType:           bindings.ActivityType{Name: cmd.Name},
-		Input:                  cmd.rawPayload,
+		Input:                  &commonpb.Payloads{Payloads: cmd.Args},
 	}
 
 	if params.TaskQueueName == "" {
@@ -191,8 +192,17 @@ func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment) bind
 
 // ActivityParams maps activity command to activity params.
 func (cmd ExecuteChildWorkflow) WorkflowParams(env bindings.WorkflowEnvironment) bindings.ExecuteWorkflowParams {
-	// todo: implement
-	return bindings.ExecuteWorkflowParams{}
+	params := bindings.ExecuteWorkflowParams{
+		WorkflowOptions: cmd.Options,
+		WorkflowType:    &bindings.WorkflowType{Name: cmd.Name},
+		Input:           &commonpb.Payloads{Payloads: cmd.Input},
+	}
+
+	if params.TaskQueueName == "" {
+		params.TaskQueueName = env.WorkflowInfo().TaskQueueName
+	}
+
+	return params
 }
 
 // ToDuration converts timer command to time.Duration.
@@ -201,21 +211,32 @@ func (cmd NewTimer) ToDuration() time.Duration {
 }
 
 // maps worker parameters into internal command representation.
-func parseCommand(dc converter.DataConverter, name string, params jsoniter.RawMessage) (interface{}, error) {
+func parseCommand(name string, params jsoniter.RawMessage) (interface{}, error) {
 	var err error
 
+	// todo: switch to Protobuf
 	switch name {
 	case ExecuteActivityCommand:
-		cmd := ExecuteActivity{
-			rawPayload: &commonpb.Payloads{},
-		}
-
+		cmd := ExecuteActivity{}
 		err = jsoniter.Unmarshal(params, &cmd)
 		if err != nil {
 			return nil, err
 		}
 
-		err := rrt.ToPayloads(dc, cmd.Args, cmd.rawPayload)
+		return cmd, nil
+
+	case ExecuteChildWorkflowCommand:
+		cmd := ExecuteChildWorkflow{}
+		err = jsoniter.Unmarshal(params, &cmd)
+		if err != nil {
+			return nil, err
+		}
+
+		return cmd, nil
+
+	case GetRunIDCommand:
+		cmd := GetRunID{}
+		err = jsoniter.Unmarshal(params, &cmd)
 		if err != nil {
 			return nil, err
 		}
@@ -224,7 +245,6 @@ func parseCommand(dc converter.DataConverter, name string, params jsoniter.RawMe
 
 	case NewTimerCommand:
 		cmd := NewTimer{}
-
 		err = jsoniter.Unmarshal(params, &cmd)
 		if err != nil {
 			return nil, err
@@ -234,7 +254,6 @@ func parseCommand(dc converter.DataConverter, name string, params jsoniter.RawMe
 
 	case GetVersionCommand:
 		cmd := GetVersion{}
-
 		err = jsoniter.Unmarshal(params, &cmd)
 		if err != nil {
 			return nil, err
@@ -243,16 +262,8 @@ func parseCommand(dc converter.DataConverter, name string, params jsoniter.RawMe
 		return cmd, nil
 
 	case SideEffectCommand:
-		cmd := SideEffect{
-			rawPayload: &commonpb.Payloads{},
-		}
-
+		cmd := SideEffect{}
 		err = jsoniter.Unmarshal(params, &cmd)
-		if err != nil {
-			return nil, err
-		}
-
-		err = rrt.ToPayloads(dc, []jsoniter.RawMessage{cmd.Value}, cmd.rawPayload)
 		if err != nil {
 			return nil, err
 		}
@@ -260,16 +271,17 @@ func parseCommand(dc converter.DataConverter, name string, params jsoniter.RawMe
 		return cmd, nil
 
 	case CompleteWorkflowCommand:
-		cmd := CompleteWorkflow{
-			rawPayload: &commonpb.Payloads{},
-		}
-
+		cmd := CompleteWorkflow{}
 		err = jsoniter.Unmarshal(params, &cmd)
 		if err != nil {
 			return nil, err
 		}
 
-		err = rrt.ToPayloads(dc, cmd.Result, cmd.rawPayload)
+		return cmd, nil
+
+	case ContinueAsNewCommand:
+		cmd := ContinueAsNew{}
+		err = jsoniter.Unmarshal(params, &cmd)
 		if err != nil {
 			return nil, err
 		}
@@ -277,16 +289,8 @@ func parseCommand(dc converter.DataConverter, name string, params jsoniter.RawMe
 		return cmd, nil
 
 	case SignalExternalWorkflowCommand:
-		cmd := SignalExternalWorkflow{
-			rawPayload: &commonpb.Payloads{},
-		}
-
+		cmd := SignalExternalWorkflow{}
 		err = jsoniter.Unmarshal(params, &cmd)
-		if err != nil {
-			return nil, err
-		}
-
-		err = rrt.ToPayloads(dc, cmd.Args, cmd.rawPayload)
 		if err != nil {
 			return nil, err
 		}
@@ -295,7 +299,6 @@ func parseCommand(dc converter.DataConverter, name string, params jsoniter.RawMe
 
 	case CancelExternalWorkflowCommand:
 		cmd := CancelExternalWorkflow{}
-
 		err = jsoniter.Unmarshal(params, &cmd)
 		if err != nil {
 			return nil, err
@@ -305,7 +308,6 @@ func parseCommand(dc converter.DataConverter, name string, params jsoniter.RawMe
 
 	case CancelCommand:
 		cmd := Cancel{}
-
 		err = jsoniter.Unmarshal(params, &cmd)
 		if err != nil {
 			return nil, err

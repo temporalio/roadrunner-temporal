@@ -1,10 +1,12 @@
 package main
 
 import (
-	"log"
-
+	"github.com/spiral/endure"
 	"github.com/spiral/roadrunner/v2/plugins/informer"
 	"github.com/spiral/roadrunner/v2/plugins/resetter"
+	"log"
+
+	"github.com/spiral/roadrunner/v2/cmd/cli"
 
 	"github.com/spiral/roadrunner/v2/plugins/logger"
 	"github.com/spiral/roadrunner/v2/plugins/rpc"
@@ -12,13 +14,21 @@ import (
 	"github.com/temporalio/roadrunner-temporal/plugins/activity"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
 	"github.com/temporalio/roadrunner-temporal/plugins/workflow"
-
-	"github.com/temporalio/roadrunner-temporal/cmd/cli"
 )
 
 func main() {
-	err := cli.InitApp(
-		// todo: move to root
+	var err error
+	cli.Container, err = endure.NewContainer(
+		nil,
+		endure.SetLogLevel(endure.ErrorLevel),
+		endure.RetryOnFail(false),
+	)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = cli.Container.RegisterAll(
 		&logger.ZapLogger{},
 
 		// Helpers
@@ -34,10 +44,8 @@ func main() {
 		&activity.Plugin{},
 		&workflow.Plugin{},
 	)
-
 	if err != nil {
 		log.Fatal(err)
-		return
 	}
 
 	cli.Execute()

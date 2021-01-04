@@ -1,11 +1,10 @@
-package roadrunner_temporal
+package roadrunner_temporal //nolint:golint,stylecheck
 
 import (
-	"github.com/fatih/color"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner/v2"
-	"log"
+	"github.com/spiral/roadrunner/v2/pkg/payload"
+	commonpb "go.temporal.io/api/common/v1"
 	"time"
 )
 
@@ -14,7 +13,7 @@ type (
 	// Endpoint provides the ability to send and receive messages.
 	Endpoint interface {
 		// ExecWithContext allow to set ExecTTL
-		Exec(p roadrunner.Payload) (roadrunner.Payload, error)
+		Exec(p payload.Payload) (payload.Payload, error)
 	}
 
 	// Context provides worker information about currently. Context can be empty for server level commands.
@@ -41,7 +40,7 @@ type (
 		Params jsoniter.RawMessage `json:"params,omitempty"`
 
 		// Result always contains array of values.
-		Result []jsoniter.RawMessage `json:"result,omitempty"`
+		Result []*commonpb.Payload `json:"result,omitempty"`
 
 		// Error associated with command id.
 		Error *Error `json:"error,omitempty"`
@@ -101,7 +100,7 @@ func Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 		err    error
 	)
 
-	p := roadrunner.Payload{}
+	p := payload.Payload{}
 
 	if ctx.IsEmpty() {
 		p.Context = []byte("null")
@@ -118,15 +117,21 @@ func Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 	}
 
 	// todo: REMOVE once complete
-	log.Print(color.GreenString(string(p.Body)))
+	//log.Print(color.MagentaString(string(p.Context)))
+	//log.Print(color.GreenString(string(p.Body)))
 
 	out, err := e.Exec(p)
 	if err != nil {
 		return nil, errors.E(errors.Op("execute"), err)
 	}
 
+	if len(out.Body) == 0 {
+		// worker inactive or closed
+		return nil, nil
+	}
+
 	// todo: REMOVE once complete
-	log.Print(color.HiYellowString(string(out.Body)))
+	//log.Print(color.HiYellowString(string(out.Body)))
 
 	err = jsoniter.Unmarshal(out.Body, &result)
 	if err != nil {

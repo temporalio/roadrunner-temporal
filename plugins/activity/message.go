@@ -1,7 +1,7 @@
 package activity
 
 import (
-	jsoniter "github.com/json-iterator/go"
+	"go.temporal.io/api/common/v1"
 
 	"go.temporal.io/sdk/activity"
 )
@@ -19,6 +19,6 @@ type (
 		Info activity.Info `json:"info"`
 
 		// Args contain activity call arguments.
-		Args []jsoniter.RawMessage `json:"args"`
+		Args []*common.Payload `json:"args"`
 	}
 )

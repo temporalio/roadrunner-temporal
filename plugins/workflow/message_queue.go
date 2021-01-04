@@ -2,8 +2,8 @@ package workflow
 
 import (
 	jsoniter "github.com/json-iterator/go"
-
 	rrt "github.com/temporalio/roadrunner-temporal"
+	"go.temporal.io/api/common/v1"
 )
 
 type messageQueue struct {
@@ -44,8 +44,16 @@ func (mq *messageQueue) pushCommand(cmd string, params interface{}) (id uint64, 
 	return id, nil
 }
 
-func (mq *messageQueue) pushResponse(id uint64, result []jsoniter.RawMessage) {
+func (mq *messageQueue) pushResponse(id uint64, result []*common.Payload) {
 	mq.queue = append(mq.queue, rrt.Message{ID: id, Result: result})
+}
+
+func (mq *messageQueue) pushPayloadsResponse(id uint64, result *common.Payloads) {
+	if result == nil {
+		mq.queue = append(mq.queue, rrt.Message{ID: id, Result: []*common.Payload{}})
+	} else {
+		mq.queue = append(mq.queue, rrt.Message{ID: id, Result: result.Payloads})
+	}
 }
 
 func (mq *messageQueue) pushError(id uint64, err error) {
