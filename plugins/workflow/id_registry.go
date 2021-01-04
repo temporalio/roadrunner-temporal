@@ -21,7 +21,10 @@ type (
 )
 
 func newIdRegistry() *idRegistry {
-	return &idRegistry{}
+	return &idRegistry{
+		ids:       map[uint64]entry{},
+		listeners: map[uint64]listener{},
+	}
 }
 
 func (c *idRegistry) listen(id uint64, cl listener) {

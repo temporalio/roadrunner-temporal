@@ -62,6 +62,11 @@ func Test_ExecuteSimpleWorkflow_1(t *testing.T) {
 	assert.Equal(t, "HELLO WORLD", result)
 }
 
+type User struct {
+	Name  string
+	Email string
+}
+
 func Test_ExecuteSimpleDTOWorkflow(t *testing.T) {
 	s := NewTestServer()
 	defer s.MustClose()
@@ -72,12 +77,16 @@ func Test_ExecuteSimpleDTOWorkflow(t *testing.T) {
 			TaskQueue: "default",
 		},
 		"SimpleDTOWorkflow",
+		User{
+			Name:  "Antony",
+			Email: "email@world.net",
+		},
 	)
 	assert.NoError(t, err)
 
-	var result string
+	var result struct{ Message string }
 	assert.NoError(t, w.Get(context.Background(), &result))
-	assert.Equal(t, "OK", result)
+	assert.Equal(t, "Hello Antony <email@world.net>", result.Message)
 }
 
 func Test_ExecuteSimpleWorkflowWithSequenceInBatch(t *testing.T) {

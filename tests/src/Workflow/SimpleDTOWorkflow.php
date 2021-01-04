@@ -14,7 +14,7 @@ use Temporal\Tests\DTO\User;
 class SimpleDTOWorkflow
 {
     #[WorkflowMethod(name: 'SimpleDTOWorkflow')]
-    public function handler(): iterable
+    public function handler(User $user): iterable
     {
         $simple = Workflow::newActivityStub(
             SimpleActivity::class,
@@ -22,11 +22,7 @@ class SimpleDTOWorkflow
                 ->withStartToCloseTimeout(5)
         );
 
-        $u = new User();
-        $u->name = "Antony";
-        $u->email = "email@domain.com";
-
-        $value = yield $simple->greet($u);
+        $value = yield $simple->greet($user);
         if (!$value instanceof Message) {
             return "FAIL";
         }
