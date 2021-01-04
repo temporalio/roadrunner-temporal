@@ -2,6 +2,8 @@ package tests
 
 import (
 	"context"
+	"crypto/md5"
+	"fmt"
 	"testing"
 	"time"
 
@@ -272,6 +274,33 @@ func Test_ActivityHeartbeat(t *testing.T) {
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "OK", result)
+}
+
+func Test_BinaryPayload(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	// todo: need real binary
+	rnd := make([]byte, 0, 500)
+	rnd = []byte("hello world")
+
+	//_, err := rand.Read(rnd)
+	//assert.NoError(t, err)
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"BinaryWorkflow",
+		rnd,
+	)
+	assert.NoError(t, err)
+
+	var result string
+	assert.NoError(t, w.Get(context.Background(), &result))
+
+	assert.Equal(t, fmt.Sprintf("%x", md5.Sum(rnd)), result)
 }
 
 //func Test_ContinueAsNew(t *testing.T) {
