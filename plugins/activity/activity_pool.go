@@ -89,11 +89,11 @@ func (pool *activityPoolImpl) ActivityNames() []string {
 
 // initWorkers request workers workflows from underlying PHP and configures temporal workers linked to the pool.
 func (pool *activityPoolImpl) initWorkers(ctx context.Context, temporal temporal.Temporal) error {
-	op := errors.Op("createTemporalWorker")
+	const op = errors.Op("createTemporalWorker")
 
 	workerInfo, err := rrt.FetchWorkerInfo(pool.wp, temporal.GetDataConverter())
 	if err != nil {
-		return err
+		return errors.E(op, err)
 	}
 
 	pool.activities = make([]string, 0)
