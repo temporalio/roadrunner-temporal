@@ -3,10 +3,9 @@
 
 namespace Temporal\Tests\Workflow;
 
-
-use Temporal\Client\Activity\ActivityOptions;
-use Temporal\Client\Workflow;
-use Temporal\Client\Workflow\WorkflowMethod;
+use Temporal\Activity\ActivityOptions;
+use Temporal\Workflow;
+use Temporal\Workflow\WorkflowMethod;
 use Temporal\Tests\Activity\SimpleActivity;
 
 class ContinuableWorkflow

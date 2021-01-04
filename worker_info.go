@@ -1,9 +1,8 @@
 package roadrunner_temporal //nolint:golint,stylecheck
 
 import (
-	"go.temporal.io/sdk/converter"
-
 	"github.com/spiral/errors"
+	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
 )
 

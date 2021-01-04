@@ -5,11 +5,10 @@ namespace Temporal\Tests\Workflow;
 
 use React\Promise\Deferred;
 use React\Promise\PromiseInterface;
-use Temporal\Client\Activity\ActivityOptions;
-use Temporal\Client\Workflow;
-use Temporal\Client\Workflow\WorkflowMethod;
+use Temporal\Activity\ActivityOptions;
+use Temporal\Workflow;
+use Temporal\Workflow\WorkflowMethod;
 use Temporal\Tests\Activity\SimpleActivity;
-use function Symfony\Component\String\s;
 
 class WorkflowWithSignalledSteps
 {

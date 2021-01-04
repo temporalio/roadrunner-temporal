@@ -2,8 +2,8 @@
 
 namespace Temporal\Tests\Activity;
 
-use Temporal\Client\Activity\ActivityInterface;
-use Temporal\Client\Activity\ActivityMethod;
+use Temporal\Activity\ActivityInterface;
+use Temporal\Activity\ActivityMethod;
 use Temporal\Tests\DTO\Message;
 use Temporal\Tests\DTO\User;
 

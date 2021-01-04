@@ -3,8 +3,8 @@
 namespace Temporal\Tests\Workflow;
 
 use React\Promise\Deferred;
-use Temporal\Client\Workflow;
-use Temporal\Client\Workflow\WorkflowMethod;
+use Temporal\Workflow;
+use Temporal\Workflow\WorkflowMethod;
 
 class RuntimeSignalWorkflow
 {

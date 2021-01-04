@@ -3,9 +3,9 @@
 
 namespace Temporal\Tests\Activity;
 
-use Temporal\Client\Activity;
-use Temporal\Client\Activity\ActivityInterface;
-use Temporal\Client\Activity\ActivityMethod;
+use Temporal\Activity;
+use Temporal\Activity\ActivityInterface;
+use Temporal\Activity\ActivityMethod;
 
 #[ActivityInterface(prefix: "HeartBeatActivity.")]
 class HeartBeatActivity

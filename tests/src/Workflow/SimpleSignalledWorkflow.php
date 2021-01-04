@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Temporal\Tests\Workflow;
 
-use Temporal\Client\Workflow;
-use Temporal\Client\Workflow\WorkflowMethod;
+use Temporal\Workflow;
+use Temporal\Workflow\WorkflowMethod;
 
 class SimpleSignalledWorkflow
 {
