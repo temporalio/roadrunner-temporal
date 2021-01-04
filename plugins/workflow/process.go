@@ -263,6 +263,7 @@ func (wf *workflowProcess) handleCommand(id uint64, cmd interface{}) error {
 		if cmd.Error == nil {
 			wf.env.Complete(&commonpb.Payloads{Payloads: cmd.Result}, nil)
 		} else {
+			// todo: map error, todo: handle cancelled errors
 			wf.env.Complete(nil, cmd.Error)
 		}
 

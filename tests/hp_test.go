@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"crypto/md5"
+	"crypto/rand"
 	"fmt"
 	"testing"
 	"time"
@@ -280,12 +281,10 @@ func Test_BinaryPayload(t *testing.T) {
 	s := NewTestServer()
 	defer s.MustClose()
 
-	// todo: need real binary
-	rnd := make([]byte, 0, 500)
-	rnd = []byte("hello world")
+	rnd := make([]byte, 2500)
 
-	//_, err := rand.Read(rnd)
-	//assert.NoError(t, err)
+	_, err := rand.Read(rnd)
+	assert.NoError(t, err)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
