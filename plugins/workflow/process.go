@@ -1,15 +1,13 @@
 package workflow
 
 import (
-	"strconv"
-	"sync/atomic"
-
-	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	rrt "github.com/temporalio/roadrunner-temporal"
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
+	"strconv"
+	"sync/atomic"
 )
 
 // wraps single workflow process
@@ -41,7 +39,7 @@ func (wf *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *com
 	env.RegisterSignalHandler(wf.handleSignal)
 	env.RegisterQueryHandler(wf.handleQuery)
 
-	cmd := StartWorkflow{
+	cmd := rrt.StartWorkflow{
 		Info:  env.WorkflowInfo(),
 		Input: []*commonpb.Payload{},
 	}
@@ -50,7 +48,7 @@ func (wf *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *com
 		cmd.Input = input.Payloads
 	}
 
-	_, err := wf.mq.pushCommand(StartWorkflowCommand, cmd)
+	_, err := wf.mq.pushCommand(cmd)
 
 	if err != nil {
 		panic(err)
@@ -77,7 +75,7 @@ func (wf *workflowProcess) OnWorkflowTaskStarted() {
 		wf.pipeline = wf.pipeline[1:]
 
 		if msg.IsCommand() {
-			err = wf.handleCommand(msg.ID, msg.Command, msg.Params)
+			err = wf.handleCommand(msg.ID, msg.Command)
 		}
 
 		if err != nil {
@@ -88,12 +86,9 @@ func (wf *workflowProcess) OnWorkflowTaskStarted() {
 
 // StackTrace renders workflow stack trace.
 func (wf *workflowProcess) StackTrace() string {
-	result, err := wf.runCommand(
-		GetStackTraceCommand,
-		&GetStackTrace{
-			RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID,
-		},
-	)
+	result, err := wf.runCommand(rrt.GetStackTrace{
+		RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID,
+	})
 
 	if err != nil {
 		return err.Error()
@@ -112,12 +107,9 @@ func (wf *workflowProcess) StackTrace() string {
 func (wf *workflowProcess) Close() {
 	if !wf.completed {
 		// offloaded from memory
-		_, err := wf.mq.pushCommand(
-			DestroyWorkflowCommand,
-			DestroyWorkflow{
-				RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID,
-			},
-		)
+		_, err := wf.mq.pushCommand(rrt.DestroyWorkflow{
+			RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID,
+		})
 
 		if err != nil {
 			panic(err)
@@ -141,12 +133,9 @@ func (wf *workflowProcess) getContext() rrt.Context {
 
 // schedule cancel command
 func (wf *workflowProcess) handleCancel() {
-	_, err := wf.mq.pushCommand(
-		CancelWorkflowCommand,
-		&CancelWorkflow{
-			RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID,
-		},
-	)
+	_, err := wf.mq.pushCommand(rrt.CancelWorkflow{
+		RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID,
+	})
 
 	if err != nil {
 		panic(err)
@@ -155,13 +144,12 @@ func (wf *workflowProcess) handleCancel() {
 
 // schedule the signal processing
 func (wf *workflowProcess) handleSignal(name string, input *commonpb.Payloads) {
-	cmd := &InvokeQuery{
+	_, err := wf.mq.pushCommand(rrt.InvokeSignal{
 		RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID,
 		Name:  name,
 		Args:  input.Payloads,
-	}
+	})
 
-	_, err := wf.mq.pushCommand(InvokeSignalCommand, cmd)
 	if err != nil {
 		panic(err)
 	}
@@ -169,13 +157,12 @@ func (wf *workflowProcess) handleSignal(name string, input *commonpb.Payloads) {
 
 // Handle query in blocking mode.
 func (wf *workflowProcess) handleQuery(queryType string, queryArgs *commonpb.Payloads) (*commonpb.Payloads, error) {
-	cmd := &InvokeQuery{
+	result, err := wf.runCommand(rrt.InvokeQuery{
 		RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID,
 		Name:  queryType,
 		Args:  queryArgs.Payloads,
-	}
+	})
 
-	result, err := wf.runCommand(InvokeQueryCommand, cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -188,15 +175,12 @@ func (wf *workflowProcess) handleQuery(queryType string, queryArgs *commonpb.Pay
 }
 
 // process incoming command
-func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter.RawMessage) error {
-	const op = errors.Op("handle command")
-	rawCmd, err := parseCommand(name, params)
-	if err != nil {
-		return err
-	}
+func (wf *workflowProcess) handleCommand(id uint64, cmd interface{}) error {
+	const op = errors.Op("handleCommand")
+	var err error
 
-	switch cmd := rawCmd.(type) {
-	case ExecuteActivity:
+	switch cmd := cmd.(type) {
+	case *rrt.ExecuteActivity:
 		params := cmd.ActivityParams(wf.env)
 		activityID := wf.env.ExecuteActivity(params, wf.createCallback(id))
 
@@ -205,7 +189,7 @@ func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 			return nil
 		})
 
-	case ExecuteChildWorkflow:
+	case *rrt.ExecuteChildWorkflow:
 		params := cmd.WorkflowParams(wf.env)
 
 		// always use deterministic id
@@ -223,7 +207,7 @@ func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 			return nil
 		})
 
-	case GetRunID:
+	case *rrt.GetRunID:
 		wf.ids.listen(cmd.ID, func(w bindings.WorkflowExecution, err error) {
 			cl := wf.createCallback(id)
 
@@ -235,7 +219,7 @@ func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 			cl(p, err)
 		})
 
-	case NewTimer:
+	case *rrt.NewTimer:
 		timerID := wf.env.NewTimer(cmd.ToDuration(), wf.createCallback(id))
 		wf.canceller.register(id, func() error {
 			if timerID != nil {
@@ -244,7 +228,7 @@ func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 			return nil
 		})
 
-	case GetVersion:
+	case *rrt.GetVersion:
 		version := wf.env.GetVersion(
 			cmd.ChangeID,
 			workflow.Version(cmd.MinSupported),
@@ -262,7 +246,7 @@ func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 			panic(err)
 		}
 
-	case SideEffect:
+	case *rrt.SideEffect:
 		wf.env.SideEffect(
 			func() (*commonpb.Payloads, error) {
 				return &commonpb.Payloads{Payloads: []*commonpb.Payload{cmd.Value}}, nil
@@ -270,7 +254,7 @@ func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 			wf.createContinuableCallback(id),
 		)
 
-	case CompleteWorkflow:
+	case *rrt.CompleteWorkflow:
 		wf.completed = true
 
 		payload, _ := wf.env.GetDataConverter().ToPayload("completed")
@@ -282,29 +266,29 @@ func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 			wf.env.Complete(nil, cmd.Error)
 		}
 
-	case ContinueAsNew:
+	case *rrt.ContinueAsNew:
 		wf.completed = true
 
 		payload, _ := wf.env.GetDataConverter().ToPayload("completed")
 		wf.mq.pushResponse(id, []*commonpb.Payload{payload})
 		wf.env.Complete(nil, errors.E("not implemented"))
 
-	case SignalExternalWorkflow:
+	case *rrt.SignalExternalWorkflow:
 		wf.env.SignalExternalWorkflow(
 			cmd.Namespace,
 			cmd.WorkflowID,
 			cmd.RunID,
 			cmd.Signal,
-			cmd.rawPayload,
+			&commonpb.Payloads{Payloads: cmd.Args},
 			nil,
 			cmd.ChildWorkflowOnly,
 			wf.createCallback(id),
 		)
 
-	case CancelExternalWorkflow:
+	case *rrt.CancelExternalWorkflow:
 		wf.env.RequestCancelExternalWorkflow(cmd.Namespace, cmd.WorkflowID, cmd.RunID, wf.createCallback(id))
 
-	case Cancel:
+	case *rrt.Cancel:
 		err = wf.canceller.cancel(cmd.CommandIDs...)
 		if err != nil {
 			return errors.E(op, err)
@@ -312,6 +296,9 @@ func (wf *workflowProcess) handleCommand(id uint64, name string, params jsoniter
 
 		payload, _ := wf.env.GetDataConverter().ToPayload("completed")
 		wf.mq.pushResponse(id, []*commonpb.Payload{payload})
+
+	default:
+		panic("undefined command")
 	}
 
 	return nil
@@ -388,9 +375,9 @@ func (wf *workflowProcess) discardQueue() ([]rrt.Message, error) {
 }
 
 // Run single command and return single result.
-func (wf *workflowProcess) runCommand(command string, params interface{}) (rrt.Message, error) {
+func (wf *workflowProcess) runCommand(cmd interface{}) (rrt.Message, error) {
 	const op = errors.Op("run command")
-	_, msg, err := wf.mq.makeCommand(command, params)
+	_, msg, err := wf.mq.allocateMessage(cmd)
 	if err != nil {
 		return rrt.Message{}, err
 	}

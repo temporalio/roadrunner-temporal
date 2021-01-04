@@ -91,6 +91,7 @@ func (svc *Plugin) Serve() chan error {
 	return errCh
 }
 
+// Stop stops the serving plugin.
 func (svc *Plugin) Stop() error {
 	atomic.StoreInt64(&svc.closing, 1)
 

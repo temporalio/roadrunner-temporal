@@ -1,15 +1,22 @@
 package roadrunner_temporal //nolint:golint,stylecheck
 
 import (
+	"encoding/json"
+	"github.com/fatih/color"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/payload"
 	commonpb "go.temporal.io/api/common/v1"
+	"log"
 	"time"
 )
 
-type (
+const (
+	// DebugMode enabled verbose debug of communication protocol.
+	DebugMode = false
+)
 
+type (
 	// Endpoint provides the ability to send and receive messages.
 	Endpoint interface {
 		// ExecWithContext allow to set ExecTTL
@@ -33,10 +40,25 @@ type (
 		// ID contains ID of the command, response or error.
 		ID uint64 `json:"id"`
 
+		// Command of the message in unmarshalled form. Pointer.
+		Command interface{} `json:"params,omitempty"`
+
+		// Result always contains array of values.
+		Result []*commonpb.Payload `json:"result,omitempty"`
+
+		// Error associated with command id.
+		Error *Error `json:"error,omitempty"`
+	}
+
+	// messageFrame contains message command in binary form.
+	messageFrame struct {
+		// ID contains ID of the command, response or error.
+		ID uint64 `json:"id"`
+
 		// Command name. Optional.
 		Command string `json:"command,omitempty"`
 
-		// Command parameters (free form).
+		// Params to be unmarshalled to body (raw payload).
 		Params jsoniter.RawMessage `json:"params,omitempty"`
 
 		// Result always contains array of values.
@@ -66,7 +88,7 @@ func (ctx Context) IsEmpty() bool {
 
 // IsCommand returns true if message carries request.
 func (msg Message) IsCommand() bool {
-	return msg.Command != ""
+	return msg.Command != nil
 }
 
 // IsError returns true if message carries error.
@@ -96,9 +118,20 @@ func Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 	}
 
 	var (
-		result = make([]Message, 0, 5)
-		err    error
+		response = make([]messageFrame, 0, 5)
+		result   = make([]Message, 0, 5)
+		err      error
 	)
+
+	frames := make([]messageFrame, 0, len(msg))
+	for _, m := range msg {
+		frame, err := packFrame(m)
+		if err != nil {
+			return nil, err
+		}
+
+		frames = append(frames, frame)
+	}
 
 	p := payload.Payload{}
 
@@ -111,14 +144,14 @@ func Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 		return nil, errors.E(errors.Op("encodeContext"), err)
 	}
 
-	p.Body, err = jsoniter.Marshal(msg)
+	p.Body, err = jsoniter.Marshal(frames)
 	if err != nil {
 		return nil, errors.E(errors.Op("encodePayload"), err)
 	}
 
-	// todo: REMOVE once complete
-	//log.Print(color.MagentaString(string(p.Context)))
-	//log.Print(color.GreenString(string(p.Body)))
+	if DebugMode {
+		log.Print(color.GreenString(string(p.Body)))
+	}
 
 	out, err := e.Exec(p)
 	if err != nil {
@@ -130,13 +163,78 @@ func Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 		return nil, nil
 	}
 
-	// todo: REMOVE once complete
-	//log.Print(color.HiYellowString(string(out.Body)))
+	if DebugMode {
+		log.Print(color.HiYellowString(string(out.Body)))
+	}
 
-	err = jsoniter.Unmarshal(out.Body, &result)
+	err = jsoniter.Unmarshal(out.Body, &response)
 	if err != nil {
 		return nil, errors.E(errors.Op("parseResponse"), err)
 	}
 
+	for _, f := range response {
+		msg, err := parseFrame(f)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, msg)
+	}
+
 	return result, nil
+}
+
+func packFrame(msg Message) (messageFrame, error) {
+	if msg.Command == nil {
+		return messageFrame{
+			ID:     msg.ID,
+			Result: msg.Result,
+			Error:  msg.Error,
+		}, nil
+	}
+
+	name, err := commandName(msg.Command)
+	if err != nil {
+		return messageFrame{}, err
+	}
+
+	body, err := jsoniter.Marshal(msg.Command)
+	if err != nil {
+		return messageFrame{}, err
+	}
+
+	return messageFrame{
+		ID:      msg.ID,
+		Command: name,
+		Params:  body,
+		Result:  msg.Result,
+		Error:   msg.Error,
+	}, nil
+}
+
+func parseFrame(frame messageFrame) (Message, error) {
+	if frame.Command == "" {
+		return Message{
+			ID:     frame.ID,
+			Result: frame.Result,
+			Error:  frame.Error,
+		}, nil
+	}
+
+	cmd, err := initCommand(frame.Command, frame.Params)
+	if err != nil {
+		return Message{}, err
+	}
+
+	err = json.Unmarshal(frame.Params, &cmd)
+	if err != nil {
+		return Message{}, err
+	}
+
+	return Message{
+		ID:      frame.ID,
+		Command: cmd,
+		Result:  frame.Result,
+		Error:   frame.Error,
+	}, nil
 }
