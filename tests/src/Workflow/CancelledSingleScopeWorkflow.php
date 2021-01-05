@@ -27,20 +27,26 @@ class CancelledSingleScopeWorkflow
         );
 
         $this->status[] = 'start';
-        yield Workflow::newCancellationScope(
-            function () use ($simple) {
-                try {
-                    $this->status[] = 'in scope';
-                    yield $simple->slow('1');
-                } catch (CancellationException $e) {
-                    $this->status[] = 'captured in scope';
+        try {
+            yield Workflow::newCancellationScope(
+                function () use ($simple) {
+                    try {
+                        $this->status[] = 'in scope';
+                        yield $simple->slow('1');
+                    } catch (CancellationException $e) {
+                        error_log("HANDLED IN SCOPE");
+                        // after process is complete, do not use for business logic
+                        $this->status[] = 'captured in scope';
+                    }
                 }
-            }
-        )->onCancel(
-            function () use (&$cancelled) {
-                $this->status[] = 'on cancel';
-            }
-        );
+            )->onCancel(
+                function () use (&$cancelled) {
+                    $this->status[] = 'on cancel';
+                }
+            );
+        } catch (CancellationException $e) {
+            $this->status[] = 'captured in process';
+        }
 
         return 'OK';
     }

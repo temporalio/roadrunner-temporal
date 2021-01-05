@@ -61,6 +61,8 @@ class CancelledNestedWorkflow
                 }
             );
         } catch (CancellationException $e) {
+            $this->status[] = 'close process';
+
             return 'CANCELLED';
         }
 

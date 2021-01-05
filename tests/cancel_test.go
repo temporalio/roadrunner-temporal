@@ -136,7 +136,11 @@ func Test_CancelledNestedWorkflow(t *testing.T) {
 		t,
 		[]string{
 			"begin",
-			"begin first scope second scope close first scope",
+			"first scope",
+			"second scope",
+			"close second scope",
+			"close first scope",
+			"close process",
 		},
 		trace,
 	)
@@ -174,8 +178,10 @@ func Test_CancelledNSingleScopeWorkflow(t *testing.T) {
 	assert.Equal(
 		t,
 		[]string{
-			"begin",
-			"begin first scope second scope close first scope",
+			"start",
+			"in scope",
+			"on cancel",
+			"captured in process",
 		},
 		trace,
 	)
