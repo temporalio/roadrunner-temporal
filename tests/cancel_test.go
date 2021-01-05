@@ -6,6 +6,7 @@ import (
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
 	"go.temporal.io/sdk/client"
+	"log"
 	"testing"
 	"time"
 )
@@ -82,8 +83,6 @@ func Test_CancelledWithCompensationWorkflow(t *testing.T) {
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "OK", result)
 
-	time.Sleep(5 * time.Second)
-
 	e, err := s.Client().QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "getStatus")
 	assert.NoError(t, err)
 
@@ -100,7 +99,47 @@ func Test_CancelledWithCompensationWorkflow(t *testing.T) {
 			"WAIT ROLLBACK",
 			"RESULT (ROLLBACK)", "DONE rollback",
 			"COMPLETE rollback",
-			"result: OK"},
+			"result: OK",
+		},
 		trace,
 	)
+}
+
+func Test_CancelledNestedWorkflow(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"CancelledNestedWorkflow",
+	)
+	assert.NoError(t, err)
+
+	time.Sleep(time.Second)
+
+	err = s.Client().CancelWorkflow(context.Background(), w.GetID(), w.GetRunID())
+	assert.NoError(t, err)
+
+	var result interface{}
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "CANCELLED", result)
+
+	e, err := s.Client().QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "getStatus")
+	assert.NoError(t, err)
+
+	trace := make([]string, 0)
+	assert.NoError(t, e.Get(&trace))
+	assert.Equal(
+		t,
+		[]string{
+			"begin",
+			"begin first scope second scope close first scope",
+		},
+		trace,
+	)
+
+	log.Print(trace)
 }
