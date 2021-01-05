@@ -18,9 +18,9 @@ type workflowProcess struct {
 	mq        *messageQueue
 	ids       *idRegistry
 	seqID     uint64
+	runID     string
 	pipeline  []rrt.Message
 	callbacks []func() error
-	completed bool
 	canceller *canceller
 }
 
@@ -29,6 +29,7 @@ func (wf *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *com
 	wf.env = env
 	wf.header = header
 	wf.seqID = 0
+	wf.runID = env.WorkflowInfo().WorkflowExecution.RunID
 	wf.canceller = &canceller{}
 
 	// sequenceID shared for all worker workflows
@@ -105,18 +106,15 @@ func (wf *workflowProcess) StackTrace() string {
 
 // Close the workflow.
 func (wf *workflowProcess) Close() {
-	if !wf.completed {
-		// offloaded from memory
-		_, err := wf.mq.pushCommand(rrt.DestroyWorkflow{
-			RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID,
-		})
+	_, err := wf.mq.pushCommand(rrt.DestroyWorkflow{
+		RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID,
+	})
 
-		if err != nil {
-			panic(err)
-		}
+	if err != nil {
+		panic(err)
 	}
 
-	_, err := wf.discardQueue()
+	_, err = wf.discardQueue()
 	if err != nil {
 		panic(err)
 	}
@@ -157,10 +155,15 @@ func (wf *workflowProcess) handleSignal(name string, input *commonpb.Payloads) {
 
 // Handle query in blocking mode.
 func (wf *workflowProcess) handleQuery(queryType string, queryArgs *commonpb.Payloads) (*commonpb.Payloads, error) {
+	var payloads []*commonpb.Payload
+	if queryArgs != nil {
+		payloads = queryArgs.Payloads
+	}
+
 	result, err := wf.runCommand(rrt.InvokeQuery{
-		RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID,
+		RunID: wf.runID,
 		Name:  queryType,
-		Args:  queryArgs.Payloads,
+		Args:  payloads,
 	})
 
 	if err != nil {
@@ -255,8 +258,6 @@ func (wf *workflowProcess) handleCommand(id uint64, cmd interface{}) error {
 		)
 
 	case *rrt.CompleteWorkflow:
-		wf.completed = true
-
 		payload, _ := wf.env.GetDataConverter().ToPayload("completed")
 		wf.mq.pushResponse(id, []*commonpb.Payload{payload})
 
@@ -268,8 +269,6 @@ func (wf *workflowProcess) handleCommand(id uint64, cmd interface{}) error {
 		}
 
 	case *rrt.ContinueAsNew:
-		wf.completed = true
-
 		payload, _ := wf.env.GetDataConverter().ToPayload("completed")
 		wf.mq.pushResponse(id, []*commonpb.Payload{payload})
 		wf.env.Complete(nil, errors.E("not implemented"))

@@ -10,6 +10,14 @@ use Temporal\Workflow\WorkflowMethod;
 
 class CancelledWorkflow
 {
+    private array $status = [];
+
+    #[Workflow\QueryMethod(name: 'getStatus')]
+    public function getStatus(): array
+    {
+        return $this->status;
+    }
+
     #[WorkflowMethod(name: 'CancelledWorkflow')]
     public function handler()
     {
@@ -22,19 +30,36 @@ class CancelledWorkflow
         $slow = $simple->slow('DOING SLOW ACTIVITY');
 
         try {
-            return yield $slow;
+            $this->status[] = 'yield';
+            $result = yield $slow;
         } catch (CancellationException $e) {
-            $first = yield $slow;
-            if ($first !== 'doing slow activity') {
-                return 'failed to complete';
-            }
+            $this->status[] = 'rollback';
 
-            $second = yield $simple->echo('rollback');
-            if ($second !== 'ROLLBACK') {
-                return 'failed to compensate ' . $second;
-            }
+            // todo: detached
+            $scope = Workflow::newCancellationScope(
+                function () use ($simple) {
+                    $this->status[] = 'START rollback';
 
-            return 'CANCELLED';
+                    $second = yield $simple->echo('rollback');
+                    $this->status[] = sprintf("RESULT (%s)", $second);
+
+                    if ($second !== 'ROLLBACK') {
+                        $this->status[] = 'FAIL rollback';
+                        return 'failed to compensate ' . $second;
+                    }
+                    $this->status[] = 'DONE rollback';
+
+                    return 'OK';
+                }
+            );
+
+            $this->status[] = 'WAIT ROLLBACK';
+            $result = yield $scope;
+            $this->status[] = 'COMPLETE rollback';
         }
+
+        $this->status[] = 'result: ' . $result;
+
+        return $result;
     }
 }
