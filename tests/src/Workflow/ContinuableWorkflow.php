@@ -24,6 +24,10 @@ class ContinuableWorkflow
             return "OK" . $generation;
         }
 
+        if ($generation !== 1) {
+            assert(!empty(Workflow::getInfo()->continuedExecutionRunId));
+        }
+
         for ($i = 0; $i < $generation; $i++) {
             yield $simple->echo((string)$generation);
         }

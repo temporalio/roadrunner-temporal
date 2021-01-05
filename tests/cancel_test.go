@@ -57,6 +57,29 @@ func Test_CancelledWorkflow(t *testing.T) {
 
 	var result interface{}
 	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "CANCELLED", result)
+}
+
+func Test_CancelledWithCompensationWorkflow(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"CancelledWithCompensationWorkflow",
+		"Hello World",
+	)
+	assert.NoError(t, err)
+
+	time.Sleep(time.Second)
+	err = s.Client().CancelWorkflow(context.Background(), w.GetID(), w.GetRunID())
+	assert.NoError(t, err)
+
+	var result interface{}
+	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "OK", result)
 
 	time.Sleep(5 * time.Second)
@@ -71,6 +94,8 @@ func Test_CancelledWorkflow(t *testing.T) {
 		[]string{
 			"yield",
 			"rollback",
+			"captured retry",
+			"captured promise on cancelled",
 			"START rollback",
 			"WAIT ROLLBACK",
 			"RESULT (ROLLBACK)", "DONE rollback",
