@@ -143,3 +143,42 @@ func Test_CancelledNestedWorkflow(t *testing.T) {
 
 	log.Print(trace)
 }
+
+func Test_CancelledNSingleScopeWorkflow(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"CancelledSingleScopeWorkflow",
+	)
+	assert.NoError(t, err)
+
+	time.Sleep(time.Second)
+
+	err = s.Client().CancelWorkflow(context.Background(), w.GetID(), w.GetRunID())
+	assert.NoError(t, err)
+
+	var result interface{}
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "OK", result)
+
+	e, err := s.Client().QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "getStatus")
+	assert.NoError(t, err)
+
+	trace := make([]string, 0)
+	assert.NoError(t, e.Get(&trace))
+	assert.Equal(
+		t,
+		[]string{
+			"begin",
+			"begin first scope second scope close first scope",
+		},
+		trace,
+	)
+
+	log.Print(trace)
+}
