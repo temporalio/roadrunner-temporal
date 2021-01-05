@@ -271,7 +271,16 @@ func (wf *workflowProcess) handleCommand(id uint64, cmd interface{}) error {
 	case *rrt.ContinueAsNew:
 		payload, _ := wf.env.GetDataConverter().ToPayload("completed")
 		wf.mq.pushResponse(id, []*commonpb.Payload{payload})
-		wf.env.Complete(nil, errors.E("not implemented"))
+
+		wf.env.Complete(nil, &workflow.ContinueAsNewError{
+			WorkflowType:             &bindings.WorkflowType{Name: cmd.Name},
+			Input:                    &commonpb.Payloads{Payloads: cmd.Input},
+			Header:                   wf.header,
+			TaskQueueName:            wf.env.WorkflowInfo().TaskQueueName,
+			WorkflowExecutionTimeout: wf.env.WorkflowInfo().WorkflowExecutionTimeout,
+			WorkflowRunTimeout:       wf.env.WorkflowInfo().WorkflowRunTimeout,
+			WorkflowTaskTimeout:      wf.env.WorkflowInfo().WorkflowTaskTimeout,
+		})
 
 	case *rrt.SignalExternalWorkflow:
 		wf.env.SignalExternalWorkflow(

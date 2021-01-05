@@ -165,7 +165,7 @@ type (
 		// Result defines workflow execution result.
 		Name string `json:"name"`
 
-		// Result defines workflow execution result. todo: needed to be in form of Payload (?)
+		// Result defines workflow execution result.
 		Input []*commonpb.Payload `json:"input"`
 	}
 

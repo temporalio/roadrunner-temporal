@@ -12,8 +12,7 @@ require (
 	github.com/spiral/errors v1.0.6
 	github.com/spiral/roadrunner/v2 v2.0.0-beta4
 	github.com/stretchr/testify v1.6.1
-	github.com/vmihailenco/msgpack v4.0.4+incompatible
-	go.temporal.io/api v1.3.0
+	go.temporal.io/api v1.4.0
 	go.temporal.io/sdk v1.2.0
 	go.uber.org/zap v1.16.0
 )

@@ -11,8 +11,9 @@ use Temporal\Tests\Activity\SimpleActivity;
 class ContinuableWorkflow
 {
     #[WorkflowMethod(name: 'ContinuableWorkflow')]
-    public function handler(int $generation)
-    {
+    public function handler(
+        int $generation
+    ) {
         $simple = Workflow::newActivityStub(
             SimpleActivity::class,
             ActivityOptions::new()->withStartToCloseTimeout(5)
@@ -20,13 +21,13 @@ class ContinuableWorkflow
 
         if ($generation > 5) {
             // complete
-            return "OK";
+            return "OK" . $generation;
         }
 
         for ($i = 0; $i < $generation; $i++) {
             yield $simple->echo((string)$generation);
         }
 
-        return Workflow::continueAsNew('ContinuableWorkflow', $generation++);
+        return Workflow::continueAsNew('ContinuableWorkflow', ++$generation);
     }
 }

@@ -13,7 +13,7 @@ import (
 
 const (
 	// DebugMode enabled verbose debug of communication protocol.
-	DebugMode = false
+	DebugMode = true
 )
 
 type (
