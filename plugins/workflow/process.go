@@ -22,6 +22,7 @@ type workflowProcess struct {
 	pipeline  []rrt.Message
 	callbacks []func() error
 	canceller *canceller
+	inLoop    bool
 }
 
 // Execute workflow, bootstraps process.
@@ -58,6 +59,9 @@ func (wf *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *com
 
 // OnWorkflowTaskStarted handles single workflow tick and batch of pipeline from temporal server.
 func (wf *workflowProcess) OnWorkflowTaskStarted() {
+	wf.inLoop = true
+	defer func() { wf.inLoop = false }()
+
 	var err error
 	for _, callback := range wf.callbacks {
 		err = callback()
@@ -227,9 +231,6 @@ func (wf *workflowProcess) handleCommand(id uint64, cmd interface{}) error {
 		wf.canceller.register(id, func() error {
 			if timerID != nil {
 				wf.env.RequestCancelTimer(*timerID)
-
-				// todo: send cancel
-				wf.mq.pushError(id, errors.E("canceled"))
 			}
 			return nil
 		})
@@ -333,6 +334,16 @@ func (wf *workflowProcess) createCallback(id uint64) bindings.ResultHandler {
 	}
 
 	return func(result *commonpb.Payloads, err error) {
+		// timer cancel callback can happen inside the loop
+		if wf.inLoop {
+			err := callback(result, err)
+			if err != nil {
+				panic(err)
+			}
+
+			return
+		}
+
 		wf.callbacks = append(wf.callbacks, func() error {
 			return callback(result, err)
 		})
