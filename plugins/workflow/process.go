@@ -305,7 +305,10 @@ func (wf *workflowProcess) handleCommand(id uint64, cmd interface{}) error {
 
 		payload, _ := wf.env.GetDataConverter().ToPayload("completed")
 		wf.mq.pushResponse(id, []*commonpb.Payload{payload})
-
+		err = wf.flushQueue()
+		if err != nil {
+			panic(err)
+		}
 	default:
 		panic("undefined command")
 	}
