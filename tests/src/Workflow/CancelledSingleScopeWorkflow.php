@@ -36,6 +36,7 @@ class CancelledSingleScopeWorkflow
                     } catch (CancellationException $e) {
                         // after process is complete, do not use for business logic
                         $this->status[] = 'captured in scope';
+                        throw $e;
                     }
                 }
             )->onCancel(

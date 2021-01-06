@@ -227,6 +227,9 @@ func (wf *workflowProcess) handleCommand(id uint64, cmd interface{}) error {
 		wf.canceller.register(id, func() error {
 			if timerID != nil {
 				wf.env.RequestCancelTimer(*timerID)
+
+				// todo: send cancel
+				wf.mq.pushError(id, errors.E("canceled"))
 			}
 			return nil
 		})

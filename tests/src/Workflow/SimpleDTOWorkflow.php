@@ -23,6 +23,7 @@ class SimpleDTOWorkflow
         );
 
         $value = yield $simple->greet($user);
+
         if (!$value instanceof Message) {
             return "FAIL";
         }

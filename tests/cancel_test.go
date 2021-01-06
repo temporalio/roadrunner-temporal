@@ -140,12 +140,12 @@ func Test_CancelledNestedWorkflow(t *testing.T) {
 			"second scope",
 			"close second scope",
 			"close first scope",
+			"second scope cancelled",
+			"first scope cancelled",
 			"close process",
 		},
 		trace,
 	)
-
-	log.Print(trace)
 }
 
 func Test_CancelledNSingleScopeWorkflow(t *testing.T) {
@@ -181,6 +181,7 @@ func Test_CancelledNSingleScopeWorkflow(t *testing.T) {
 			"start",
 			"in scope",
 			"on cancel",
+			"captured in scope",
 			"captured in process",
 		},
 		trace,
