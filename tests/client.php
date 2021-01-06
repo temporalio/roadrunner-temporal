@@ -41,6 +41,7 @@ $worker->createAndRegister()
     ->addWorkflow(Tests\Workflow\BinaryWorkflow::class)
     ->addWorkflow(Tests\Workflow\CancelledNestedWorkflow::class)
     ->addWorkflow(Tests\Workflow\CancelledSingleScopeWorkflow::class)
+    ->addWorkflow(Tests\Workflow\CancelledMidflightWorkflow::class)
     // activities
     ->addActivity(Tests\Activity\SimpleActivity::class)
     ->addActivity(Tests\Activity\HeartBeatActivity::class);
