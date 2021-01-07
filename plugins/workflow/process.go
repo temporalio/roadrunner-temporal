@@ -6,6 +6,7 @@ import (
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
+	"log"
 	"strconv"
 	"sync/atomic"
 )
@@ -46,7 +47,7 @@ func (wf *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *com
 		Input: []*commonpb.Payload{},
 	}
 
-	if input != nil {
+	if input != nil && input.Payloads != nil {
 		cmd.Input = input.Payloads
 	}
 
@@ -268,8 +269,13 @@ func (wf *workflowProcess) handleCommand(id uint64, cmd interface{}) error {
 		if cmd.Error == nil {
 			wf.env.Complete(&commonpb.Payloads{Payloads: cmd.Result}, nil)
 		} else {
+			log.Print(cmd.Error)
 			// todo: map error, todo: handle cancelled errors
-			wf.env.Complete(nil, cmd.Error)
+			if cmd.Error.Message == "canceled" {
+				wf.env.Complete(nil, workflow.ErrCanceled)
+			} else {
+				wf.env.Complete(nil, cmd.Error)
+			}
 		}
 
 	case *rrt.ContinueAsNew:

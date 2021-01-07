@@ -18,3 +18,4 @@ require (
 )
 
 replace go.temporal.io/sdk v1.2.0 => ../sdk-go
+replace github.com/spiral/roadrunner/v2 v2.0.0-beta4 => ../roadrunner

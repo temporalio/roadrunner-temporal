@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/spiral/errors"
@@ -72,6 +73,7 @@ func (svc *Plugin) Serve() chan error {
 				}
 
 				bkoff := backoff.NewExponentialBackOff()
+				bkoff.InitialInterval = time.Second
 
 				err = backoff.Retry(svc.replacePool, bkoff)
 				if err != nil {

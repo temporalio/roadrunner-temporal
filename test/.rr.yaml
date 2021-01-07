@@ -14,4 +14,4 @@ temporal:
       numWorkers: 4
 
 logs:
-    mode: none
+    #mode: none

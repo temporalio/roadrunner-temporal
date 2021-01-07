@@ -24,20 +24,6 @@ func Test_VerifyRegistration(t *testing.T) {
 	defer s.MustClose()
 
 	assert.Contains(t, s.workflows.WorkflowNames(), "SimpleWorkflow")
-	assert.Contains(t, s.workflows.WorkflowNames(), "SimpleSignalledWorkflow")
-	assert.Contains(t, s.workflows.WorkflowNames(), "ParallelScopesWorkflow")
-	assert.Contains(t, s.workflows.WorkflowNames(), "TimerWorkflow")
-	assert.Contains(t, s.workflows.WorkflowNames(), "SideEffectWorkflow")
-	assert.Contains(t, s.workflows.WorkflowNames(), "QueryWorkflow")
-	assert.Contains(t, s.workflows.WorkflowNames(), "EmptyWorkflow")
-	assert.Contains(t, s.workflows.WorkflowNames(), "RuntimeSignalWorkflow")
-	assert.Contains(t, s.workflows.WorkflowNames(), "SimpleSignalledWorkflowWithSleep")
-	assert.Contains(t, s.workflows.WorkflowNames(), "WithChildWorkflow")
-	assert.Contains(t, s.workflows.WorkflowNames(), "WithChildStubWorkflow")
-	assert.Contains(t, s.workflows.WorkflowNames(), "CancelledScopeWorkflow")
-	assert.Contains(t, s.workflows.WorkflowNames(), "SimpleHeartbeatWorkflow")
-	assert.Contains(t, s.workflows.WorkflowNames(), "ContinuableWorkflow")
-	assert.Contains(t, s.workflows.WorkflowNames(), "SimpleDTOWorkflow")
 
 	assert.Contains(t, s.activities.ActivityNames(), "SimpleActivity.echo")
 	assert.Contains(t, s.activities.ActivityNames(), "HeartBeatActivity.doSomething")
@@ -329,4 +315,28 @@ func Test_ContinueAsNew(t *testing.T) {
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "OK6", result)
+}
+
+func Test_ActivityStubWorkflow(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"ActivityStubWorkflow",
+		"hello world",
+	)
+	assert.NoError(t, err)
+
+	// the result of the final workflow
+	var result []string
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, []string{
+		"HELLO WORLD",
+		"invalid method call",
+		"UNTYPED",
+	}, result)
 }

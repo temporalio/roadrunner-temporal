@@ -20,7 +20,6 @@ import (
 
 const (
 	EventWorkerExit = iota + 8390
-	EventNewWorkflowProcess
 )
 
 type (

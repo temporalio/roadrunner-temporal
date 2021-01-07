@@ -2,6 +2,7 @@ package activity
 
 import (
 	"context"
+	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/spiral/roadrunner/v2/interfaces/events"
@@ -79,6 +80,7 @@ func (svc *Plugin) Serve() chan error {
 				}
 
 				bkoff := backoff.NewExponentialBackOff()
+				bkoff.InitialInterval = time.Second
 
 				err = backoff.Retry(svc.replacePool, bkoff)
 				if err != nil {
