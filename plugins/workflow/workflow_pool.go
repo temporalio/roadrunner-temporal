@@ -58,7 +58,7 @@ func newWorkflowPool(
 ) (workflowPool, error) {
 	w, err := factory.NewWorker(
 		context.Background(),
-		map[string]string{"RR_MODE": RRMode},
+		map[string]string{"RR_MODE": RRMode, "RR_CODEC": codec.GetName()},
 		listener,
 	)
 

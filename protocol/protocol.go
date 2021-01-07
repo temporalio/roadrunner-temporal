@@ -70,6 +70,9 @@ type (
 		// WithLogger creates new codes instance with attached logger.
 		WithLogger(logger.Logger) Codec
 
+		// GetName returns codec name.
+		GetName() string
+
 		// Execute sends message to worker and waits for the response.
 		Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error)
 	}

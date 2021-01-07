@@ -53,6 +53,11 @@ func (c *JsonCodec) WithLogger(logger logger.Logger) Codec {
 	}
 }
 
+// WithLogger creates new codes instance with attached logger.
+func (c *JsonCodec) GetName() string {
+	return "json"
+}
+
 // Exchange commands with worker.
 func (c *JsonCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 	if len(msg) == 0 {

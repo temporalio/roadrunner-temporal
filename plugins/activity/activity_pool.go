@@ -45,7 +45,7 @@ func newActivityPool(
 	wp, err := server.NewWorkerPool(
 		context.Background(),
 		poolConfig,
-		map[string]string{"RR_MODE": RRMode},
+		map[string]string{"RR_MODE": RRMode, "RR_CODEC": codec.GetName()},
 		listener,
 	)
 
