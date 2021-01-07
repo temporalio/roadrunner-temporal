@@ -164,12 +164,13 @@ func (svc *Plugin) startPool() (activityPool, error) {
 }
 
 func (svc *Plugin) replacePool() error {
-	svc.log.Debug("Replace activity pool")
-
 	pool, err := svc.startPool()
 	if err != nil {
+		svc.log.Error("Replace activity pool failed", "error", err)
 		return errors.E(errors.Op("newActivityPool"), err)
 	}
+
+	svc.log.Debug("Replace activity pool")
 
 	var previous activityPool
 

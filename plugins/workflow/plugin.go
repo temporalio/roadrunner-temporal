@@ -159,8 +159,6 @@ func (svc *Plugin) replacePool() error {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 
-	svc.log.Debug("Replace workflow pool")
-
 	if svc.pool != nil {
 		errD := svc.pool.Destroy(context.Background())
 		svc.pool = nil
@@ -175,8 +173,11 @@ func (svc *Plugin) replacePool() error {
 
 	pool, err := svc.startPool()
 	if err != nil {
+		svc.log.Error("Replace workflow pool failed", "error", err)
 		return errors.E(errors.Op("newWorkflowPool"), err)
 	}
+
+	svc.log.Debug("Replace workflow pool")
 
 	svc.pool = pool
 
