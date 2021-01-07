@@ -12,7 +12,7 @@ temporal:
     address: "localhost:7233"
     activities:
       numWorkers: 4
-    debugLevel: 1
+    debugLevel: 2
 
 logs:
     #mode: none

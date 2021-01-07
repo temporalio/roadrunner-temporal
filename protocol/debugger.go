@@ -19,21 +19,13 @@ func (c *debugger) sent(ctx Context, msg ...Message) {
 		return
 	}
 
-	var logMessage string
-	if c.level <= DebugNormal {
-		packed, err := jsoniter.Marshal(msg)
-		if err != nil {
-			return
-		}
+	packed, err := jsoniter.Marshal(msg)
+	if err != nil {
+		return
+	}
 
-		logMessage = string(packed)
-	} else {
-		// humanized
-		packed, err := jsoniter.Marshal(msg)
-		if err != nil {
-			return
-		}
-
+	logMessage := string(packed)
+	if c.level >= DebugHumanized {
 		logMessage = color.GreenString(string(packed))
 	}
 
@@ -45,21 +37,14 @@ func (c *debugger) received(ctx Context, msg ...Message) {
 		return
 	}
 
-	var logMessage string
-	if c.level <= DebugNormal {
-		packed, err := jsoniter.Marshal(msg)
-		if err != nil {
-			return
-		}
+	packed, err := jsoniter.Marshal(msg)
+	if err != nil {
+		return
+	}
 
-		logMessage = string(packed)
-	} else {
-		// humanized
-		packed, err := jsoniter.Marshal(msg)
-		if err != nil {
-			return
-		}
+	logMessage := string(packed)
 
+	if c.level >= DebugHumanized {
 		logMessage = color.HiYellowString(string(packed))
 	}
 

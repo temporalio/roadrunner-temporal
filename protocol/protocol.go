@@ -1,7 +1,6 @@
 package roadrunner_temporal //nolint:golint,stylecheck
 
 import (
-	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/roadrunner/v2/pkg/payload"
 	"github.com/spiral/roadrunner/v2/plugins/logger"
 	commonpb "go.temporal.io/api/common/v1"
@@ -95,21 +94,6 @@ func (ctx Context) IsEmpty() bool {
 // IsCommand returns true if message carries request.
 func (msg Message) IsCommand() bool {
 	return msg.Command != nil
-}
-
-// IsError returns true if message carries error.
-func (msg Message) IsError() bool {
-	return msg.Error != nil
-}
-
-// String converts message into string.
-func (msg Message) String() string {
-	data, err := jsoniter.Marshal(msg)
-	if err != nil {
-		return err.Error()
-	}
-
-	return string(data)
 }
 
 // Error returns error as string.
