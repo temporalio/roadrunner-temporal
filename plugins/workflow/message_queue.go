@@ -1,7 +1,7 @@
 package workflow
 
 import (
-	rrt "github.com/temporalio/roadrunner-temporal"
+	rrt "github.com/temporalio/roadrunner-temporal/protocol"
 	"go.temporal.io/api/common/v1"
 )
 

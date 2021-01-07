@@ -2,7 +2,7 @@ package workflow
 
 import (
 	"github.com/spiral/errors"
-	rrt "github.com/temporalio/roadrunner-temporal"
+	rrt "github.com/temporalio/roadrunner-temporal/protocol"
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"

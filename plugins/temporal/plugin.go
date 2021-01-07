@@ -9,7 +9,7 @@ import (
 	poolImpl "github.com/spiral/roadrunner/v2/pkg/pool"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	"github.com/spiral/roadrunner/v2/plugins/logger"
-	rrt "github.com/temporalio/roadrunner-temporal"
+	rrt "github.com/temporalio/roadrunner-temporal/protocol"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
