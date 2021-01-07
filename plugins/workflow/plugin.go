@@ -130,7 +130,9 @@ func (svc *Plugin) AddListener(listener events.Listener) {
 func (svc *Plugin) poolListener(event interface{}) {
 	if ev, ok := event.(PoolEvent); ok {
 		if ev.Event == EventWorkerExit {
-			svc.log.Error("Workflow pool error", "error", ev.Caused)
+			if ev.Caused != nil {
+				svc.log.Error("Workflow pool error", "error", ev.Caused)
+			}
 			svc.reset <- struct{}{}
 		}
 	}
