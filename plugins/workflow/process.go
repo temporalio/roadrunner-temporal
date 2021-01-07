@@ -12,6 +12,7 @@ import (
 
 // wraps single workflow process
 type workflowProcess struct {
+	codec     rrt.Codec
 	pool      workflowPool
 	env       bindings.WorkflowEnvironment
 	header    *commonpb.Header
@@ -379,7 +380,7 @@ func (wf *workflowProcess) createContinuableCallback(id uint64) bindings.ResultH
 // Exchange messages between host and worker processes and add new commands to the queue.
 func (wf *workflowProcess) flushQueue() error {
 	const op = errors.Op("flush queue")
-	messages, err := rrt.Execute(wf.pool, wf.getContext(), wf.mq.queue...)
+	messages, err := wf.codec.Execute(wf.pool, wf.getContext(), wf.mq.queue...)
 	wf.mq.flush()
 
 	if err != nil {
@@ -394,7 +395,7 @@ func (wf *workflowProcess) flushQueue() error {
 // Exchange messages between host and worker processes without adding new commands to the queue.
 func (wf *workflowProcess) discardQueue() ([]rrt.Message, error) {
 	const op = errors.Op("discard queue")
-	messages, err := rrt.Execute(wf.pool, wf.getContext(), wf.mq.queue...)
+	messages, err := wf.codec.Execute(wf.pool, wf.getContext(), wf.mq.queue...)
 	wf.mq.flush()
 
 	if err != nil {
@@ -412,7 +413,7 @@ func (wf *workflowProcess) runCommand(cmd interface{}) (rrt.Message, error) {
 		return rrt.Message{}, err
 	}
 
-	result, err := rrt.Execute(wf.pool, wf.getContext(), msg)
+	result, err := wf.codec.Execute(wf.pool, wf.getContext(), msg)
 	if err != nil {
 		return rrt.Message{}, errors.E(op, err)
 	}

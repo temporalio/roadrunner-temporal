@@ -27,6 +27,7 @@ type (
 
 	activityPoolImpl struct {
 		dc         converter.DataConverter
+		codec      rrt.Codec
 		seqID      uint64
 		activities []string
 		wp         pool.Pool
@@ -35,7 +36,12 @@ type (
 )
 
 // newActivityPool
-func newActivityPool(listener events.Listener, poolConfig poolImpl.Config, server server.Server) (activityPool, error) {
+func newActivityPool(
+	codec rrt.Codec,
+	listener events.Listener,
+	poolConfig poolImpl.Config,
+	server server.Server,
+) (activityPool, error) {
 	wp, err := server.NewWorkerPool(
 		context.Background(),
 		poolConfig,
@@ -47,7 +53,7 @@ func newActivityPool(listener events.Listener, poolConfig poolImpl.Config, serve
 		return nil, err
 	}
 
-	return &activityPoolImpl{wp: wp}, nil
+	return &activityPoolImpl{codec: codec, wp: wp}, nil
 }
 
 // initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
@@ -91,7 +97,7 @@ func (pool *activityPoolImpl) ActivityNames() []string {
 func (pool *activityPoolImpl) initWorkers(ctx context.Context, temporal temporal.Temporal) error {
 	const op = errors.Op("createTemporalWorker")
 
-	workerInfo, err := rrt.FetchWorkerInfo(pool.wp, temporal.GetDataConverter())
+	workerInfo, err := rrt.FetchWorkerInfo(pool.codec, pool.wp, temporal.GetDataConverter())
 	if err != nil {
 		return errors.E(op, err)
 	}
@@ -136,7 +142,7 @@ func (pool *activityPoolImpl) executeActivity(ctx context.Context, args *common.
 		// todo: activity.getHeartBeatDetails
 	)
 
-	result, err := rrt.Execute(pool.wp, rrt.Context{TaskQueue: info.TaskQueue}, msg)
+	result, err := pool.codec.Execute(pool.wp, rrt.Context{TaskQueue: info.TaskQueue}, msg)
 	if err != nil {
 		return nil, err
 	}

@@ -22,6 +22,7 @@ type (
 		GetClient() (client.Client, error)
 		GetDataConverter() converter.DataConverter
 		GetConfig() Config
+		GetCodec() rrt.Codec
 		CreateWorker(taskQueue string, options worker.Options) (worker.Worker, error)
 	}
 
@@ -29,6 +30,8 @@ type (
 		Address    string
 		Namespace  string
 		Activities *poolImpl.Config
+		Codec      string
+		DebugLevel int
 	}
 
 	Plugin struct {
@@ -51,6 +54,13 @@ func (srv *Plugin) Init(cfg config.Configurer, log logger.Logger) error {
 // GetConfig returns temporal configuration.
 func (srv *Plugin) GetConfig() Config {
 	return srv.cfg
+}
+
+// GetCodec returns communication codec.
+func (srv *Plugin) GetCodec() rrt.Codec {
+	// todo: implement msg pack
+
+	return rrt.NewJsonCodec(rrt.DebugLevel(srv.cfg.DebugLevel), srv.log)
 }
 
 // GetDataConverter returns data active data converter.

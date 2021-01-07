@@ -40,6 +40,7 @@ type (
 
 	// workflowPoolImpl manages workflowProcess executions between worker restarts.
 	workflowPoolImpl struct {
+		codec     rrt.Codec
 		seqID     uint64
 		workflows map[string]rrt.WorkflowInfo
 		tWorkers  []worker.Worker
@@ -50,7 +51,11 @@ type (
 )
 
 // newWorkflowPool creates new workflow pool.
-func newWorkflowPool(listener events.Listener, factory server.Server) (workflowPool, error) {
+func newWorkflowPool(
+	codec rrt.Codec,
+	listener events.Listener,
+	factory server.Server,
+) (workflowPool, error) {
 	w, err := factory.NewWorker(
 		context.Background(),
 		map[string]string{"RR_MODE": RRMode},
@@ -61,7 +66,6 @@ func newWorkflowPool(listener events.Listener, factory server.Server) (workflowP
 		return nil, errors.E(errors.Op("newWorker"), err)
 	}
 
-	// TODO: listener race ??
 	go func() {
 		err := w.Wait()
 		listener(PoolEvent{Event: EventWorkerExit, Caused: err})
@@ -72,7 +76,7 @@ func newWorkflowPool(listener events.Listener, factory server.Server) (workflowP
 		return nil, errors.E(errors.Op("newSyncWorker"), err)
 	}
 
-	return &workflowPoolImpl{worker: sw}, nil
+	return &workflowPoolImpl{codec: codec, worker: sw}, nil
 }
 
 // Start the pool in non blocking mode.
@@ -122,7 +126,10 @@ func (pool *workflowPoolImpl) Destroy(ctx context.Context) error {
 
 // NewWorkflowDefinition initiates new workflow process.
 func (pool *workflowPoolImpl) NewWorkflowDefinition() bindings.WorkflowDefinition {
-	return &workflowProcess{pool: pool}
+	return &workflowProcess{
+		codec: pool.codec,
+		pool:  pool,
+	}
 }
 
 // NewWorkflowDefinition initiates new workflow process.
@@ -157,7 +164,7 @@ func (pool *workflowPoolImpl) WorkflowNames() []string {
 
 // initWorkers request workers workflows from underlying PHP and configures temporal workers linked to the pool.
 func (pool *workflowPoolImpl) initWorkers(ctx context.Context, temporal temporal.Temporal) error {
-	workerInfo, err := rrt.FetchWorkerInfo(pool, temporal.GetDataConverter())
+	workerInfo, err := rrt.FetchWorkerInfo(pool.codec, pool, temporal.GetDataConverter())
 	if err != nil {
 		return err
 	}

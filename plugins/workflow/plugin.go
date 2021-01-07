@@ -142,7 +142,11 @@ func (svc *Plugin) poolListener(event interface{}) {
 
 // AddListener adds event listeners to the service.
 func (svc *Plugin) startPool() (workflowPool, error) {
-	pool, err := newWorkflowPool(svc.poolListener, svc.server)
+	pool, err := newWorkflowPool(
+		svc.temporal.GetCodec().WithLogger(svc.log),
+		svc.poolListener,
+		svc.server,
+	)
 	if err != nil {
 		return nil, errors.E(errors.Op("initWorkflowPool"), err)
 	}

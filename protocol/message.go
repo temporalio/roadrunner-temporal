@@ -228,7 +228,7 @@ func (cmd NewTimer) ToDuration() time.Duration {
 	return time.Millisecond * time.Duration(cmd.Milliseconds)
 }
 
-// returns command name
+// returns command name (only for the commands sent to the worker)
 func commandName(cmd interface{}) (string, error) {
 	switch cmd.(type) {
 	case GetWorkerInfo, *GetWorkerInfo:
