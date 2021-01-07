@@ -10,6 +10,31 @@ import (
 	"time"
 )
 
+func Test_SimpleWorkflowCancel(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"SimpleSignalledWorkflow")
+	assert.NoError(t, err)
+
+	time.Sleep(time.Millisecond * 500)
+	err = s.Client().CancelWorkflow(context.Background(), w.GetID(), w.GetRunID())
+	assert.NoError(t, err)
+
+	var result interface{}
+	assert.Error(t, w.Get(context.Background(), &result))
+
+	we, err := s.Client().DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
+	assert.NoError(t, err)
+
+	assert.Equal(t, "Canceled", we.WorkflowExecutionInfo.Status.String())
+}
+
 func Test_CancellableWorkflowScope(t *testing.T) {
 	s := NewTestServer()
 	defer s.MustClose()
@@ -222,5 +247,44 @@ func Test_CancelledMidflightWorkflow(t *testing.T) {
 
 	s.AssertNotContainsEvent(t, w, func(event *history.HistoryEvent) bool {
 		return event.EventType == enums.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
+	})
+}
+
+func Test_CancelSignalledChildWorkflow(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"CancelSignalledChildWorkflow",
+	)
+	assert.NoError(t, err)
+
+	var result interface{}
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "cancelled ok", result)
+
+	e, err := s.Client().QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "getStatus")
+	assert.NoError(t, err)
+
+	trace := make([]string, 0)
+	assert.NoError(t, e.Get(&trace))
+	assert.Equal(
+		t,
+		[]string{
+			"start",
+			"child started",
+			"child signalled",
+			"scope cancelled",
+			"process done",
+		},
+		trace,
+	)
+
+	s.AssertContainsEvent(t, w, func(event *history.HistoryEvent) bool {
+		return event.EventType == enums.EVENT_TYPE_REQUEST_CANCEL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED
 	})
 }
