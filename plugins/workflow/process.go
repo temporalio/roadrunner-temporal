@@ -100,7 +100,7 @@ func (wf *workflowProcess) StackTrace() string {
 	}
 
 	var stacktrace string
-	err = wf.env.GetDataConverter().FromPayload(result.Result[0], &stacktrace)
+	err = wf.env.GetDataConverter().FromPayload(result.Payloads.Payloads[0], &stacktrace)
 	if err != nil {
 		return err.Error()
 	}
