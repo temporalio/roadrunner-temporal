@@ -6,6 +6,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.0
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/fatih/color v1.10.0
+	github.com/golang/protobuf v1.4.3
 	github.com/json-iterator/go v1.1.10
 	github.com/pborman/uuid v1.2.1
 	github.com/spiral/endure v1.0.0-beta20

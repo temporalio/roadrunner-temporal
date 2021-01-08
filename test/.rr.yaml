@@ -13,9 +13,10 @@ temporal:
     activities:
       numWorkers: 4
     debugLevel: 2
+    codec: protobuf
 
 logs:
-#    mode: none
+    mode: none
     channels:
         activities:
             mode: none

@@ -49,7 +49,7 @@ type (
 	// Error from underlying worker.
 	Error struct {
 		// Code of the error.
-		Code int `json:"code"`
+		Code int32 `json:"code"`
 
 		// Message contains exception message.
 		Message string `json:"message"`

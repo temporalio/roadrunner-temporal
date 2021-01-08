@@ -1,7 +1,6 @@
 package roadrunner_temporal
 
 import (
-	"encoding/json"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/payload"
@@ -169,7 +168,7 @@ func parseJsonFrame(frame jsonFrame) (Message, error) {
 		return Message{}, err
 	}
 
-	err = json.Unmarshal(frame.Options, &cmd)
+	err = jsoniter.Unmarshal(frame.Options, &cmd)
 	if err != nil {
 		return Message{}, err
 	}
