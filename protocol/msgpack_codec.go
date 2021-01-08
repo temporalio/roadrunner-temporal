@@ -1,21 +1,24 @@
 package roadrunner_temporal
 
 import (
-	"encoding/json"
+	"bytes"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/payload"
 	"github.com/spiral/roadrunner/v2/plugins/logger"
+	"github.com/vmihailenco/msgpack/v5"
 	commonpb "go.temporal.io/api/common/v1"
 )
 
 type (
-	JsonCodec struct {
+	MsgpackCodec struct {
 		debugger *debugger
+		encoder  *msgpack.Encoder
+		decoder  *msgpack.Decoder
 	}
 
 	// jsonFrame contains message command in binary form.
-	jsonFrame struct {
+	msgpackFrame struct {
 		// ID contains ID of the command, response or error.
 		ID uint64 `json:"id"`
 
@@ -23,7 +26,7 @@ type (
 		Command string `json:"command,omitempty"`
 
 		// Params to be unmarshalled to body (raw payload).
-		Params jsoniter.RawMessage `json:"params,omitempty"`
+		Params []byte `json:"params,omitempty"`
 
 		// Result always contains array of values.
 		Result []*commonpb.Payload `json:"result,omitempty"`
@@ -34,8 +37,17 @@ type (
 )
 
 // NewJsonCodec creates new Json communication codec.
-func NewJsonCodec(level DebugLevel, logger logger.Logger) Codec {
-	return &JsonCodec{
+func NewMsgpackCodec(level DebugLevel, logger logger.Logger) Codec {
+
+	encoder := msgpack.NewEncoder(nil)
+	encoder.SetCustomStructTag("json")
+
+	decoder := msgpack.NewDecoder(nil)
+	decoder.SetCustomStructTag("json")
+
+	return &MsgpackCodec{
+		encoder: encoder,
+		decoder: decoder,
 		debugger: &debugger{
 			level:  level,
 			logger: logger,
@@ -44,8 +56,10 @@ func NewJsonCodec(level DebugLevel, logger logger.Logger) Codec {
 }
 
 // WithLogger creates new codes instance with attached logger.
-func (c *JsonCodec) WithLogger(logger logger.Logger) Codec {
-	return &JsonCodec{
+func (c *MsgpackCodec) WithLogger(logger logger.Logger) Codec {
+	return &MsgpackCodec{
+		encoder: c.encoder,
+		decoder: c.decoder,
 		debugger: &debugger{
 			level:  c.debugger.level,
 			logger: logger,
@@ -54,12 +68,12 @@ func (c *JsonCodec) WithLogger(logger logger.Logger) Codec {
 }
 
 // WithLogger creates new codes instance with attached logger.
-func (c *JsonCodec) GetName() string {
-	return "json"
+func (c *MsgpackCodec) GetName() string {
+	return "msgpack"
 }
 
 // Exchange commands with worker.
-func (c *JsonCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
+func (c *MsgpackCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 	if len(msg) == 0 {
 		return nil, nil
 	}
@@ -67,14 +81,14 @@ func (c *JsonCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 	c.debugger.sent(ctx, msg...)
 
 	var (
-		response = make([]jsonFrame, 0, 5)
+		response = make([]msgpackFrame, 0, 5)
 		result   = make([]Message, 0, 5)
 		err      error
 	)
 
-	frames := make([]jsonFrame, 0, len(msg))
+	frames := make([]msgpackFrame, 0, len(msg))
 	for _, m := range msg {
-		frame, err := packJsonFrame(m)
+		frame, err := c.packFrame(m)
 		if err != nil {
 			return nil, err
 		}
@@ -88,12 +102,13 @@ func (c *JsonCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 		p.Context = []byte("null")
 	}
 
+	// always carry context via JSON (minimal overhead)
 	p.Context, err = jsoniter.Marshal(ctx)
 	if err != nil {
 		return nil, errors.E(errors.Op("encodeContext"), err)
 	}
 
-	p.Body, err = jsoniter.Marshal(frames)
+	p.Body, err = c.Marshal(frames)
 	if err != nil {
 		return nil, errors.E(errors.Op("encodePayload"), err)
 	}
@@ -108,13 +123,13 @@ func (c *JsonCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 		return nil, nil
 	}
 
-	err = jsoniter.Unmarshal(out.Body, &response)
+	err = c.Unmarshal(out.Body, &response)
 	if err != nil {
 		return nil, errors.E(errors.Op("parseResponse"), err)
 	}
 
 	for _, f := range response {
-		msg, err := parseJsonFrame(f)
+		msg, err := c.parseFrame(f)
 		if err != nil {
 			return nil, err
 		}
@@ -127,9 +142,9 @@ func (c *JsonCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 	return result, nil
 }
 
-func packJsonFrame(msg Message) (jsonFrame, error) {
+func (c *MsgpackCodec) packFrame(msg Message) (msgpackFrame, error) {
 	if msg.Command == nil {
-		return jsonFrame{
+		return msgpackFrame{
 			ID:     msg.ID,
 			Result: msg.Result,
 			Error:  msg.Error,
@@ -138,15 +153,15 @@ func packJsonFrame(msg Message) (jsonFrame, error) {
 
 	name, err := commandName(msg.Command)
 	if err != nil {
-		return jsonFrame{}, err
+		return msgpackFrame{}, err
 	}
 
-	body, err := jsoniter.Marshal(msg.Command)
+	body, err := c.Marshal(msg.Command)
 	if err != nil {
-		return jsonFrame{}, err
+		return msgpackFrame{}, err
 	}
 
-	return jsonFrame{
+	return msgpackFrame{
 		ID:      msg.ID,
 		Command: name,
 		Params:  body,
@@ -155,7 +170,7 @@ func packJsonFrame(msg Message) (jsonFrame, error) {
 	}, nil
 }
 
-func parseJsonFrame(frame jsonFrame) (Message, error) {
+func (c *MsgpackCodec) parseFrame(frame msgpackFrame) (Message, error) {
 	if frame.Command == "" {
 		return Message{
 			ID:     frame.ID,
@@ -169,7 +184,7 @@ func parseJsonFrame(frame jsonFrame) (Message, error) {
 		return Message{}, err
 	}
 
-	err = json.Unmarshal(frame.Params, &cmd)
+	err = c.Unmarshal(frame.Params, &cmd)
 	if err != nil {
 		return Message{}, err
 	}
@@ -180,4 +195,21 @@ func parseJsonFrame(frame jsonFrame) (Message, error) {
 		Result:  frame.Result,
 		Error:   frame.Error,
 	}, nil
+}
+
+func (c *MsgpackCodec) Marshal(v interface{}) ([]byte, error) {
+	var buf bytes.Buffer
+	c.encoder.Reset(&buf)
+
+	err := c.encoder.Encode(v)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), err
+}
+
+func (c *MsgpackCodec) Unmarshal(data []byte, v interface{}) error {
+	c.decoder.Reset(bytes.NewReader(data))
+	return c.decoder.Decode(v)
 }

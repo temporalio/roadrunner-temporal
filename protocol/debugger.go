@@ -20,7 +20,7 @@ func (c *debugger) sent(ctx Context, msg ...Message) {
 		return
 	}
 
-	frames := make([]messageFrame, 0, len(msg))
+	frames := make([]jsonFrame, 0, len(msg))
 	for _, m := range msg {
 		frame, err := packJsonFrame(m)
 		if err != nil {
@@ -48,7 +48,7 @@ func (c *debugger) received(ctx Context, msg ...Message) {
 		return
 	}
 
-	frames := make([]messageFrame, 0, len(msg))
+	frames := make([]jsonFrame, 0, len(msg))
 	for _, m := range msg {
 		frame, err := packJsonFrame(m)
 		if err != nil {

@@ -15,7 +15,7 @@ temporal:
     debugLevel: 2
 
 logs:
-    #mode: none
-    #channels:
-        #activities:
-       #     mode: none
+    mode: none
+    channels:
+        activities:
+            mode: none
