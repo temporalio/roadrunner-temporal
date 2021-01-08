@@ -6,7 +6,11 @@
   },
   "autoload-dev": {
     "psr-4": {
-      "Temporal\\Tests\\": "src"
+      "Temporal\\Tests\\": "src",
+      "GPBMetadata\\": "api/GPBMetadata",
+      "Temporal\\": "vendor/temporal/sdk/src",
+      "Temporal\\Api\\": "api/Temporal/Api",
+      "Temporal\\Roadrunner\\": "api/Temporal/Roadrunner"
     }
   },
   "minimum-stability": "dev",
