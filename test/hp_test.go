@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"fmt"
+	"go.temporal.io/api/common/v1"
 	"testing"
 	"time"
 
@@ -339,4 +340,24 @@ func Test_ActivityStubWorkflow(t *testing.T) {
 		"invalid method call",
 		"UNTYPED",
 	}, result)
+}
+
+func Test_ExecuteProtoWorkflow(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"ProtoPayloadWorkflow",
+	)
+	assert.NoError(t, err)
+
+	var result common.WorkflowExecution
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "updated", result.RunId)
+	assert.Equal(t, "workflow id", result.WorkflowId)
+
 }
