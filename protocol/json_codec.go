@@ -74,7 +74,7 @@ func (c *JsonCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 
 	frames := make([]messageFrame, 0, len(msg))
 	for _, m := range msg {
-		frame, err := c.packFrame(m)
+		frame, err := packJsonFrame(m)
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +114,7 @@ func (c *JsonCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 	}
 
 	for _, f := range response {
-		msg, err := c.parseFrame(f)
+		msg, err := parseJsonFrame(f)
 		if err != nil {
 			return nil, err
 		}
@@ -127,7 +127,7 @@ func (c *JsonCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 	return result, nil
 }
 
-func (c *JsonCodec) packFrame(msg Message) (messageFrame, error) {
+func packJsonFrame(msg Message) (messageFrame, error) {
 	if msg.Command == nil {
 		return messageFrame{
 			ID:     msg.ID,
@@ -155,7 +155,7 @@ func (c *JsonCodec) packFrame(msg Message) (messageFrame, error) {
 	}, nil
 }
 
-func (c *JsonCodec) parseFrame(frame messageFrame) (Message, error) {
+func parseJsonFrame(frame messageFrame) (Message, error) {
 	if frame.Command == "" {
 		return Message{
 			ID:     frame.ID,

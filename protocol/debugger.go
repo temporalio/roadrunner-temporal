@@ -6,6 +6,7 @@ import (
 	"github.com/spiral/roadrunner/v2/plugins/logger"
 )
 
+// Base on JSON frames for easier debugging and testing.
 type debugger struct {
 	// level enables verbose logging or all incoming and outcoming messages.
 	level DebugLevel
@@ -19,7 +20,17 @@ func (c *debugger) sent(ctx Context, msg ...Message) {
 		return
 	}
 
-	packed, err := jsoniter.Marshal(msg)
+	frames := make([]messageFrame, 0, len(msg))
+	for _, m := range msg {
+		frame, err := packJsonFrame(m)
+		if err != nil {
+			panic(err)
+		}
+
+		frames = append(frames, frame)
+	}
+
+	packed, err := jsoniter.Marshal(frames)
 	if err != nil {
 		return
 	}
@@ -37,7 +48,17 @@ func (c *debugger) received(ctx Context, msg ...Message) {
 		return
 	}
 
-	packed, err := jsoniter.Marshal(msg)
+	frames := make([]messageFrame, 0, len(msg))
+	for _, m := range msg {
+		frame, err := packJsonFrame(m)
+		if err != nil {
+			panic(err)
+		}
+
+		frames = append(frames, frame)
+	}
+
+	packed, err := jsoniter.Marshal(frames)
 	if err != nil {
 		return
 	}

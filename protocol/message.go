@@ -65,8 +65,8 @@ type (
 	StartWorkflow struct {
 		// Info to define workflow context.
 		Info *workflow.Info `json:"info"`
-		// Input arguments.
-		Input []*commonpb.Payload `json:"args"`
+		// Args arguments.
+		Args []*commonpb.Payload `json:"args"`
 	}
 
 	// InvokeQuery invokes signal with a set of arguments.
@@ -112,7 +112,7 @@ type (
 		// Name defines activity name.
 		Name string `json:"name"`
 		// Args to pass to the activity.
-		Args []*commonpb.Payload `json:"arguments"`
+		Args []*commonpb.Payload `json:"args"`
 		// Options to run activity.
 		Options bindings.ExecuteActivityOptions `json:"options,omitempty"`
 	}
@@ -121,8 +121,8 @@ type (
 	ExecuteChildWorkflow struct {
 		// Name defines workflow name.
 		Name string `json:"name"`
-		// Input to pass to the workflow.
-		Input []*commonpb.Payload `json:"input"`
+		// Args to pass to the workflow.
+		Args []*commonpb.Payload `json:"args"`
 		// Options to run activity.
 		Options bindings.WorkflowOptions `json:"options,omitempty"`
 	}
@@ -141,7 +141,7 @@ type (
 
 	// SideEffect to be recorded into the history.
 	SideEffect struct {
-		Value *commonpb.Payload `json:"value"`
+		Result []*commonpb.Payload `json:"result"`
 	}
 
 	// NewTimer starts new timer.
@@ -166,7 +166,7 @@ type (
 		Name string `json:"name"`
 
 		// Result defines workflow execution result.
-		Input []*commonpb.Payload `json:"input"`
+		Args []*commonpb.Payload `json:"args"`
 	}
 
 	// SignalExternalWorkflow sends signal to external workflow.
@@ -213,7 +213,7 @@ func (cmd ExecuteChildWorkflow) WorkflowParams(env bindings.WorkflowEnvironment)
 	params := bindings.ExecuteWorkflowParams{
 		WorkflowOptions: cmd.Options,
 		WorkflowType:    &bindings.WorkflowType{Name: cmd.Name},
-		Input:           &commonpb.Payloads{Payloads: cmd.Input},
+		Input:           &commonpb.Payloads{Payloads: cmd.Args},
 	}
 
 	if params.TaskQueueName == "" {

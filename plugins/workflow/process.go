@@ -43,12 +43,12 @@ func (wf *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *com
 	env.RegisterQueryHandler(wf.handleQuery)
 
 	cmd := rrt.StartWorkflow{
-		Info:  env.WorkflowInfo(),
-		Input: []*commonpb.Payload{},
+		Info: env.WorkflowInfo(),
+		Args: []*commonpb.Payload{},
 	}
 
 	if input != nil && input.Payloads != nil {
-		cmd.Input = input.Payloads
+		cmd.Args = input.Payloads
 	}
 
 	_, err := wf.mq.pushCommand(cmd)
@@ -257,7 +257,7 @@ func (wf *workflowProcess) handleCommand(id uint64, cmd interface{}) error {
 	case *rrt.SideEffect:
 		wf.env.SideEffect(
 			func() (*commonpb.Payloads, error) {
-				return &commonpb.Payloads{Payloads: []*commonpb.Payload{cmd.Value}}, nil
+				return &commonpb.Payloads{Payloads: cmd.Result}, nil
 			},
 			wf.createContinuableCallback(id),
 		)
@@ -283,7 +283,7 @@ func (wf *workflowProcess) handleCommand(id uint64, cmd interface{}) error {
 
 		wf.env.Complete(nil, &workflow.ContinueAsNewError{
 			WorkflowType:             &bindings.WorkflowType{Name: cmd.Name},
-			Input:                    &commonpb.Payloads{Payloads: cmd.Input},
+			Input:                    &commonpb.Payloads{Payloads: cmd.Args},
 			Header:                   wf.header,
 			TaskQueueName:            wf.env.WorkflowInfo().TaskQueueName,
 			WorkflowExecutionTimeout: wf.env.WorkflowInfo().WorkflowExecutionTimeout,

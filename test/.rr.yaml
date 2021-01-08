@@ -16,6 +16,6 @@ temporal:
 
 logs:
     #mode: none
-    channels:
-        activities:
-            mode: none
+    #channels:
+        #activities:
+       #     mode: none
