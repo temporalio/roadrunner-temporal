@@ -21,14 +21,21 @@ func (mq *messageQueue) flush() {
 	mq.queue = mq.queue[0:0]
 }
 
-func (mq *messageQueue) allocateMessage(cmd interface{}) (id uint64, msg rrt.Message, err error) {
-	msg = rrt.Message{ID: mq.seqID(), Command: cmd}
+func (mq *messageQueue) allocateMessage(
+	cmd interface{},
+	payloads *common.Payloads,
+) (id uint64, msg rrt.Message, err error) {
+	msg = rrt.Message{
+		ID:       mq.seqID(),
+		Command:  cmd,
+		Payloads: payloads,
+	}
 
 	return msg.ID, msg, nil
 }
 
-func (mq *messageQueue) pushCommand(cmd interface{}) (id uint64, err error) {
-	id, msg, err := mq.allocateMessage(cmd)
+func (mq *messageQueue) pushCommand(cmd interface{}, payloads *common.Payloads) (id uint64, err error) {
+	id, msg, err := mq.allocateMessage(cmd, payloads)
 	if err != nil {
 		return 0, err
 	}
@@ -38,23 +45,13 @@ func (mq *messageQueue) pushCommand(cmd interface{}) (id uint64, err error) {
 	return id, nil
 }
 
-func (mq *messageQueue) pushResponse(id uint64, result []*common.Payload) {
-	mq.queue = append(mq.queue, rrt.Message{ID: id, Result: result})
-}
-
-func (mq *messageQueue) pushPayloadsResponse(id uint64, result *common.Payloads) {
-	if result == nil {
-		mq.queue = append(mq.queue, rrt.Message{ID: id, Result: []*common.Payload{}})
-	} else {
-		mq.queue = append(mq.queue, rrt.Message{ID: id, Result: result.Payloads})
-	}
+func (mq *messageQueue) pushResponse(id uint64, payloads *common.Payloads) {
+	mq.queue = append(mq.queue, rrt.Message{ID: id, Payloads: payloads})
 }
 
 func (mq *messageQueue) pushError(id uint64, err error) {
 	mq.queue = append(mq.queue, rrt.Message{
-		ID: id,
-		Error: &rrt.Error{
-			Message: err.Error(),
-		},
+		ID:    id,
+		Error: &rrt.Error{Message: err.Error()},
 	})
 }

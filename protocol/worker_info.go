@@ -59,7 +59,7 @@ func FetchWorkerInfo(c Codec, e Endpoint, dc converter.DataConverter) ([]WorkerI
 	}
 
 	var info []WorkerInfo
-	for _, data := range result[0].Result {
+	for _, data := range result[0].Payloads.Payloads {
 		wi := WorkerInfo{}
 		if err := dc.FromPayload(data, &wi); err != nil {
 			return nil, errors.E(op, err)

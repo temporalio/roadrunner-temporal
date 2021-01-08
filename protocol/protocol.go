@@ -19,12 +19,6 @@ const (
 )
 
 type (
-	// Endpoint provides the ability to send and receive messages.
-	Endpoint interface {
-		// ExecWithContext allow to set ExecTTL
-		Exec(p payload.Payload) (payload.Payload, error)
-	}
-
 	// Context provides worker information about currently. Context can be empty for server level commands.
 	Context struct {
 		// TaskQueue associates message batch with the specific task queue in underlying worker.
@@ -45,11 +39,11 @@ type (
 		// Command of the message in unmarshalled form. Pointer.
 		Command interface{} `json:"params,omitempty"`
 
-		// Result always contains array of values.
-		Result []*commonpb.Payload `json:"result,omitempty"`
-
 		// Error associated with command id.
 		Error *Error `json:"error,omitempty"`
+
+		// Payloads contains message specific payloads in binary format.
+		Payloads *commonpb.Payloads `json:"payloads,omitempty"`
 	}
 
 	// Error from underlying worker.
@@ -76,11 +70,11 @@ type (
 		Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error)
 	}
 
-	// Encoder encodes messages sent to worker.
-	Encoder func(interface{}) ([]byte, error)
-
-	// Decoder decodes messages sent to worker.
-	Decoder func([]byte, interface{}) error
+	// Endpoint provides the ability to send and receive messages.
+	Endpoint interface {
+		// ExecWithContext allow to set ExecTTL
+		Exec(p payload.Payload) (payload.Payload, error)
+	}
 
 	// DebugLevel configures debug level.
 	DebugLevel int

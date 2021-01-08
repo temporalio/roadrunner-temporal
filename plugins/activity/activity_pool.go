@@ -136,8 +136,8 @@ func (pool *activityPoolImpl) executeActivity(ctx context.Context, args *common.
 			Command: rrt.InvokeActivity{
 				Name: info.ActivityType.Name,
 				Info: info,
-				Args: args.Payloads,
 			},
+			Payloads: args,
 		}
 		// todo: activity.getHeartBeatDetails
 	)
@@ -159,5 +159,5 @@ func (pool *activityPoolImpl) executeActivity(ctx context.Context, args *common.
 		return nil, errors.E(result[0].Error.Message)
 	}
 
-	return &common.Payloads{Payloads: result[0].Result}, nil
+	return result[0].Payloads, nil
 }

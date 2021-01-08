@@ -1,7 +1,8 @@
 {
   "require": {
     "temporal/sdk": "dev-develop",
-    "rybakit/msgpack": "^0.7.2"
+    "rybakit/msgpack": "^0.7.2",
+    "google/protobuf": "^3.14"
   },
   "autoload-dev": {
     "psr-4": {

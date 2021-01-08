@@ -22,14 +22,14 @@ type (
 		// Command name. Optional.
 		Command string `json:"command,omitempty"`
 
-		// Params to be unmarshalled to body (raw payload).
-		Params jsoniter.RawMessage `json:"params,omitempty"`
-
-		// Result always contains array of values.
-		Result []*commonpb.Payload `json:"result,omitempty"`
+		// Options to be unmarshalled to body (raw payload).
+		Options jsoniter.RawMessage `json:"options,omitempty"`
 
 		// Error associated with command id.
 		Error *Error `json:"error,omitempty"`
+
+		// Payloads specific to the command or result.
+		Payloads *commonpb.Payloads `json:"payloads,omitempty"`
 	}
 )
 
@@ -130,9 +130,9 @@ func (c *JsonCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 func packJsonFrame(msg Message) (jsonFrame, error) {
 	if msg.Command == nil {
 		return jsonFrame{
-			ID:     msg.ID,
-			Result: msg.Result,
-			Error:  msg.Error,
+			ID:       msg.ID,
+			Error:    msg.Error,
+			Payloads: msg.Payloads,
 		}, nil
 	}
 
@@ -147,37 +147,37 @@ func packJsonFrame(msg Message) (jsonFrame, error) {
 	}
 
 	return jsonFrame{
-		ID:      msg.ID,
-		Command: name,
-		Params:  body,
-		Result:  msg.Result,
-		Error:   msg.Error,
+		ID:       msg.ID,
+		Command:  name,
+		Options:  body,
+		Error:    msg.Error,
+		Payloads: msg.Payloads,
 	}, nil
 }
 
 func parseJsonFrame(frame jsonFrame) (Message, error) {
 	if frame.Command == "" {
 		return Message{
-			ID:     frame.ID,
-			Result: frame.Result,
-			Error:  frame.Error,
+			ID:       frame.ID,
+			Error:    frame.Error,
+			Payloads: frame.Payloads,
 		}, nil
 	}
 
-	cmd, err := initCommand(frame.Command, frame.Params)
+	cmd, err := initCommand(frame.Command, frame.Options)
 	if err != nil {
 		return Message{}, err
 	}
 
-	err = json.Unmarshal(frame.Params, &cmd)
+	err = json.Unmarshal(frame.Options, &cmd)
 	if err != nil {
 		return Message{}, err
 	}
 
 	return Message{
-		ID:      frame.ID,
-		Command: cmd,
-		Result:  frame.Result,
-		Error:   frame.Error,
+		ID:       frame.ID,
+		Command:  cmd,
+		Error:    frame.Error,
+		Payloads: frame.Payloads,
 	}, nil
 }

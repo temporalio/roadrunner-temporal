@@ -60,6 +60,7 @@ func (srv *Plugin) GetConfig() Config {
 func (srv *Plugin) GetCodec() rrt.Codec {
 	// todo: implement msg pack
 
+	//return rrt.NewMsgpackCodec(rrt.DebugLevel(srv.cfg.DebugLevel), srv.log)
 	return rrt.NewJsonCodec(rrt.DebugLevel(srv.cfg.DebugLevel), srv.log)
 }
 
