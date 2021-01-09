@@ -15,14 +15,14 @@ type debugger struct {
 	logger logger.Logger
 }
 
-func (c *debugger) sent(ctx Context, msg ...Message) {
-	if c.level <= DebugNone {
+func (dbg *debugger) sent(ctx Context, msg ...Message) {
+	if dbg.level <= DebugNone {
 		return
 	}
 
 	frames := make([]jsonFrame, 0, len(msg))
 	for _, m := range msg {
-		frame, err := packJsonFrame(m)
+		frame, err := dbg.packFrame(m)
 		if err != nil {
 			panic(err)
 		}
@@ -36,21 +36,31 @@ func (c *debugger) sent(ctx Context, msg ...Message) {
 	}
 
 	logMessage := string(packed)
-	if c.level >= DebugHumanized {
+	if dbg.level >= DebugHumanized {
 		logMessage = color.GreenString(string(packed))
 	}
 
-	c.logger.Debug(logMessage, "sent", true, "taskQueue", "tickTime", ctx.TickTime, ctx.TaskQueue, "replay", true)
+	dbg.logger.Debug(
+		logMessage,
+		"sent",
+		true,
+		"taskQueue",
+		ctx.TaskQueue,
+		"tickTime",
+		ctx.TickTime,
+		"replay",
+		ctx.Replay,
+	)
 }
 
-func (c *debugger) received(ctx Context, msg ...Message) {
-	if c.level <= DebugNone {
+func (dbg *debugger) received(ctx Context, msg ...Message) {
+	if dbg.level <= DebugNone {
 		return
 	}
 
 	frames := make([]jsonFrame, 0, len(msg))
 	for _, m := range msg {
-		frame, err := packJsonFrame(m)
+		frame, err := dbg.packFrame(m)
 		if err != nil {
 			panic(err)
 		}
@@ -65,9 +75,66 @@ func (c *debugger) received(ctx Context, msg ...Message) {
 
 	logMessage := string(packed)
 
-	if c.level >= DebugHumanized {
+	if dbg.level >= DebugHumanized {
 		logMessage = color.HiYellowString(string(packed))
 	}
 
-	c.logger.Debug(logMessage, "receive", true)
+	dbg.logger.Debug(logMessage, "receive", true)
+}
+
+func (dbg *debugger) receivedRaw(ctx Context, msg ...Message) {
+	if dbg.level <= DebugNone {
+		return
+	}
+
+	frames := make([]jsonFrame, 0, len(msg))
+	for _, m := range msg {
+		frame, err := dbg.packFrame(m)
+		if err != nil {
+			panic(err)
+		}
+
+		frames = append(frames, frame)
+	}
+
+	packed, err := jsoniter.Marshal(frames)
+	if err != nil {
+		return
+	}
+
+	logMessage := string(packed)
+
+	if dbg.level >= DebugHumanized {
+		logMessage = color.HiYellowString(string(packed))
+	}
+
+	dbg.logger.Debug(logMessage, "receive", true)
+}
+
+func (dbg *debugger) packFrame(msg Message) (jsonFrame, error) {
+	if msg.Command == nil {
+		return jsonFrame{
+			ID:       msg.ID,
+			Error:    msg.Error,
+			Payloads: msg.Payloads,
+		}, nil
+	}
+
+	name, err := commandName(msg.Command)
+	if err != nil {
+		return jsonFrame{}, err
+	}
+
+	body, err := jsoniter.Marshal(msg.Command)
+	if err != nil {
+		return jsonFrame{}, err
+	}
+
+	return jsonFrame{
+		ID:       msg.ID,
+		Command:  name,
+		Options:  body,
+		Error:    msg.Error,
+		Payloads: msg.Payloads,
+	}, nil
 }

@@ -1,6 +1,7 @@
 package roadrunner_temporal
 
 import (
+	"github.com/fatih/color"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/payload"
@@ -9,8 +10,13 @@ import (
 )
 
 type (
+	// JsonCodec can be used for debugging and log capturing reasons.
 	JsonCodec struct {
-		debugger *debugger
+		// level enables verbose logging or all incoming and outcoming messages.
+		level DebugLevel
+
+		// logger renders messages when debug enabled.
+		logger logger.Logger
 	}
 
 	// jsonFrame contains message command in binary form.
@@ -35,20 +41,16 @@ type (
 // NewJsonCodec creates new Json communication codec.
 func NewJsonCodec(level DebugLevel, logger logger.Logger) Codec {
 	return &JsonCodec{
-		debugger: &debugger{
-			level:  level,
-			logger: logger,
-		},
+		level:  level,
+		logger: logger,
 	}
 }
 
 // WithLogger creates new codes instance with attached logger.
 func (c *JsonCodec) WithLogger(logger logger.Logger) Codec {
 	return &JsonCodec{
-		debugger: &debugger{
-			level:  c.debugger.level,
-			logger: logger,
-		},
+		level:  c.level,
+		logger: logger,
 	}
 }
 
@@ -63,8 +65,6 @@ func (c *JsonCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 		return nil, nil
 	}
 
-	c.debugger.sent(ctx, msg...)
-
 	var (
 		response = make([]jsonFrame, 0, 5)
 		result   = make([]Message, 0, 5)
@@ -73,7 +73,7 @@ func (c *JsonCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 
 	frames := make([]jsonFrame, 0, len(msg))
 	for _, m := range msg {
-		frame, err := packJsonFrame(m)
+		frame, err := c.packFrame(m)
 		if err != nil {
 			return nil, err
 		}
@@ -97,6 +97,15 @@ func (c *JsonCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 		return nil, errors.E(errors.Op("encodePayload"), err)
 	}
 
+	if c.level >= DebugNormal {
+		logMessage := string(p.Body) + " " + string(p.Context)
+		if c.level >= DebugHumanized {
+			logMessage = color.GreenString(logMessage)
+		}
+
+		c.logger.Debug(logMessage)
+	}
+
 	out, err := e.Exec(p)
 	if err != nil {
 		return nil, errors.E(errors.Op("execute"), err)
@@ -107,13 +116,22 @@ func (c *JsonCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 		return nil, nil
 	}
 
+	if c.level >= DebugNormal {
+		logMessage := string(out.Body)
+		if c.level >= DebugHumanized {
+			logMessage = color.HiYellowString(logMessage)
+		}
+
+		c.logger.Debug(logMessage, "receive", true)
+	}
+
 	err = jsoniter.Unmarshal(out.Body, &response)
 	if err != nil {
 		return nil, errors.E(errors.Op("parseResponse"), err)
 	}
 
 	for _, f := range response {
-		msg, err := parseJsonFrame(f)
+		msg, err := c.parseFrame(f)
 		if err != nil {
 			return nil, err
 		}
@@ -121,12 +139,10 @@ func (c *JsonCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 		result = append(result, msg)
 	}
 
-	c.debugger.received(ctx, result...)
-
 	return result, nil
 }
 
-func packJsonFrame(msg Message) (jsonFrame, error) {
+func (c *JsonCodec) packFrame(msg Message) (jsonFrame, error) {
 	if msg.Command == nil {
 		return jsonFrame{
 			ID:       msg.ID,
@@ -154,7 +170,7 @@ func packJsonFrame(msg Message) (jsonFrame, error) {
 	}, nil
 }
 
-func parseJsonFrame(frame jsonFrame) (Message, error) {
+func (c *JsonCodec) parseFrame(frame jsonFrame) (Message, error) {
 	if frame.Command == "" {
 		return Message{
 			ID:       frame.ID,

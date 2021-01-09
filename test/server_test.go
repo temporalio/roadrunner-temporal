@@ -2,8 +2,6 @@ package tests
 
 import (
 	"context"
-	"testing"
-
 	"github.com/spiral/endure"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	"github.com/spiral/roadrunner/v2/plugins/informer"
@@ -19,6 +17,7 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"testing"
 )
 
 type TestServer struct {
