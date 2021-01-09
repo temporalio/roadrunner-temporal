@@ -12,8 +12,9 @@ class SimpleSignalledWorkflowWithSleep
     private $counter = 0;
 
     #[Workflow\SignalMethod(name: "add")]
-    public function add(int $value)
-    {
+    public function add(
+        int $value
+    ) {
         $this->counter += $value;
     }
 

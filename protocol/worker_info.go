@@ -42,10 +42,10 @@ type (
 )
 
 // FetchWorkerInfo fetches information about all underlying workers (can be multiplexed inside single process).
-func FetchWorkerInfo(e Endpoint, dc converter.DataConverter) ([]WorkerInfo, error) {
+func FetchWorkerInfo(c Codec, e Endpoint, dc converter.DataConverter) ([]WorkerInfo, error) {
 	op := errors.Op("getWorkerInfo")
 
-	result, err := Execute(e, Context{}, Message{ID: 0, Command: GetWorkerInfo{}})
+	result, err := c.Execute(e, Context{}, Message{ID: 0, Command: GetWorkerInfo{}})
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func FetchWorkerInfo(e Endpoint, dc converter.DataConverter) ([]WorkerInfo, erro
 	}
 
 	var info []WorkerInfo
-	for _, data := range result[0].Result {
+	for _, data := range result[0].Payloads.Payloads {
 		wi := WorkerInfo{}
 		if err := dc.FromPayload(data, &wi); err != nil {
 			return nil, errors.E(op, err)

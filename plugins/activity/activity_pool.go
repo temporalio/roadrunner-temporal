@@ -8,8 +8,8 @@ import (
 	rrWorker "github.com/spiral/roadrunner/v2/interfaces/worker"
 	poolImpl "github.com/spiral/roadrunner/v2/pkg/pool"
 	"github.com/spiral/roadrunner/v2/plugins/server"
-	rrt "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/plugins/temporal"
+	rrt "github.com/temporalio/roadrunner-temporal/protocol"
 	"go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/converter"
@@ -27,6 +27,7 @@ type (
 
 	activityPoolImpl struct {
 		dc         converter.DataConverter
+		codec      rrt.Codec
 		seqID      uint64
 		activities []string
 		wp         pool.Pool
@@ -35,11 +36,16 @@ type (
 )
 
 // newActivityPool
-func newActivityPool(listener events.Listener, poolConfig poolImpl.Config, server server.Server) (activityPool, error) {
+func newActivityPool(
+	codec rrt.Codec,
+	listener events.Listener,
+	poolConfig poolImpl.Config,
+	server server.Server,
+) (activityPool, error) {
 	wp, err := server.NewWorkerPool(
 		context.Background(),
 		poolConfig,
-		map[string]string{"RR_MODE": RRMode},
+		map[string]string{"RR_MODE": RRMode, "RR_CODEC": codec.GetName()},
 		listener,
 	)
 
@@ -47,7 +53,7 @@ func newActivityPool(listener events.Listener, poolConfig poolImpl.Config, serve
 		return nil, err
 	}
 
-	return &activityPoolImpl{wp: wp}, nil
+	return &activityPoolImpl{codec: codec, wp: wp}, nil
 }
 
 // initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
@@ -91,7 +97,7 @@ func (pool *activityPoolImpl) ActivityNames() []string {
 func (pool *activityPoolImpl) initWorkers(ctx context.Context, temporal temporal.Temporal) error {
 	const op = errors.Op("createTemporalWorker")
 
-	workerInfo, err := rrt.FetchWorkerInfo(pool.wp, temporal.GetDataConverter())
+	workerInfo, err := rrt.FetchWorkerInfo(pool.codec, pool.wp, temporal.GetDataConverter())
 	if err != nil {
 		return errors.E(op, err)
 	}
@@ -130,13 +136,13 @@ func (pool *activityPoolImpl) executeActivity(ctx context.Context, args *common.
 			Command: rrt.InvokeActivity{
 				Name: info.ActivityType.Name,
 				Info: info,
-				Args: args.Payloads,
 			},
+			Payloads: args,
 		}
 		// todo: activity.getHeartBeatDetails
 	)
 
-	result, err := rrt.Execute(pool.wp, rrt.Context{TaskQueue: info.TaskQueue}, msg)
+	result, err := pool.codec.Execute(pool.wp, rrt.Context{TaskQueue: info.TaskQueue}, msg)
 	if err != nil {
 		return nil, err
 	}
@@ -153,5 +159,5 @@ func (pool *activityPoolImpl) executeActivity(ctx context.Context, args *common.
 		return nil, errors.E(result[0].Error.Message)
 	}
 
-	return &common.Payloads{Payloads: result[0].Result}, nil
+	return result[0].Payloads, nil
 }

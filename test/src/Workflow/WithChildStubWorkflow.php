@@ -14,8 +14,6 @@ class WithChildStubWorkflow
     {
         $child = Workflow::newChildWorkflowStub(SimpleWorkflow::class);
 
-
-
         return 'Child: ' . (yield $child->handler('child ' . $input));
     }
 }

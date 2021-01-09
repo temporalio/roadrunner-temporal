@@ -4,6 +4,7 @@ namespace Temporal\Tests\Activity;
 
 use Temporal\Activity\ActivityInterface;
 use Temporal\Activity\ActivityMethod;
+use Temporal\Api\Common\V1\WorkflowExecution;
 use Temporal\DataConverter\Bytes;
 use Temporal\Tests\DTO\Message;
 use Temporal\Tests\DTO\User;
@@ -46,5 +47,11 @@ class SimpleActivity
         Bytes $input
     ): string {
         return md5($input->getData());
+    }
+
+    public function updateRunID(WorkflowExecution $e): WorkflowExecution
+    {
+        $e->setRunId('updated');
+        return $e;
     }
 }

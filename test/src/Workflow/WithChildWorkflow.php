@@ -10,8 +10,9 @@ use Temporal\Workflow\WorkflowMethod;
 class WithChildWorkflow
 {
     #[WorkflowMethod(name: 'WithChildWorkflow')]
-    public function handler(string $input): iterable
-    {
+    public function handler(
+        string $input
+    ): iterable {
         $result = yield Workflow::executeChildWorkflow(
             'SimpleWorkflow',
             ['child ' . $input],

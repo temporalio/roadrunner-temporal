@@ -19,5 +19,5 @@
 app/vendor
 
 .rr.local.yaml
-tests/composer.lock
-tests/vendor
+test/composer.lock
+test/vendor

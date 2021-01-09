@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/spiral/errors"
@@ -72,6 +73,7 @@ func (svc *Plugin) Serve() chan error {
 				}
 
 				bkoff := backoff.NewExponentialBackOff()
+				bkoff.InitialInterval = time.Second
 
 				err = backoff.Retry(svc.replacePool, bkoff)
 				if err != nil {
@@ -128,7 +130,9 @@ func (svc *Plugin) AddListener(listener events.Listener) {
 func (svc *Plugin) poolListener(event interface{}) {
 	if ev, ok := event.(PoolEvent); ok {
 		if ev.Event == EventWorkerExit {
-			svc.log.Error("Workflow pool error", "error", ev.Caused)
+			if ev.Caused != nil {
+				svc.log.Error("Workflow pool error", "error", ev.Caused)
+			}
 			svc.reset <- struct{}{}
 		}
 	}
@@ -138,7 +142,11 @@ func (svc *Plugin) poolListener(event interface{}) {
 
 // AddListener adds event listeners to the service.
 func (svc *Plugin) startPool() (workflowPool, error) {
-	pool, err := newWorkflowPool(svc.poolListener, svc.server)
+	pool, err := newWorkflowPool(
+		svc.temporal.GetCodec().WithLogger(svc.log),
+		svc.poolListener,
+		svc.server,
+	)
 	if err != nil {
 		return nil, errors.E(errors.Op("initWorkflowPool"), err)
 	}
@@ -157,8 +165,6 @@ func (svc *Plugin) replacePool() error {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 
-	svc.log.Debug("Replace workflow pool")
-
 	if svc.pool != nil {
 		errD := svc.pool.Destroy(context.Background())
 		svc.pool = nil
@@ -173,8 +179,11 @@ func (svc *Plugin) replacePool() error {
 
 	pool, err := svc.startPool()
 	if err != nil {
+		svc.log.Error("Replace workflow pool failed", "error", err)
 		return errors.E(errors.Op("newWorkflowPool"), err)
 	}
+
+	svc.log.Debug("Replace workflow pool")
 
 	svc.pool = pool
 

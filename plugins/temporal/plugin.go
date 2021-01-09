@@ -9,7 +9,7 @@ import (
 	poolImpl "github.com/spiral/roadrunner/v2/pkg/pool"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	"github.com/spiral/roadrunner/v2/plugins/logger"
-	rrt "github.com/temporalio/roadrunner-temporal"
+	rrt "github.com/temporalio/roadrunner-temporal/protocol"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
@@ -22,6 +22,7 @@ type (
 		GetClient() (client.Client, error)
 		GetDataConverter() converter.DataConverter
 		GetConfig() Config
+		GetCodec() rrt.Codec
 		CreateWorker(taskQueue string, options worker.Options) (worker.Worker, error)
 	}
 
@@ -29,6 +30,8 @@ type (
 		Address    string
 		Namespace  string
 		Activities *poolImpl.Config
+		Codec      string
+		DebugLevel int
 	}
 
 	Plugin struct {
@@ -51,6 +54,15 @@ func (srv *Plugin) Init(cfg config.Configurer, log logger.Logger) error {
 // GetConfig returns temporal configuration.
 func (srv *Plugin) GetConfig() Config {
 	return srv.cfg
+}
+
+// GetCodec returns communication codec.
+func (srv *Plugin) GetCodec() rrt.Codec {
+	if srv.cfg.Codec == "json" {
+		return rrt.NewJsonCodec(rrt.DebugLevel(srv.cfg.DebugLevel), srv.log)
+	}
+
+	return rrt.NewProtoCodec(rrt.DebugLevel(srv.cfg.DebugLevel), srv.log)
 }
 
 // GetDataConverter returns data active data converter.

@@ -1,0 +1,18 @@
+{
+  "require": {
+    "temporal/sdk": "dev-develop",
+    "rybakit/msgpack": "^0.7.2",
+    "google/protobuf": "^3.14"
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Temporal\\Tests\\": "src",
+      "GPBMetadata\\": "api/GPBMetadata",
+      "Temporal\\": "vendor/temporal/sdk/src",
+      "Temporal\\Api\\": "api/Temporal/Api",
+      "Temporal\\Roadrunner\\": "api/Temporal/Roadrunner"
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}

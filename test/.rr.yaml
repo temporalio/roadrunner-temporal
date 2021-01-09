@@ -3,7 +3,7 @@ rpc:
     listen: tcp://127.0.0.1:6001
 
 server:
-    command: "php client.php"
+    command: "php worker.php"
     env:
         DEBUG: true
 
@@ -12,6 +12,11 @@ temporal:
     address: "localhost:7233"
     activities:
       numWorkers: 4
+    debugLevel: 2
+    codec: json
 
 logs:
-    mode: none
+    mode: json
+    channels:
+        activities:
+            mode: none

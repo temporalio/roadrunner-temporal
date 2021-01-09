@@ -2,7 +2,6 @@ package roadrunner_temporal
 
 import (
 	"github.com/spiral/errors"
-	"go.temporal.io/api/common/v1"
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/activity"
 	bindings "go.temporal.io/sdk/internalbindings"
@@ -56,17 +55,12 @@ type (
 
 		// Info contains execution context.
 		Info activity.Info `json:"info"`
-
-		// Args contain activity call arguments.
-		Args []*common.Payload `json:"args"`
 	}
 
 	// StartWorkflow sends worker command to start workflow.
 	StartWorkflow struct {
 		// Info to define workflow context.
 		Info *workflow.Info `json:"info"`
-		// Input arguments.
-		Input []*commonpb.Payload `json:"args"`
 	}
 
 	// InvokeQuery invokes signal with a set of arguments.
@@ -75,8 +69,6 @@ type (
 		RunID string `json:"runId"`
 		// Name of the signal.
 		Name string `json:"name"`
-		// Args of the call.
-		Args []*commonpb.Payload `json:"args"`
 	}
 
 	// InvokeQuery invokes query with a set of arguments.
@@ -85,8 +77,6 @@ type (
 		RunID string `json:"runId"`
 		// Name of the query.
 		Name string `json:"name"`
-		// Args of the call.
-		Args []*commonpb.Payload `json:"args"`
 	}
 
 	// CancelWorkflow asks worker to gracefully stop workflow, if possible (signal).
@@ -111,8 +101,6 @@ type (
 	ExecuteActivity struct {
 		// Name defines activity name.
 		Name string `json:"name"`
-		// Args to pass to the activity.
-		Args []*commonpb.Payload `json:"arguments"`
 		// Options to run activity.
 		Options bindings.ExecuteActivityOptions `json:"options,omitempty"`
 	}
@@ -121,8 +109,6 @@ type (
 	ExecuteChildWorkflow struct {
 		// Name defines workflow name.
 		Name string `json:"name"`
-		// Input to pass to the workflow.
-		Input []*commonpb.Payload `json:"input"`
 		// Options to run activity.
 		Options bindings.WorkflowOptions `json:"options,omitempty"`
 	}
@@ -140,9 +126,7 @@ type (
 	}
 
 	// SideEffect to be recorded into the history.
-	SideEffect struct {
-		Value *commonpb.Payload `json:"value"`
-	}
+	SideEffect struct{}
 
 	// NewTimer starts new timer.
 	GetVersion struct {
@@ -153,9 +137,6 @@ type (
 
 	// CompleteWorkflow sent by worker to complete workflow.
 	CompleteWorkflow struct {
-		// Result defines workflow execution result.
-		Result []*commonpb.Payload `json:"result"`
-
 		// Error (if any).
 		Error *Error `json:"error"`
 	}
@@ -164,19 +145,15 @@ type (
 	ContinueAsNew struct {
 		// Result defines workflow execution result.
 		Name string `json:"name"`
-
-		// Result defines workflow execution result.
-		Input []*commonpb.Payload `json:"input"`
 	}
 
 	// SignalExternalWorkflow sends signal to external workflow.
 	SignalExternalWorkflow struct {
-		Namespace         string              `json:"namespace"`
-		WorkflowID        string              `json:"workflowID"`
-		RunID             string              `json:"runID"`
-		Signal            string              `json:"signal"`
-		ChildWorkflowOnly bool                `json:"childWorkflowOnly"`
-		Args              []*commonpb.Payload `json:"args"`
+		Namespace         string `json:"namespace"`
+		WorkflowID        string `json:"workflowID"`
+		RunID             string `json:"runID"`
+		Signal            string `json:"signal"`
+		ChildWorkflowOnly bool   `json:"childWorkflowOnly"`
 	}
 
 	// CancelExternalWorkflow canceller external workflow.
@@ -194,11 +171,14 @@ type (
 )
 
 // ActivityParams maps activity command to activity params.
-func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment) bindings.ExecuteActivityParams {
+func (cmd ExecuteActivity) ActivityParams(
+	env bindings.WorkflowEnvironment,
+	payloads *commonpb.Payloads,
+) bindings.ExecuteActivityParams {
 	params := bindings.ExecuteActivityParams{
 		ExecuteActivityOptions: cmd.Options,
 		ActivityType:           bindings.ActivityType{Name: cmd.Name},
-		Input:                  &commonpb.Payloads{Payloads: cmd.Args},
+		Input:                  payloads,
 	}
 
 	if params.TaskQueueName == "" {
@@ -209,11 +189,14 @@ func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment) bind
 }
 
 // ActivityParams maps activity command to activity params.
-func (cmd ExecuteChildWorkflow) WorkflowParams(env bindings.WorkflowEnvironment) bindings.ExecuteWorkflowParams {
+func (cmd ExecuteChildWorkflow) WorkflowParams(
+	env bindings.WorkflowEnvironment,
+	payloads *commonpb.Payloads,
+) bindings.ExecuteWorkflowParams {
 	params := bindings.ExecuteWorkflowParams{
 		WorkflowOptions: cmd.Options,
 		WorkflowType:    &bindings.WorkflowType{Name: cmd.Name},
-		Input:           &commonpb.Payloads{Payloads: cmd.Input},
+		Input:           payloads,
 	}
 
 	if params.TaskQueueName == "" {
@@ -228,7 +211,7 @@ func (cmd NewTimer) ToDuration() time.Duration {
 	return time.Millisecond * time.Duration(cmd.Milliseconds)
 }
 
-// returns command name
+// returns command name (only for the commands sent to the worker)
 func commandName(cmd interface{}) (string, error) {
 	switch cmd.(type) {
 	case GetWorkerInfo, *GetWorkerInfo:

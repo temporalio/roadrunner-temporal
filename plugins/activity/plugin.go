@@ -2,6 +2,7 @@ package activity
 
 import (
 	"context"
+	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/spiral/roadrunner/v2/interfaces/events"
@@ -79,6 +80,7 @@ func (svc *Plugin) Serve() chan error {
 				}
 
 				bkoff := backoff.NewExponentialBackOff()
+				bkoff.InitialInterval = time.Second
 
 				err = backoff.Retry(svc.replacePool, bkoff)
 				if err != nil {
@@ -145,7 +147,12 @@ func (svc *Plugin) poolListener(event interface{}) {
 
 // AddListener adds event listeners to the service.
 func (svc *Plugin) startPool() (activityPool, error) {
-	pool, err := newActivityPool(svc.poolListener, *svc.temporal.GetConfig().Activities, svc.server)
+	pool, err := newActivityPool(
+		svc.temporal.GetCodec().WithLogger(svc.log),
+		svc.poolListener,
+		*svc.temporal.GetConfig().Activities,
+		svc.server,
+	)
 
 	if err != nil {
 		return nil, errors.E(errors.Op("newActivityPool"), err)
@@ -162,12 +169,13 @@ func (svc *Plugin) startPool() (activityPool, error) {
 }
 
 func (svc *Plugin) replacePool() error {
-	svc.log.Debug("Replace activity pool")
-
 	pool, err := svc.startPool()
 	if err != nil {
+		svc.log.Error("Replace activity pool failed", "error", err)
 		return errors.E(errors.Op("newActivityPool"), err)
 	}
+
+	svc.log.Debug("Replace activity pool")
 
 	var previous activityPool
 

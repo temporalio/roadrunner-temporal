@@ -12,8 +12,9 @@ use Temporal\Tests\Activity\SimpleActivity;
 class SimpleWorkflow
 {
     #[WorkflowMethod(name: 'SimpleWorkflow')]
-    public function handler(string $input): iterable
-    {
+    public function handler(
+        string $input
+    ): iterable {
         $simple = Workflow::newActivityStub(
             SimpleActivity::class,
             ActivityOptions::new()->withStartToCloseTimeout(5)
