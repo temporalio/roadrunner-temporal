@@ -4,6 +4,7 @@ import (
 	"github.com/spiral/roadrunner/v2/pkg/payload"
 	"github.com/spiral/roadrunner/v2/plugins/logger"
 	commonpb "go.temporal.io/api/common/v1"
+	"go.temporal.io/api/failure/v1"
 	"time"
 )
 
@@ -37,25 +38,13 @@ type (
 		ID uint64 `json:"id"`
 
 		// Command of the message in unmarshalled form. Pointer.
-		Command interface{} `json:"params,omitempty"`
+		Command interface{} `json:"command,omitempty"`
 
-		// Error associated with command id.
-		Error *Error `json:"error,omitempty"`
+		// Failure associated with command id.
+		Failure *failure.Failure `json:"failure,omitempty"`
 
 		// Payloads contains message specific payloads in binary format.
 		Payloads *commonpb.Payloads `json:"payloads,omitempty"`
-	}
-
-	// Error from underlying worker.
-	Error struct {
-		// Code of the error.
-		Code int32 `json:"code"`
-
-		// Message contains exception message.
-		Message string `json:"message"`
-
-		// Data contains additional error context. Typically stack trace.
-		Data interface{} `json:"data"`
 	}
 
 	// Codec manages payload encoding and decoding while communication with underlying worker.
@@ -88,9 +77,4 @@ func (ctx Context) IsEmpty() bool {
 // IsCommand returns true if message carries request.
 func (msg Message) IsCommand() bool {
 	return msg.Command != nil
-}
-
-// Error returns error as string.
-func (e Error) Error() string {
-	return e.Message
 }

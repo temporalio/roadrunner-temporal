@@ -135,11 +135,8 @@ type (
 		MaxSupported int    `json:"maxSupported"`
 	}
 
-	// CompleteWorkflow sent by worker to complete workflow.
-	CompleteWorkflow struct {
-		// Error (if any).
-		Error *Error `json:"error"`
-	}
+	// CompleteWorkflow sent by worker to complete workflow. Might include additional error as part of the payload.
+	CompleteWorkflow struct{}
 
 	// ContinueAsNew restarts workflow with new running instance.
 	ContinueAsNew struct {
@@ -181,6 +178,9 @@ func (cmd ExecuteActivity) ActivityParams(
 		Input:                  payloads,
 	}
 
+	// todo: not mapped, expose mappings internally (!!) and do manual mapping
+	params.RetryPolicy.MaximumAttempts = 1
+
 	if params.TaskQueueName == "" {
 		params.TaskQueueName = env.WorkflowInfo().TaskQueueName
 	}
@@ -198,6 +198,9 @@ func (cmd ExecuteChildWorkflow) WorkflowParams(
 		WorkflowType:    &bindings.WorkflowType{Name: cmd.Name},
 		Input:           payloads,
 	}
+
+	// todo: not mapped, expose mappings internally (!!) and do manual mapping
+	params.RetryPolicy.MaximumAttempts = 1
 
 	if params.TaskQueueName == "" {
 		params.TaskQueueName = env.WorkflowInfo().TaskQueueName
@@ -258,7 +261,7 @@ func commandName(cmd interface{}) (string, error) {
 }
 
 // reads command from binary payload
-func initCommand(name string, body []byte) (interface{}, error) {
+func initCommand(name string) (interface{}, error) {
 	switch name {
 	case GetWorkerInfoCommand:
 		return &GetWorkerInfo{}, nil

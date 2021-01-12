@@ -11,28 +11,17 @@ import (
 
 type (
 	ProtoCodec struct {
-		debugger *debugger
 	}
 )
 
 // NewJsonCodec creates new Json communication codec.
-func NewProtoCodec(level DebugLevel, logger logger.Logger) Codec {
-	return &ProtoCodec{
-		debugger: &debugger{
-			level:  level,
-			logger: logger,
-		},
-	}
+func NewProtoCodec() Codec {
+	return &ProtoCodec{}
 }
 
 // WithLogger creates new codes instance with attached logger.
 func (c *ProtoCodec) WithLogger(logger logger.Logger) Codec {
-	return &ProtoCodec{
-		debugger: &debugger{
-			level:  c.debugger.level,
-			logger: logger,
-		},
-	}
+	return &ProtoCodec{}
 }
 
 // WithLogger creates new codes instance with attached logger.
@@ -45,8 +34,6 @@ func (c *ProtoCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message
 	if len(msg) == 0 {
 		return nil, nil
 	}
-
-	c.debugger.sent(ctx, msg...)
 
 	var (
 		request  = &internal.Frame{}
@@ -105,8 +92,6 @@ func (c *ProtoCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message
 		result = append(result, msg)
 	}
 
-	c.debugger.received(ctx, result...)
-
 	return result, nil
 }
 
@@ -116,18 +101,7 @@ func (c *ProtoCodec) packMessage(msg Message) (*internal.Message, error) {
 	frame := &internal.Message{
 		Id:       msg.ID,
 		Payloads: msg.Payloads,
-	}
-
-	if msg.Error != nil {
-		frame.Error = &internal.Error{
-			Code:    msg.Error.Code,
-			Message: msg.Error.Message,
-		}
-
-		frame.Error.Data, err = jsoniter.Marshal(msg.Error.Data)
-		if err != nil {
-			return nil, err
-		}
+		Failure:  msg.Failure,
 	}
 
 	if msg.Command != nil {
@@ -151,22 +125,11 @@ func (c *ProtoCodec) parseMessage(frame *internal.Message) (Message, error) {
 	msg := Message{
 		ID:       frame.Id,
 		Payloads: frame.Payloads,
-	}
-
-	if frame.Error != nil {
-		msg.Error = &Error{
-			Code:    frame.Error.Code,
-			Message: frame.Error.Message,
-		}
-
-		err = jsoniter.Unmarshal(frame.Error.Data, &msg.Error.Data)
-		if err != nil {
-			return Message{}, err
-		}
+		Failure:  frame.Failure,
 	}
 
 	if frame.Command != "" {
-		msg.Command, err = initCommand(frame.Command, frame.Options)
+		msg.Command, err = initCommand(frame.Command)
 		if err != nil {
 			return Message{}, err
 		}

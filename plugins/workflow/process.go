@@ -38,6 +38,9 @@ func (wf *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *com
 	wf.mq = newMessageQueue(wf.pool.SeqID)
 	wf.ids = newIdRegistry()
 
+	// todo: get last result
+	// wf.env.WorkflowInfo()
+
 	env.RegisterCancelHandler(wf.handleCancel)
 	env.RegisterSignalHandler(wf.handleSignal)
 	env.RegisterQueryHandler(wf.handleQuery)
@@ -77,7 +80,7 @@ func (wf *workflowProcess) OnWorkflowTaskStarted() {
 		wf.pipeline = wf.pipeline[1:]
 
 		if msg.IsCommand() {
-			err = wf.handleCommand(msg.ID, msg.Command, msg.Payloads)
+			err = wf.handleMessage(msg)
 		}
 
 		if err != nil {
@@ -121,7 +124,7 @@ func (wf *workflowProcess) Close() {
 
 	_, err = wf.discardQueue()
 	if err != nil {
-		panic(err)
+		//panic(err)
 	}
 }
 
@@ -175,17 +178,23 @@ func (wf *workflowProcess) handleQuery(queryType string, queryArgs *commonpb.Pay
 		return nil, err
 	}
 
-	if result.Error != nil {
-		return nil, result.Error
+	if result.Failure != nil {
+		return nil, bindings.ConvertFailureToError(result.Failure, wf.env.GetDataConverter())
 	}
 
 	return result.Payloads, nil
 }
 
 // process incoming command
-func (wf *workflowProcess) handleCommand(id uint64, cmd interface{}, payloads *commonpb.Payloads) error {
-	const op = errors.Op("handleCommand")
+func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
+	const op = errors.Op("handleMessage")
 	var err error
+
+	var (
+		id       = msg.ID
+		cmd      = msg.Command
+		payloads = msg.Payloads
+	)
 
 	switch cmd := cmd.(type) {
 	case *rrt.ExecuteActivity:
@@ -266,21 +275,17 @@ func (wf *workflowProcess) handleCommand(id uint64, cmd interface{}, payloads *c
 		result, _ := wf.env.GetDataConverter().ToPayloads("completed")
 		wf.mq.pushResponse(id, result)
 
-		if cmd.Error == nil {
+		if msg.Failure == nil {
 			wf.env.Complete(payloads, nil)
 		} else {
-			// todo: map error, todo: handle cancelled errors
-			if cmd.Error.Message == "canceled" {
-				wf.env.Complete(nil, workflow.ErrCanceled)
-			} else {
-				wf.env.Complete(nil, cmd.Error)
-			}
+			wf.env.Complete(nil, bindings.ConvertFailureToError(msg.Failure, wf.env.GetDataConverter()))
 		}
 
 	case *rrt.ContinueAsNew:
 		result, _ := wf.env.GetDataConverter().ToPayloads("completed")
 		wf.mq.pushResponse(id, result)
 
+		// todo: merge options
 		wf.env.Complete(nil, &workflow.ContinueAsNewError{
 			WorkflowType:             &bindings.WorkflowType{Name: cmd.Name},
 			Input:                    payloads,
@@ -331,10 +336,11 @@ func (wf *workflowProcess) createCallback(id uint64) bindings.ResultHandler {
 		wf.canceller.discard(id)
 
 		if err != nil {
-			wf.mq.pushError(id, err)
+			wf.mq.pushError(id, bindings.ConvertErrorToFailure(err, wf.env.GetDataConverter()))
 			return nil
 		}
 
+		// fetch original payload
 		wf.mq.pushResponse(id, result)
 		return nil
 	}
@@ -362,7 +368,7 @@ func (wf *workflowProcess) createContinuableCallback(id uint64) bindings.ResultH
 		wf.canceller.discard(id)
 
 		if err != nil {
-			wf.mq.pushError(id, err)
+			wf.mq.pushError(id, bindings.ConvertErrorToFailure(err, wf.env.GetDataConverter()))
 			return
 		}
 

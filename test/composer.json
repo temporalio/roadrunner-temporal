@@ -1,6 +1,6 @@
 {
   "require": {
-    "temporal/sdk": "dev-develop",
+    "temporal/sdk": "dev-feature/grpc-client",
     "rybakit/msgpack": "^0.7.2",
     "google/protobuf": "^3.14"
   },

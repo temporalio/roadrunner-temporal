@@ -13,6 +13,7 @@ import (
 	"go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/converter"
+	"go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/worker"
 	"sync/atomic"
 )
@@ -151,13 +152,15 @@ func (pool *activityPoolImpl) executeActivity(ctx context.Context, args *common.
 		return nil, errors.E(op, "invalid activity worker response")
 	}
 
-	if result[0].Error != nil {
-		if result[0].Error.Message == "doNotCompleteOnReturn" {
+	out := result[0]
+	if out.Failure != nil {
+		// todo: ensure this approach works
+		if out.Failure.Message == "doNotCompleteOnReturn" {
 			return nil, activity.ErrResultPending
 		}
 
-		return nil, errors.E(result[0].Error.Message)
+		return nil, internalbindings.ConvertFailureToError(out.Failure, pool.dc)
 	}
 
-	return result[0].Payloads, nil
+	return out.Payloads, nil
 }

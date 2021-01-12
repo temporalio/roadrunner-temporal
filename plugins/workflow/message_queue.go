@@ -3,6 +3,7 @@ package workflow
 import (
 	rrt "github.com/temporalio/roadrunner-temporal/protocol"
 	"go.temporal.io/api/common/v1"
+	"go.temporal.io/api/failure/v1"
 )
 
 type messageQueue struct {
@@ -49,9 +50,6 @@ func (mq *messageQueue) pushResponse(id uint64, payloads *common.Payloads) {
 	mq.queue = append(mq.queue, rrt.Message{ID: id, Payloads: payloads})
 }
 
-func (mq *messageQueue) pushError(id uint64, err error) {
-	mq.queue = append(mq.queue, rrt.Message{
-		ID:    id,
-		Error: &rrt.Error{Message: err.Error()},
-	})
+func (mq *messageQueue) pushError(id uint64, failure *failure.Failure) {
+	mq.queue = append(mq.queue, rrt.Message{ID: id, Failure: failure})
 }

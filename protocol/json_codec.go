@@ -6,7 +6,8 @@ import (
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/payload"
 	"github.com/spiral/roadrunner/v2/plugins/logger"
-	commonpb "go.temporal.io/api/common/v1"
+	"go.temporal.io/api/common/v1"
+	"go.temporal.io/api/failure/v1"
 )
 
 type (
@@ -30,11 +31,11 @@ type (
 		// Options to be unmarshalled to body (raw payload).
 		Options jsoniter.RawMessage `json:"options,omitempty"`
 
-		// Error associated with command id.
-		Error *Error `json:"error,omitempty"`
+		// Failure associated with command id.
+		Failure []byte `json:"failure,omitempty"`
 
 		// Payloads specific to the command or result.
-		Payloads *commonpb.Payloads `json:"payloads,omitempty"`
+		Payloads []byte `json:"payloads,omitempty"`
 	}
 )
 
@@ -143,56 +144,83 @@ func (c *JsonCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 }
 
 func (c *JsonCodec) packFrame(msg Message) (jsonFrame, error) {
+	var (
+		err   error
+		frame jsonFrame
+	)
+
+	frame.ID = msg.ID
+
+	if msg.Payloads != nil {
+		frame.Payloads, err = msg.Payloads.Marshal()
+		if err != nil {
+			return jsonFrame{}, err
+		}
+	}
+
+	if msg.Failure != nil {
+		frame.Failure, err = msg.Failure.Marshal()
+		if err != nil {
+			return jsonFrame{}, err
+		}
+	}
+
 	if msg.Command == nil {
-		return jsonFrame{
-			ID:       msg.ID,
-			Error:    msg.Error,
-			Payloads: msg.Payloads,
-		}, nil
+		return frame, nil
 	}
 
-	name, err := commandName(msg.Command)
+	frame.Command, err = commandName(msg.Command)
 	if err != nil {
 		return jsonFrame{}, err
 	}
 
-	body, err := jsoniter.Marshal(msg.Command)
+	frame.Options, err = jsoniter.Marshal(msg.Command)
 	if err != nil {
 		return jsonFrame{}, err
 	}
 
-	return jsonFrame{
-		ID:       msg.ID,
-		Command:  name,
-		Options:  body,
-		Error:    msg.Error,
-		Payloads: msg.Payloads,
-	}, nil
+	return frame, nil
 }
 
 func (c *JsonCodec) parseFrame(frame jsonFrame) (Message, error) {
-	if frame.Command == "" {
-		return Message{
-			ID:       frame.ID,
-			Error:    frame.Error,
-			Payloads: frame.Payloads,
-		}, nil
+	var (
+		err error
+		msg Message
+	)
+
+	msg.ID = frame.ID
+
+	if frame.Payloads != nil {
+		msg.Payloads = &common.Payloads{}
+
+		err = msg.Payloads.Unmarshal(frame.Payloads)
+		if err != nil {
+			return Message{}, err
+		}
 	}
 
-	cmd, err := initCommand(frame.Command, frame.Options)
-	if err != nil {
-		return Message{}, err
+	if frame.Failure != nil {
+		msg.Failure = &failure.Failure{}
+
+		err = msg.Failure.Unmarshal(frame.Failure)
+		if err != nil {
+			return Message{}, err
+		}
 	}
 
-	err = jsoniter.Unmarshal(frame.Options, &cmd)
-	if err != nil {
-		return Message{}, err
+	if frame.Command != "" {
+		cmd, err := initCommand(frame.Command)
+		if err != nil {
+			return Message{}, err
+		}
+
+		err = jsoniter.Unmarshal(frame.Options, &cmd)
+		if err != nil {
+			return Message{}, err
+		}
+
+		msg.Command = cmd
 	}
 
-	return Message{
-		ID:       frame.ID,
-		Command:  cmd,
-		Error:    frame.Error,
-		Payloads: frame.Payloads,
-	}, nil
+	return msg, nil
 }

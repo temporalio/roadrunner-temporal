@@ -62,7 +62,8 @@ func (srv *Plugin) GetCodec() rrt.Codec {
 		return rrt.NewJsonCodec(rrt.DebugLevel(srv.cfg.DebugLevel), srv.log)
 	}
 
-	return rrt.NewProtoCodec(rrt.DebugLevel(srv.cfg.DebugLevel), srv.log)
+	// production ready protocol, no debug abilities
+	return rrt.NewProtoCodec()
 }
 
 // GetDataConverter returns data active data converter.
