@@ -2,7 +2,8 @@
   "require": {
     "temporal/sdk": "dev-feature/grpc-client",
     "rybakit/msgpack": "^0.7.2",
-    "google/protobuf": "^3.14"
+    "google/protobuf": "^3.14",
+    "dragonmantank/cron-expression": "^3.1"
   },
   "autoload-dev": {
     "psr-4": {

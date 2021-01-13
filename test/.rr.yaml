@@ -16,7 +16,9 @@ temporal:
     codec: json
 
 logs:
-    mode: none
-    channels:
-       activities:
-          mode: none
+    #mode: none
+  #  channels:
+ #      activities:
+#          mode: none
+       #workflows:
+         #output: workflow.log

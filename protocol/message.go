@@ -179,7 +179,7 @@ func (cmd ExecuteActivity) ActivityParams(
 	}
 
 	// todo: not mapped, expose mappings internally (!!) and do manual mapping
-	params.RetryPolicy.MaximumAttempts = 1
+	//params.RetryPolicy.MaximumAttempts = 1
 
 	if params.TaskQueueName == "" {
 		params.TaskQueueName = env.WorkflowInfo().TaskQueueName
