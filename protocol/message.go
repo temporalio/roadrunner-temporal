@@ -178,9 +178,6 @@ func (cmd ExecuteActivity) ActivityParams(
 		Input:                  payloads,
 	}
 
-	// todo: not mapped, expose mappings internally (!!) and do manual mapping
-	//params.RetryPolicy.MaximumAttempts = 1
-
 	if params.TaskQueueName == "" {
 		params.TaskQueueName = env.WorkflowInfo().TaskQueueName
 	}
@@ -198,9 +195,6 @@ func (cmd ExecuteChildWorkflow) WorkflowParams(
 		WorkflowType:    &bindings.WorkflowType{Name: cmd.Name},
 		Input:           payloads,
 	}
-
-	// todo: not mapped, expose mappings internally (!!) and do manual mapping
-	params.RetryPolicy.MaximumAttempts = 1
 
 	if params.TaskQueueName == "" {
 		params.TaskQueueName = env.WorkflowInfo().TaskQueueName

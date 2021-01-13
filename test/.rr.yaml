@@ -16,7 +16,7 @@ temporal:
     codec: json
 
 logs:
-    #mode: none
+    mode: none
   #  channels:
  #      activities:
 #          mode: none
