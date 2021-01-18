@@ -145,6 +145,14 @@ type (
 	ContinueAsNew struct {
 		// Result defines workflow execution result.
 		Name string `json:"name"`
+
+		// Options for continued as new workflow.
+		Options struct {
+			TaskQueueName            string
+			WorkflowExecutionTimeout time.Duration
+			WorkflowRunTimeout       time.Duration
+			WorkflowTaskTimeout      time.Duration
+		} `json:"options"`
 	}
 
 	// SignalExternalWorkflow sends signal to external workflow.

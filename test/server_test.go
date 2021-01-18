@@ -113,7 +113,6 @@ func (s *TestServer) MustClose() {
 }
 
 func initConfig(opt ...ConfigOption) config.Configurer {
-	// todo: mock config
 	cfg := &config.Viper{}
 	cfg.Path = ".rr.yaml"
 	cfg.Prefix = "rr"

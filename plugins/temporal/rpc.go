@@ -18,7 +18,7 @@ type rpc struct {
 }
 
 // todo: rewrite
-type RecordActivityHeartbeatIn struct {
+type RecordHeartbeatRequest struct {
 	TaskToken []byte
 	Details   interface{}
 }
@@ -29,7 +29,7 @@ type RecordActivityHeartbeatIn struct {
 // The errors it can return:
 //	- EntityNotExistsError
 //	- InternalServiceError
-func (r *rpc) RecordActivityHeartbeat(in RecordActivityHeartbeatIn, out *bool) error {
+func (r *rpc) RecordActivityHeartbeat(in RecordHeartbeatRequest, out *bool) error {
 	ctx := context.Background()
 
 	// todo: use proper data converter type

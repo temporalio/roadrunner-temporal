@@ -285,15 +285,14 @@ func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
 		result, _ := wf.env.GetDataConverter().ToPayloads("completed")
 		wf.mq.pushResponse(id, result)
 
-		// todo: merge options
 		wf.env.Complete(nil, &workflow.ContinueAsNewError{
 			WorkflowType:             &bindings.WorkflowType{Name: cmd.Name},
 			Input:                    payloads,
 			Header:                   wf.header,
-			TaskQueueName:            wf.env.WorkflowInfo().TaskQueueName,
-			WorkflowExecutionTimeout: wf.env.WorkflowInfo().WorkflowExecutionTimeout,
-			WorkflowRunTimeout:       wf.env.WorkflowInfo().WorkflowRunTimeout,
-			WorkflowTaskTimeout:      wf.env.WorkflowInfo().WorkflowTaskTimeout,
+			TaskQueueName:            cmd.Options.TaskQueueName,
+			WorkflowExecutionTimeout: cmd.Options.WorkflowExecutionTimeout,
+			WorkflowRunTimeout:       cmd.Options.WorkflowRunTimeout,
+			WorkflowTaskTimeout:      cmd.Options.WorkflowTaskTimeout,
 		})
 
 	case *rrt.SignalExternalWorkflow:
