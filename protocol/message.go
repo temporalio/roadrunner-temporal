@@ -55,6 +55,9 @@ type (
 
 		// Info contains execution context.
 		Info activity.Info `json:"info"`
+
+		// HeartbeatDetails indicates that the payload also contains last heartbeat details.
+		HeartbeatDetails int `json:"heartbeatDetails"`
 	}
 
 	// StartWorkflow sends worker command to start workflow.

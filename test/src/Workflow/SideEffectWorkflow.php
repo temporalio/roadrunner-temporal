@@ -11,16 +11,19 @@ use Temporal\Tests\Activity\SimpleActivity;
 class SideEffectWorkflow
 {
     #[WorkflowMethod(name: 'SideEffectWorkflow')]
-    public function handler(string $input): iterable
-    {
+    public function handler(
+        string $input
+    ): iterable {
         $simple = Workflow::newActivityStub(
             SimpleActivity::class,
             ActivityOptions::new()->withStartToCloseTimeout(5)
         );
 
-        $result = yield Workflow::sideEffect(function () use ($input) {
-            return $input . '-' . Uuid::v4();
-        });
+        $result = yield Workflow::sideEffect(
+            function () use ($input) {
+                return $input . '-42';
+            }
+        );
 
         return yield $simple->lower($result);
     }

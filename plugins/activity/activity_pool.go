@@ -86,10 +86,12 @@ func (pool *activityPoolImpl) Destroy(ctx context.Context) error {
 	return nil
 }
 
+// Workers returns list of all allocated workers.
 func (pool *activityPoolImpl) Workers() []rrWorker.BaseProcess {
 	return pool.wp.Workers()
 }
 
+// ActivityNames returns list of all available activity names.
 func (pool *activityPoolImpl) ActivityNames() []string {
 	return pool.activities
 }
@@ -130,22 +132,34 @@ func (pool *activityPoolImpl) initWorkers(ctx context.Context, temporal temporal
 func (pool *activityPoolImpl) executeActivity(ctx context.Context, args *common.Payloads) (*common.Payloads, error) {
 	const op = errors.Op("executeActivity")
 
+	heartbeatDetails := &common.Payloads{}
+	if activity.HasHeartbeatDetails(ctx) {
+		err := activity.GetHeartbeatDetails(ctx, &heartbeatDetails)
+		if err != nil {
+			return nil, errors.E(op, err)
+		}
+	}
+
 	var (
 		info = activity.GetInfo(ctx)
 		msg  = rrt.Message{
 			ID: atomic.AddUint64(&pool.seqID, 1),
 			Command: rrt.InvokeActivity{
-				Name: info.ActivityType.Name,
-				Info: info,
+				Name:             info.ActivityType.Name,
+				Info:             info,
+				HeartbeatDetails: len(heartbeatDetails.Payloads),
 			},
 			Payloads: args,
 		}
-		// todo: activity.getHeartBeatDetails
 	)
+
+	if len(heartbeatDetails.Payloads) != 0 {
+		msg.Payloads.Payloads = append(msg.Payloads.Payloads, heartbeatDetails.Payloads...)
+	}
 
 	result, err := pool.codec.Execute(pool.wp, rrt.Context{TaskQueue: info.TaskQueue}, msg)
 	if err != nil {
-		return nil, err
+		return nil, errors.E(op, err)
 	}
 
 	if len(result) != 1 {
@@ -154,7 +168,6 @@ func (pool *activityPoolImpl) executeActivity(ctx context.Context, args *common.
 
 	out := result[0]
 	if out.Failure != nil {
-		// todo: ensure this approach works
 		if out.Failure.Message == "doNotCompleteOnReturn" {
 			return nil, activity.ErrResultPending
 		}

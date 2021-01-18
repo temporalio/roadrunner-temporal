@@ -17,6 +17,9 @@ import (
 
 const PluginName = "temporal"
 
+// indicates that the case size was set
+var stickyCacheSet = false
+
 type (
 	Temporal interface {
 		GetClient() (client.Client, error)
@@ -32,6 +35,7 @@ type (
 		Activities *poolImpl.Config
 		Codec      string
 		DebugLevel int
+		CacheSize  int
 	}
 
 	Plugin struct {
@@ -43,7 +47,7 @@ type (
 	}
 )
 
-// logger dep also
+// Init initiates temporal client plugin.
 func (srv *Plugin) Init(cfg config.Configurer, log logger.Logger) error {
 	srv.log = log
 	srv.dc = rrt.NewDataConverter(converter.GetDefaultDataConverter())
@@ -75,6 +79,11 @@ func (srv *Plugin) GetDataConverter() converter.DataConverter {
 func (srv *Plugin) Serve() chan error {
 	errCh := make(chan error, 1)
 	var err error
+
+	if stickyCacheSet == false && srv.cfg.CacheSize != 0 {
+		worker.SetStickyWorkflowCacheSize(srv.cfg.CacheSize)
+		stickyCacheSet = true
+	}
 
 	srv.client, err = client.NewClient(client.Options{
 		Logger:        srv.log,

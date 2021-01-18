@@ -264,6 +264,35 @@ func Test_ActivityHeartbeat(t *testing.T) {
 	assert.Equal(t, "OK", result)
 }
 
+func Test_FailedActivityHeartbeat(t *testing.T) {
+	s := NewTestServer()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"FailedHeartbeatWorkflow",
+		8,
+	)
+	assert.NoError(t, err)
+
+	time.Sleep(time.Second)
+
+	we, err := s.Client().DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
+	assert.NoError(t, err)
+	assert.Len(t, we.PendingActivities, 1)
+
+	act := we.PendingActivities[0]
+
+	assert.Equal(t, `{"value":8}`, string(act.HeartbeatDetails.Payloads[0].Data))
+
+	var result string
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "OK!", result)
+}
+
 func Test_BinaryPayload(t *testing.T) {
 	s := NewTestServer()
 	defer s.MustClose()

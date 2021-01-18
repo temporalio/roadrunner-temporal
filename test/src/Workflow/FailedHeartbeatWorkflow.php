@@ -10,17 +10,20 @@ use Temporal\Workflow;
 use Temporal\Workflow\WorkflowMethod;
 use Temporal\Tests\Activity\HeartBeatActivity;
 
-class SimpleHeartbeatWorkflow
+class FailedHeartbeatWorkflow
 {
-    #[WorkflowMethod(name: 'SimpleHeartbeatWorkflow')]
+    #[WorkflowMethod(name: 'FailedHeartbeatWorkflow')]
     public function handler(
         int $iterations
     ): iterable {
         $act = Workflow::newActivityStub(
             HeartBeatActivity::class,
-            ActivityOptions::new()->withStartToCloseTimeout(50)
+            ActivityOptions::new()
+                ->withStartToCloseTimeout(50)
+                // will fail on first attempt
+                ->withRetryOptions(RetryOptions::new()->withMaximumAttempts(2))
         );
 
-        return yield $act->doSomething($iterations);
+        return yield $act->failedActivity($iterations);
     }
 }
