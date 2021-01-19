@@ -22,7 +22,7 @@ Read how to configure your worker and init workflows [here](https://github.com/t
 To test integration make sure to install Golang and PHP 7.4+ at the same host. [Composer](https://getcomposer.org/) is required to manage the extension.
 
 ```bash
-$ make install-php
+$ make install-dependencies
 $ make test-unit
 $ make run-docker-compose
 $ make test-feature
