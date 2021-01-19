@@ -38,16 +38,28 @@ func (wf *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *com
 	wf.mq = newMessageQueue(wf.pool.SeqID)
 	wf.ids = newIdRegistry()
 
-	// todo: get last result
-	// wf.env.WorkflowInfo()
-
 	env.RegisterCancelHandler(wf.handleCancel)
 	env.RegisterSignalHandler(wf.handleSignal)
 	env.RegisterQueryHandler(wf.handleQuery)
 
+	var (
+		lastCompletion       = bindings.GetLastCompletionResult(env)
+		lastCompletionOffset = 0
+	)
+
+	if lastCompletion != nil && len(lastCompletion.Payloads) != 0 {
+		if input == nil {
+			input = &commonpb.Payloads{Payloads: []*commonpb.Payload{}}
+		}
+
+		input.Payloads = append(input.Payloads, lastCompletion.Payloads...)
+		lastCompletionOffset = len(lastCompletion.Payloads)
+	}
+
 	_, err := wf.mq.pushCommand(
 		rrt.StartWorkflow{
-			Info: env.WorkflowInfo(),
+			Info:           env.WorkflowInfo(),
+			LastCompletion: lastCompletionOffset,
 		},
 		input,
 	)

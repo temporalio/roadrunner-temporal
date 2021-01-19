@@ -388,5 +388,4 @@ func Test_ExecuteProtoWorkflow(t *testing.T) {
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "updated", result.RunId)
 	assert.Equal(t, "workflow id", result.WorkflowId)
-
 }

@@ -57,19 +57,23 @@ type (
 		Info activity.Info `json:"info"`
 
 		// HeartbeatDetails indicates that the payload also contains last heartbeat details.
-		HeartbeatDetails int `json:"heartbeatDetails"`
+		HeartbeatDetails int `json:"heartbeatDetails,omitempty"`
 	}
 
 	// StartWorkflow sends worker command to start workflow.
 	StartWorkflow struct {
 		// Info to define workflow context.
 		Info *workflow.Info `json:"info"`
+
+		// LastCompletion contains offset of last completion results.
+		LastCompletion int `json:"lastCompletion,omitempty"`
 	}
 
 	// InvokeQuery invokes signal with a set of arguments.
 	InvokeSignal struct {
 		// RunID workflow run id.
 		RunID string `json:"runId"`
+
 		// Name of the signal.
 		Name string `json:"name"`
 	}

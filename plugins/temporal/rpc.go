@@ -32,6 +32,10 @@ type RecordHeartbeatRequest struct {
 func (r *rpc) RecordActivityHeartbeat(in RecordHeartbeatRequest, out *bool) error {
 	ctx := context.Background()
 
+	// todo: trottling
+	// todO: return cancel error
+	// todo: binary protocol
+
 	// todo: use proper data converter type
 	err := r.srv.client.RecordActivityHeartbeat(ctx, in.TaskToken, in.Details)
 	if err != nil {

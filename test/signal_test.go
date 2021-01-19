@@ -78,7 +78,7 @@ func Test_SendSignalBeforeCompletingWorkflow(t *testing.T) {
 	assert.NoError(t, err)
 
 	// should be around sleep(1) call
-	time.Sleep(time.Second + time.Millisecond*500)
+	time.Sleep(time.Second + time.Millisecond*200)
 
 	err = s.Client().SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), "add", -1)
 	assert.NoError(t, err)
