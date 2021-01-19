@@ -335,6 +335,10 @@ func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
 		if err != nil {
 			panic(err)
 		}
+
+	case *rrt.Panic:
+		panic(errors.E(cmd.Message))
+
 	default:
 		panic("undefined command")
 	}

@@ -41,6 +41,7 @@ const (
 
 	// Unified.
 	CancelCommand = "Cancel"
+	PanicCommand  = "Panic"
 )
 
 type (
@@ -180,6 +181,12 @@ type (
 		// CommandIDs to be cancelled.
 		CommandIDs []uint64 `json:"ids"`
 	}
+
+	// Panic triggers panic in workflow process.
+	Panic struct {
+		// Message to include into the error.
+		Message string `json:"message"`
+	}
 )
 
 // ActivityParams maps activity command to activity params.
@@ -264,6 +271,8 @@ func commandName(cmd interface{}) (string, error) {
 		return CancelExternalWorkflowCommand, nil
 	case Cancel, *Cancel:
 		return CancelCommand, nil
+	case Panic, *Panic:
+		return PanicCommand, nil
 	default:
 		return "", errors.E(errors.Op("commandName"), "undefined command type", cmd)
 	}
@@ -328,6 +337,9 @@ func initCommand(name string) (interface{}, error) {
 
 	case CancelCommand:
 		return &Cancel{}, nil
+
+	case PanicCommand:
+		return &Panic{}, nil
 
 	default:
 		return nil, errors.E(errors.Op("initCommand"), "undefined command type", name)

@@ -37,37 +37,37 @@ type Plugin struct {
 }
 
 // logger dep also
-func (svc *Plugin) Init(temporal temporal.Temporal, server server.Server, log logger.Logger) error {
-	svc.temporal = temporal
-	svc.server = server
-	svc.events = eventsImpl.NewEventsHandler()
-	svc.log = log
-	svc.reset = make(chan struct{})
+func (p *Plugin) Init(temporal temporal.Temporal, server server.Server, log logger.Logger) error {
+	p.temporal = temporal
+	p.server = server
+	p.events = eventsImpl.NewEventsHandler()
+	p.log = log
+	p.reset = make(chan struct{})
 
 	return nil
 }
 
 // Serve starts workflow service.
-func (svc *Plugin) Serve() chan error {
+func (p *Plugin) Serve() chan error {
 	errCh := make(chan error, 1)
 
-	pool, err := svc.startPool()
+	pool, err := p.startPool()
 	if err != nil {
 		errCh <- errors.E("startPool", err)
 		return errCh
 	}
 
-	svc.pool = pool
+	p.pool = pool
 
 	go func() {
 		for {
 			select {
-			case <-svc.reset:
-				if atomic.LoadInt64(&svc.closing) == 1 {
+			case <-p.reset:
+				if atomic.LoadInt64(&p.closing) == 1 {
 					return
 				}
 
-				err := svc.replacePool()
+				err := p.replacePool()
 				if err == nil {
 					continue
 				}
@@ -75,7 +75,7 @@ func (svc *Plugin) Serve() chan error {
 				bkoff := backoff.NewExponentialBackOff()
 				bkoff.InitialInterval = time.Second
 
-				err = backoff.Retry(svc.replacePool, bkoff)
+				err = backoff.Retry(p.replacePool, bkoff)
 				if err != nil {
 					errCh <- errors.E("deadPool", err)
 				}
@@ -87,12 +87,12 @@ func (svc *Plugin) Serve() chan error {
 }
 
 // Stop workflow service.
-func (svc *Plugin) Stop() error {
-	atomic.StoreInt64(&svc.closing, 1)
+func (p *Plugin) Stop() error {
+	atomic.StoreInt64(&p.closing, 1)
 
-	pool := svc.getPool()
+	pool := p.getPool()
 	if pool != nil {
-		svc.pool = nil
+		p.pool = nil
 		return pool.Destroy(context.Background())
 	}
 
@@ -100,76 +100,76 @@ func (svc *Plugin) Stop() error {
 }
 
 // Name of the service.
-func (svc *Plugin) Name() string {
+func (p *Plugin) Name() string {
 	return PluginName
 }
 
 // Name of the service.
-func (svc *Plugin) Workers() []worker.BaseProcess {
-	return svc.pool.Workers()
+func (p *Plugin) Workers() []worker.BaseProcess {
+	return p.pool.Workers()
 }
 
 // WorkflowNames returns list of all available workflows.
-func (svc *Plugin) WorkflowNames() []string {
-	return svc.pool.WorkflowNames()
+func (p *Plugin) WorkflowNames() []string {
+	return p.pool.WorkflowNames()
 }
 
 // Reset resets underlying workflow pool with new copy.
-func (svc *Plugin) Reset() error {
-	svc.reset <- struct{}{}
+func (p *Plugin) Reset() error {
+	p.reset <- struct{}{}
 
 	return nil
 }
 
 // AddListener adds event listeners to the service.
-func (svc *Plugin) AddListener(listener events.Listener) {
-	svc.events.AddListener(listener)
+func (p *Plugin) AddListener(listener events.Listener) {
+	p.events.AddListener(listener)
 }
 
 // AddListener adds event listeners to the service.
-func (svc *Plugin) poolListener(event interface{}) {
+func (p *Plugin) poolListener(event interface{}) {
 	if ev, ok := event.(PoolEvent); ok {
 		if ev.Event == EventWorkerExit {
 			if ev.Caused != nil {
-				svc.log.Error("Workflow pool error", "error", ev.Caused)
+				p.log.Error("Workflow pool error", "error", ev.Caused)
 			}
-			svc.reset <- struct{}{}
+			p.reset <- struct{}{}
 		}
 	}
 
-	svc.events.Push(event)
+	p.events.Push(event)
 }
 
 // AddListener adds event listeners to the service.
-func (svc *Plugin) startPool() (workflowPool, error) {
+func (p *Plugin) startPool() (workflowPool, error) {
 	pool, err := newWorkflowPool(
-		svc.temporal.GetCodec().WithLogger(svc.log),
-		svc.poolListener,
-		svc.server,
+		p.temporal.GetCodec().WithLogger(p.log),
+		p.poolListener,
+		p.server,
 	)
 	if err != nil {
 		return nil, errors.E(errors.Op("initWorkflowPool"), err)
 	}
 
-	err = pool.Start(context.Background(), svc.temporal)
+	err = pool.Start(context.Background(), p.temporal)
 	if err != nil {
 		return nil, errors.E(errors.Op("startWorkflowPool"), err)
 	}
 
-	svc.log.Debug("Started workflow processing", "workflows", pool.WorkflowNames())
+	p.log.Debug("Started workflow processing", "workflows", pool.WorkflowNames())
 
 	return pool, nil
 }
 
-func (svc *Plugin) replacePool() error {
-	svc.mu.Lock()
-	defer svc.mu.Unlock()
+func (p *Plugin) replacePool() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
-	if svc.pool != nil {
-		errD := svc.pool.Destroy(context.Background())
-		svc.pool = nil
+	if p.pool != nil {
+		errD := p.pool.Destroy(context.Background())
+		p.pool = nil
 		if errD != nil {
-			svc.log.Error(
+			p.log.Error(
 				"Unable to destroy expired workflow pool",
 				"error",
 				errors.E(errors.Op("destroyWorkflowPool"), errD),
@@ -177,23 +177,23 @@ func (svc *Plugin) replacePool() error {
 		}
 	}
 
-	pool, err := svc.startPool()
+	pool, err := p.startPool()
 	if err != nil {
-		svc.log.Error("Replace workflow pool failed", "error", err)
+		p.log.Error("Replace workflow pool failed", "error", err)
 		return errors.E(errors.Op("newWorkflowPool"), err)
 	}
 
-	svc.log.Debug("Replace workflow pool")
+	p.log.Debug("Replace workflow pool")
 
-	svc.pool = pool
+	p.pool = pool
 
 	return nil
 }
 
 // getPool returns currently pool.
-func (svc *Plugin) getPool() workflowPool {
-	svc.mu.Lock()
-	defer svc.mu.Unlock()
+func (p *Plugin) getPool() workflowPool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
-	return svc.pool
+	return p.pool
 }

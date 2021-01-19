@@ -15,6 +15,7 @@ import (
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/worker"
+	"sync"
 	"sync/atomic"
 )
 
@@ -24,6 +25,7 @@ type (
 		Destroy(ctx context.Context) error
 		Workers() []rrWorker.BaseProcess
 		ActivityNames() []string
+		GetActivityContext(taskToken []byte) (context.Context, error)
 	}
 
 	activityPoolImpl struct {
@@ -33,6 +35,7 @@ type (
 		activities []string
 		wp         pool.Pool
 		tWorkers   []worker.Worker
+		running    sync.Map
 	}
 )
 
@@ -54,7 +57,11 @@ func newActivityPool(
 		return nil, err
 	}
 
-	return &activityPoolImpl{codec: codec, wp: wp}, nil
+	return &activityPoolImpl{
+		codec:   codec,
+		wp:      wp,
+		running: sync.Map{},
+	}, nil
 }
 
 // initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
@@ -94,6 +101,16 @@ func (pool *activityPoolImpl) Workers() []rrWorker.BaseProcess {
 // ActivityNames returns list of all available activity names.
 func (pool *activityPoolImpl) ActivityNames() []string {
 	return pool.activities
+}
+
+// ActivityNames returns list of all available activity names.
+func (pool *activityPoolImpl) GetActivityContext(taskToken []byte) (context.Context, error) {
+	c, ok := pool.running.Load(string(taskToken))
+	if !ok {
+		return nil, errors.E("heartbeat on non running activity")
+	}
+
+	return c.(context.Context), nil
 }
 
 // initWorkers request workers workflows from underlying PHP and configures temporal workers linked to the pool.
@@ -156,6 +173,9 @@ func (pool *activityPoolImpl) executeActivity(ctx context.Context, args *common.
 	if len(heartbeatDetails.Payloads) != 0 {
 		msg.Payloads.Payloads = append(msg.Payloads.Payloads, heartbeatDetails.Payloads...)
 	}
+
+	pool.running.Store(string(info.TaskToken), ctx)
+	defer pool.running.Delete(string(info.TaskToken))
 
 	result, err := pool.codec.Execute(pool.wp, rrt.Context{TaskQueue: info.TaskQueue}, msg)
 	if err != nil {

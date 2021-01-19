@@ -17,6 +17,13 @@ func NewDataConverter(fallback converter.DataConverter) converter.DataConverter 
 
 // ToPayloads converts a list of values.
 func (r *DataConverter) ToPayloads(values ...interface{}) (*commonpb.Payloads, error) {
+	for _, v := range values {
+		if aggregated, ok := v.(*commonpb.Payloads); ok {
+			// bypassing
+			return aggregated, nil
+		}
+	}
+
 	return r.fallback.ToPayloads(values...)
 }
 

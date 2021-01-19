@@ -29,8 +29,7 @@ func Test_VerifyRegistration(t *testing.T) {
 	assert.Contains(t, s.activities.ActivityNames(), "SimpleActivity.echo")
 	assert.Contains(t, s.activities.ActivityNames(), "HeartBeatActivity.doSomething")
 
-	// todo: fix bug
-	// assert.Contains(t, s.activities.ActivityNames(), "SimpleActivity.lower")
+	assert.Contains(t, s.activities.ActivityNames(), "SimpleActivity.lower")
 }
 
 func Test_ExecuteSimpleWorkflow_1(t *testing.T) {

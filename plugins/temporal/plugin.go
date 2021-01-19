@@ -48,22 +48,22 @@ type (
 )
 
 // Init initiates temporal client plugin.
-func (srv *Plugin) Init(cfg config.Configurer, log logger.Logger) error {
-	srv.log = log
-	srv.dc = rrt.NewDataConverter(converter.GetDefaultDataConverter())
+func (p *Plugin) Init(cfg config.Configurer, log logger.Logger) error {
+	p.log = log
+	p.dc = rrt.NewDataConverter(converter.GetDefaultDataConverter())
 
-	return cfg.UnmarshalKey(PluginName, &srv.cfg)
+	return cfg.UnmarshalKey(PluginName, &p.cfg)
 }
 
 // GetConfig returns temporal configuration.
-func (srv *Plugin) GetConfig() Config {
-	return srv.cfg
+func (p *Plugin) GetConfig() Config {
+	return p.cfg
 }
 
 // GetCodec returns communication codec.
-func (srv *Plugin) GetCodec() rrt.Codec {
-	if srv.cfg.Codec == "json" {
-		return rrt.NewJsonCodec(rrt.DebugLevel(srv.cfg.DebugLevel), srv.log)
+func (p *Plugin) GetCodec() rrt.Codec {
+	if p.cfg.Codec == "json" {
+		return rrt.NewJsonCodec(rrt.DebugLevel(p.cfg.DebugLevel), p.log)
 	}
 
 	// production ready protocol, no debug abilities
@@ -71,54 +71,54 @@ func (srv *Plugin) GetCodec() rrt.Codec {
 }
 
 // GetDataConverter returns data active data converter.
-func (srv *Plugin) GetDataConverter() converter.DataConverter {
-	return srv.dc
+func (p *Plugin) GetDataConverter() converter.DataConverter {
+	return p.dc
 }
 
 // Serve starts temporal srv.
-func (srv *Plugin) Serve() chan error {
+func (p *Plugin) Serve() chan error {
 	errCh := make(chan error, 1)
 	var err error
 
-	if stickyCacheSet == false && srv.cfg.CacheSize != 0 {
-		worker.SetStickyWorkflowCacheSize(srv.cfg.CacheSize)
+	if stickyCacheSet == false && p.cfg.CacheSize != 0 {
+		worker.SetStickyWorkflowCacheSize(p.cfg.CacheSize)
 		stickyCacheSet = true
 	}
 
-	srv.client, err = client.NewClient(client.Options{
-		Logger:        srv.log,
-		HostPort:      srv.cfg.Address,
-		Namespace:     srv.cfg.Namespace,
-		DataConverter: srv.dc,
+	p.client, err = client.NewClient(client.Options{
+		Logger:        p.log,
+		HostPort:      p.cfg.Address,
+		Namespace:     p.cfg.Namespace,
+		DataConverter: p.dc,
 	})
 
-	srv.log.Debug("Connected to temporal server", "Plugin", srv.cfg.Address)
+	p.log.Debug("Connected to temporal server", "Plugin", p.cfg.Address)
 
 	if err != nil {
-		errCh <- errors.E(errors.Op("srv connect"), err)
+		errCh <- errors.E(errors.Op("p connect"), err)
 	}
 
 	return errCh
 }
 
 // Stop stops temporal srv connection.
-func (srv *Plugin) Stop() error {
-	if srv.client != nil {
-		srv.client.Close()
+func (p *Plugin) Stop() error {
+	if p.client != nil {
+		p.client.Close()
 	}
 
 	return nil
 }
 
 // GetClient returns active srv connection.
-func (srv *Plugin) GetClient() (client.Client, error) {
-	return srv.client, nil
+func (p *Plugin) GetClient() (client.Client, error) {
+	return p.client, nil
 }
 
 // CreateWorker allocates new temporal worker on an active connection.
-func (srv *Plugin) CreateWorker(tq string, options worker.Options) (worker.Worker, error) {
-	if srv.client == nil {
-		return nil, errors.E("unable to create worker, invalid temporal srv")
+func (p *Plugin) CreateWorker(tq string, options worker.Options) (worker.Worker, error) {
+	if p.client == nil {
+		return nil, errors.E("unable to create worker, invalid temporal p")
 	}
 
 	if options.Identity == "" {
@@ -132,21 +132,16 @@ func (srv *Plugin) CreateWorker(tq string, options worker.Options) (worker.Worke
 			os.Getpid(),
 			getHostName(),
 			tq,
-			atomic.AddInt32(&srv.workerID, 1),
+			atomic.AddInt32(&p.workerID, 1),
 		)
 	}
 
-	return worker.New(srv.client, tq, options), nil
+	return worker.New(p.client, tq, options), nil
 }
 
 // Name of the service.
-func (srv *Plugin) Name() string {
+func (p *Plugin) Name() string {
 	return PluginName
-}
-
-// RPCService returns associated rpc service.
-func (srv *Plugin) RPC() interface{} {
-	return &rpc{srv: srv}
 }
 
 func getHostName() string {

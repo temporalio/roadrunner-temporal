@@ -1,6 +1,5 @@
 <?php
 
-
 namespace Temporal\Tests\Activity;
 
 use Temporal\Activity;
@@ -25,7 +24,6 @@ class HeartBeatActivity
         string $value
     ): string {
         for ($i = 0; $i < 5; $i++) {
-            // todo: try cancel
             Activity::heartbeat(['value' => $i]);
             sleep(1);
         }
