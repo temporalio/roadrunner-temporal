@@ -1,4 +1,4 @@
-package roadrunner_temporal //nolint:golint,stylecheck
+package protocol //nolint:golint,stylecheck
 
 import (
 	"github.com/spiral/errors"
@@ -8,6 +8,7 @@ import (
 
 // WorkerInfo outlines information about every available worker and it's TaskQueues.
 type (
+	// WorkerInfo lists available task queues, workflows and activities.
 	WorkerInfo struct {
 		// TaskQueue assigned to the worker.
 		TaskQueue string `json:"taskQueue"`

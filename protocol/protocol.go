@@ -1,4 +1,4 @@
-package roadrunner_temporal //nolint:golint,stylecheck
+package protocol //nolint:golint,stylecheck
 
 import (
 	"github.com/spiral/roadrunner/v2/pkg/payload"
@@ -32,7 +32,7 @@ type (
 		Replay bool `json:"replay,omitempty"`
 	}
 
-	// Messages used to exchange the send commands and receive responses from underlying workers.
+	// Message used to exchange the send commands and receive responses from underlying workers.
 	Message struct {
 		// ID contains ID of the command, response or error.
 		ID uint64 `json:"id"`

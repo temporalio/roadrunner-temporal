@@ -1,4 +1,4 @@
-package roadrunner_temporal
+package protocol
 
 import (
 	"github.com/fatih/color"
@@ -11,8 +11,8 @@ import (
 )
 
 type (
-	// JsonCodec can be used for debugging and log capturing reasons.
-	JsonCodec struct {
+	// JSONCodec can be used for debugging and log capturing reasons.
+	JSONCodec struct {
 		// level enables verbose logging or all incoming and outcoming messages.
 		level DebugLevel
 
@@ -39,29 +39,29 @@ type (
 	}
 )
 
-// NewJsonCodec creates new Json communication codec.
-func NewJsonCodec(level DebugLevel, logger logger.Logger) Codec {
-	return &JsonCodec{
+// NewJSONCodec creates new Json communication codec.
+func NewJSONCodec(level DebugLevel, logger logger.Logger) Codec {
+	return &JSONCodec{
 		level:  level,
 		logger: logger,
 	}
 }
 
 // WithLogger creates new codes instance with attached logger.
-func (c *JsonCodec) WithLogger(logger logger.Logger) Codec {
-	return &JsonCodec{
+func (c *JSONCodec) WithLogger(logger logger.Logger) Codec {
+	return &JSONCodec{
 		level:  c.level,
 		logger: logger,
 	}
 }
 
-// WithLogger creates new codes instance with attached logger.
-func (c *JsonCodec) GetName() string {
+// GetName returns codec name.
+func (c *JSONCodec) GetName() string {
 	return "json"
 }
 
-// Exchange commands with worker.
-func (c *JsonCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
+// Execute exchanges commands with worker.
+func (c *JSONCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 	if len(msg) == 0 {
 		return nil, nil
 	}
@@ -143,7 +143,7 @@ func (c *JsonCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 	return result, nil
 }
 
-func (c *JsonCodec) packFrame(msg Message) (jsonFrame, error) {
+func (c *JSONCodec) packFrame(msg Message) (jsonFrame, error) {
 	var (
 		err   error
 		frame jsonFrame
@@ -182,7 +182,7 @@ func (c *JsonCodec) packFrame(msg Message) (jsonFrame, error) {
 	return frame, nil
 }
 
-func (c *JsonCodec) parseFrame(frame jsonFrame) (Message, error) {
+func (c *JSONCodec) parseFrame(frame jsonFrame) (Message, error) {
 	var (
 		err error
 		msg Message

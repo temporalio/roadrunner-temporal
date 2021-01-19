@@ -23,9 +23,8 @@ To test integration make sure to install Golang and PHP 7.4+ at the same host. [
 
 ```bash
 $ make install-dependencies
-$ make test-unit
-$ make run-docker-compose
-$ make test-feature
+$ make start-docker-compose
+$ make test
 ```
 
 ## License

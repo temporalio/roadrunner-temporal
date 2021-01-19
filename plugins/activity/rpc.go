@@ -25,7 +25,7 @@ type RecordHeartbeatRequest struct {
 	Details   []byte `json:"details"`
 }
 
-// RecordHeartbeatRequest sent by activity to record current state.
+// RecordHeartbeatResponse sent back to the worker to indicate that activity was cancelled.
 type RecordHeartbeatResponse struct {
 	Canceled bool `json:"canceled"`
 }

@@ -36,7 +36,7 @@ func (wf *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *com
 
 	// sequenceID shared for all worker workflows
 	wf.mq = newMessageQueue(wf.pool.SeqID)
-	wf.ids = newIdRegistry()
+	wf.ids = newIDRegistry()
 
 	env.RegisterCancelHandler(wf.handleCancel)
 	env.RegisterSignalHandler(wf.handleSignal)
