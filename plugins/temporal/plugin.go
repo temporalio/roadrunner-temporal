@@ -37,8 +37,8 @@ type (
 		Namespace  string
 		Activities *poolImpl.Config
 		Codec      string
-		DebugLevel int
-		CacheSize  int
+		DebugLevel int `mapstructure:"debug_level"`
+		CacheSize  int `mapstructure:"cache_size"`
 	}
 
 	// Plugin implement Temporal contract.
