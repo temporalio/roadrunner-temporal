@@ -16,8 +16,8 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 .idea
-app/vendor
 
-.rr.local.yaml
 test/composer.lock
 test/vendor
+
+go.sum
