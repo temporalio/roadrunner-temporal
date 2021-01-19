@@ -24,5 +24,5 @@ test-unit:
 	go test -race -v -count=1 ./protocol/
 	go test -race -v -count=1 ./plugins/workflow/
 
-# Run all tests
+# Run all tests and code-style checks
 test: test-cs test-unit test-feature
