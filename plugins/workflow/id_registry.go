@@ -6,6 +6,7 @@ import (
 )
 
 type (
+	// used to gain access to child workflow ids after they become available via callback result.
 	idRegistry struct {
 		mu        sync.Mutex
 		ids       map[uint64]entry
@@ -20,7 +21,7 @@ type (
 	}
 )
 
-func newIdRegistry() *idRegistry {
+func newIDRegistry() *idRegistry {
 	return &idRegistry{
 		ids:       map[uint64]entry{},
 		listeners: map[uint64]listener{},

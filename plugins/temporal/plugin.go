@@ -15,12 +15,14 @@ import (
 	"go.temporal.io/sdk/worker"
 )
 
+// PluginName defines public service name.
 const PluginName = "temporal"
 
 // indicates that the case size was set
 var stickyCacheSet = false
 
 type (
+	// Temporal define common interface for RoadRunner plugins.
 	Temporal interface {
 		GetClient() (client.Client, error)
 		GetDataConverter() converter.DataConverter
@@ -29,6 +31,7 @@ type (
 		CreateWorker(taskQueue string, options worker.Options) (worker.Worker, error)
 	}
 
+	// Config of the temporal client and depended services.
 	Config struct {
 		Address    string
 		Namespace  string
@@ -38,6 +41,7 @@ type (
 		CacheSize  int
 	}
 
+	// Plugin implement Temporal contract.
 	Plugin struct {
 		workerID int32
 		cfg      Config
@@ -63,7 +67,7 @@ func (p *Plugin) GetConfig() Config {
 // GetCodec returns communication codec.
 func (p *Plugin) GetCodec() rrt.Codec {
 	if p.cfg.Codec == "json" {
-		return rrt.NewJsonCodec(rrt.DebugLevel(p.cfg.DebugLevel), p.log)
+		return rrt.NewJSONCodec(rrt.DebugLevel(p.cfg.DebugLevel), p.log)
 	}
 
 	// production ready protocol, no debug abilities

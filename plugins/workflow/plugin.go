@@ -36,7 +36,7 @@ type Plugin struct {
 	closing  int64
 }
 
-// logger dep also
+// Init workflow plugin.
 func (p *Plugin) Init(temporal temporal.Temporal, server server.Server, log logger.Logger) error {
 	p.temporal = temporal
 	p.server = server
@@ -104,7 +104,7 @@ func (p *Plugin) Name() string {
 	return PluginName
 }
 
-// Name of the service.
+// Workers returns list of available workflow workers.
 func (p *Plugin) Workers() []worker.BaseProcess {
 	return p.pool.Workers()
 }
@@ -129,7 +129,7 @@ func (p *Plugin) AddListener(listener events.Listener) {
 // AddListener adds event listeners to the service.
 func (p *Plugin) poolListener(event interface{}) {
 	if ev, ok := event.(PoolEvent); ok {
-		if ev.Event == EventWorkerExit {
+		if ev.Event == eventWorkerExit {
 			if ev.Caused != nil {
 				p.log.Error("Workflow pool error", "error", ev.Caused)
 			}

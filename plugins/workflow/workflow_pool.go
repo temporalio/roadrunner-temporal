@@ -18,9 +18,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-const (
-	EventWorkerExit = iota + 8390
-)
+const eventWorkerExit = 8390
 
 type (
 	workflowPool interface {
@@ -32,6 +30,7 @@ type (
 		WorkflowNames() []string
 	}
 
+	// PoolEvent triggered on workflow pool worker events.
 	PoolEvent struct {
 		Event   int
 		Context interface{}
@@ -68,7 +67,7 @@ func newWorkflowPool(
 
 	go func() {
 		err := w.Wait()
-		listener(PoolEvent{Event: EventWorkerExit, Caused: err})
+		listener(PoolEvent{Event: eventWorkerExit, Caused: err})
 	}()
 
 	sw, err := syncWorker.From(w)

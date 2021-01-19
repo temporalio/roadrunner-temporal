@@ -1,4 +1,4 @@
-package roadrunner_temporal
+package protocol
 
 import (
 	"github.com/spiral/errors"
@@ -10,38 +10,31 @@ import (
 )
 
 const (
-	// GetWorkerInfo reads worker information.
-	GetWorkerInfoCommand = "GetWorkerInfo"
+	getWorkerInfoCommand = "GetWorkerInfo"
 
-	// InvokeActivityCommand send to worker to invoke activity.
-	InvokeActivityCommand = "InvokeActivity"
+	invokeActivityCommand  = "InvokeActivity"
+	startWorkflowCommand   = "StartWorkflow"
+	invokeSignalCommand    = "InvokeSignal"
+	invokeQueryCommand     = "InvokeQuery"
+	destroyWorkflowCommand = "DestroyWorkflow"
+	cancelWorkflowCommand  = "CancelWorkflow"
+	getStackTraceCommand   = "StackTrace"
 
-	// Commands send by the host process to the worker.
-	StartWorkflowCommand   = "StartWorkflow"
-	InvokeSignalCommand    = "InvokeSignal"
-	InvokeQueryCommand     = "InvokeQuery"
-	DestroyWorkflowCommand = "DestroyWorkflow"
-	CancelWorkflowCommand  = "CancelWorkflow"
-	GetStackTraceCommand   = "StackTrace"
+	executeActivityCommand           = "ExecuteActivity"
+	executeChildWorkflowCommand      = "ExecuteChildWorkflow"
+	getChildWorkflowExecutionCommand = "GetChildWorkflowExecution"
 
-	// Commands send by worker to host process.
-	ExecuteActivityCommand           = "ExecuteActivity"
-	ExecuteChildWorkflowCommand      = "ExecuteChildWorkflow"
-	GetChildWorkflowExecutionCommand = "GetChildWorkflowExecution"
+	newTimerCommand         = "NewTimer"
+	sideEffectCommand       = "SideEffect"
+	getVersionCommand       = "GetVersion"
+	completeWorkflowCommand = "CompleteWorkflow"
+	continueAsNewCommand    = "ContinueAsNew"
 
-	NewTimerCommand         = "NewTimer"
-	SideEffectCommand       = "SideEffect"
-	GetVersionCommand       = "GetVersion"
-	CompleteWorkflowCommand = "CompleteWorkflow"
-	ContinueAsNewCommand    = "ContinueAsNew"
+	signalExternalWorkflowCommand = "SignalExternalWorkflow"
+	cancelExternalWorkflowCommand = "CancelExternalWorkflow"
 
-	// External workflows
-	SignalExternalWorkflowCommand = "SignalExternalWorkflow"
-	CancelExternalWorkflowCommand = "CancelExternalWorkflow"
-
-	// Unified.
-	CancelCommand = "Cancel"
-	PanicCommand  = "Panic"
+	cancelCommand = "Cancel"
+	panicCommand  = "Panic"
 )
 
 type (
@@ -70,7 +63,7 @@ type (
 		LastCompletion int `json:"lastCompletion,omitempty"`
 	}
 
-	// InvokeQuery invokes signal with a set of arguments.
+	// InvokeSignal invokes signal with a set of arguments.
 	InvokeSignal struct {
 		// RunID workflow run id.
 		RunID string `json:"runId"`
@@ -136,7 +129,7 @@ type (
 	// SideEffect to be recorded into the history.
 	SideEffect struct{}
 
-	// NewTimer starts new timer.
+	// GetVersion requests version marker.
 	GetVersion struct {
 		ChangeID     string `json:"changeID"`
 		MinSupported int    `json:"minSupported"`
@@ -207,7 +200,7 @@ func (cmd ExecuteActivity) ActivityParams(
 	return params
 }
 
-// ActivityParams maps activity command to activity params.
+// WorkflowParams maps workflow command to workflow params.
 func (cmd ExecuteChildWorkflow) WorkflowParams(
 	env bindings.WorkflowEnvironment,
 	payloads *commonpb.Payloads,
@@ -234,45 +227,45 @@ func (cmd NewTimer) ToDuration() time.Duration {
 func commandName(cmd interface{}) (string, error) {
 	switch cmd.(type) {
 	case GetWorkerInfo, *GetWorkerInfo:
-		return GetWorkerInfoCommand, nil
+		return getWorkerInfoCommand, nil
 	case StartWorkflow, *StartWorkflow:
-		return StartWorkflowCommand, nil
+		return startWorkflowCommand, nil
 	case InvokeSignal, *InvokeSignal:
-		return InvokeSignalCommand, nil
+		return invokeSignalCommand, nil
 	case InvokeQuery, *InvokeQuery:
-		return InvokeQueryCommand, nil
+		return invokeQueryCommand, nil
 	case DestroyWorkflow, *DestroyWorkflow:
-		return DestroyWorkflowCommand, nil
+		return destroyWorkflowCommand, nil
 	case CancelWorkflow, *CancelWorkflow:
-		return CancelWorkflowCommand, nil
+		return cancelWorkflowCommand, nil
 	case GetStackTrace, *GetStackTrace:
-		return GetStackTraceCommand, nil
+		return getStackTraceCommand, nil
 	case InvokeActivity, *InvokeActivity:
-		return InvokeActivityCommand, nil
+		return invokeActivityCommand, nil
 	case ExecuteActivity, *ExecuteActivity:
-		return ExecuteActivityCommand, nil
+		return executeActivityCommand, nil
 	case ExecuteChildWorkflow, *ExecuteChildWorkflow:
-		return ExecuteChildWorkflowCommand, nil
+		return executeChildWorkflowCommand, nil
 	case GetChildWorkflowExecution, *GetChildWorkflowExecution:
-		return GetChildWorkflowExecutionCommand, nil
+		return getChildWorkflowExecutionCommand, nil
 	case NewTimer, *NewTimer:
-		return NewTimerCommand, nil
+		return newTimerCommand, nil
 	case GetVersion, *GetVersion:
-		return GetVersionCommand, nil
+		return getVersionCommand, nil
 	case SideEffect, *SideEffect:
-		return SideEffectCommand, nil
+		return sideEffectCommand, nil
 	case CompleteWorkflow, *CompleteWorkflow:
-		return CompleteWorkflowCommand, nil
+		return completeWorkflowCommand, nil
 	case ContinueAsNew, *ContinueAsNew:
-		return ContinueAsNewCommand, nil
+		return continueAsNewCommand, nil
 	case SignalExternalWorkflow, *SignalExternalWorkflow:
-		return SignalExternalWorkflowCommand, nil
+		return signalExternalWorkflowCommand, nil
 	case CancelExternalWorkflow, *CancelExternalWorkflow:
-		return CancelExternalWorkflowCommand, nil
+		return cancelExternalWorkflowCommand, nil
 	case Cancel, *Cancel:
-		return CancelCommand, nil
+		return cancelCommand, nil
 	case Panic, *Panic:
-		return PanicCommand, nil
+		return panicCommand, nil
 	default:
 		return "", errors.E(errors.Op("commandName"), "undefined command type", cmd)
 	}
@@ -281,64 +274,64 @@ func commandName(cmd interface{}) (string, error) {
 // reads command from binary payload
 func initCommand(name string) (interface{}, error) {
 	switch name {
-	case GetWorkerInfoCommand:
+	case getWorkerInfoCommand:
 		return &GetWorkerInfo{}, nil
 
-	case StartWorkflowCommand:
+	case startWorkflowCommand:
 		return &StartWorkflow{}, nil
 
-	case InvokeSignalCommand:
+	case invokeSignalCommand:
 		return &InvokeSignal{}, nil
 
-	case InvokeQueryCommand:
+	case invokeQueryCommand:
 		return &InvokeQuery{}, nil
 
-	case DestroyWorkflowCommand:
+	case destroyWorkflowCommand:
 		return &DestroyWorkflow{}, nil
 
-	case CancelWorkflowCommand:
+	case cancelWorkflowCommand:
 		return &CancelWorkflow{}, nil
 
-	case GetStackTraceCommand:
+	case getStackTraceCommand:
 		return &GetStackTrace{}, nil
 
-	case InvokeActivityCommand:
+	case invokeActivityCommand:
 		return &InvokeActivity{}, nil
 
-	case ExecuteActivityCommand:
+	case executeActivityCommand:
 		return &ExecuteActivity{}, nil
 
-	case ExecuteChildWorkflowCommand:
+	case executeChildWorkflowCommand:
 		return &ExecuteChildWorkflow{}, nil
 
-	case GetChildWorkflowExecutionCommand:
+	case getChildWorkflowExecutionCommand:
 		return &GetChildWorkflowExecution{}, nil
 
-	case NewTimerCommand:
+	case newTimerCommand:
 		return &NewTimer{}, nil
 
-	case GetVersionCommand:
+	case getVersionCommand:
 		return &GetVersion{}, nil
 
-	case SideEffectCommand:
+	case sideEffectCommand:
 		return &SideEffect{}, nil
 
-	case CompleteWorkflowCommand:
+	case completeWorkflowCommand:
 		return &CompleteWorkflow{}, nil
 
-	case ContinueAsNewCommand:
+	case continueAsNewCommand:
 		return &ContinueAsNew{}, nil
 
-	case SignalExternalWorkflowCommand:
+	case signalExternalWorkflowCommand:
 		return &SignalExternalWorkflow{}, nil
 
-	case CancelExternalWorkflowCommand:
+	case cancelExternalWorkflowCommand:
 		return &CancelExternalWorkflow{}, nil
 
-	case CancelCommand:
+	case cancelCommand:
 		return &Cancel{}, nil
 
-	case PanicCommand:
+	case panicCommand:
 		return &Panic{}, nil
 
 	default:
