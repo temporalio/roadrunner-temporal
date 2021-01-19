@@ -1,4 +1,4 @@
-package roadrunner_temporal
+package protocol
 
 import (
 	"github.com/golang/protobuf/proto"
@@ -10,11 +10,12 @@ import (
 )
 
 type (
+	// ProtoCodec uses protobuf to exchange messages with underlying workers.
 	ProtoCodec struct {
 	}
 )
 
-// NewJsonCodec creates new Json communication codec.
+// NewProtoCodec creates new Proto communication codec.
 func NewProtoCodec() Codec {
 	return &ProtoCodec{}
 }
@@ -24,12 +25,12 @@ func (c *ProtoCodec) WithLogger(logger logger.Logger) Codec {
 	return &ProtoCodec{}
 }
 
-// WithLogger creates new codes instance with attached logger.
+// GetName returns codec name.
 func (c *ProtoCodec) GetName() string {
 	return "protobuf"
 }
 
-// Exchange commands with worker.
+// Execute exchanges commands with worker.
 func (c *ProtoCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message, error) {
 	if len(msg) == 0 {
 		return nil, nil

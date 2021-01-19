@@ -1,4 +1,4 @@
-package roadrunner_temporal //nolint:golint,stylecheck
+package protocol //nolint:golint,stylecheck
 
 import (
 	commonpb "go.temporal.io/api/common/v1"
@@ -6,11 +6,13 @@ import (
 )
 
 type (
+	// DataConverter wraps Temporal data converter to enable direct access to the payloads.
 	DataConverter struct {
 		fallback converter.DataConverter
 	}
 )
 
+// NewDataConverter creates new data converter.
 func NewDataConverter(fallback converter.DataConverter) converter.DataConverter {
 	return &DataConverter{fallback: fallback}
 }

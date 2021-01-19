@@ -1,19 +1,12 @@
 {
+  "minimum-stability": "dev",
+  "prefer-stable": true,
   "require": {
-    "temporal/sdk": "dev-feature/grpc-client",
-    "rybakit/msgpack": "^0.7.2",
-    "google/protobuf": "^3.14",
-    "dragonmantank/cron-expression": "^3.1"
+    "temporal/sdk": "dev-feature/grpc-client"
   },
   "autoload-dev": {
     "psr-4": {
-      "Temporal\\Tests\\": "src",
-      "GPBMetadata\\": "api/GPBMetadata",
-      "Temporal\\": "vendor/temporal/sdk/src",
-      "Temporal\\Api\\": "api/Temporal/Api",
-      "Temporal\\Roadrunner\\": "api/Temporal/Roadrunner"
+      "Temporal\\Tests\\": "src"
     }
-  },
-  "minimum-stability": "dev",
-  "prefer-stable": true
+  }
 }
