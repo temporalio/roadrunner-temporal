@@ -54,4 +54,10 @@ class SimpleActivity
         $e->setRunId('updated');
         return $e;
     }
+
+    #[ActivityMethod]
+    public function fail()
+    {
+        throw new \Error("failed activity");
+    }
 }

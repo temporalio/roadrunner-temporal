@@ -10,11 +10,13 @@ temporal:
     address: "localhost:7233"
     activities:
       num_workers: 4
+    codec: json
+    debug_level: 2
 
 logs:
     mode: none
-    #channels:
-       #activities:
-          #mode: none
+    channels:
+       activities:
+          mode: none
        #workflows:
           #mode: none
