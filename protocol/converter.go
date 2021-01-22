@@ -41,15 +41,17 @@ func (r *DataConverter) FromPayloads(payloads *commonpb.Payloads, valuePtrs ...i
 		return nil
 	}
 
-	for i := 0; i < len(payloads.Payloads); i++ {
+	if len(valuePtrs) == 1 {
 		// input proxying
-		if input, ok := valuePtrs[i].(**commonpb.Payloads); ok {
+		if input, ok := valuePtrs[0].(**commonpb.Payloads); ok {
 			*input = &commonpb.Payloads{}
 			(**input).Payloads = payloads.Payloads
-			continue
+			return nil
 		}
+	}
 
-		err := r.FromPayload(payloads.Payloads[i], valuePtrs[0])
+	for i := 0; i < len(payloads.Payloads); i++ {
+		err := r.FromPayload(payloads.Payloads[i], valuePtrs[i])
 		if err != nil {
 			return err
 		}
