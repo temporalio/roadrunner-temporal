@@ -8,6 +8,7 @@ use Temporal\Workflow;
 use Temporal\Workflow\WorkflowMethod;
 use Temporal\Tests\Activity\SimpleActivity;
 
+#[Workflow\WorkflowInterface]
 class ContinuableWorkflow
 {
     #[WorkflowMethod(name: 'ContinuableWorkflow')]
@@ -32,6 +33,6 @@ class ContinuableWorkflow
             yield $simple->echo((string)$generation);
         }
 
-        return Workflow::newContinueAsNewStub(self::class)->handler(++$generation);
+        return Workflow::continueAsNew('ContinuableWorkflow', [++$generation]);
     }
 }

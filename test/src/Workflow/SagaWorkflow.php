@@ -29,6 +29,7 @@ class SagaWorkflow
 
         $saga = new Workflow\Saga();
         $saga->setParallelCompensation(true);
+
         try {
             yield $simple->echo('test');
             $saga->addCompensation(
@@ -43,6 +44,7 @@ class SagaWorkflow
                     yield $simple->lower('COMPENSATE LOWER');
                 }
             );
+
             yield $simple->fail();
         } catch (\Throwable $e) {
             yield $saga->compensate();

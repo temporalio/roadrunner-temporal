@@ -1,30 +1,25 @@
 <?php
 
-
 namespace Temporal\Tests\Workflow;
 
 use Temporal\Activity\ActivityOptions;
+use Temporal\Common\RetryOptions;
+use Temporal\Tests\Activity\SimpleActivity;
 use Temporal\Workflow;
 use Temporal\Workflow\WorkflowMethod;
-use Temporal\Tests\Activity\SimpleActivity;
 
 #[Workflow\WorkflowInterface]
-class WorkflowWithSequence
+class ExceptionalActivityWorkflow
 {
-    #[WorkflowMethod(name: 'WorkflowWithSequence')]
+    #[WorkflowMethod(name: 'ExceptionalActivityWorkflow')]
     public function handler()
     {
         $simple = Workflow::newActivityStub(
             SimpleActivity::class,
             ActivityOptions::new()->withStartToCloseTimeout(5)
+                ->withRetryOptions((new RetryOptions())->withMaximumAttempts(1))
         );
 
-        $a = $simple->echo('a');
-        $b = $simple->echo('b');
-
-        yield $a;
-        yield $b;
-
-        return 'OK';
+        return yield $simple->fail();
     }
 }

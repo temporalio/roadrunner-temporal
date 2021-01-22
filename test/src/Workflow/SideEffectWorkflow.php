@@ -8,12 +8,12 @@ use Temporal\Workflow;
 use Temporal\Workflow\WorkflowMethod;
 use Temporal\Tests\Activity\SimpleActivity;
 
+#[Workflow\WorkflowInterface]
 class SideEffectWorkflow
 {
     #[WorkflowMethod(name: 'SideEffectWorkflow')]
-    public function handler(
-        string $input
-    ): iterable {
+    public function handler(string $input): iterable
+    {
         $simple = Workflow::newActivityStub(
             SimpleActivity::class,
             ActivityOptions::new()->withStartToCloseTimeout(5)

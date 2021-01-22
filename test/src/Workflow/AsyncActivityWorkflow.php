@@ -4,28 +4,25 @@ declare(strict_types=1);
 
 namespace Temporal\Tests\Workflow;
 
+use Temporal\Activity\ActivityCancellationType;
 use Temporal\Activity\ActivityOptions;
-use Temporal\Common\RetryOptions;
 use Temporal\Workflow;
 use Temporal\Workflow\WorkflowMethod;
 use Temporal\Tests\Activity\SimpleActivity;
 
 #[Workflow\WorkflowInterface]
-class SimpleWorkflow
+class AsyncActivityWorkflow
 {
-    #[WorkflowMethod(name: 'SimpleWorkflow')]
-    public function handler(
-        string $input
-    ): iterable {
+    #[WorkflowMethod(name: 'AsyncActivityWorkflow')]
+    public function handler()
+    {
         $simple = Workflow::newActivityStub(
             SimpleActivity::class,
             ActivityOptions::new()
-                ->withStartToCloseTimeout(5)
-                ->withRetryOptions(
-                    RetryOptions::new()->withMaximumAttempts(2)
-                )
+                ->withStartToCloseTimeout(20)
+                ->withCancellationType(ActivityCancellationType::WAIT_CANCELLATION_COMPLETED)
         );
 
-        return yield $simple->echo($input);
+        return yield $simple->external();
     }
 }
