@@ -2,13 +2,6 @@
 
 declare(strict_types=1);
 
-use Temporal\DataConverter\DataConverter;
-use Temporal\Worker;
-use Temporal\Worker\Transport\RoadRunner;
-use Temporal\Worker\Transport\Goridge;
-use Temporal\Tests;
-use Spiral\Goridge\Relay;
-
 require __DIR__ . '/vendor/autoload.php';
 
 /**
@@ -23,22 +16,18 @@ $getClasses = static function (string $dir): iterable {
     }
 };
 
-$worker = new Worker(
-    DataConverter::createDefault(),
-    new RoadRunner(Relay::create(Relay::PIPES)),
-    new Goridge(Relay::create('tcp://127.0.0.1:6001'))
-);
+$factory = \Temporal\WorkerFactory::create();
 
-$taskQueue = $worker->createAndRegister('default');
+$worker = $factory->newWorker('default');
 
 // register all workflows
 foreach ($getClasses(__DIR__ . '/src/Workflow') as $name) {
-    $taskQueue->addWorkflow('Temporal\\Tests\\Workflow\\' . $name);
+    $worker->registerWorkflowType('Temporal\\Tests\\Workflow\\' . $name);
 }
 
 // register all activity
 foreach ($getClasses(__DIR__ . '/src/Activity') as $name) {
-    $taskQueue->addActivity('Temporal\\Tests\\Activity\\' . $name);
+    $worker->registerActivityType('Temporal\\Tests\\Activity\\' . $name);
 }
 
-$worker->run();
+$factory->run();
