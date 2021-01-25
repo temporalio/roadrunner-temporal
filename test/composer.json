@@ -2,7 +2,7 @@
   "minimum-stability": "dev",
   "prefer-stable": true,
   "require": {
-    "temporal/sdk": "dev-feature/grpc-client"
+    "temporal/sdk": "dev-master"
   },
   "autoload-dev": {
     "psr-4": {
