@@ -83,7 +83,6 @@ func Test_SignalChildViaStubWorkflow(t *testing.T) {
 	assert.Equal(t, 8, result)
 }
 
-
 func Test_ExecuteChildWorkflowProto(t *testing.T) {
 	s := NewTestServerProto()
 	defer s.MustClose()

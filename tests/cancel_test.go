@@ -290,7 +290,6 @@ func Test_CancelSignalledChildWorkflow(t *testing.T) {
 	})
 }
 
-
 func Test_SimpleWorkflowCancelProto(t *testing.T) {
 	s := NewTestServerProto()
 	defer s.MustClose()

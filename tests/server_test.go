@@ -38,7 +38,7 @@ func NewTestServer() *TestServer {
 	a := &activity.Plugin{}
 	w := &workflow.Plugin{}
 
-	if err := e.Register(initConfigJson()); err != nil {
+	if err := e.Register(initConfigJSON()); err != nil {
 		panic(err)
 	}
 
@@ -159,7 +159,7 @@ func (s *TestServer) MustClose() {
 	}
 }
 
-func initConfigJson() config.Configurer {
+func initConfigJSON() config.Configurer {
 	cfg := &config.Viper{}
 	cfg.Path = ".rr.yaml"
 	cfg.Prefix = "rr"
