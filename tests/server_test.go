@@ -28,16 +28,7 @@ type TestServer struct {
 	workflows  *workflow.Plugin
 }
 
-type ConfigOption struct {
-	Name  string
-	Value interface{}
-}
-
-func NewOption(name string, value interface{}) ConfigOption {
-	return ConfigOption{Name: name, Value: value}
-}
-
-func NewTestServer(opt ...ConfigOption) *TestServer {
+func NewTestServer() *TestServer {
 	e, err := endure.NewContainer(initLogger(), endure.RetryOnFail(false))
 	if err != nil {
 		panic(err)
@@ -47,7 +38,67 @@ func NewTestServer(opt ...ConfigOption) *TestServer {
 	a := &activity.Plugin{}
 	w := &workflow.Plugin{}
 
-	if err := e.Register(initConfig(opt...)); err != nil {
+	if err := e.Register(initConfigJson()); err != nil {
+		panic(err)
+	}
+
+	if err := e.Register(&logger.ZapLogger{}); err != nil {
+		panic(err)
+	}
+	if err := e.Register(&resetter.Plugin{}); err != nil {
+		panic(err)
+	}
+	if err := e.Register(&informer.Plugin{}); err != nil {
+		panic(err)
+	}
+	if err := e.Register(&server.Plugin{}); err != nil {
+		panic(err)
+	}
+	if err := e.Register(&rpc.Plugin{}); err != nil {
+		panic(err)
+	}
+
+	if err := e.Register(t); err != nil {
+		panic(err)
+	}
+	if err := e.Register(a); err != nil {
+		panic(err)
+	}
+	if err := e.Register(w); err != nil {
+		panic(err)
+	}
+
+	if err := e.Init(); err != nil {
+		panic(err)
+	}
+
+	errCh, err := e.Serve()
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		err := <-errCh
+		er := e.Stop()
+		if er != nil {
+			panic(err)
+		}
+	}()
+
+	return &TestServer{container: e, temporal: t, activities: a, workflows: w}
+}
+
+func NewTestServerProto() *TestServer {
+	e, err := endure.NewContainer(initLogger(), endure.RetryOnFail(false))
+	if err != nil {
+		panic(err)
+	}
+
+	t := &rrClient.Plugin{}
+	a := &activity.Plugin{}
+	w := &workflow.Plugin{}
+
+	if err := e.Register(initConfigProto()); err != nil {
 		panic(err)
 	}
 
@@ -108,9 +159,17 @@ func (s *TestServer) MustClose() {
 	}
 }
 
-func initConfig(opt ...ConfigOption) config.Configurer {
+func initConfigJson() config.Configurer {
 	cfg := &config.Viper{}
 	cfg.Path = ".rr.yaml"
+	cfg.Prefix = "rr"
+
+	return cfg
+}
+
+func initConfigProto() config.Configurer {
+	cfg := &config.Viper{}
+	cfg.Path = ".rr-proto.yaml"
 	cfg.Prefix = "rr"
 
 	return cfg

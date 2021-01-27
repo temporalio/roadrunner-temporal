@@ -82,3 +82,79 @@ func Test_SignalChildViaStubWorkflow(t *testing.T) {
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, 8, result)
 }
+
+
+func Test_ExecuteChildWorkflowProto(t *testing.T) {
+	s := NewTestServerProto()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"WithChildWorkflow",
+		"Hello World",
+	)
+	assert.NoError(t, err)
+
+	var result string
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "Child: CHILD HELLO WORLD", result)
+}
+
+func Test_ExecuteChildStubWorkflowProto(t *testing.T) {
+	s := NewTestServerProto()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"WithChildStubWorkflow",
+		"Hello World",
+	)
+	assert.NoError(t, err)
+
+	var result string
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "Child: CHILD HELLO WORLD", result)
+}
+
+func Test_ExecuteChildStubWorkflow_02Proto(t *testing.T) {
+	s := NewTestServerProto()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"ChildStubWorkflow",
+		"Hello World",
+	)
+	assert.NoError(t, err)
+
+	var result []string
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, []string{"HELLO WORLD", "UNTYPED"}, result)
+}
+
+func Test_SignalChildViaStubWorkflowProto(t *testing.T) {
+	s := NewTestServerProto()
+	defer s.MustClose()
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"SignalChildViaStubWorkflow",
+	)
+	assert.NoError(t, err)
+
+	var result int
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, 8, result)
+}

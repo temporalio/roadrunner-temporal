@@ -10,11 +10,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type (
-	// ProtoCodec uses protobuf to exchange messages with underlying workers.
-	ProtoCodec struct {
-	}
-)
+// ProtoCodec uses protobuf to exchange messages with underlying workers.
+type ProtoCodec struct{}
 
 // NewProtoCodec creates new Proto communication codec.
 func NewProtoCodec() Codec {
