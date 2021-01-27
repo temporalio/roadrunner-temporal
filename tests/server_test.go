@@ -25,7 +25,6 @@ import (
 )
 
 type TestServer struct {
-	container  endure.Container
 	temporal   rrClient.Temporal
 	activities *activity.Plugin
 	workflows  *workflow.Plugin
@@ -39,12 +38,10 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, proto
 	a := &activity.Plugin{}
 	w := &workflow.Plugin{}
 
-	var cfg config.Configurer
+	cfg := initConfigJSON()
 	if proto {
 		cfg = initConfigProto()
 	}
-
-	cfg = initConfigJSON()
 
 	err = container.RegisterAll(
 		tc,
