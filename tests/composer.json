@@ -1,0 +1,12 @@
+{
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "require": {
+    "temporal/sdk": "dev-master"
+  },
+  "autoload": {
+    "psr-4": {
+      "Temporal\\Tests\\": "src"
+    }
+  }
+}

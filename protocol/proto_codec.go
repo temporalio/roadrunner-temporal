@@ -1,12 +1,13 @@
 package protocol
 
 import (
-	"github.com/golang/protobuf/proto"
+	v1 "github.com/golang/protobuf/proto" //nolint:staticcheck
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/payload"
 	"github.com/spiral/roadrunner/v2/plugins/logger"
 	"github.com/temporalio/roadrunner-temporal/protocol/internal"
+	"google.golang.org/protobuf/proto"
 )
 
 type (
@@ -36,12 +37,10 @@ func (c *ProtoCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message
 		return nil, nil
 	}
 
-	var (
-		request  = &internal.Frame{}
-		response = &internal.Frame{}
-		result   = make([]Message, 0, 5)
-		err      error
-	)
+	var request = &internal.Frame{}
+	var response = &internal.Frame{}
+	var result = make([]Message, 0, 5)
+	var err error
 
 	for _, m := range msg {
 		frame, err := c.packMessage(m)
@@ -64,7 +63,7 @@ func (c *ProtoCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message
 		return nil, errors.E(errors.Op("encodeContext"), err)
 	}
 
-	p.Body, err = proto.Marshal(request)
+	p.Body, err = proto.Marshal(v1.MessageV2(request))
 	if err != nil {
 		return nil, errors.E(errors.Op("encodePayload"), err)
 	}
@@ -79,7 +78,7 @@ func (c *ProtoCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message
 		return nil, nil
 	}
 
-	err = proto.Unmarshal(out.Body, response)
+	err = proto.Unmarshal(out.Body, v1.MessageV2(response))
 	if err != nil {
 		return nil, errors.E(errors.Op("parseResponse"), err)
 	}
@@ -121,6 +120,7 @@ func (c *ProtoCodec) packMessage(msg Message) (*internal.Message, error) {
 }
 
 func (c *ProtoCodec) parseMessage(frame *internal.Message) (Message, error) {
+	const op = errors.Op("proto_codec_parse_message")
 	var err error
 
 	msg := Message{
@@ -132,12 +132,12 @@ func (c *ProtoCodec) parseMessage(frame *internal.Message) (Message, error) {
 	if frame.Command != "" {
 		msg.Command, err = initCommand(frame.Command)
 		if err != nil {
-			return Message{}, err
+			return Message{}, errors.E(op, err)
 		}
 
 		err = jsoniter.Unmarshal(frame.Options, &msg.Command)
 		if err != nil {
-			return Message{}, err
+			return Message{}, errors.E(op, err)
 		}
 	}
 

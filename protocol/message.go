@@ -1,12 +1,13 @@
 package protocol
 
 import (
+	"time"
+
 	"github.com/spiral/errors"
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/activity"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
-	"time"
 )
 
 const (
@@ -37,156 +38,150 @@ const (
 	panicCommand  = "Panic"
 )
 
-type (
-	// GetWorkerInfo reads worker information.
-	GetWorkerInfo struct {
-	}
+// GetWorkerInfo reads worker information.
+type GetWorkerInfo struct{}
 
-	// InvokeActivity invokes activity.
-	InvokeActivity struct {
-		// Name defines activity name.
-		Name string `json:"name"`
+// InvokeActivity invokes activity.
+type InvokeActivity struct {
+	// Name defines activity name.
+	Name string `json:"name"`
 
-		// Info contains execution context.
-		Info activity.Info `json:"info"`
+	// Info contains execution context.
+	Info activity.Info `json:"info"`
 
-		// HeartbeatDetails indicates that the payload also contains last heartbeat details.
-		HeartbeatDetails int `json:"heartbeatDetails,omitempty"`
-	}
+	// HeartbeatDetails indicates that the payload also contains last heartbeat details.
+	HeartbeatDetails int `json:"heartbeatDetails,omitempty"`
+}
 
-	// StartWorkflow sends worker command to start workflow.
-	StartWorkflow struct {
-		// Info to define workflow context.
-		Info *workflow.Info `json:"info"`
+// StartWorkflow sends worker command to start workflow.
+type StartWorkflow struct {
+	// Info to define workflow context.
+	Info *workflow.Info `json:"info"`
 
-		// LastCompletion contains offset of last completion results.
-		LastCompletion int `json:"lastCompletion,omitempty"`
-	}
+	// LastCompletion contains offset of last completion results.
+	LastCompletion int `json:"lastCompletion,omitempty"`
+}
 
-	// InvokeSignal invokes signal with a set of arguments.
-	InvokeSignal struct {
-		// RunID workflow run id.
-		RunID string `json:"runId"`
+// InvokeSignal invokes signal with a set of arguments.
+type InvokeSignal struct {
+	// RunID workflow run id.
+	RunID string `json:"runId"`
 
-		// Name of the signal.
-		Name string `json:"name"`
-	}
+	// Name of the signal.
+	Name string `json:"name"`
+}
 
-	// InvokeQuery invokes query with a set of arguments.
-	InvokeQuery struct {
-		// RunID workflow run id.
-		RunID string `json:"runId"`
-		// Name of the query.
-		Name string `json:"name"`
-	}
+// InvokeQuery invokes query with a set of arguments.
+type InvokeQuery struct {
+	// RunID workflow run id.
+	RunID string `json:"runId"`
+	// Name of the query.
+	Name string `json:"name"`
+}
 
-	// CancelWorkflow asks worker to gracefully stop workflow, if possible (signal).
-	CancelWorkflow struct {
-		// RunID workflow run id.
-		RunID string `json:"runId"`
-	}
+// CancelWorkflow asks worker to gracefully stop workflow, if possible (signal).
+type CancelWorkflow struct {
+	// RunID workflow run id.
+	RunID string `json:"runId"`
+}
 
-	// DestroyWorkflow asks worker to offload workflow from memory.
-	DestroyWorkflow struct {
-		// RunID workflow run id.
-		RunID string `json:"runId"`
-	}
+// DestroyWorkflow asks worker to offload workflow from memory.
+type DestroyWorkflow struct {
+	// RunID workflow run id.
+	RunID string `json:"runId"`
+}
 
-	// GetStackTrace asks worker to offload workflow from memory.
-	GetStackTrace struct {
-		// RunID workflow run id.
-		RunID string `json:"runId"`
-	}
+// GetStackTrace asks worker to offload workflow from memory.
+type GetStackTrace struct {
+	// RunID workflow run id.
+	RunID string `json:"runId"`
+}
 
-	// ExecuteActivity command by workflow worker.
-	ExecuteActivity struct {
-		// Name defines activity name.
-		Name string `json:"name"`
-		// Options to run activity.
-		Options bindings.ExecuteActivityOptions `json:"options,omitempty"`
-	}
+// ExecuteActivity command by workflow worker.
+type ExecuteActivity struct {
+	// Name defines activity name.
+	Name string `json:"name"`
+	// Options to run activity.
+	Options bindings.ExecuteActivityOptions `json:"options,omitempty"`
+}
 
-	// ExecuteChildWorkflow executes child workflow.
-	ExecuteChildWorkflow struct {
-		// Name defines workflow name.
-		Name string `json:"name"`
-		// Options to run activity.
-		Options bindings.WorkflowOptions `json:"options,omitempty"`
-	}
+// ExecuteChildWorkflow executes child workflow.
+type ExecuteChildWorkflow struct {
+	// Name defines workflow name.
+	Name string `json:"name"`
+	// Options to run activity.
+	Options bindings.WorkflowOptions `json:"options,omitempty"`
+}
 
-	// GetChildWorkflowExecution returns the WorkflowID and RunId of child workflow.
-	GetChildWorkflowExecution struct {
-		// ID of child workflow command.
-		ID uint64 `json:"id"`
-	}
+// GetChildWorkflowExecution returns the WorkflowID and RunId of child workflow.
+type GetChildWorkflowExecution struct {
+	// ID of child workflow command.
+	ID uint64 `json:"id"`
+}
 
-	// NewTimer starts new timer.
-	NewTimer struct {
-		// Milliseconds defines timer duration.
-		Milliseconds int `json:"ms"`
-	}
+// NewTimer starts new timer.
+type NewTimer struct {
+	// Milliseconds defines timer duration.
+	Milliseconds int `json:"ms"`
+}
 
-	// SideEffect to be recorded into the history.
-	SideEffect struct{}
+// SideEffect to be recorded into the history.
+type SideEffect struct{}
 
-	// GetVersion requests version marker.
-	GetVersion struct {
-		ChangeID     string `json:"changeID"`
-		MinSupported int    `json:"minSupported"`
-		MaxSupported int    `json:"maxSupported"`
-	}
+// GetVersion requests version marker.
+type GetVersion struct {
+	ChangeID     string `json:"changeID"`
+	MinSupported int    `json:"minSupported"`
+	MaxSupported int    `json:"maxSupported"`
+}
 
-	// CompleteWorkflow sent by worker to complete workflow. Might include additional error as part of the payload.
-	CompleteWorkflow struct{}
+// CompleteWorkflow sent by worker to complete workflow. Might include additional error as part of the payload.
+type CompleteWorkflow struct{}
 
-	// ContinueAsNew restarts workflow with new running instance.
-	ContinueAsNew struct {
-		// Result defines workflow execution result.
-		Name string `json:"name"`
+// ContinueAsNew restarts workflow with new running instance.
+type ContinueAsNew struct {
+	// Result defines workflow execution result.
+	Name string `json:"name"`
 
-		// Options for continued as new workflow.
-		Options struct {
-			TaskQueueName            string
-			WorkflowExecutionTimeout time.Duration
-			WorkflowRunTimeout       time.Duration
-			WorkflowTaskTimeout      time.Duration
-		} `json:"options"`
-	}
+	// Options for continued as new workflow.
+	Options struct {
+		TaskQueueName            string
+		WorkflowExecutionTimeout time.Duration
+		WorkflowRunTimeout       time.Duration
+		WorkflowTaskTimeout      time.Duration
+	} `json:"options"`
+}
 
-	// SignalExternalWorkflow sends signal to external workflow.
-	SignalExternalWorkflow struct {
-		Namespace         string `json:"namespace"`
-		WorkflowID        string `json:"workflowID"`
-		RunID             string `json:"runID"`
-		Signal            string `json:"signal"`
-		ChildWorkflowOnly bool   `json:"childWorkflowOnly"`
-	}
+// SignalExternalWorkflow sends signal to external workflow.
+type SignalExternalWorkflow struct {
+	Namespace         string `json:"namespace"`
+	WorkflowID        string `json:"workflowID"`
+	RunID             string `json:"runID"`
+	Signal            string `json:"signal"`
+	ChildWorkflowOnly bool   `json:"childWorkflowOnly"`
+}
 
-	// CancelExternalWorkflow canceller external workflow.
-	CancelExternalWorkflow struct {
-		Namespace  string `json:"namespace"`
-		WorkflowID string `json:"workflowID"`
-		RunID      string `json:"runID"`
-	}
+// CancelExternalWorkflow canceller external workflow.
+type CancelExternalWorkflow struct {
+	Namespace  string `json:"namespace"`
+	WorkflowID string `json:"workflowID"`
+	RunID      string `json:"runID"`
+}
 
-	// Cancel one or multiple internal promises (activities, local activities, timers, child workflows).
-	Cancel struct {
-		// CommandIDs to be cancelled.
-		CommandIDs []uint64 `json:"ids"`
-	}
+// Cancel one or multiple internal promises (activities, local activities, timers, child workflows).
+type Cancel struct {
+	// CommandIDs to be cancelled.
+	CommandIDs []uint64 `json:"ids"`
+}
 
-	// Panic triggers panic in workflow process.
-	Panic struct {
-		// Message to include into the error.
-		Message string `json:"message"`
-	}
-)
+// Panic triggers panic in workflow process.
+type Panic struct {
+	// Message to include into the error.
+	Message string `json:"message"`
+}
 
 // ActivityParams maps activity command to activity params.
-func (cmd ExecuteActivity) ActivityParams(
-	env bindings.WorkflowEnvironment,
-	payloads *commonpb.Payloads,
-) bindings.ExecuteActivityParams {
+func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment, payloads *commonpb.Payloads) bindings.ExecuteActivityParams {
 	params := bindings.ExecuteActivityParams{
 		ExecuteActivityOptions: cmd.Options,
 		ActivityType:           bindings.ActivityType{Name: cmd.Name},
@@ -201,10 +196,7 @@ func (cmd ExecuteActivity) ActivityParams(
 }
 
 // WorkflowParams maps workflow command to workflow params.
-func (cmd ExecuteChildWorkflow) WorkflowParams(
-	env bindings.WorkflowEnvironment,
-	payloads *commonpb.Payloads,
-) bindings.ExecuteWorkflowParams {
+func (cmd ExecuteChildWorkflow) WorkflowParams(env bindings.WorkflowEnvironment, payloads *commonpb.Payloads) bindings.ExecuteWorkflowParams {
 	params := bindings.ExecuteWorkflowParams{
 		WorkflowOptions: cmd.Options,
 		WorkflowType:    &bindings.WorkflowType{Name: cmd.Name},
@@ -225,6 +217,7 @@ func (cmd NewTimer) ToDuration() time.Duration {
 
 // returns command name (only for the commands sent to the worker)
 func commandName(cmd interface{}) (string, error) {
+	const op = errors.Op("command_name")
 	switch cmd.(type) {
 	case GetWorkerInfo, *GetWorkerInfo:
 		return getWorkerInfoCommand, nil
@@ -267,12 +260,13 @@ func commandName(cmd interface{}) (string, error) {
 	case Panic, *Panic:
 		return panicCommand, nil
 	default:
-		return "", errors.E(errors.Op("commandName"), "undefined command type", cmd)
+		return "", errors.E(op, errors.Errorf("undefined command type: %s", cmd))
 	}
 }
 
 // reads command from binary payload
 func initCommand(name string) (interface{}, error) {
+	const op = errors.Op("init_command")
 	switch name {
 	case getWorkerInfoCommand:
 		return &GetWorkerInfo{}, nil
@@ -335,6 +329,6 @@ func initCommand(name string) (interface{}, error) {
 		return &Panic{}, nil
 
 	default:
-		return nil, errors.E(errors.Op("initCommand"), "undefined command type", name)
+		return nil, errors.E(op, errors.Errorf("undefined command name: %s", name))
 	}
 }

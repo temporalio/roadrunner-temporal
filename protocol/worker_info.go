@@ -1,4 +1,4 @@
-package protocol //nolint:golint,stylecheck
+package protocol
 
 import (
 	"github.com/spiral/errors"
@@ -7,62 +7,61 @@ import (
 )
 
 // WorkerInfo outlines information about every available worker and it's TaskQueues.
-type (
-	// WorkerInfo lists available task queues, workflows and activities.
-	WorkerInfo struct {
-		// TaskQueue assigned to the worker.
-		TaskQueue string `json:"taskQueue"`
 
-		// Options describe worker options.
-		Options worker.Options `json:"options,omitempty"`
+// WorkerInfo lists available task queues, workflows and activities.
+type WorkerInfo struct {
+	// TaskQueue assigned to the worker.
+	TaskQueue string `json:"taskQueue"`
 
-		// Workflows provided by the worker.
-		Workflows []WorkflowInfo
+	// Options describe worker options.
+	Options worker.Options `json:"options,omitempty"`
 
-		// Activities provided by the worker.
-		Activities []ActivityInfo
-	}
+	// Workflows provided by the worker.
+	Workflows []WorkflowInfo
 
-	// WorkflowInfo describes single worker workflow.
-	WorkflowInfo struct {
-		// Name of the workflow.
-		Name string `json:"name"`
+	// Activities provided by the worker.
+	Activities []ActivityInfo
+}
 
-		// Queries pre-defined for the workflow type.
-		Queries []string `json:"queries"`
+// WorkflowInfo describes single worker workflow.
+type WorkflowInfo struct {
+	// Name of the workflow.
+	Name string `json:"name"`
 
-		// Signals pre-defined for the workflow type.
-		Signals []string `json:"signals"`
-	}
+	// Queries pre-defined for the workflow type.
+	Queries []string `json:"queries"`
 
-	// ActivityInfo describes single worker activity.
-	ActivityInfo struct {
-		// Name describes public activity name.
-		Name string `json:"name"`
-	}
-)
+	// Signals pre-defined for the workflow type.
+	Signals []string `json:"signals"`
+}
+
+// ActivityInfo describes single worker activity.
+type ActivityInfo struct {
+	// Name describes public activity name.
+	Name string `json:"name"`
+}
 
 // FetchWorkerInfo fetches information about all underlying workers (can be multiplexed inside single process).
 func FetchWorkerInfo(c Codec, e Endpoint, dc converter.DataConverter) ([]WorkerInfo, error) {
-	op := errors.Op("getWorkerInfo")
+	const op = errors.Op("fetch_worker_info")
 
 	result, err := c.Execute(e, Context{}, Message{ID: 0, Command: GetWorkerInfo{}})
 	if err != nil {
-		return nil, err
+		return nil, errors.E(op, err)
 	}
 
 	if len(result) != 1 {
-		return nil, errors.E(op, "unable to read worker info")
+		return nil, errors.E(op, errors.Str("unable to read worker info"))
 	}
 
 	if result[0].ID != 0 {
-		return nil, errors.E(op, "FetchWorkerInfo confirmation missing")
+		return nil, errors.E(op, errors.Str("FetchWorkerInfo confirmation missing"))
 	}
 
 	var info []WorkerInfo
-	for _, data := range result[0].Payloads.Payloads {
+	for i := range result[0].Payloads.Payloads {
 		wi := WorkerInfo{}
-		if err := dc.FromPayload(data, &wi); err != nil {
+		if err := dc.FromPayload(result[0].Payloads.Payloads[i], &wi); err != nil {
 			return nil, errors.E(op, err)
 		}
 

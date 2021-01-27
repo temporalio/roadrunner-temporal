@@ -1,4 +1,4 @@
-package protocol //nolint:golint,stylecheck
+package protocol
 
 import (
 	commonpb "go.temporal.io/api/common/v1"
@@ -45,7 +45,7 @@ func (r *DataConverter) FromPayloads(payloads *commonpb.Payloads, valuePtrs ...i
 		// input proxying
 		if input, ok := valuePtrs[0].(**commonpb.Payloads); ok {
 			*input = &commonpb.Payloads{}
-			(**input).Payloads = payloads.Payloads
+			(*input).Payloads = payloads.Payloads
 			return nil
 		}
 	}
