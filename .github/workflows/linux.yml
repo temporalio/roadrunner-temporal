@@ -64,9 +64,9 @@ jobs:
         run: |
           docker-compose -f ./tests/docker-compose.yaml up -d
           mkdir ./coverage-ci
-          go test -v -race -cover -tags=debug -coverpkg=./... -coverprofile=./coverage-ci/temporal.out -covermode=atomic ./tests
-          go test -v -race -cover -tags=debug -coverpkg=./... -coverprofile=./coverage-ci/temporal_protocol.out -covermode=atomic ./protocol
-          go test -v -race -cover -tags=debug -coverpkg=./... -coverprofile=./coverage-ci/temporal_workflow.out -covermode=atomic ./workflow
+          go test -v -race -cover -tags=debug -coverpkg=./... -coverprofile=./coverage-ci/temporal.txt -covermode=atomic ./tests
+          go test -v -race -cover -tags=debug -coverpkg=./... -coverprofile=./coverage-ci/temporal_protocol.txt -covermode=atomic ./protocol
+          go test -v -race -cover -tags=debug -coverpkg=./... -coverprofile=./coverage-ci/temporal_workflow.txt -covermode=atomic ./workflow
           docker-compose -f ./tests/docker-compose.yaml down
           cat ./coverage-ci/*.txt > ./coverage-ci/summary.txt
 
