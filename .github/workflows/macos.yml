@@ -60,7 +60,7 @@ jobs:
       - name: Install Go dependencies
         run: go mod download
 
-      - name: Run golang tests
+      - name: Run golang tests on Mac
         run: |
           go test -v -race -tags=debug ./protocol
           go test -v -race -tags=debug ./workflow

@@ -19,5 +19,5 @@
 
 tests/composer.lock
 tests/vendor
-
+config
 go.sum

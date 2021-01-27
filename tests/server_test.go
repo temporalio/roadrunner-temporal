@@ -2,6 +2,8 @@ package tests
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 
 	endure "github.com/spiral/endure/pkg/container"
@@ -11,6 +13,7 @@ import (
 	"github.com/spiral/roadrunner/v2/plugins/resetter"
 	"github.com/spiral/roadrunner/v2/plugins/rpc"
 	"github.com/spiral/roadrunner/v2/plugins/server"
+	"github.com/stretchr/testify/assert"
 	"github.com/temporalio/roadrunner-temporal/activity"
 	rrClient "github.com/temporalio/roadrunner-temporal/client"
 	"github.com/temporalio/roadrunner-temporal/workflow"
@@ -22,95 +25,77 @@ import (
 )
 
 type TestServer struct {
-	container  endure.Container
 	temporal   rrClient.Temporal
 	activities *activity.Plugin
 	workflows  *workflow.Plugin
 }
 
-type ConfigOption struct {
-	Name  string
-	Value interface{}
-}
+func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, proto bool) *TestServer {
+	container, err := endure.NewContainer(initLogger(), endure.RetryOnFail(false))
+	assert.NoError(t, err)
 
-func NewOption(name string, value interface{}) ConfigOption {
-	return ConfigOption{Name: name, Value: value}
-}
-
-func NewTestServer(opt ...ConfigOption) *TestServer {
-	e, err := endure.NewContainer(initLogger(), endure.RetryOnFail(false))
-	if err != nil {
-		panic(err)
-	}
-
-	t := &rrClient.Plugin{}
+	tc := &rrClient.Plugin{}
 	a := &activity.Plugin{}
 	w := &workflow.Plugin{}
 
-	if err := e.Register(initConfig(opt...)); err != nil {
-		panic(err)
+	cfg := initConfigJSON()
+	if proto {
+		cfg = initConfigProto()
 	}
 
-	if err := e.Register(&logger.ZapLogger{}); err != nil {
-		panic(err)
-	}
-	if err := e.Register(&resetter.Plugin{}); err != nil {
-		panic(err)
-	}
-	if err := e.Register(&informer.Plugin{}); err != nil {
-		panic(err)
-	}
-	if err := e.Register(&server.Plugin{}); err != nil {
-		panic(err)
-	}
-	if err := e.Register(&rpc.Plugin{}); err != nil {
-		panic(err)
-	}
+	err = container.RegisterAll(
+		tc,
+		a,
+		w,
+		cfg,
+		&logger.ZapLogger{},
+		&resetter.Plugin{},
+		&informer.Plugin{},
+		&server.Plugin{},
+		&rpc.Plugin{},
+	)
 
-	if err := e.Register(t); err != nil {
-		panic(err)
-	}
-	if err := e.Register(a); err != nil {
-		panic(err)
-	}
-	if err := e.Register(w); err != nil {
-		panic(err)
-	}
+	assert.NoError(t, err)
+	assert.NoError(t, container.Init())
 
-	if err := e.Init(); err != nil {
-		panic(err)
-	}
-
-	errCh, err := e.Serve()
+	errCh, err := container.Serve()
 	if err != nil {
 		panic(err)
 	}
 
 	go func() {
-		err := <-errCh
-		er := e.Stop()
-		if er != nil {
-			panic(err)
+		defer wg.Done()
+		for {
+			select {
+			case er := <-errCh:
+				assert.Fail(t, fmt.Sprintf("got error from vertex: %s, error: %v", er.VertexID, er.Error))
+				assert.NoError(t, container.Stop())
+				return
+			case <-stopCh:
+				assert.NoError(t, container.Stop())
+				return
+			}
 		}
 	}()
 
-	return &TestServer{container: e, temporal: t, activities: a, workflows: w}
+	return &TestServer{temporal: tc, activities: a, workflows: w}
 }
 
 func (s *TestServer) Client() temporalClient.Client {
 	return s.temporal.GetClient()
 }
 
-func (s *TestServer) MustClose() {
-	err := s.container.Stop()
-	if err != nil {
-		panic(err)
-	}
-}
-
-func initConfig(opt ...ConfigOption) config.Configurer {
+func initConfigJSON() config.Configurer {
 	cfg := &config.Viper{}
 	cfg.Path = ".rr.yaml"
+	cfg.Prefix = "rr"
+
+	return cfg
+}
+
+func initConfigProto() config.Configurer {
+	cfg := &config.Viper{}
+	cfg.Path = ".rr-proto.yaml"
 	cfg.Prefix = "rr"
 
 	return cfg
