@@ -5,10 +5,11 @@ package internal
 
 import (
 	fmt "fmt"
+	math "math"
+
 	proto "github.com/golang/protobuf/proto"
 	v11 "go.temporal.io/api/common/v1"
 	v1 "go.temporal.io/api/failure/v1"
-	math "math"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
