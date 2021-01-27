@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -11,8 +12,10 @@ import (
 )
 
 func Test_WorkerError_DisasterRecovery(t *testing.T) {
-	s := NewTestServer()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
 
 	p, err := os.FindProcess(int(s.workflows.Workers()[0].Pid()))
 	assert.NoError(t, err)
@@ -35,11 +38,15 @@ func Test_WorkerError_DisasterRecovery(t *testing.T) {
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "hello world", result)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_WorkerError_DisasterRecovery_Heavy(t *testing.T) {
-	s := NewTestServer()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
 
 	defer func() {
 		// always restore script
@@ -73,11 +80,15 @@ func Test_WorkerError_DisasterRecovery_Heavy(t *testing.T) {
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "hello world", result)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_ActivityError_DisasterRecovery(t *testing.T) {
-	s := NewTestServer()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
 
 	defer func() {
 		// always restore script
@@ -111,11 +122,15 @@ func Test_ActivityError_DisasterRecovery(t *testing.T) {
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "HELLO WORLD", result)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_WorkerError_DisasterRecoveryProto(t *testing.T) {
-	s := NewTestServerProto()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, true)
 
 	p, err := os.FindProcess(int(s.workflows.Workers()[0].Pid()))
 	assert.NoError(t, err)
@@ -138,11 +153,15 @@ func Test_WorkerError_DisasterRecoveryProto(t *testing.T) {
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "hello world", result)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_WorkerError_DisasterRecovery_HeavyProto(t *testing.T) {
-	s := NewTestServerProto()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, true)
 
 	defer func() {
 		// always restore script
@@ -176,11 +195,15 @@ func Test_WorkerError_DisasterRecovery_HeavyProto(t *testing.T) {
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "hello world", result)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_ActivityError_DisasterRecoveryProto(t *testing.T) {
-	s := NewTestServerProto()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, true)
 
 	defer func() {
 		// always restore script
@@ -214,4 +237,6 @@ func Test_ActivityError_DisasterRecoveryProto(t *testing.T) {
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "HELLO WORLD", result)
+	stopCh <- struct{}{}
+	wg.Wait()
 }

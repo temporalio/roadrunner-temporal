@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -10,8 +11,10 @@ import (
 )
 
 func Test_ListQueries(t *testing.T) {
-	s := NewTestServer()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -34,11 +37,15 @@ func Test_ListQueries(t *testing.T) {
 	var r int
 	assert.NoError(t, w.Get(context.Background(), &r))
 	assert.Equal(t, 0, r)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_GetQuery(t *testing.T) {
-	s := NewTestServer()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -63,11 +70,15 @@ func Test_GetQuery(t *testing.T) {
 
 	assert.NoError(t, w.Get(context.Background(), &r))
 	assert.Equal(t, 88, r)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_ListQueriesProto(t *testing.T) {
-	s := NewTestServerProto()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, true)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -90,11 +101,15 @@ func Test_ListQueriesProto(t *testing.T) {
 	var r int
 	assert.NoError(t, w.Get(context.Background(), &r))
 	assert.Equal(t, 0, r)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_GetQueryProto(t *testing.T) {
-	s := NewTestServerProto()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, true)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -119,4 +134,6 @@ func Test_GetQueryProto(t *testing.T) {
 
 	assert.NoError(t, w.Get(context.Background(), &r))
 	assert.Equal(t, 88, r)
+	stopCh <- struct{}{}
+	wg.Wait()
 }

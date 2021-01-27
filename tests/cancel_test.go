@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,8 +13,10 @@ import (
 )
 
 func Test_SimpleWorkflowCancel(t *testing.T) {
-	s := NewTestServer()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -34,11 +37,15 @@ func Test_SimpleWorkflowCancel(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, "Canceled", we.WorkflowExecutionInfo.Status.String())
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_CancellableWorkflowScope(t *testing.T) {
-	s := NewTestServer()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -61,11 +68,15 @@ func Test_CancellableWorkflowScope(t *testing.T) {
 	s.AssertNotContainsEvent(t, w, func(event *history.HistoryEvent) bool {
 		return event.EventType == enums.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
 	})
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_CancelledWorkflow(t *testing.T) {
-	s := NewTestServer()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -84,11 +95,15 @@ func Test_CancelledWorkflow(t *testing.T) {
 	var result interface{}
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "CANCELLED", result)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_CancelledWithCompensationWorkflow(t *testing.T) {
-	s := NewTestServer()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -128,11 +143,15 @@ func Test_CancelledWithCompensationWorkflow(t *testing.T) {
 		},
 		trace,
 	)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_CancelledNestedWorkflow(t *testing.T) {
-	s := NewTestServer()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -171,11 +190,15 @@ func Test_CancelledNestedWorkflow(t *testing.T) {
 		},
 		trace,
 	)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_CancelledNSingleScopeWorkflow(t *testing.T) {
-	s := NewTestServer()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -211,11 +234,15 @@ func Test_CancelledNSingleScopeWorkflow(t *testing.T) {
 		},
 		trace,
 	)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_CancelledMidflightWorkflow(t *testing.T) {
-	s := NewTestServer()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -249,11 +276,15 @@ func Test_CancelledMidflightWorkflow(t *testing.T) {
 	s.AssertNotContainsEvent(t, w, func(event *history.HistoryEvent) bool {
 		return event.EventType == enums.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
 	})
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_CancelSignalledChildWorkflow(t *testing.T) {
-	s := NewTestServer()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -288,11 +319,15 @@ func Test_CancelSignalledChildWorkflow(t *testing.T) {
 	s.AssertContainsEvent(t, w, func(event *history.HistoryEvent) bool {
 		return event.EventType == enums.EVENT_TYPE_REQUEST_CANCEL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED
 	})
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_SimpleWorkflowCancelProto(t *testing.T) {
-	s := NewTestServerProto()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, true)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -313,11 +348,15 @@ func Test_SimpleWorkflowCancelProto(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, "Canceled", we.WorkflowExecutionInfo.Status.String())
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_CancellableWorkflowScopeProto(t *testing.T) {
-	s := NewTestServerProto()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, true)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -340,11 +379,15 @@ func Test_CancellableWorkflowScopeProto(t *testing.T) {
 	s.AssertNotContainsEvent(t, w, func(event *history.HistoryEvent) bool {
 		return event.EventType == enums.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
 	})
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_CancelledWorkflowProto(t *testing.T) {
-	s := NewTestServerProto()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, true)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -363,11 +406,15 @@ func Test_CancelledWorkflowProto(t *testing.T) {
 	var result interface{}
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "CANCELLED", result)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_CancelledWithCompensationWorkflowProto(t *testing.T) {
-	s := NewTestServerProto()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, true)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -407,11 +454,15 @@ func Test_CancelledWithCompensationWorkflowProto(t *testing.T) {
 		},
 		trace,
 	)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_CancelledNestedWorkflowProto(t *testing.T) {
-	s := NewTestServerProto()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, true)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -450,11 +501,15 @@ func Test_CancelledNestedWorkflowProto(t *testing.T) {
 		},
 		trace,
 	)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_CancelledNSingleScopeWorkflowProto(t *testing.T) {
-	s := NewTestServerProto()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, true)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -490,11 +545,15 @@ func Test_CancelledNSingleScopeWorkflowProto(t *testing.T) {
 		},
 		trace,
 	)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_CancelledMidflightWorkflowProto(t *testing.T) {
-	s := NewTestServerProto()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, true)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -528,11 +587,15 @@ func Test_CancelledMidflightWorkflowProto(t *testing.T) {
 	s.AssertNotContainsEvent(t, w, func(event *history.HistoryEvent) bool {
 		return event.EventType == enums.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
 	})
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_CancelSignalledChildWorkflowProto(t *testing.T) {
-	s := NewTestServerProto()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, true)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -567,4 +630,6 @@ func Test_CancelSignalledChildWorkflowProto(t *testing.T) {
 	s.AssertContainsEvent(t, w, func(event *history.HistoryEvent) bool {
 		return event.EventType == enums.EVENT_TYPE_REQUEST_CANCEL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED
 	})
+	stopCh <- struct{}{}
+	wg.Wait()
 }

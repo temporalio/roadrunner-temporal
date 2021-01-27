@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -13,8 +14,10 @@ import (
 )
 
 func Test_SignalsWithoutSignals(t *testing.T) {
-	s := NewTestServer()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -29,11 +32,15 @@ func Test_SignalsWithoutSignals(t *testing.T) {
 	var result int
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, 0, result)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_SendSignalDuringTimer(t *testing.T) {
-	s := NewTestServer()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
 
 	w, err := s.Client().SignalWithStartWorkflow(
 		context.Background(),
@@ -62,11 +69,15 @@ func Test_SendSignalDuringTimer(t *testing.T) {
 
 		return false
 	})
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_SendSignalBeforeCompletingWorkflow(t *testing.T) {
-	s := NewTestServer()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -95,11 +106,15 @@ func Test_SendSignalBeforeCompletingWorkflow(t *testing.T) {
 
 		return false
 	})
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_RuntimeSignal(t *testing.T) {
-	s := NewTestServer()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
 
 	w, err := s.Client().SignalWithStartWorkflow(
 		context.Background(),
@@ -125,11 +140,15 @@ func Test_RuntimeSignal(t *testing.T) {
 
 		return false
 	})
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_SignalSteps(t *testing.T) {
-	s := NewTestServer()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -167,11 +186,15 @@ func Test_SignalSteps(t *testing.T) {
 
 	// 3 ticks
 	assert.Equal(t, 3, result)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_SignalsWithoutSignalsProto(t *testing.T) {
-	s := NewTestServerProto()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, true)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -186,11 +209,15 @@ func Test_SignalsWithoutSignalsProto(t *testing.T) {
 	var result int
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, 0, result)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_SendSignalDuringTimerProto(t *testing.T) {
-	s := NewTestServerProto()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, true)
 
 	w, err := s.Client().SignalWithStartWorkflow(
 		context.Background(),
@@ -219,11 +246,15 @@ func Test_SendSignalDuringTimerProto(t *testing.T) {
 
 		return false
 	})
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_SendSignalBeforeCompletingWorkflowProto(t *testing.T) {
-	s := NewTestServerProto()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, true)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -252,11 +283,15 @@ func Test_SendSignalBeforeCompletingWorkflowProto(t *testing.T) {
 
 		return false
 	})
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_RuntimeSignalProto(t *testing.T) {
-	s := NewTestServerProto()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, true)
 
 	w, err := s.Client().SignalWithStartWorkflow(
 		context.Background(),
@@ -282,11 +317,15 @@ func Test_RuntimeSignalProto(t *testing.T) {
 
 		return false
 	})
+	stopCh <- struct{}{}
+	wg.Wait()
 }
 
 func Test_SignalStepsProto(t *testing.T) {
-	s := NewTestServerProto()
-	defer s.MustClose()
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, true)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -324,4 +363,6 @@ func Test_SignalStepsProto(t *testing.T) {
 
 	// 3 ticks
 	assert.Equal(t, 3, result)
+	stopCh <- struct{}{}
+	wg.Wait()
 }
