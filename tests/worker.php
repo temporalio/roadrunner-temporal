@@ -22,12 +22,13 @@ $worker = $factory->newWorker('default');
 
 // register all workflows
 foreach ($getClasses(__DIR__ . '/src/Workflow') as $name) {
-    $worker->registerWorkflowType('Temporal\\Tests\\Workflow\\' . $name);
+    $worker->registerWorkflowTypes('Temporal\\Tests\\Workflow\\' . $name);
 }
 
 // register all activity
 foreach ($getClasses(__DIR__ . '/src/Activity') as $name) {
-    $worker->registerActivityType('Temporal\\Tests\\Activity\\' . $name);
+    $class = 'Temporal\\Tests\\Activity\\' . $name;
+    $worker->registerActivityImplementations(new $class);
 }
 
 $factory->run();
