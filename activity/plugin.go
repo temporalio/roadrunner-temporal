@@ -123,7 +123,7 @@ func (p *Plugin) RPC() interface{} {
 }
 
 // Workers returns pool workers.
-func (p *Plugin) Workers() []worker.SyncWorker {
+func (p *Plugin) Workers() []worker.BaseProcess {
 	return p.getPool().Workers()
 }
 

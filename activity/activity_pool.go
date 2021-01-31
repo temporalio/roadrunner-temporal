@@ -30,7 +30,7 @@ const doNotCompleteOnReturn = "doNotCompleteOnReturn"
 type activityPool interface {
 	Start(ctx context.Context, temporal client.Temporal) error
 	Destroy(ctx context.Context) error
-	Workers() []rrWorker.SyncWorker
+	Workers() []rrWorker.BaseProcess
 	ActivityNames() []string
 	GetActivityContext(taskToken []byte) (context.Context, error)
 }
@@ -93,8 +93,13 @@ func (pool *activityPoolImpl) Destroy(ctx context.Context) error {
 }
 
 // Workers returns list of all allocated workers.
-func (pool *activityPoolImpl) Workers() []rrWorker.SyncWorker {
-	return pool.wp.Workers()
+func (pool *activityPoolImpl) Workers() []rrWorker.BaseProcess {
+	syncWorkers := pool.wp.Workers()
+	base := make([]rrWorker.BaseProcess, 0, len(syncWorkers))
+	for i := 0; i < len(syncWorkers); i++ {
+		base = append(base, syncWorkers[i])
+	}
+	return base
 }
 
 // ActivityNames returns list of all available activity names.
