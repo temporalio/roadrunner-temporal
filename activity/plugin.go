@@ -7,6 +7,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/spiral/roadrunner/v2/pkg/events"
 	"github.com/spiral/roadrunner/v2/pkg/worker"
+	"github.com/spiral/roadrunner/v2/plugins/config"
 
 	"sync"
 	"sync/atomic"
@@ -20,6 +21,9 @@ import (
 const (
 	// PluginName defines public service name.
 	PluginName = "activities"
+
+	// Main plugin name
+	RootPluginName = "temporal"
 
 	// RRMode sets as RR_MODE env variable to let worker know about the mode to run.
 	RRMode = "temporal/activity"
@@ -38,8 +42,12 @@ type Plugin struct {
 }
 
 // Init configures activity service.
-func (p *Plugin) Init(temporal client.Temporal, server server.Server, log logger.Logger) error {
+func (p *Plugin) Init(temporal client.Temporal, server server.Server, log logger.Logger, cfg config.Configurer) error {
 	const op = errors.Op("activity_plugin_init")
+	if !cfg.Has(RootPluginName) {
+		return errors.E(op, errors.Disabled)
+	}
+
 	if temporal.GetConfig().Activities == nil {
 		// no need to serve activities
 		return errors.E(op, errors.Disabled)

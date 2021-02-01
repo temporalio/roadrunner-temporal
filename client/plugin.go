@@ -52,14 +52,14 @@ type Config struct {
 // Init initiates temporal client plugin.
 func (p *Plugin) Init(cfg config.Configurer, log logger.Logger) error {
 	const op = errors.Op("temporal_client_plugin_init")
+	if !cfg.Has(PluginName) {
+		return errors.E(op, errors.Disabled)
+	}
 	p.log = log
 	p.dc = rrt.NewDataConverter(converter.GetDefaultDataConverter())
 	err := cfg.UnmarshalKey(PluginName, &p.cfg)
 	if err != nil {
 		return errors.E(op, err)
-	}
-	if p.cfg == nil {
-		return errors.E(op, errors.Disabled)
 	}
 
 	return nil

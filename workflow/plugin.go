@@ -10,6 +10,7 @@ import (
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/events"
 	"github.com/spiral/roadrunner/v2/pkg/worker"
+	"github.com/spiral/roadrunner/v2/plugins/config"
 	"github.com/spiral/roadrunner/v2/plugins/logger"
 	"github.com/spiral/roadrunner/v2/plugins/server"
 	"github.com/temporalio/roadrunner-temporal/client"
@@ -18,6 +19,9 @@ import (
 const (
 	// PluginName defines public service name.
 	PluginName = "workflows"
+
+	// Main plugin name
+	RootPluginName = "temporal"
 
 	// RRMode sets as RR_MODE env variable to let worker know about the mode to run.
 	RRMode = "temporal/workflow"
@@ -36,7 +40,11 @@ type Plugin struct {
 }
 
 // Init workflow plugin.
-func (p *Plugin) Init(temporal client.Temporal, server server.Server, log logger.Logger) error {
+func (p *Plugin) Init(temporal client.Temporal, server server.Server, log logger.Logger, cfg config.Configurer) error {
+	const op = errors.Op("workflow_plugin_init")
+	if !cfg.Has(RootPluginName) {
+		return errors.E(op, errors.Disabled)
+	}
 	p.temporal = temporal
 	p.server = server
 	p.events = events.NewEventsHandler()
