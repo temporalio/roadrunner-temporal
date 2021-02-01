@@ -56,6 +56,8 @@ func (p *Plugin) Init(temporal client.Temporal, server server.Server, log logger
 
 // Serve starts workflow service.
 func (p *Plugin) Serve() chan error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	const op = errors.Op("workflow_plugin_serve")
 	errCh := make(chan error, 1)
 
@@ -66,30 +68,6 @@ func (p *Plugin) Serve() chan error {
 	}
 
 	p.pool = pool
-
-	go func() {
-		for {
-			select {
-			case <-p.reset:
-				if atomic.LoadInt64(&p.closing) == 1 {
-					return
-				}
-
-				err := p.replacePool()
-				if err == nil {
-					continue
-				}
-
-				bkoff := backoff.NewExponentialBackOff()
-				bkoff.InitialInterval = time.Second
-
-				err = backoff.Retry(p.replacePool, bkoff)
-				if err != nil {
-					errCh <- errors.E(op, err)
-				}
-			}
-		}
-	}()
 
 	return errCh
 }
@@ -131,23 +109,24 @@ func (p *Plugin) WorkflowNames() []string {
 
 // Reset resets underlying workflow pool with new copy.
 func (p *Plugin) Reset() error {
-	p.reset <- struct{}{}
-
-	return nil
-}
-
-// AddListener adds event listeners to the service.
-func (p *Plugin) poolListener(event interface{}) {
-	if ev, ok := event.(PoolEvent); ok {
-		if ev.Event == eventWorkerExit {
-			if ev.Caused != nil {
-				p.log.Error("Workflow pool error", "error", ev.Caused)
-			}
-			p.reset <- struct{}{}
-		}
+	const op = errors.Op("workflow_plugin_reset")
+	if atomic.LoadInt64(&p.closing) == 1 {
+		return nil
 	}
 
-	p.events.Push(event)
+	err := p.replacePool()
+	if err == nil {
+		return nil
+	}
+
+	bkoff := backoff.NewExponentialBackOff()
+	bkoff.InitialInterval = time.Second
+
+	err = backoff.Retry(p.replacePool, bkoff)
+	if err != nil {
+		return errors.E(op, err)
+	}
+	return nil
 }
 
 // AddListener adds event listeners to the service.
@@ -155,7 +134,6 @@ func (p *Plugin) startPool() (workflowPool, error) {
 	const op = errors.Op("workflow_plugin_start_pool")
 	pool, err := newWorkflowPool(
 		p.temporal.GetCodec().WithLogger(p.log),
-		p.poolListener,
 		p.server,
 	)
 	if err != nil {

@@ -17,8 +17,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-const eventWorkerExit = 8390
-
 // RR_MODE env variable key
 const RR_MODE = "RR_MODE" //nolint
 
@@ -53,21 +51,16 @@ type workflowPoolImpl struct {
 }
 
 // newWorkflowPool creates new workflow pool.
-func newWorkflowPool(codec rrt.Codec, listener events.Listener, factory server.Server) (workflowPool, error) {
+func newWorkflowPool(codec rrt.Codec, factory server.Server, listener ...events.Listener) (workflowPool, error) {
 	const op = errors.Op("new_workflow_pool")
 	w, err := factory.NewWorker(
 		context.Background(),
 		map[string]string{RR_MODE: RRMode, RR_CODEC: codec.GetName()},
-		listener,
+		listener...,
 	)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
-
-	go func() {
-		err := w.Wait()
-		listener(PoolEvent{Event: eventWorkerExit, Caused: err})
-	}()
 
 	return &workflowPoolImpl{codec: codec, worker: rrWorker.From(w)}, nil
 }
