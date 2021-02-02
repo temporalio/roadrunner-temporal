@@ -9,6 +9,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/events"
+	"github.com/spiral/roadrunner/v2/pkg/states"
 	rrWorker "github.com/spiral/roadrunner/v2/pkg/worker"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	"github.com/spiral/roadrunner/v2/plugins/logger"
@@ -61,13 +62,37 @@ func (p *Plugin) Serve() chan error {
 	const op = errors.Op("workflow_plugin_serve")
 	errCh := make(chan error, 1)
 
-	pool, err := p.startPool()
+	workflowPool, err := p.startPool()
 	if err != nil {
 		errCh <- errors.E(op, err)
 		return errCh
 	}
 
-	p.pool = pool
+	p.pool = workflowPool
+
+	go func() {
+		for {
+			select {
+			case <-p.reset:
+				if atomic.LoadInt64(&p.closing) == 1 {
+					return
+				}
+
+				err := p.replacePool()
+				if err == nil {
+					continue
+				}
+
+				bkoff := backoff.NewExponentialBackOff()
+				bkoff.InitialInterval = time.Second
+
+				err = backoff.Retry(p.replacePool, bkoff)
+				if err != nil {
+					errCh <- errors.E(op, err)
+				}
+			}
+		}
+	}()
 
 	return errCh
 }
@@ -77,10 +102,9 @@ func (p *Plugin) Stop() error {
 	const op = errors.Op("workflow_plugin_stop")
 	atomic.StoreInt64(&p.closing, 1)
 
-	pool := p.getPool()
-	if pool != nil {
-		p.pool = nil
-		err := pool.Destroy(context.Background())
+	workflowPool := p.getPool()
+	if workflowPool != nil {
+		err := workflowPool.Destroy(context.Background())
 		if err != nil {
 			return errors.E(op, err)
 		}
@@ -99,6 +123,9 @@ func (p *Plugin) Name() string {
 func (p *Plugin) Workers() []rrWorker.BaseProcess {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if p.pool == nil {
+		return nil
+	}
 	return p.pool.Workers()
 }
 
@@ -109,53 +136,37 @@ func (p *Plugin) WorkflowNames() []string {
 
 // Reset resets underlying workflow pool with new copy.
 func (p *Plugin) Reset() error {
-	const op = errors.Op("workflow_plugin_reset")
-	if atomic.LoadInt64(&p.closing) == 1 {
-		return nil
-	}
-
-	err := p.replacePool()
-	if err == nil {
-		return nil
-	}
-
-	bkoff := backoff.NewExponentialBackOff()
-	bkoff.InitialInterval = time.Second
-
-	err = backoff.Retry(p.replacePool, bkoff)
-	if err != nil {
-		return errors.E(op, err)
-	}
+	p.reset <- struct{}{}
 	return nil
 }
 
 // AddListener adds event listeners to the service.
 func (p *Plugin) startPool() (pool, error) {
 	const op = errors.Op("workflow_plugin_start_worker")
-	wrk, err := makeWorker(
+	pool, err := newPool(
 		p.temporal.GetCodec().WithLogger(p.log),
 		p.server,
-		p.eventListener,
+		p.poolListener,
 	)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
 
-	err = wrk.Start(context.Background(), p.temporal)
+	err = pool.Start(context.Background(), p.temporal)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
 
-	p.log.Debug("Started workflow processing", "workflows", wrk.WorkflowNames())
+	p.log.Debug("Started workflow processing", "workflows", pool.WorkflowNames())
 
-	return wrk, nil
+	return pool, nil
 }
 
 func (p *Plugin) replacePool() error {
 	p.mu.Lock()
-	const op = errors.Op("workflow_plugin_replace_worker")
 	defer p.mu.Unlock()
 
+	const op = errors.Op("workflow_plugin_replace_worker")
 	if p.pool != nil {
 		err := p.pool.Destroy(context.Background())
 		p.pool = nil
@@ -189,13 +200,26 @@ func (p *Plugin) getPool() pool {
 	return p.pool
 }
 
-func (p *Plugin) eventListener(event interface{}) {
-	if ev, ok := event.(events.WorkerEvent); ok {
-		if ev.Event == events.EventWorkerError {
-			err := p.replacePool()
-			if err != nil {
-				p.log.Error("Unable to start workers", "error", err)
-			}
+// AddListener adds event listeners to the service.
+func (p *Plugin) poolListener(event interface{}) {
+	if ev, ok := event.(events.PoolEvent); ok {
+		if ev.Event == events.EventPoolError {
+			p.log.Error("workflow pool error", "error", ev.Payload.(error))
+			p.reset <- struct{}{}
 		}
 	}
+
+	if ev, ok := event.(events.WorkerEvent); ok {
+		if ev.Event == events.EventWorkerError {
+			// if destroyed, do not reset
+			if ev.Worker.(rrWorker.BaseProcess).State().Value() == states.StateDestroyed {
+				p.events.Push(event)
+				return
+			}
+			p.reset <- struct{}{}
+			p.log.Error("worker error", "error", ev.Payload.(error))
+		}
+	}
+
+	p.events.Push(event)
 }

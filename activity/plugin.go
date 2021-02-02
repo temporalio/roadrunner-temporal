@@ -132,6 +132,9 @@ func (p *Plugin) RPC() interface{} {
 
 // Workers returns pool workers.
 func (p *Plugin) Workers() []worker.BaseProcess {
+	if p.getPool() == nil {
+		return nil
+	}
 	return p.getPool().Workers()
 }
 
@@ -188,13 +191,14 @@ func (p *Plugin) startPool() (activityPool, error) {
 }
 
 func (p *Plugin) replacePool() error {
+	const op = errors.Op("activity_plugin_replace_pool")
 	pool, err := p.startPool()
 	if err != nil {
-		p.log.Error("Replace activity pool failed", "error", err)
-		return errors.E(errors.Op("newActivityPool"), err)
+		p.log.Error("replace activity pool failed", "error", err)
+		return errors.E(op, err)
 	}
 
-	p.log.Debug("Replace activity pool")
+	p.log.Debug("replace activity pool")
 
 	var previous activityPool
 
@@ -202,12 +206,12 @@ func (p *Plugin) replacePool() error {
 	previous, p.pool = p.pool, pool
 	p.mu.Unlock()
 
-	errD := previous.Destroy(context.Background())
-	if errD != nil {
+	err = previous.Destroy(context.Background())
+	if err != nil {
 		p.log.Error(
 			"Unable to destroy expired activity pool",
 			"error",
-			errors.E(errors.Op("destroyActivityPool"), errD),
+			errors.E(op, err),
 		)
 	}
 

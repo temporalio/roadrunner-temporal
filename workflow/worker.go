@@ -31,6 +31,7 @@ type pool interface {
 	Start(ctx context.Context, temporal client.Temporal) error
 	Destroy(ctx context.Context) error
 	Workers() []rrWorker.BaseProcess
+	Pool() rrPool.Pool
 	WorkflowNames() []string
 }
 
@@ -44,8 +45,8 @@ type workerImpl struct {
 	pool      rrPool.Pool
 }
 
-// makeWorker creates new workflow pool.
-func makeWorker(codec rrt.Codec, factory server.Server, listener ...events.Listener) (pool, error) {
+// newPool creates new workflow pool.
+func newPool(codec rrt.Codec, factory server.Server, listener ...events.Listener) (pool, error) {
 	const op = errors.Op("new_workflow_pool")
 	env := map[string]string{RR_MODE: RRMode, RR_CODEC: codec.GetName()}
 
@@ -102,9 +103,16 @@ func (w *workerImpl) Destroy(ctx context.Context) error {
 
 	tWorker.PurgeStickyWorkflowCache()
 	// destroy pool
-	w.pool.Destroy(context.Background())
+	w.pool.Destroy(ctx)
 
 	return nil
+}
+
+// Pool returns rr Pool
+func (w *workerImpl) Pool() rrPool.Pool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.pool
 }
 
 // NewWorkflowDefinition initiates new workflow process.
