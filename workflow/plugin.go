@@ -9,7 +9,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/events"
-	"github.com/spiral/roadrunner/v2/pkg/worker"
+	rrWorker "github.com/spiral/roadrunner/v2/pkg/worker"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	"github.com/spiral/roadrunner/v2/plugins/logger"
 	"github.com/spiral/roadrunner/v2/plugins/server"
@@ -23,7 +23,7 @@ const (
 	// Main plugin name
 	RootPluginName = "temporal"
 
-	// RRMode sets as RR_MODE env variable to let worker know about the mode to run.
+	// RRMode sets as RR_MODE env variable to let pool know about the mode to run.
 	RRMode = "temporal/workflow"
 )
 
@@ -35,7 +35,7 @@ type Plugin struct {
 	log      logger.Logger
 	mu       sync.Mutex
 	reset    chan struct{}
-	pool     workflowPool
+	pool     pool
 	closing  int64
 }
 
@@ -96,7 +96,7 @@ func (p *Plugin) Name() string {
 }
 
 // Workers returns list of available workflow workers.
-func (p *Plugin) Workers() []worker.BaseProcess {
+func (p *Plugin) Workers() []rrWorker.BaseProcess {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.pool.Workers()
@@ -130,29 +130,30 @@ func (p *Plugin) Reset() error {
 }
 
 // AddListener adds event listeners to the service.
-func (p *Plugin) startPool() (workflowPool, error) {
-	const op = errors.Op("workflow_plugin_start_pool")
-	pool, err := newWorkflowPool(
+func (p *Plugin) startPool() (pool, error) {
+	const op = errors.Op("workflow_plugin_start_worker")
+	wrk, err := makeWorker(
 		p.temporal.GetCodec().WithLogger(p.log),
 		p.server,
+		p.eventListener,
 	)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
 
-	err = pool.Start(context.Background(), p.temporal)
+	err = wrk.Start(context.Background(), p.temporal)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
 
-	p.log.Debug("Started workflow processing", "workflows", pool.WorkflowNames())
+	p.log.Debug("Started workflow processing", "workflows", wrk.WorkflowNames())
 
-	return pool, nil
+	return wrk, nil
 }
 
 func (p *Plugin) replacePool() error {
 	p.mu.Lock()
-	const op = errors.Op("workflow_plugin_replace_pool")
+	const op = errors.Op("workflow_plugin_replace_worker")
 	defer p.mu.Unlock()
 
 	if p.pool != nil {
@@ -168,22 +169,33 @@ func (p *Plugin) replacePool() error {
 		}
 	}
 
-	pool, err := p.startPool()
+	wrk, err := p.startPool()
 	if err != nil {
 		p.log.Error("Replace workflow pool failed", "error", err)
 		return errors.E(op, err)
 	}
 
-	p.pool = pool
+	p.pool = wrk
 	p.log.Debug("workflow pool successfully replaced")
 
 	return nil
 }
 
-// getPool returns currently pool.
-func (p *Plugin) getPool() workflowPool {
+// getPool returns pool.
+func (p *Plugin) getPool() pool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	return p.pool
+}
+
+func (p *Plugin) eventListener(event interface{}) {
+	if ev, ok := event.(events.WorkerEvent); ok {
+		if ev.Event == events.EventWorkerError {
+			err := p.replacePool()
+			if err != nil {
+				p.log.Error("Unable to start workers", "error", err)
+			}
+		}
+	}
 }
