@@ -9,7 +9,8 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/events"
-	"github.com/spiral/roadrunner/v2/pkg/worker"
+	"github.com/spiral/roadrunner/v2/pkg/states"
+	rrWorker "github.com/spiral/roadrunner/v2/pkg/worker"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	"github.com/spiral/roadrunner/v2/plugins/logger"
 	"github.com/spiral/roadrunner/v2/plugins/server"
@@ -23,7 +24,7 @@ const (
 	// Main plugin name
 	RootPluginName = "temporal"
 
-	// RRMode sets as RR_MODE env variable to let worker know about the mode to run.
+	// RRMode sets as RR_MODE env variable to let pool know about the mode to run.
 	RRMode = "temporal/workflow"
 )
 
@@ -35,7 +36,7 @@ type Plugin struct {
 	log      logger.Logger
 	mu       sync.Mutex
 	reset    chan struct{}
-	pool     workflowPool
+	pool     pool
 	closing  int64
 }
 
@@ -56,16 +57,18 @@ func (p *Plugin) Init(temporal client.Temporal, server server.Server, log logger
 
 // Serve starts workflow service.
 func (p *Plugin) Serve() chan error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	const op = errors.Op("workflow_plugin_serve")
 	errCh := make(chan error, 1)
 
-	pool, err := p.startPool()
+	workflowPool, err := p.startPool()
 	if err != nil {
 		errCh <- errors.E(op, err)
 		return errCh
 	}
 
-	p.pool = pool
+	p.pool = workflowPool
 
 	go func() {
 		for {
@@ -99,10 +102,9 @@ func (p *Plugin) Stop() error {
 	const op = errors.Op("workflow_plugin_stop")
 	atomic.StoreInt64(&p.closing, 1)
 
-	pool := p.getPool()
-	if pool != nil {
-		p.pool = nil
-		err := pool.Destroy(context.Background())
+	workflowPool := p.getPool()
+	if workflowPool != nil {
+		err := workflowPool.Destroy(context.Background())
 		if err != nil {
 			return errors.E(op, err)
 		}
@@ -118,9 +120,12 @@ func (p *Plugin) Name() string {
 }
 
 // Workers returns list of available workflow workers.
-func (p *Plugin) Workers() []worker.BaseProcess {
+func (p *Plugin) Workers() []rrWorker.BaseProcess {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if p.pool == nil {
+		return nil
+	}
 	return p.pool.Workers()
 }
 
@@ -132,31 +137,16 @@ func (p *Plugin) WorkflowNames() []string {
 // Reset resets underlying workflow pool with new copy.
 func (p *Plugin) Reset() error {
 	p.reset <- struct{}{}
-
 	return nil
 }
 
 // AddListener adds event listeners to the service.
-func (p *Plugin) poolListener(event interface{}) {
-	if ev, ok := event.(PoolEvent); ok {
-		if ev.Event == eventWorkerExit {
-			if ev.Caused != nil {
-				p.log.Error("Workflow pool error", "error", ev.Caused)
-			}
-			p.reset <- struct{}{}
-		}
-	}
-
-	p.events.Push(event)
-}
-
-// AddListener adds event listeners to the service.
-func (p *Plugin) startPool() (workflowPool, error) {
-	const op = errors.Op("workflow_plugin_start_pool")
-	pool, err := newWorkflowPool(
+func (p *Plugin) startPool() (pool, error) {
+	const op = errors.Op("workflow_plugin_start_worker")
+	pool, err := newPool(
 		p.temporal.GetCodec().WithLogger(p.log),
-		p.poolListener,
 		p.server,
+		p.poolListener,
 	)
 	if err != nil {
 		return nil, errors.E(op, err)
@@ -174,9 +164,9 @@ func (p *Plugin) startPool() (workflowPool, error) {
 
 func (p *Plugin) replacePool() error {
 	p.mu.Lock()
-	const op = errors.Op("workflow_plugin_replace_pool")
 	defer p.mu.Unlock()
 
+	const op = errors.Op("workflow_plugin_replace_worker")
 	if p.pool != nil {
 		err := p.pool.Destroy(context.Background())
 		p.pool = nil
@@ -190,22 +180,46 @@ func (p *Plugin) replacePool() error {
 		}
 	}
 
-	pool, err := p.startPool()
+	wrk, err := p.startPool()
 	if err != nil {
 		p.log.Error("Replace workflow pool failed", "error", err)
 		return errors.E(op, err)
 	}
 
-	p.pool = pool
+	p.pool = wrk
 	p.log.Debug("workflow pool successfully replaced")
 
 	return nil
 }
 
-// getPool returns currently pool.
-func (p *Plugin) getPool() workflowPool {
+// getPool returns pool.
+func (p *Plugin) getPool() pool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	return p.pool
+}
+
+// AddListener adds event listeners to the service.
+func (p *Plugin) poolListener(event interface{}) {
+	if ev, ok := event.(events.PoolEvent); ok {
+		if ev.Event == events.EventPoolError {
+			p.log.Error("workflow pool error", "error", ev.Payload.(error))
+			p.reset <- struct{}{}
+		}
+	}
+
+	if ev, ok := event.(events.WorkerEvent); ok {
+		if ev.Event == events.EventWorkerError {
+			// if destroyed, do not reset
+			if ev.Worker.(rrWorker.BaseProcess).State().Value() == states.StateDestroyed {
+				p.events.Push(event)
+				return
+			}
+			p.reset <- struct{}{}
+			p.log.Error("worker error", "error", ev.Payload.(error))
+		}
+	}
+
+	p.events.Push(event)
 }

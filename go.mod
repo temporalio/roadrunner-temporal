@@ -8,9 +8,9 @@ require (
 	github.com/golang/protobuf v1.4.3
 	github.com/json-iterator/go v1.1.10
 	github.com/pborman/uuid v1.2.1
-	github.com/spiral/endure v1.0.0-beta21
+	github.com/spiral/endure v1.0.0-beta.22
 	github.com/spiral/errors v1.0.9
-	github.com/spiral/roadrunner/v2 v2.0.0-beta12
+	github.com/spiral/roadrunner/v2 v2.0.0-beta.22
 	github.com/stretchr/testify v1.7.0
 	go.temporal.io/api v1.4.0
 	go.temporal.io/sdk v1.4.1

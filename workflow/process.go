@@ -15,7 +15,7 @@ import (
 // wraps single workflow process
 type workflowProcess struct {
 	codec     rrt.Codec
-	pool      workflowPool
+	pool      pool
 	env       bindings.WorkflowEnvironment
 	header    *commonpb.Header
 	mq        *messageQueue
@@ -36,7 +36,7 @@ func (wf *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *com
 	wf.runID = env.WorkflowInfo().WorkflowExecution.RunID
 	wf.canceller = &canceller{}
 
-	// sequenceID shared for all worker workflows
+	// sequenceID shared for all pool workflows
 	wf.mq = newMessageQueue(wf.pool.SeqID)
 	wf.ids = newIDRegistry()
 
@@ -44,10 +44,8 @@ func (wf *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *com
 	env.RegisterSignalHandler(wf.handleSignal)
 	env.RegisterQueryHandler(wf.handleQuery)
 
-	var (
-		lastCompletion       = bindings.GetLastCompletionResult(env)
-		lastCompletionOffset = 0
-	)
+	var lastCompletion = bindings.GetLastCompletionResult(env)
+	var lastCompletionOffset = 0
 
 	if lastCompletion != nil && len(lastCompletion.Payloads) != 0 {
 		if input == nil {
@@ -123,9 +121,6 @@ func (wf *workflowProcess) StackTrace() string {
 
 // Close the workflow.
 func (wf *workflowProcess) Close() {
-	// TODO: properly handle errors
-	// panic(err)
-
 	_ = wf.mq.pushCommand(
 		rrt.DestroyWorkflow{RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID},
 		nil,
@@ -164,20 +159,19 @@ func (wf *workflowProcess) handleSignal(name string, input *commonpb.Payloads) {
 
 // Handle query in blocking mode.
 func (wf *workflowProcess) handleQuery(queryType string, queryArgs *commonpb.Payloads) (*commonpb.Payloads, error) {
-	result, err := wf.runCommand(
-		rrt.InvokeQuery{
-			RunID: wf.runID,
-			Name:  queryType,
-		},
+	const op = errors.Op("workflow_process_handle_query")
+	result, err := wf.runCommand(rrt.InvokeQuery{
+		RunID: wf.runID,
+		Name:  queryType},
 		queryArgs,
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, errors.E(op, err)
 	}
 
 	if result.Failure != nil {
-		return nil, bindings.ConvertFailureToError(result.Failure, wf.env.GetDataConverter())
+		return nil, errors.E(op, bindings.ConvertFailureToError(result.Failure, wf.env.GetDataConverter()))
 	}
 
 	return result.Payloads, nil
@@ -187,16 +181,13 @@ func (wf *workflowProcess) handleQuery(queryType string, queryArgs *commonpb.Pay
 func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
 	const op = errors.Op("handleMessage")
 	var err error
+	var id = msg.ID
+	var cmd = msg.Command
+	var payloads = msg.Payloads
 
-	var (
-		id       = msg.ID
-		cmd      = msg.Command
-		payloads = msg.Payloads
-	)
-
-	switch cmd := cmd.(type) {
+	switch command := cmd.(type) {
 	case *rrt.ExecuteActivity:
-		params := cmd.ActivityParams(wf.env, payloads)
+		params := command.ActivityParams(wf.env, payloads)
 		activityID := wf.env.ExecuteActivity(params, wf.createCallback(id))
 
 		wf.canceller.register(id, func() error {
@@ -205,7 +196,7 @@ func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
 		})
 
 	case *rrt.ExecuteChildWorkflow:
-		params := cmd.WorkflowParams(wf.env, payloads)
+		params := command.WorkflowParams(wf.env, payloads)
 
 		// always use deterministic id
 		if params.WorkflowID == "" {
@@ -223,7 +214,7 @@ func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
 		})
 
 	case *rrt.GetChildWorkflowExecution:
-		wf.ids.listen(cmd.ID, func(w bindings.WorkflowExecution, err error) {
+		wf.ids.listen(command.ID, func(w bindings.WorkflowExecution, err error) {
 			cl := wf.createCallback(id)
 
 			// TODO rewrite
@@ -231,16 +222,16 @@ func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
 				panic(err)
 			}
 
-			p, err := wf.env.GetDataConverter().ToPayloads(w)
-			if err != nil {
-				panic(err)
+			p, er := wf.env.GetDataConverter().ToPayloads(w)
+			if er != nil {
+				panic(er)
 			}
 
 			cl(p, err)
 		})
 
 	case *rrt.NewTimer:
-		timerID := wf.env.NewTimer(cmd.ToDuration(), wf.createCallback(id))
+		timerID := wf.env.NewTimer(command.ToDuration(), wf.createCallback(id))
 		wf.canceller.register(id, func() error {
 			if timerID != nil {
 				wf.env.RequestCancelTimer(*timerID)
@@ -250,9 +241,9 @@ func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
 
 	case *rrt.GetVersion:
 		version := wf.env.GetVersion(
-			cmd.ChangeID,
-			workflow.Version(cmd.MinSupported),
-			workflow.Version(cmd.MaxSupported),
+			command.ChangeID,
+			workflow.Version(command.MinSupported),
+			workflow.Version(command.MaxSupported),
 		)
 
 		result, err := wf.env.GetDataConverter().ToPayloads(version)
@@ -263,7 +254,7 @@ func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
 		wf.mq.pushResponse(id, result)
 		err = wf.flushQueue()
 		if err != nil {
-			panic(err)
+			return errors.E(op, err)
 		}
 
 	case *rrt.SideEffect:
@@ -289,32 +280,32 @@ func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
 		wf.mq.pushResponse(id, result)
 
 		wf.env.Complete(nil, &workflow.ContinueAsNewError{
-			WorkflowType:             &bindings.WorkflowType{Name: cmd.Name},
+			WorkflowType:             &bindings.WorkflowType{Name: command.Name},
 			Input:                    payloads,
 			Header:                   wf.header,
-			TaskQueueName:            cmd.Options.TaskQueueName,
-			WorkflowExecutionTimeout: cmd.Options.WorkflowExecutionTimeout,
-			WorkflowRunTimeout:       cmd.Options.WorkflowRunTimeout,
-			WorkflowTaskTimeout:      cmd.Options.WorkflowTaskTimeout,
+			TaskQueueName:            command.Options.TaskQueueName,
+			WorkflowExecutionTimeout: command.Options.WorkflowExecutionTimeout,
+			WorkflowRunTimeout:       command.Options.WorkflowRunTimeout,
+			WorkflowTaskTimeout:      command.Options.WorkflowTaskTimeout,
 		})
 
 	case *rrt.SignalExternalWorkflow:
 		wf.env.SignalExternalWorkflow(
-			cmd.Namespace,
-			cmd.WorkflowID,
-			cmd.RunID,
-			cmd.Signal,
+			command.Namespace,
+			command.WorkflowID,
+			command.RunID,
+			command.Signal,
 			payloads,
 			nil,
-			cmd.ChildWorkflowOnly,
+			command.ChildWorkflowOnly,
 			wf.createCallback(id),
 		)
 
 	case *rrt.CancelExternalWorkflow:
-		wf.env.RequestCancelExternalWorkflow(cmd.Namespace, cmd.WorkflowID, cmd.RunID, wf.createCallback(id))
+		wf.env.RequestCancelExternalWorkflow(command.Namespace, command.WorkflowID, command.RunID, wf.createCallback(id))
 
 	case *rrt.Cancel:
-		err = wf.canceller.cancel(cmd.CommandIDs...)
+		err = wf.canceller.cancel(command.CommandIDs...)
 		if err != nil {
 			return errors.E(op, err)
 		}
@@ -324,14 +315,14 @@ func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
 
 		err = wf.flushQueue()
 		if err != nil {
-			panic(err)
+			return errors.E(op, err)
 		}
 
 	case *rrt.Panic:
-		panic(errors.E(cmd.Message))
+		return errors.E(op, errors.Str(command.Message))
 
 	default:
-		panic("undefined command")
+		return errors.E(op, errors.Str("undefined command"))
 	}
 
 	return nil
@@ -390,7 +381,7 @@ func (wf *workflowProcess) createContinuableCallback(id uint64) bindings.ResultH
 	}
 }
 
-// Exchange messages between host and worker processes and add new commands to the queue.
+// Exchange messages between host and pool processes and add new commands to the queue.
 func (wf *workflowProcess) flushQueue() error {
 	const op = errors.Op("flush queue")
 	messages, err := wf.codec.Execute(wf.pool, wf.getContext(), wf.mq.queue...)
@@ -405,7 +396,7 @@ func (wf *workflowProcess) flushQueue() error {
 	return nil
 }
 
-// Exchange messages between host and worker processes without adding new commands to the queue.
+// Exchange messages between host and pool processes without adding new commands to the queue.
 func (wf *workflowProcess) discardQueue() ([]rrt.Message, error) {
 	const op = errors.Op("discard queue")
 	messages, err := wf.codec.Execute(wf.pool, wf.getContext(), wf.mq.queue...)
@@ -429,7 +420,7 @@ func (wf *workflowProcess) runCommand(cmd interface{}, payloads *commonpb.Payloa
 	}
 
 	if len(result) != 1 {
-		return rrt.Message{}, errors.E(op, errors.Str("unexpected worker response"))
+		return rrt.Message{}, errors.E(op, errors.Str("unexpected pool response"))
 	}
 
 	return result[0], nil
