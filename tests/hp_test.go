@@ -309,39 +309,6 @@ func Test_ActivityHeartbeat(t *testing.T) {
 	wg.Wait()
 }
 
-func Test_FailedActivityHeartbeat(t *testing.T) {
-	stopCh := make(chan struct{}, 1)
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, false)
-
-	w, err := s.Client().ExecuteWorkflow(
-		context.Background(),
-		client.StartWorkflowOptions{
-			TaskQueue: "default",
-		},
-		"FailedHeartbeatWorkflow",
-		1,
-	)
-	assert.NoError(t, err)
-
-	time.Sleep(time.Second)
-
-	we, err := s.Client().DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
-	assert.NoError(t, err)
-	assert.Len(t, we.PendingActivities, 1)
-
-	act := we.PendingActivities[0]
-
-	assert.Equal(t, `{"value":1}`, string(act.HeartbeatDetails.Payloads[0].Data))
-
-	var result string
-	assert.NoError(t, w.Get(context.Background(), &result))
-	assert.Equal(t, "OK!", result)
-	stopCh <- struct{}{}
-	wg.Wait()
-}
-
 func Test_BinaryPayload(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
@@ -754,39 +721,6 @@ func Test_ActivityHeartbeatProto(t *testing.T) {
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "OK", result)
-	stopCh <- struct{}{}
-	wg.Wait()
-}
-
-func Test_FailedActivityHeartbeatProto(t *testing.T) {
-	stopCh := make(chan struct{}, 1)
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
-
-	w, err := s.Client().ExecuteWorkflow(
-		context.Background(),
-		client.StartWorkflowOptions{
-			TaskQueue: "default",
-		},
-		"FailedHeartbeatWorkflow",
-		1,
-	)
-	assert.NoError(t, err)
-
-	time.Sleep(time.Second)
-
-	we, err := s.Client().DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
-	assert.NoError(t, err)
-	assert.Len(t, we.PendingActivities, 1)
-
-	act := we.PendingActivities[0]
-
-	assert.Equal(t, `{"value":1}`, string(act.HeartbeatDetails.Payloads[0].Data))
-
-	var result string
-	assert.NoError(t, w.Get(context.Background(), &result))
-	assert.Equal(t, "OK!", result)
 	stopCh <- struct{}{}
 	wg.Wait()
 }
