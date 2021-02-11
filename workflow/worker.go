@@ -37,11 +37,11 @@ type pool interface {
 
 // workerImpl manages workflowProcess executions between pool restarts.
 type workerImpl struct {
+	sync.Mutex
 	codec     rrt.Codec
 	seqID     uint64
 	workflows map[string]rrt.WorkflowInfo
 	tWorkers  []tWorker.Worker
-	mu        sync.Mutex
 	pool      rrPool.Pool
 }
 
@@ -66,7 +66,6 @@ func newPool(codec rrt.Codec, factory server.Server, listener ...events.Listener
 
 	wrk := &workerImpl{
 		codec: codec,
-		mu:    sync.Mutex{},
 		pool:  p,
 	}
 
@@ -94,8 +93,8 @@ func (w *workerImpl) Start(ctx context.Context, temporal client.Temporal) error 
 
 // Destroy stops all temporal workers and application pool.
 func (w *workerImpl) Destroy(ctx context.Context) error {
-	w.mu.Lock()
-	defer w.mu.Unlock()
+	w.Lock()
+	defer w.Unlock()
 
 	for i := 0; i < len(w.tWorkers); i++ {
 		w.tWorkers[i].Stop()
@@ -110,8 +109,8 @@ func (w *workerImpl) Destroy(ctx context.Context) error {
 
 // Pool returns rr Pool
 func (w *workerImpl) Pool() rrPool.Pool {
-	w.mu.Lock()
-	defer w.mu.Unlock()
+	w.Lock()
+	defer w.Unlock()
 	return w.pool
 }
 
@@ -130,20 +129,14 @@ func (w *workerImpl) SeqID() uint64 {
 
 // Exec set of commands in thread safe move.
 func (w *workerImpl) Exec(p payload.Payload) (payload.Payload, error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
+	w.Lock()
+	defer w.Unlock()
 
 	return w.pool.Exec(p)
 }
 
 func (w *workerImpl) Workers() []rrWorker.BaseProcess {
-	wrk := w.pool.Workers()
-	base := make([]rrWorker.BaseProcess, 0, 1)
-	for i := 0; i < len(wrk); i++ {
-		base = append(base, rrWorker.FromSync(wrk[i].(*rrWorker.SyncWorkerImpl)))
-	}
-
-	return base
+	return w.pool.Workers()
 }
 
 func (w *workerImpl) WorkflowNames() []string {
@@ -164,22 +157,22 @@ func (w *workerImpl) initPool(ctx context.Context, temporal client.Temporal) err
 	}
 
 	w.workflows = make(map[string]rrt.WorkflowInfo)
-	w.tWorkers = make([]tWorker.Worker, 0)
+	w.tWorkers = make([]tWorker.Worker, 0, len(workerInfo))
 
-	for j := range workerInfo {
-		wrk, err := temporal.CreateWorker(workerInfo[j].TaskQueue, workerInfo[j].Options)
+	for i := range workerInfo {
+		wrk, err := temporal.CreateWorker(workerInfo[i].TaskQueue, workerInfo[i].Options)
 		if err != nil {
 			return errors.E(op, err, w.Destroy(ctx))
 		}
 
 		w.tWorkers = append(w.tWorkers, wrk)
-		for i := range workerInfo[j].Workflows {
+		for j := range workerInfo[i].Workflows {
 			wrk.RegisterWorkflowWithOptions(w, workflow.RegisterOptions{
-				Name:                          workerInfo[j].Workflows[i].Name,
+				Name:                          workerInfo[i].Workflows[j].Name,
 				DisableAlreadyRegisteredCheck: false,
 			})
 
-			w.workflows[workerInfo[j].Workflows[i].Name] = workerInfo[j].Workflows[i]
+			w.workflows[workerInfo[i].Workflows[j].Name] = workerInfo[i].Workflows[j]
 		}
 	}
 

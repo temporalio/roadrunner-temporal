@@ -9,7 +9,6 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/events"
-	"github.com/spiral/roadrunner/v2/pkg/states"
 	rrWorker "github.com/spiral/roadrunner/v2/pkg/worker"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	"github.com/spiral/roadrunner/v2/plugins/logger"
@@ -25,19 +24,22 @@ const (
 	RootPluginName = "temporal"
 
 	// RRMode sets as RR_MODE env variable to let pool know about the mode to run.
-	RRMode = "temporal/workflow"
+	RRMode = "workflow"
 )
 
 // Plugin manages workflows and workers.
 type Plugin struct {
+	// embed
+	sync.Mutex
+	// plugins
 	temporal client.Temporal
 	events   events.Handler
 	server   server.Server
 	log      logger.Logger
-	mu       sync.Mutex
-	reset    chan struct{}
-	pool     pool
-	closing  int64
+
+	reset   chan struct{}
+	pool    pool
+	closing int64
 }
 
 // Init workflow plugin.
@@ -57,8 +59,8 @@ func (p *Plugin) Init(temporal client.Temporal, server server.Server, log logger
 
 // Serve starts workflow service.
 func (p *Plugin) Serve() chan error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.Lock()
+	defer p.Unlock()
 	const op = errors.Op("workflow_plugin_serve")
 	errCh := make(chan error, 1)
 
@@ -70,37 +72,16 @@ func (p *Plugin) Serve() chan error {
 
 	p.pool = workflowPool
 
-	go func() {
-		for {
-			select {
-			case <-p.reset:
-				if atomic.LoadInt64(&p.closing) == 1 {
-					return
-				}
-
-				err := p.replacePool()
-				if err == nil {
-					continue
-				}
-
-				bkoff := backoff.NewExponentialBackOff()
-				bkoff.InitialInterval = time.Second
-
-				err = backoff.Retry(p.replacePool, bkoff)
-				if err != nil {
-					errCh <- errors.E(op, err)
-				}
-			}
-		}
-	}()
+	// start pool watcher
+	go p.watch(errCh)
 
 	return errCh
 }
 
 // Stop workflow service.
 func (p *Plugin) Stop() error {
-	const op = errors.Op("workflow_plugin_stop")
 	atomic.StoreInt64(&p.closing, 1)
+	const op = errors.Op("workflow_plugin_stop")
 
 	workflowPool := p.getPool()
 	if workflowPool != nil {
@@ -121,8 +102,8 @@ func (p *Plugin) Name() string {
 
 // Workers returns list of available workflow workers.
 func (p *Plugin) Workers() []rrWorker.BaseProcess {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.Lock()
+	defer p.Unlock()
 	if p.pool == nil {
 		return nil
 	}
@@ -163,8 +144,8 @@ func (p *Plugin) startPool() (pool, error) {
 }
 
 func (p *Plugin) replacePool() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.Lock()
+	defer p.Unlock()
 
 	const op = errors.Op("workflow_plugin_replace_worker")
 	if p.pool != nil {
@@ -180,13 +161,13 @@ func (p *Plugin) replacePool() error {
 		}
 	}
 
-	wrk, err := p.startPool()
+	pool, err := p.startPool()
 	if err != nil {
 		p.log.Error("Replace workflow pool failed", "error", err)
 		return errors.E(op, err)
 	}
 
-	p.pool = wrk
+	p.pool = pool
 	p.log.Debug("workflow pool successfully replaced")
 
 	return nil
@@ -194,10 +175,40 @@ func (p *Plugin) replacePool() error {
 
 // getPool returns pool.
 func (p *Plugin) getPool() pool {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.Lock()
+	defer p.Unlock()
 
 	return p.pool
+}
+
+// watch takes care about replacing pool
+func (p *Plugin) watch(errCh chan error) {
+	go func() {
+		const op = errors.Op("workflow_plugin_watch")
+		for {
+			select {
+			case <-p.reset:
+				if atomic.LoadInt64(&p.closing) == 1 {
+					return
+				}
+
+				err := p.replacePool()
+				if err == nil {
+					continue
+				}
+
+				bkoff := backoff.NewExponentialBackOff()
+				bkoff.InitialInterval = time.Second
+
+				err = backoff.Retry(p.replacePool, bkoff)
+				if err != nil {
+					p.log.Error("failed to replace workflow pool", "error", errors.E(op, err))
+					errCh <- err
+					return
+				}
+			}
+		}
+	}()
 }
 
 // AddListener adds event listeners to the service.
@@ -211,8 +222,8 @@ func (p *Plugin) poolListener(event interface{}) {
 
 	if ev, ok := event.(events.WorkerEvent); ok {
 		if ev.Event == events.EventWorkerError {
-			// if destroyed, do not reset
-			if ev.Worker.(rrWorker.BaseProcess).State().Value() == states.StateDestroyed {
+			// if destroyed, do not reset, because RR-pool will handle this signal
+			if ev.Worker.(rrWorker.BaseProcess).State().Value() == rrWorker.StateDestroyed {
 				p.events.Push(event)
 				return
 			}

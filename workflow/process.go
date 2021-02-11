@@ -162,9 +162,8 @@ func (wf *workflowProcess) handleQuery(queryType string, queryArgs *commonpb.Pay
 	const op = errors.Op("workflow_process_handle_query")
 	result, err := wf.runCommand(rrt.InvokeQuery{
 		RunID: wf.runID,
-		Name:  queryType},
-		queryArgs,
-	)
+		Name:  queryType,
+	}, queryArgs)
 
 	if err != nil {
 		return nil, errors.E(op, err)
@@ -180,23 +179,19 @@ func (wf *workflowProcess) handleQuery(queryType string, queryArgs *commonpb.Pay
 // process incoming command
 func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
 	const op = errors.Op("handleMessage")
-	var err error
-	var id = msg.ID
-	var cmd = msg.Command
-	var payloads = msg.Payloads
 
-	switch command := cmd.(type) {
+	switch command := msg.Command.(type) {
 	case *rrt.ExecuteActivity:
-		params := command.ActivityParams(wf.env, payloads)
-		activityID := wf.env.ExecuteActivity(params, wf.createCallback(id))
+		params := command.ActivityParams(wf.env, msg.Payloads)
+		activityID := wf.env.ExecuteActivity(params, wf.createCallback(msg.ID))
 
-		wf.canceller.register(id, func() error {
+		wf.canceller.register(msg.ID, func() error {
 			wf.env.RequestCancelActivity(activityID)
 			return nil
 		})
 
 	case *rrt.ExecuteChildWorkflow:
-		params := command.WorkflowParams(wf.env, payloads)
+		params := command.WorkflowParams(wf.env, msg.Payloads)
 
 		// always use deterministic id
 		if params.WorkflowID == "" {
@@ -204,18 +199,18 @@ func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
 			params.WorkflowID = wf.env.WorkflowInfo().WorkflowExecution.RunID + "_" + strconv.Itoa(int(nextID))
 		}
 
-		wf.env.ExecuteChildWorkflow(params, wf.createCallback(id), func(r bindings.WorkflowExecution, e error) {
-			wf.ids.push(id, r, e)
+		wf.env.ExecuteChildWorkflow(params, wf.createCallback(msg.ID), func(r bindings.WorkflowExecution, e error) {
+			wf.ids.push(msg.ID, r, e)
 		})
 
-		wf.canceller.register(id, func() error {
+		wf.canceller.register(msg.ID, func() error {
 			wf.env.RequestCancelChildWorkflow(params.Namespace, params.WorkflowID)
 			return nil
 		})
 
 	case *rrt.GetChildWorkflowExecution:
 		wf.ids.listen(command.ID, func(w bindings.WorkflowExecution, err error) {
-			cl := wf.createCallback(id)
+			cl := wf.createCallback(msg.ID)
 
 			// TODO rewrite
 			if err != nil {
@@ -231,8 +226,8 @@ func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
 		})
 
 	case *rrt.NewTimer:
-		timerID := wf.env.NewTimer(command.ToDuration(), wf.createCallback(id))
-		wf.canceller.register(id, func() error {
+		timerID := wf.env.NewTimer(command.ToDuration(), wf.createCallback(msg.ID))
+		wf.canceller.register(msg.ID, func() error {
 			if timerID != nil {
 				wf.env.RequestCancelTimer(*timerID)
 			}
@@ -251,7 +246,7 @@ func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
 			return errors.E(op, err)
 		}
 
-		wf.mq.pushResponse(id, result)
+		wf.mq.pushResponse(msg.ID, result)
 		err = wf.flushQueue()
 		if err != nil {
 			return errors.E(op, err)
@@ -260,28 +255,28 @@ func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
 	case *rrt.SideEffect:
 		wf.env.SideEffect(
 			func() (*commonpb.Payloads, error) {
-				return payloads, nil
+				return msg.Payloads, nil
 			},
-			wf.createContinuableCallback(id),
+			wf.createContinuableCallback(msg.ID),
 		)
 
 	case *rrt.CompleteWorkflow:
 		result, _ := wf.env.GetDataConverter().ToPayloads("completed")
-		wf.mq.pushResponse(id, result)
+		wf.mq.pushResponse(msg.ID, result)
 
 		if msg.Failure == nil {
-			wf.env.Complete(payloads, nil)
+			wf.env.Complete(msg.Payloads, nil)
 		} else {
 			wf.env.Complete(nil, bindings.ConvertFailureToError(msg.Failure, wf.env.GetDataConverter()))
 		}
 
 	case *rrt.ContinueAsNew:
 		result, _ := wf.env.GetDataConverter().ToPayloads("completed")
-		wf.mq.pushResponse(id, result)
+		wf.mq.pushResponse(msg.ID, result)
 
 		wf.env.Complete(nil, &workflow.ContinueAsNewError{
 			WorkflowType:             &bindings.WorkflowType{Name: command.Name},
-			Input:                    payloads,
+			Input:                    msg.Payloads,
 			Header:                   wf.header,
 			TaskQueueName:            command.Options.TaskQueueName,
 			WorkflowExecutionTimeout: command.Options.WorkflowExecutionTimeout,
@@ -295,23 +290,23 @@ func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
 			command.WorkflowID,
 			command.RunID,
 			command.Signal,
-			payloads,
+			msg.Payloads,
 			nil,
 			command.ChildWorkflowOnly,
-			wf.createCallback(id),
+			wf.createCallback(msg.ID),
 		)
 
 	case *rrt.CancelExternalWorkflow:
-		wf.env.RequestCancelExternalWorkflow(command.Namespace, command.WorkflowID, command.RunID, wf.createCallback(id))
+		wf.env.RequestCancelExternalWorkflow(command.Namespace, command.WorkflowID, command.RunID, wf.createCallback(msg.ID))
 
 	case *rrt.Cancel:
-		err = wf.canceller.cancel(command.CommandIDs...)
+		err := wf.canceller.cancel(command.CommandIDs...)
 		if err != nil {
 			return errors.E(op, err)
 		}
 
 		result, _ := wf.env.GetDataConverter().ToPayloads("completed")
-		wf.mq.pushResponse(id, result)
+		wf.mq.pushResponse(msg.ID, result)
 
 		err = wf.flushQueue()
 		if err != nil {

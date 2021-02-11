@@ -8,9 +8,9 @@ import (
 
 // used to gain access to child workflow ids after they become available via callback result.
 type idRegistry struct {
-	mu        sync.Mutex
-	ids       map[uint64]entry
-	listeners map[uint64]listener
+	sync.Mutex
+	ids       sync.Map
+	listeners sync.Map
 }
 
 type listener func(w bindings.WorkflowExecution, err error)
@@ -21,31 +21,27 @@ type entry struct {
 }
 
 func newIDRegistry() *idRegistry {
-	return &idRegistry{
-		ids:       map[uint64]entry{},
-		listeners: map[uint64]listener{},
-	}
+	return &idRegistry{}
 }
 
 func (c *idRegistry) listen(id uint64, cl listener) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.listeners[id] = cl
-
-	if e, ok := c.ids[id]; ok {
+	c.listeners.Store(id, cl)
+	val, exist := c.ids.Load(id)
+	if exist {
+		c.Lock()
+		e := val.(entry)
 		cl(e.w, e.err)
+		c.Unlock()
 	}
 }
 
 func (c *idRegistry) push(id uint64, w bindings.WorkflowExecution, err error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	e := entry{w: w, err: err}
-	c.ids[id] = e
-
-	if l, ok := c.listeners[id]; ok {
-		l(e.w, e.err)
+	c.ids.Store(id, entry{w: w, err: err})
+	l, exist := c.listeners.Load(id)
+	if exist {
+		c.Lock()
+		list := l.(listener)
+		list(w, err)
+		c.Unlock()
 	}
 }

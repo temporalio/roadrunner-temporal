@@ -26,7 +26,7 @@ const (
 	RootPluginName = "temporal"
 
 	// RRMode sets as RR_MODE env variable to let worker know about the mode to run.
-	RRMode = "temporal/activity"
+	RRMode = "temporal"
 )
 
 // Plugin to manage activity execution.
