@@ -321,7 +321,7 @@ func Test_FailedActivityHeartbeat(t *testing.T) {
 			TaskQueue: "default",
 		},
 		"FailedHeartbeatWorkflow",
-		8,
+		1,
 	)
 	assert.NoError(t, err)
 
@@ -333,7 +333,7 @@ func Test_FailedActivityHeartbeat(t *testing.T) {
 
 	act := we.PendingActivities[0]
 
-	assert.Equal(t, `{"value":8}`, string(act.HeartbeatDetails.Payloads[0].Data))
+	assert.Equal(t, `{"value":1}`, string(act.HeartbeatDetails.Payloads[0].Data))
 
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
@@ -770,7 +770,7 @@ func Test_FailedActivityHeartbeatProto(t *testing.T) {
 			TaskQueue: "default",
 		},
 		"FailedHeartbeatWorkflow",
-		8,
+		1,
 	)
 	assert.NoError(t, err)
 
@@ -782,7 +782,7 @@ func Test_FailedActivityHeartbeatProto(t *testing.T) {
 
 	act := we.PendingActivities[0]
 
-	assert.Equal(t, `{"value":8}`, string(act.HeartbeatDetails.Payloads[0].Data))
+	assert.Equal(t, `{"value":1}`, string(act.HeartbeatDetails.Payloads[0].Data))
 
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
