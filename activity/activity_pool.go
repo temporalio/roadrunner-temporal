@@ -12,6 +12,7 @@ import (
 	"github.com/spiral/roadrunner/v2/plugins/server"
 	"github.com/temporalio/roadrunner-temporal/client"
 	rrt "github.com/temporalio/roadrunner-temporal/protocol"
+	"github.com/temporalio/roadrunner-temporal/utils"
 	"go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/converter"
@@ -110,7 +111,7 @@ func (pool *activityPoolImpl) ActivityNames() []string {
 // ActivityNames returns list of all available activity names.
 func (pool *activityPoolImpl) GetActivityContext(taskToken []byte) (context.Context, error) {
 	const op = errors.Op("activity_pool_get_activity_context")
-	c, ok := pool.running.Load(string(taskToken))
+	c, ok := pool.running.Load(utils.ToString(taskToken))
 	if !ok {
 		return nil, errors.E(op, errors.Str("heartbeat on non running activity"))
 	}
@@ -177,8 +178,8 @@ func (pool *activityPoolImpl) executeActivity(ctx context.Context, args *common.
 		msg.Payloads.Payloads = append(msg.Payloads.Payloads, heartbeatDetails.Payloads...)
 	}
 
-	pool.running.Store(string(info.TaskToken), ctx)
-	defer pool.running.Delete(string(info.TaskToken))
+	pool.running.Store(utils.ToString(info.TaskToken), ctx)
+	defer pool.running.Delete(utils.ToString(info.TaskToken))
 
 	result, err := pool.codec.Execute(pool.wp, rrt.Context{TaskQueue: info.TaskQueue}, msg)
 	if err != nil {
