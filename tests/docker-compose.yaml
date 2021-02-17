@@ -1,32 +1,46 @@
-version: '3.5'
+version: '3.7'
 
 services:
-  cassandra:
-    image: cassandra:3.11
-    ports:
-      - "9042:9042"
-  temporal:
-    image: temporalio/auto-setup:1.6.3
-    ports:
-      - "7233:7233"
+  postgresql:
+    container_name: temporal-postgresql
+    image: postgres:13.1
     environment:
-      - "CASSANDRA_SEEDS=cassandra"
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_USER: temporal
+    ports:
+      - 5432:5432
+
+  temporal:
+    container_name: temporal
+    image: temporalio/auto-setup:1.6.3
     depends_on:
-      - cassandra
+      - postgresql
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgresql
+    ports:
+      - 7233:7233
+
   temporal-admin-tools:
+    container_name: temporal-admin-tools
     image: temporalio/admin-tools:1.6.3
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
     stdin_open: true
     tty: true
-    environment:
-      - "TEMPORAL_CLI_ADDRESS=temporal:7233"
-    depends_on:
-      - temporal
+
   temporal-web:
-    image: temporalio/web:1.6.1
-    environment:
-      - "TEMPORAL_GRPC_ENDPOINT=temporal:7233"
-      - "TEMPORAL_PERMIT_WRITE_API=true"
-    ports:
-      - "8088:8088"
+    container_name: temporal-web
+    image: temporalio/web:1.6.2
     depends_on:
       - temporal
+    environment:
+      - TEMPORAL_GRPC_ENDPOINT=temporal:7233
+      - TEMPORAL_PERMIT_WRITE_API=true
+    ports:
+      - 8088:8088
