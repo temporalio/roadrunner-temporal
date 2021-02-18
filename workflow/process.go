@@ -314,7 +314,8 @@ func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
 		}
 
 	case *rrt.Panic:
-		return errors.E(op, errors.Str(command.Message))
+		// do not wrap error to pass it directly to Temporal
+		return bindings.ConvertFailureToError(msg.Failure, wf.env.GetDataConverter())
 
 	default:
 		return errors.E(op, errors.Str("undefined command"))
