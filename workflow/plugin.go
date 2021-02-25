@@ -24,7 +24,7 @@ const (
 	RootPluginName = "temporal"
 
 	// RRMode sets as RR_MODE env variable to let pool know about the mode to run.
-	RRMode = "workflow"
+	RRMode = "temporal"
 )
 
 // Plugin manages workflows and workers.
