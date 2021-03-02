@@ -109,6 +109,7 @@ func (p *Plugin) Serve() chan error {
 
 	if err != nil {
 		errCh <- errors.E(op, err)
+		return errCh
 	}
 
 	p.log.Debug("connected to temporal server", "address", p.cfg.Address)
