@@ -8,7 +8,7 @@ require (
 	github.com/golang/protobuf v1.4.3
 	github.com/json-iterator/go v1.1.10
 	github.com/pborman/uuid v1.2.1
-	github.com/spiral/endure v1.0.0-beta.23
+	github.com/spiral/endure v1.0.0-RC.2
 	github.com/spiral/errors v1.0.9
 	github.com/spiral/roadrunner/v2 v2.0.0-RC.3
 	github.com/stretchr/testify v1.7.0
@@ -19,3 +19,5 @@ require (
 	golang.org/x/tools v0.0.0-20210115202250-e0d201561e39 // indirect
 	google.golang.org/protobuf v1.25.0
 )
+
+replace github.com/spiral/roadrunner/v2 v2.0.0-RC.3 => ../roadrunner

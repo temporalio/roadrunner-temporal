@@ -31,7 +31,7 @@ class CancelledNestedWorkflow
                             $this->status[] = 'second scope';
 
                             try {
-                                yield Workflow::timer(2);
+                                yield Workflow::timer(20);
                             } catch (CanceledFailure $e) {
                                 $this->status[] = 'second scope cancelled';
                                 throw $e;
@@ -46,7 +46,7 @@ class CancelledNestedWorkflow
                     );
 
                     try {
-                        yield Workflow::timer(1);
+                        yield Workflow::timer(20);
                     } catch (CanceledFailure $e) {
                         $this->status[] = 'first scope cancelled';
                         throw $e;

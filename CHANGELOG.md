@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+v1.0.0 (02.03.2021)
+-------------------
+- ⬆️ Update temporal in the `docker-compose.yaml` to `1.7.0`.
+- ⬆️ Endure update to `v1.0.0-RC.2`
+- ⬆️ RR update to `v2.0.0`
+
 v1.0.0-RC.2 (17.02.2021)
 -------------------
 - Update `docker-compose.yaml`, use `postgres` instead of `cassandra`.
