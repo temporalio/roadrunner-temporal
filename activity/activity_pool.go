@@ -10,6 +10,7 @@ import (
 	"github.com/spiral/roadrunner/v2/pkg/pool"
 	rrWorker "github.com/spiral/roadrunner/v2/pkg/worker"
 	"github.com/spiral/roadrunner/v2/plugins/server"
+	roadrunner_temporal "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/client"
 	rrt "github.com/temporalio/roadrunner-temporal/protocol"
 	"github.com/temporalio/roadrunner-temporal/utils"
@@ -50,7 +51,7 @@ type activityPoolImpl struct {
 func newActivityPool(codec rrt.Codec, listener events.Listener, poolConfig pool.Config, server server.Server) (activityPool, error) {
 	const op = errors.Op("new_activity_pool")
 	// env variables
-	env := map[string]string{RR_MODE: RRMode, RR_CODEC: codec.GetName()}
+	env := map[string]string{RR_MODE: roadrunner_temporal.RRMode, RR_CODEC: codec.GetName()}
 	wp, err := server.NewWorkerPool(context.Background(), poolConfig, env, listener)
 	if err != nil {
 		return nil, errors.E(op, err)

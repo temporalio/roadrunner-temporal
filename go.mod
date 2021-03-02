@@ -13,7 +13,7 @@ require (
 	github.com/spiral/roadrunner/v2 v2.0.0-RC.3
 	github.com/stretchr/testify v1.7.0
 	go.temporal.io/api v1.4.0
-	go.temporal.io/sdk v1.4.1
+	go.temporal.io/sdk v1.5.0
 	go.uber.org/zap v1.16.0
 	golang.org/x/lint v0.0.0-20201208152925-83fdc39ff7b5 // indirect
 	golang.org/x/tools v0.0.0-20210115202250-e0d201561e39 // indirect
