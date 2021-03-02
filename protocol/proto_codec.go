@@ -1,7 +1,7 @@
 package protocol
 
 import (
-	v1 "github.com/golang/protobuf/proto"
+	v1Proto "github.com/golang/protobuf/proto" //nolint:staticcheck
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/payload"
@@ -60,7 +60,7 @@ func (c *ProtoCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message
 		return nil, errors.E(errors.Op("encodeContext"), err)
 	}
 
-	p.Body, err = proto.Marshal(v1.MessageV2(request))
+	p.Body, err = proto.Marshal(v1Proto.MessageV2(request))
 	if err != nil {
 		return nil, errors.E(errors.Op("encodePayload"), err)
 	}
@@ -75,7 +75,7 @@ func (c *ProtoCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message
 		return nil, nil
 	}
 
-	err = proto.Unmarshal(out.Body, v1.MessageV2(response))
+	err = proto.Unmarshal(out.Body, v1Proto.MessageV2(response))
 	if err != nil {
 		return nil, errors.E(errors.Op("parseResponse"), err)
 	}

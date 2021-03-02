@@ -1,3 +1,6 @@
+run:
+  skip-files:
+    - "protocol/internal/protocol.pb.go"
 linters:
   disable-all: true
   enable:
