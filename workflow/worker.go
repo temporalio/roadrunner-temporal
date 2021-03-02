@@ -11,6 +11,7 @@ import (
 	rrPool "github.com/spiral/roadrunner/v2/pkg/pool"
 	rrWorker "github.com/spiral/roadrunner/v2/pkg/worker"
 	"github.com/spiral/roadrunner/v2/plugins/server"
+	roadrunner_temporal "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/client"
 	rrt "github.com/temporalio/roadrunner-temporal/protocol"
 	bindings "go.temporal.io/sdk/internalbindings"
@@ -48,7 +49,7 @@ type workerImpl struct {
 // newPool creates new workflow pool.
 func newPool(codec rrt.Codec, factory server.Server, listener ...events.Listener) (pool, error) {
 	const op = errors.Op("new_workflow_pool")
-	env := map[string]string{RR_MODE: RRMode, RR_CODEC: codec.GetName()}
+	env := map[string]string{RR_MODE: roadrunner_temporal.RRMode, RR_CODEC: codec.GetName()}
 
 	cfg := rrPool.Config{
 		NumWorkers: 1,

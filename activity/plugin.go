@@ -8,6 +8,7 @@ import (
 	"github.com/spiral/roadrunner/v2/pkg/events"
 	"github.com/spiral/roadrunner/v2/pkg/worker"
 	"github.com/spiral/roadrunner/v2/plugins/config"
+	roadrunner_temporal "github.com/temporalio/roadrunner-temporal"
 
 	"sync"
 	"sync/atomic"
@@ -21,12 +22,6 @@ import (
 const (
 	// PluginName defines public service name.
 	PluginName = "activities"
-
-	// Main plugin name
-	RootPluginName = "temporal"
-
-	// RRMode sets as RR_MODE env variable to let worker know about the mode to run.
-	RRMode = "temporal"
 )
 
 // Plugin to manage activity execution.
@@ -44,7 +39,7 @@ type Plugin struct {
 // Init configures activity service.
 func (p *Plugin) Init(temporal client.Temporal, server server.Server, log logger.Logger, cfg config.Configurer) error {
 	const op = errors.Op("activity_plugin_init")
-	if !cfg.Has(RootPluginName) {
+	if !cfg.Has(roadrunner_temporal.RootPluginName) {
 		return errors.E(op, errors.Disabled)
 	}
 
