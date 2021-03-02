@@ -1,7 +1,7 @@
 package protocol
 
 import (
-	v1 "github.com/golang/protobuf/proto" //nolint:staticcheck
+	v1 "github.com/golang/protobuf/proto" //nolint
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/payload"
