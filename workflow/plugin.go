@@ -13,18 +13,13 @@ import (
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	"github.com/spiral/roadrunner/v2/plugins/logger"
 	"github.com/spiral/roadrunner/v2/plugins/server"
+	roadrunner_temporal "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/client"
 )
 
 const (
 	// PluginName defines public service name.
 	PluginName = "workflows"
-
-	// Main plugin name
-	RootPluginName = "temporal"
-
-	// RRMode sets as RR_MODE env variable to let pool know about the mode to run.
-	RRMode = "temporal"
 )
 
 // Plugin manages workflows and workers.
@@ -45,7 +40,7 @@ type Plugin struct {
 // Init workflow plugin.
 func (p *Plugin) Init(temporal client.Temporal, server server.Server, log logger.Logger, cfg config.Configurer) error {
 	const op = errors.Op("workflow_plugin_init")
-	if !cfg.Has(RootPluginName) {
+	if !cfg.Has(roadrunner_temporal.RootPluginName) {
 		return errors.E(op, errors.Disabled)
 	}
 	p.temporal = temporal
