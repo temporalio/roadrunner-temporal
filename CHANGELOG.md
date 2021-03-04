@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+vnext
+-------------------
+-🪛 Use `runCommand` instead of `pushCommand` due to phantom unexpected responses in the workflow process `Close` method.
+
 v1.0.0 (02.03.2021)
 -------------------
 - ⬆️ Update temporal in the `docker-compose.yaml` to `1.7.0`.
