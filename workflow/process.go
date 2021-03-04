@@ -121,11 +121,9 @@ func (wf *workflowProcess) StackTrace() string {
 
 // Close the workflow.
 func (wf *workflowProcess) Close() {
-	_ = wf.mq.pushCommand(
-		rrt.DestroyWorkflow{RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID},
-		nil,
-	)
-
+	// send destroy command
+	_, _ = wf.runCommand(rrt.DestroyWorkflow{RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID}, nil)
+	// flush queue
 	_, _ = wf.discardQueue()
 }
 
