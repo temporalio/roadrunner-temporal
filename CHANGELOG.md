@@ -3,7 +3,7 @@ CHANGELOG
 
 vnext
 -------------------
--🪛 Use `runCommand` instead of `pushCommand` due to phantom unexpected responses in the workflow process `Close` method.
+-🪛 Use `runCommand` instead of `pushCommand` because of phantom unexpected responses in the workflow process `Close` method.
 
 v1.0.0 (02.03.2021)
 -------------------
