@@ -261,6 +261,8 @@ func Test_CancelledMidflightWorkflow(t *testing.T) {
 	assert.NoError(t, err)
 
 	trace := make([]string, 0)
+
+	time.Sleep(time.Second * 3)
 	assert.NoError(t, e.Get(&trace))
 	assert.Equal(
 		t,
@@ -572,6 +574,7 @@ func Test_CancelledMidflightWorkflowProto(t *testing.T) {
 	assert.NoError(t, err)
 
 	trace := make([]string, 0)
+	time.Sleep(time.Second * 3)
 	assert.NoError(t, e.Get(&trace))
 	assert.Equal(
 		t,
