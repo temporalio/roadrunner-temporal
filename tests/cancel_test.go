@@ -252,6 +252,7 @@ func Test_CancelledMidflightWorkflow(t *testing.T) {
 		"CancelledMidflightWorkflow",
 	)
 	assert.NoError(t, err)
+	assert.NotNil(t, w)
 
 	var result interface{}
 	assert.NoError(t, w.Get(context.Background(), &result))
@@ -259,8 +260,9 @@ func Test_CancelledMidflightWorkflow(t *testing.T) {
 
 	e, err := s.Client().QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "getStatus")
 	assert.NoError(t, err)
-
+	assert.NotNil(t, e)
 	trace := make([]string, 0)
+
 	assert.NoError(t, e.Get(&trace))
 	assert.Equal(
 		t,
@@ -563,6 +565,7 @@ func Test_CancelledMidflightWorkflowProto(t *testing.T) {
 		"CancelledMidflightWorkflow",
 	)
 	assert.NoError(t, err)
+	assert.NotNil(t, w)
 
 	var result interface{}
 	assert.NoError(t, w.Get(context.Background(), &result))
@@ -570,8 +573,10 @@ func Test_CancelledMidflightWorkflowProto(t *testing.T) {
 
 	e, err := s.Client().QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "getStatus")
 	assert.NoError(t, err)
+	assert.NotNil(t, e)
 
 	trace := make([]string, 0)
+
 	assert.NoError(t, e.Get(&trace))
 	assert.Equal(
 		t,
