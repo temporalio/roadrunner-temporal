@@ -124,7 +124,7 @@ func (wf *workflowProcess) Close() {
 	// send destroy command
 	_, _ = wf.runCommand(rrt.DestroyWorkflow{RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID}, nil)
 	// flush queue
-	_, _ = wf.discardQueue()
+	wf.mq.flush()
 }
 
 // execution context.
@@ -419,3 +419,45 @@ func (wf *workflowProcess) runCommand(cmd interface{}, payloads *commonpb.Payloa
 
 	return result[0], nil
 }
+
+//
+//=== RUN   Test_CancelledNSingleScopeWorkflow
+//--- PASS: Test_CancelledNSingleScopeWorkflow (1.66s)
+//=== RUN   Test_CancelledMidflightWorkflow
+//cancel_test.go:261:
+//Error Trace:	cancel_test.go:261
+//Error:      	Received unexpected error:
+///home/runner/go/pkg/mod/go.temporal.io/sdk@v1.5.0/internal/internal_event_handlers.go:921: go.temporal.io/sdk/internal.(*workflowExecutionEventHandlerImpl).ProcessQuery:
+///home/runner/work/roadrunner-temporal/roadrunner-temporal/workflow/process.go:167: github.com/temporalio/roadrunner-temporal/workflow.(*workflowProcess).handleQuery:
+///home/runner/work/roadrunner-temporal/roadrunner-temporal/workflow/process.go:413: ...runCommand:
+///home/runner/work/roadrunner-temporal/roadrunner-temporal/protocol/json_codec.go:112: ...protocol.(*JSONCodec).Execute:
+///home/runner/work/roadrunner-temporal/roadrunner-temporal/workflow/worker.go:136: ...workflow.(*workerImpl).Exec:
+///home/runner/go/pkg/mod/github.com/spiral/roadrunner/v2@v2.0.0/pkg/pool/static_pool.go:147: ...spiral/roadrunner/v2/pkg/pool.(*StaticPool).Exec:
+///home/runner/go/pkg/mod/github.com/spiral/roadrunner/v2@v2.0.0/pkg/pool/static_pool.go:234: ...getWorker:
+///home/runner/go/pkg/mod/github.com/spiral/roadrunner/v2@v2.0.0/pkg/worker_watcher/worker_watcher.go:67: ...worker_watcher.(*workerWatcher).Get.func1: workflow_process_handle_query: Workers watcher stopped:
+//workflow_process_runcommand:
+//json_codec_execute:
+//static_pool_exec:
+//static_pool_exec:
+//worker_watcher_get_free_worker
+//Test:       	Test_CancelledMidflightWorkflow
+//--- FAIL: Test_CancelledMidflightWorkflow (0.77s)
+//panic: runtime error: invalid memory address or nil pointer dereference [recovered]
+//panic: runtime error: invalid memory address or nil pointer dereference
+//[signal SIGSEGV: segmentation violation code=0x1 addr=0x18 pc=0x1647fb9]
+//
+//goroutine 508 [running]:
+//testing.tRunner.func1.1(0x174e940, 0x218fd10)
+///opt/hostedtoolcache/go/1.15.8/x64/src/testing/testing.go:1072 +0x46a
+//testing.tRunner.func1(0xc0007d4600)
+///opt/hostedtoolcache/go/1.15.8/x64/src/testing/testing.go:1075 +0x636
+//panic(0x174e940, 0x218fd10)
+///opt/hostedtoolcache/go/1.15.8/x64/src/runtime/panic.go:975 +0x47a
+//github.com/temporalio/roadrunner-temporal/tests.Test_CancelledMidflightWorkflow(0xc0007d4600)
+///home/runner/work/roadrunner-temporal/roadrunner-temporal/tests/cancel_test.go:264 +0x5f9
+//testing.tRunner(0xc0007d4600, 0x18f51d8)
+///opt/hostedtoolcache/go/1.15.8/x64/src/testing/testing.go:1123 +0x203
+//created by testing.(*T).Run
+///opt/hostedtoolcache/go/1.15.8/x64/src/testing/testing.go:1168 +0x5bc
+//FAIL	github.com/temporalio/roadrunner-temporal/tests	10.619s
+//FAIL

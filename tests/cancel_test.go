@@ -258,8 +258,6 @@ func Test_CancelledMidflightWorkflow(t *testing.T) {
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "OK", result)
 
-	time.Sleep(time.Second * 3)
-
 	e, err := s.Client().QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "getStatus")
 	assert.NoError(t, err)
 	assert.NotNil(t, e)
@@ -572,8 +570,6 @@ func Test_CancelledMidflightWorkflowProto(t *testing.T) {
 	var result interface{}
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "OK", result)
-
-	time.Sleep(time.Second * 3)
 
 	e, err := s.Client().QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "getStatus")
 	assert.NoError(t, err)
