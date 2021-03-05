@@ -14,5 +14,5 @@ temporal:
   debug_level: 2
 
 logs:
-  mode: development
-  level: debug
+  mode: production
+  level: error
