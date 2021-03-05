@@ -124,7 +124,8 @@ func (wf *workflowProcess) Close() {
 	// send destroy command
 	_, _ = wf.runCommand(rrt.DestroyWorkflow{RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID}, nil)
 	// flush queue
-	wf.mq.flush()
+	_, _ = wf.discardQueue()
+	//wf.mq.flush()
 }
 
 // execution context.
