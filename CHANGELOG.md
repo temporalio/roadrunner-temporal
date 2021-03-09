@@ -1,9 +1,12 @@
 CHANGELOG
 =========
 
-vnext
+v2.0.1 (09.03.2021)
 -------------------
 -🪛 Use `runCommand` instead of `pushCommand` because of phantom unexpected responses in the workflow process `Close` method.
+- 📦 Bump Endure container to v1.0.0.
+- 📦 Bump RR2 to v2.0.1.
+- 📦 Bump golang version in the CI and in the `go.mod` to 1.16
 
 v1.0.0 (02.03.2021)
 -------------------
