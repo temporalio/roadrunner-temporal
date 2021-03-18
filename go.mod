@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/cenkalti/backoff/v4 v4.1.0
 	github.com/fatih/color v1.10.0
-	github.com/golang/protobuf v1.4.3
+	github.com/golang/protobuf v1.5.1
 	github.com/json-iterator/go v1.1.10
 	github.com/pborman/uuid v1.2.1
 	github.com/spiral/endure v1.0.0
@@ -17,5 +17,5 @@ require (
 	go.uber.org/zap v1.16.0
 	golang.org/x/lint v0.0.0-20201208152925-83fdc39ff7b5 // indirect
 	golang.org/x/tools v0.0.0-20210115202250-e0d201561e39 // indirect
-	google.golang.org/protobuf v1.25.0
+	google.golang.org/protobuf v1.26.0
 )
