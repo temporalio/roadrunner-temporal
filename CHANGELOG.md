@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+v2.0.2 (23.03.2021)
+-------------------
+- 📦 Bump RR2 to [v2.0.2](https://github.com/spiral/roadrunner/releases/tag/v2.0.2)
+
 v2.0.1 (09.03.2021)
 -------------------
 -🪛 Use `runCommand` instead of `pushCommand` because of phantom unexpected responses in the workflow process `Close` method.
