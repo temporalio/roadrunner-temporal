@@ -32,6 +32,9 @@ type Plugin struct {
 	server   server.Server
 	log      logger.Logger
 
+	// graceful timeout for the worker
+	gracePeriod time.Duration
+
 	reset   chan struct{}
 	pool    pool
 	closing int64
@@ -48,6 +51,9 @@ func (p *Plugin) Init(temporal client.Temporal, server server.Server, log logger
 	p.events = events.NewEventsHandler()
 	p.log = log
 	p.reset = make(chan struct{}, 1)
+
+	// it can't be 0 (except set by user), because it would be set by the rr-binary (cli)
+	p.gracePeriod = cfg.GetCommonConfig().GracefulTimeout
 
 	return nil
 }
@@ -122,6 +128,7 @@ func (p *Plugin) startPool() (pool, error) {
 	pool, err := newPool(
 		p.temporal.GetCodec().WithLogger(p.log),
 		p.server,
+		p.gracePeriod,
 		p.poolListener,
 	)
 	if err != nil {

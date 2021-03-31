@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/events"
@@ -38,13 +39,17 @@ type activityPool interface {
 }
 
 type activityPoolImpl struct {
-	dc         converter.DataConverter
-	codec      rrt.Codec
-	seqID      uint64
-	activities []string
-	wp         pool.Pool
-	tWorkers   []worker.Worker
-	running    sync.Map
+	dc           converter.DataConverter
+	codec        rrt.Codec
+	seqID        uint64
+	activities   []string
+	wp           pool.Pool
+	tWorkers     []worker.Worker
+	running      sync.Map
+	//
+	// graceful stop timeout for the worker
+	//
+	graceTimeout time.Duration
 }
 
 // newActivityPool
@@ -133,6 +138,8 @@ func (pool *activityPoolImpl) initWorkers(ctx context.Context, temporal client.T
 	pool.tWorkers = make([]worker.Worker, 0)
 
 	for i := 0; i < len(workerInfo); i++ {
+		// set the graceful timeout for the worker
+		workerInfo[i].Options.WorkerStopTimeout = pool.graceTimeout
 		w, err := temporal.CreateWorker(workerInfo[i].TaskQueue, workerInfo[i].Options)
 		if err != nil {
 			return errors.E(op, err, pool.Destroy(ctx))
