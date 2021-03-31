@@ -12,7 +12,7 @@ class SignalChildViaStubWorkflow
     public function handler()
     {
         // typed stub
-        $simple = Workflow::newChildWorkflowStub(SimpleSignalledWorkflow::class);
+        $simple = Workflow::newChildWorkflowStub(SimpleSignaledWorkflow::class);
 
         // start execution
         $call = $simple->handler();

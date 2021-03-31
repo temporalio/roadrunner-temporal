@@ -8,9 +8,9 @@ use Temporal\Workflow\WorkflowMethod;
 use Temporal\Tests\Activity\SimpleActivity;
 
 #[Workflow\WorkflowInterface]
-class CancelledScopeWorkflow
+class CanceledScopeWorkflow
 {
-    #[WorkflowMethod(name: 'CancelledScopeWorkflow')]
+    #[WorkflowMethod(name: 'CanceledScopeWorkflow')]
     public function handler()
     {
         $simple = Workflow::newActivityStub(
@@ -18,7 +18,7 @@ class CancelledScopeWorkflow
             ActivityOptions::new()->withStartToCloseTimeout(5)
         );
 
-        $cancelled = 'not';
+        $canceled = 'not';
 
         $scope = Workflow::async(
             function () use ($simple) {
@@ -26,14 +26,14 @@ class CancelledScopeWorkflow
                 yield $simple->slow('hello');
             }
         )->onCancel(
-            function () use (&$cancelled) {
-                $cancelled = 'yes';
+            function () use (&$canceled) {
+                $canceled = 'yes';
             }
         );
 
         yield Workflow::timer(1);
         $scope->cancel();
 
-        return $cancelled;
+        return $canceled;
     }
 }

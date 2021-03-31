@@ -95,7 +95,7 @@ func (p *Plugin) Serve() chan error {
 	errCh := make(chan error, 1)
 	var err error
 
-	if stickyCacheSet == false && p.cfg.CacheSize != 0 {
+	if stickyCacheSet == false && p.cfg.CacheSize != 0 { //nolint:gosimple
 		worker.SetStickyWorkflowCacheSize(p.cfg.CacheSize)
 		stickyCacheSet = true
 	}

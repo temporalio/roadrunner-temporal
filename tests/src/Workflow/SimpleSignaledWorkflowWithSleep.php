@@ -8,7 +8,7 @@ use Temporal\Workflow;
 use Temporal\Workflow\WorkflowMethod;
 
 #[Workflow\WorkflowInterface]
-class SimpleSignalledWorkflowWithSleep
+class SimpleSignaledWorkflowWithSleep
 {
     private $counter = 0;
 
@@ -19,7 +19,7 @@ class SimpleSignalledWorkflowWithSleep
         $this->counter += $value;
     }
 
-    #[WorkflowMethod(name: 'SimpleSignalledWorkflowWithSleep')]
+    #[WorkflowMethod(name: 'SimpleSignaledWorkflowWithSleep')]
     public function handler(): iterable
     {
         // collect signals during one second

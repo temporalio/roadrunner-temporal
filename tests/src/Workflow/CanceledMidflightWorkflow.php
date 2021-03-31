@@ -8,7 +8,7 @@ use Temporal\Workflow;
 use Temporal\Workflow\WorkflowMethod;
 
 #[Workflow\WorkflowInterface]
-class CancelledMidflightWorkflow
+class CanceledMidflightWorkflow
 {
     private array $status = [];
 
@@ -18,7 +18,7 @@ class CancelledMidflightWorkflow
         return $this->status;
     }
 
-    #[WorkflowMethod(name: 'CancelledMidflightWorkflow')]
+    #[WorkflowMethod(name: 'CanceledMidflightWorkflow')]
     public function handler()
     {
         $simple = Workflow::newActivityStub(

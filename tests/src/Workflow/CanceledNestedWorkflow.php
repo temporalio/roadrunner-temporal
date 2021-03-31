@@ -7,7 +7,7 @@ use Temporal\Workflow;
 use Temporal\Workflow\WorkflowMethod;
 
 #[Workflow\WorkflowInterface]
-class CancelledNestedWorkflow
+class CanceledNestedWorkflow
 {
     private array $status = [];
 
@@ -17,7 +17,7 @@ class CancelledNestedWorkflow
         return $this->status;
     }
 
-    #[WorkflowMethod(name: 'CancelledNestedWorkflow')]
+    #[WorkflowMethod(name: 'CanceledNestedWorkflow')]
     public function handler()
     {
         $this->status[] = 'begin';
@@ -33,7 +33,7 @@ class CancelledNestedWorkflow
                             try {
                                 yield Workflow::timer(20);
                             } catch (CanceledFailure $e) {
-                                $this->status[] = 'second scope cancelled';
+                                $this->status[] = 'second scope canceled';
                                 throw $e;
                             }
 
@@ -48,7 +48,7 @@ class CancelledNestedWorkflow
                     try {
                         yield Workflow::timer(20);
                     } catch (CanceledFailure $e) {
-                        $this->status[] = 'first scope cancelled';
+                        $this->status[] = 'first scope canceled';
                         throw $e;
                     }
 
@@ -64,7 +64,7 @@ class CancelledNestedWorkflow
         } catch (CanceledFailure $e) {
             $this->status[] = 'close process';
 
-            return 'CANCELLED';
+            return 'CANCELED';
         }
 
         return 'OK';

@@ -33,7 +33,9 @@ type Plugin struct {
 	mu       sync.Mutex
 	reset    chan struct{}
 	pool     activityPool
-	closing  int64
+	// graceful timeout for the worker
+	graceTimeout time.Duration
+	closing      int64
 }
 
 // Init configures activity service.
@@ -54,6 +56,9 @@ func (p *Plugin) Init(temporal client.Temporal, server server.Server, log logger
 	p.log = log
 	p.reset = make(chan struct{})
 
+	// it can't be 0 (except set by user), because it would be set by the rr-binary (cli)
+	p.graceTimeout = cfg.GetCommonConfig().GracefulTimeout
+
 	return nil
 }
 
@@ -71,25 +76,23 @@ func (p *Plugin) Serve() chan error {
 	p.pool = pool
 
 	go func() {
-		for {
-			select {
-			case <-p.reset:
-				if atomic.LoadInt64(&p.closing) == 1 {
-					return
-				}
+		// single case loop
+		for range p.reset {
+			if atomic.LoadInt64(&p.closing) == 1 {
+				return
+			}
 
-				err := p.replacePool()
-				if err == nil {
-					continue
-				}
+			err := p.replacePool()
+			if err == nil {
+				continue
+			}
 
-				bkoff := backoff.NewExponentialBackOff()
-				bkoff.InitialInterval = time.Second
+			bkoff := backoff.NewExponentialBackOff()
+			bkoff.InitialInterval = time.Second
 
-				err = backoff.Retry(p.replacePool, bkoff)
-				if err != nil {
-					errCh <- errors.E(op, err)
-				}
+			err = backoff.Retry(p.replacePool, bkoff)
+			if err != nil {
+				errCh <- errors.E(op, err)
 			}
 		}
 	}()

@@ -11,9 +11,9 @@ use Temporal\Workflow\WorkflowMethod;
 use Temporal\Tests\Activity\SimpleActivity;
 
 #[Workflow\WorkflowInterface]
-class WorkflowWithSignalledSteps
+class WorkflowWithSignaledSteps
 {
-    #[WorkflowMethod(name: 'WorkflowWithSignalledSteps')]
+    #[WorkflowMethod(name: 'WorkflowWithSignaledSteps')]
     public function handler()
     {
         $simple = Workflow::newActivityStub(

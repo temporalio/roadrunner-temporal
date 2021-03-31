@@ -24,7 +24,7 @@ func Test_SignalsWithoutSignals(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"SimpleSignalledWorkflow",
+		"SimpleSignaledWorkflow",
 		"Hello World",
 	)
 	assert.NoError(t, err)
@@ -44,13 +44,13 @@ func Test_SendSignalDuringTimer(t *testing.T) {
 
 	w, err := s.Client().SignalWithStartWorkflow(
 		context.Background(),
-		"signalled-"+uuid.New(),
+		"signaled-"+uuid.New(),
 		"add",
 		10,
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"SimpleSignalledWorkflow",
+		"SimpleSignaledWorkflow",
 	)
 	assert.NoError(t, err)
 
@@ -84,7 +84,7 @@ func Test_SendSignalBeforeCompletingWorkflow(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"SimpleSignalledWorkflowWithSleep",
+		"SimpleSignaledWorkflowWithSleep",
 	)
 	assert.NoError(t, err)
 
@@ -118,7 +118,7 @@ func Test_RuntimeSignal(t *testing.T) {
 
 	w, err := s.Client().SignalWithStartWorkflow(
 		context.Background(),
-		"signalled-"+uuid.New(),
+		"signaled-"+uuid.New(),
 		"add",
 		-1,
 		client.StartWorkflowOptions{
@@ -155,7 +155,7 @@ func Test_SignalSteps(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"WorkflowWithSignalledSteps",
+		"WorkflowWithSignaledSteps",
 	)
 	assert.NoError(t, err)
 
@@ -201,7 +201,7 @@ func Test_SignalsWithoutSignalsProto(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"SimpleSignalledWorkflow",
+		"SimpleSignaledWorkflow",
 		"Hello World",
 	)
 	assert.NoError(t, err)
@@ -221,13 +221,13 @@ func Test_SendSignalDuringTimerProto(t *testing.T) {
 
 	w, err := s.Client().SignalWithStartWorkflow(
 		context.Background(),
-		"signalled-"+uuid.New(),
+		"signaled-"+uuid.New(),
 		"add",
 		10,
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"SimpleSignalledWorkflow",
+		"SimpleSignaledWorkflow",
 	)
 	assert.NoError(t, err)
 
@@ -261,7 +261,7 @@ func Test_SendSignalBeforeCompletingWorkflowProto(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"SimpleSignalledWorkflowWithSleep",
+		"SimpleSignaledWorkflowWithSleep",
 	)
 	assert.NoError(t, err)
 
@@ -295,7 +295,7 @@ func Test_RuntimeSignalProto(t *testing.T) {
 
 	w, err := s.Client().SignalWithStartWorkflow(
 		context.Background(),
-		"signalled-"+uuid.New(),
+		"signaled-"+uuid.New(),
 		"add",
 		-1,
 		client.StartWorkflowOptions{
@@ -332,7 +332,7 @@ func Test_SignalStepsProto(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"WorkflowWithSignalledSteps",
+		"WorkflowWithSignaledSteps",
 	)
 	assert.NoError(t, err)
 

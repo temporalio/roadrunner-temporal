@@ -71,15 +71,17 @@ func (wf *workflowProcess) OnWorkflowTaskStarted() {
 	defer func() { wf.inLoop = false }()
 
 	var err error
-	for _, callback := range wf.callbacks {
-		err = callback()
+	// do not copy
+	for k := range wf.callbacks {
+		err = wf.callbacks[k]()
 		if err != nil {
 			panic(err)
 		}
 	}
 	wf.callbacks = nil
 
-	if err := wf.flushQueue(); err != nil {
+	err = wf.flushQueue()
+	if err != nil {
 		panic(err)
 	}
 
@@ -339,9 +341,9 @@ func (wf *workflowProcess) createCallback(id uint64) bindings.ResultHandler {
 	return func(result *commonpb.Payloads, err error) {
 		// timer cancel callback can happen inside the loop
 		if wf.inLoop {
-			err := callback(result, err)
-			if err != nil {
-				panic(err)
+			errC := callback(result, err)
+			if errC != nil {
+				panic(errC)
 			}
 
 			return
@@ -388,19 +390,6 @@ func (wf *workflowProcess) flushQueue() error {
 	wf.pipeline = append(wf.pipeline, messages...)
 
 	return nil
-}
-
-// Exchange messages between host and pool processes without adding new commands to the queue.
-func (wf *workflowProcess) discardQueue() ([]rrt.Message, error) {
-	const op = errors.Op("discard queue")
-	messages, err := wf.codec.Execute(wf.pool, wf.getContext(), wf.mq.queue...)
-	wf.mq.flush()
-
-	if err != nil {
-		return nil, errors.E(op, err)
-	}
-
-	return messages, nil
 }
 
 // Run single command and return single result.
