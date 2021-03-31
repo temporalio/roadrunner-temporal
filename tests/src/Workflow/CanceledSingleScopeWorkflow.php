@@ -9,7 +9,7 @@ use Temporal\Workflow\WorkflowMethod;
 use Temporal\Tests\Activity\SimpleActivity;
 
 #[Workflow\WorkflowInterface]
-class CancelledSingleScopeWorkflow
+class CanceledSingleScopeWorkflow
 {
     private array $status = [];
 
@@ -19,7 +19,7 @@ class CancelledSingleScopeWorkflow
         return $this->status;
     }
 
-    #[WorkflowMethod(name: 'CancelledSingleScopeWorkflow')]
+    #[WorkflowMethod(name: 'CanceledSingleScopeWorkflow')]
     public function handler()
     {
         $simple = Workflow::newActivityStub(

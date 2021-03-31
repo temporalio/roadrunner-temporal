@@ -18,7 +18,7 @@ import (
 	"go.temporal.io/sdk/client"
 )
 
-func init() {
+func init() { //nolint:gochecknoinits
 	color.NoColor = false
 }
 

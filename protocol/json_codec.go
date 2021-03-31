@@ -74,9 +74,9 @@ func (c *JSONCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 
 	frames := make([]jsonFrame, 0, len(msg))
 	for _, m := range msg {
-		frame, err := c.packFrame(m)
-		if err != nil {
-			return nil, errors.E(op, err)
+		frame, errF := c.packFrame(m)
+		if errF != nil {
+			return nil, errors.E(op, errF)
 		}
 
 		frames = append(frames, frame)

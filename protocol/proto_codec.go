@@ -40,9 +40,9 @@ func (c *ProtoCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message
 	var err error
 
 	for _, m := range msg {
-		frame, err := c.packMessage(m)
-		if err != nil {
-			return nil, err
+		frame, errP := c.packMessage(m)
+		if errP != nil {
+			return nil, errP
 		}
 
 		request.Messages = append(request.Messages, frame)
@@ -81,9 +81,9 @@ func (c *ProtoCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message
 	}
 
 	for _, f := range response.Messages {
-		msg, err := c.parseMessage(f)
-		if err != nil {
-			return nil, err
+		msg, errM := c.parseMessage(f)
+		if errM != nil {
+			return nil, errM
 		}
 
 		result = append(result, msg)

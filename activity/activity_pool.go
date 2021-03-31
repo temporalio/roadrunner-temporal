@@ -39,13 +39,13 @@ type activityPool interface {
 }
 
 type activityPoolImpl struct {
-	dc           converter.DataConverter
-	codec        rrt.Codec
-	seqID        uint64
-	activities   []string
-	wp           pool.Pool
-	tWorkers     []worker.Worker
-	running      sync.Map
+	dc         converter.DataConverter
+	codec      rrt.Codec
+	seqID      uint64
+	activities []string
+	wp         pool.Pool
+	tWorkers   []worker.Worker
+	running    sync.Map
 	//
 	// graceful stop timeout for the worker
 	//

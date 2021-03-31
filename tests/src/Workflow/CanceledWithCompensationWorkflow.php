@@ -9,7 +9,7 @@ use Temporal\Workflow;
 use Temporal\Workflow\WorkflowMethod;
 
 #[Workflow\WorkflowInterface]
-class CancelledWithCompensationWorkflow
+class CanceledWithCompensationWorkflow
 {
     private array $status = [];
 
@@ -19,7 +19,7 @@ class CancelledWithCompensationWorkflow
         return $this->status;
     }
 
-    #[WorkflowMethod(name: 'CancelledWithCompensationWorkflow')]
+    #[WorkflowMethod(name: 'CanceledWithCompensationWorkflow')]
     public function handler()
     {
         $simple = Workflow::newActivityStub(
@@ -44,10 +44,10 @@ class CancelledWithCompensationWorkflow
             }
 
             try {
-                // fail since on cancelled context
+                // fail since on canceled context
                 $result = yield $simple->echo('echo must fail');
             } catch (CanceledFailure $e) {
-                $this->status[] = 'captured promise on cancelled';
+                $this->status[] = 'captured promise on canceled';
             }
 
             $scope = Workflow::asyncDetached(

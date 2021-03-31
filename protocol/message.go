@@ -170,7 +170,7 @@ type CancelExternalWorkflow struct {
 
 // Cancel one or multiple internal promises (activities, local activities, timers, child workflows).
 type Cancel struct {
-	// CommandIDs to be cancelled.
+	// CommandIDs to be canceled.
 	CommandIDs []uint64 `json:"ids"`
 }
 

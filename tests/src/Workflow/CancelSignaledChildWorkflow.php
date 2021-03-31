@@ -7,7 +7,7 @@ use Temporal\Workflow;
 use Temporal\Workflow\WorkflowMethod;
 
 #[Workflow\WorkflowInterface]
-class CancelSignalledChildWorkflow
+class CancelSignaledChildWorkflow
 {
     private array $status = [];
 
@@ -17,41 +17,41 @@ class CancelSignalledChildWorkflow
         return $this->status;
     }
 
-    #[WorkflowMethod(name: 'CancelSignalledChildWorkflow')]
+    #[WorkflowMethod(name: 'CancelSignaledChildWorkflow')]
     public function handler()
     {
         // typed stub
-        $simple = Workflow::newChildWorkflowStub(SimpleSignalledWorkflow::class);
+        $simple = Workflow::newChildWorkflowStub(SimpleSignaledWorkflow::class);
 
-        $waitSignalled = new Deferred();
+        $waitSignaled = new Deferred();
 
         $this->status[] = 'start';
 
         // start execution
         $scope = Workflow::async(
-            function () use ($simple, $waitSignalled) {
+            function () use ($simple, $waitSignaled) {
                 $call = $simple->handler();
                 $this->status[] = 'child started';
 
                 yield $simple->add(8);
-                $this->status[] = 'child signalled';
-                $waitSignalled->resolve();
+                $this->status[] = 'child signaled';
+                $waitSignaled->resolve();
 
                 return yield $call;
             }
         );
 
         // only cancel scope when signal dispatched
-        yield $waitSignalled;
+        yield $waitSignaled;
         $scope->cancel();
-        $this->status[] = 'scope cancelled';
+        $this->status[] = 'scope canceled';
 
         try {
             return yield $scope;
         } catch (\Throwable $e) {
             $this->status[] = 'process done';
 
-            return 'cancelled ok';
+            return 'canceled ok';
         }
     }
 }

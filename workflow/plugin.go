@@ -125,7 +125,7 @@ func (p *Plugin) Reset() error {
 // AddListener adds event listeners to the service.
 func (p *Plugin) startPool() (pool, error) {
 	const op = errors.Op("workflow_plugin_start_worker")
-	pool, err := newPool(
+	np, err := newPool(
 		p.temporal.GetCodec().WithLogger(p.log),
 		p.server,
 		p.gracePeriod,
@@ -135,14 +135,14 @@ func (p *Plugin) startPool() (pool, error) {
 		return nil, errors.E(op, err)
 	}
 
-	err = pool.Start(context.Background(), p.temporal)
+	err = np.Start(context.Background(), p.temporal)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
 
-	p.log.Debug("Started workflow processing", "workflows", pool.WorkflowNames())
+	p.log.Debug("Started workflow processing", "workflows", np.WorkflowNames())
 
-	return pool, nil
+	return np, nil
 }
 
 func (p *Plugin) replacePool() error {
@@ -163,13 +163,13 @@ func (p *Plugin) replacePool() error {
 		}
 	}
 
-	pool, err := p.startPool()
+	np, err := p.startPool()
 	if err != nil {
 		p.log.Error("Replace workflow pool failed", "error", err)
 		return errors.E(op, err)
 	}
 
-	p.pool = pool
+	p.pool = np
 	p.log.Debug("workflow pool successfully replaced")
 
 	return nil
@@ -187,27 +187,24 @@ func (p *Plugin) getPool() pool {
 func (p *Plugin) watch(errCh chan error) {
 	go func() {
 		const op = errors.Op("workflow_plugin_watch")
-		for {
-			select {
-			case <-p.reset:
-				if atomic.LoadInt64(&p.closing) == 1 {
-					return
-				}
+		for range p.reset {
+			if atomic.LoadInt64(&p.closing) == 1 {
+				return
+			}
 
-				err := p.replacePool()
-				if err == nil {
-					continue
-				}
+			err := p.replacePool()
+			if err == nil {
+				continue
+			}
 
-				bkoff := backoff.NewExponentialBackOff()
-				bkoff.InitialInterval = time.Second
+			bkoff := backoff.NewExponentialBackOff()
+			bkoff.InitialInterval = time.Second
 
-				err = backoff.Retry(p.replacePool, bkoff)
-				if err != nil {
-					p.log.Error("failed to replace workflow pool", "error", errors.E(op, err))
-					errCh <- err
-					return
-				}
+			err = backoff.Retry(p.replacePool, bkoff)
+			if err != nil {
+				p.log.Error("failed to replace workflow pool", "error", errors.E(op, err))
+				errCh <- err
+				return
 			}
 		}
 	}()

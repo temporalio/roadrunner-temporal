@@ -21,10 +21,10 @@ import (
 )
 
 // RR_MODE env variable key
-const RR_MODE = "RR_MODE" //nolint
+const RR_MODE = "RR_MODE" //nolint:golint,stylecheck
 
 // RR_CODEC env variable key
-const RR_CODEC = "RR_CODEC" //nolint
+const RR_CODEC = "RR_CODEC" //nolint:golint,stylecheck
 
 // Workflow pool
 type pool interface {
