@@ -169,6 +169,7 @@ func (p *Plugin) poolListener(event interface{}) {
 func (p *Plugin) startPool() (activityPool, error) {
 	pool, err := newActivityPool(
 		p.temporal.GetCodec().WithLogger(p.log),
+		p.graceTimeout,
 		p.poolListener,
 		*p.temporal.GetConfig().Activities,
 		p.server,
