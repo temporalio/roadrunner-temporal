@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/events"
@@ -44,10 +45,14 @@ type workerImpl struct {
 	workflows map[string]rrt.WorkflowInfo
 	tWorkers  []tWorker.Worker
 	pool      rrPool.Pool
+	//
+	// graceful stop timeout for the worker
+	//
+	graceTimeout time.Duration
 }
 
 // newPool creates new workflow pool.
-func newPool(codec rrt.Codec, factory server.Server, listener ...events.Listener) (pool, error) {
+func newPool(codec rrt.Codec, factory server.Server, graceTimeout time.Duration, listener ...events.Listener) (pool, error) {
 	const op = errors.Op("new_workflow_pool")
 	env := map[string]string{RR_MODE: roadrunner_temporal.RRMode, RR_CODEC: codec.GetName()}
 
@@ -66,8 +71,9 @@ func newPool(codec rrt.Codec, factory server.Server, listener ...events.Listener
 	}
 
 	wrk := &workerImpl{
-		codec: codec,
-		pool:  p,
+		codec:        codec,
+		pool:         p,
+		graceTimeout: graceTimeout,
 	}
 
 	return wrk, nil
@@ -161,6 +167,8 @@ func (w *workerImpl) initPool(ctx context.Context, temporal client.Temporal) err
 	w.tWorkers = make([]tWorker.Worker, 0, len(workerInfo))
 
 	for i := range workerInfo {
+		// set the graceful timeout for the worker
+		workerInfo[i].Options.WorkerStopTimeout = w.graceTimeout
 		wrk, err := temporal.CreateWorker(workerInfo[i].TaskQueue, workerInfo[i].Options)
 		if err != nil {
 			return errors.E(op, err, w.Destroy(ctx))

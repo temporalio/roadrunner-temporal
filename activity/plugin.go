@@ -33,7 +33,9 @@ type Plugin struct {
 	mu       sync.Mutex
 	reset    chan struct{}
 	pool     activityPool
-	closing  int64
+	// graceful timeout for the worker
+	graceTimeout time.Duration
+	closing      int64
 }
 
 // Init configures activity service.
@@ -53,6 +55,9 @@ func (p *Plugin) Init(temporal client.Temporal, server server.Server, log logger
 	p.events = events.NewEventsHandler()
 	p.log = log
 	p.reset = make(chan struct{})
+
+	// it can't be 0 (except set by user), because it would be set by the rr-binary (cli)
+	p.graceTimeout = cfg.GetCommonConfig().GracefulTimeout
 
 	return nil
 }
