@@ -76,25 +76,23 @@ func (p *Plugin) Serve() chan error {
 	p.pool = pool
 
 	go func() {
-		for {
-			select {
-			case <-p.reset:
-				if atomic.LoadInt64(&p.closing) == 1 {
-					return
-				}
+		// single case loop
+		for range p.reset {
+			if atomic.LoadInt64(&p.closing) == 1 {
+				return
+			}
 
-				err := p.replacePool()
-				if err == nil {
-					continue
-				}
+			err := p.replacePool()
+			if err == nil {
+				continue
+			}
 
-				bkoff := backoff.NewExponentialBackOff()
-				bkoff.InitialInterval = time.Second
+			bkoff := backoff.NewExponentialBackOff()
+			bkoff.InitialInterval = time.Second
 
-				err = backoff.Retry(p.replacePool, bkoff)
-				if err != nil {
-					errCh <- errors.E(op, err)
-				}
+			err = backoff.Retry(p.replacePool, bkoff)
+			if err != nil {
+				errCh <- errors.E(op, err)
 			}
 		}
 	}()

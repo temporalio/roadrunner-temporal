@@ -22,7 +22,7 @@ func (c *canceller) cancel(ids ...uint64) error {
 	var err error
 	for _, id := range ids {
 		cancel, ok := c.ids.Load(id)
-		if ok == false {
+		if !ok {
 			continue
 		}
 

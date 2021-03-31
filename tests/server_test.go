@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	endure "github.com/spiral/endure/pkg/container"
 	"github.com/spiral/roadrunner/v2/plugins/config"
@@ -86,7 +87,9 @@ func (s *TestServer) Client() temporalClient.Client {
 }
 
 func initConfigJSON() config.Configurer {
-	cfg := &config.Viper{}
+	cfg := &config.Viper{
+		CommonConfig: &config.General{GracefulTimeout: time.Second * 0},
+	}
 	cfg.Path = ".rr.yaml"
 	cfg.Prefix = "rr"
 
@@ -94,7 +97,9 @@ func initConfigJSON() config.Configurer {
 }
 
 func initConfigProto() config.Configurer {
-	cfg := &config.Viper{}
+	cfg := &config.Viper{
+		CommonConfig: &config.General{GracefulTimeout: time.Second * 0},
+	}
 	cfg.Path = ".rr-proto.yaml"
 	cfg.Prefix = "rr"
 

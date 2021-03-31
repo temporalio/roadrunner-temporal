@@ -58,7 +58,8 @@ func FetchWorkerInfo(c Codec, e Endpoint, dc converter.DataConverter) ([]WorkerI
 		return nil, errors.E(op, errors.Str("FetchWorkerInfo confirmation missing"))
 	}
 
-	var info []WorkerInfo
+	// preallocate some space
+	info := make([]WorkerInfo, 0, 10)
 	for i := range result[0].Payloads.Payloads {
 		wi := WorkerInfo{}
 		if err := dc.FromPayload(result[0].Payloads.Payloads[i], &wi); err != nil {

@@ -23,7 +23,7 @@ func Test_SimpleWorkflowCancel(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"SimpleSignalledWorkflow")
+		"SimpleSignaledWorkflow")
 	assert.NoError(t, err)
 
 	time.Sleep(time.Millisecond * 500)
@@ -52,7 +52,7 @@ func Test_CancellableWorkflowScope(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"CancelledScopeWorkflow",
+		"CanceledScopeWorkflow",
 		"Hello World",
 	)
 	assert.NoError(t, err)
@@ -72,7 +72,7 @@ func Test_CancellableWorkflowScope(t *testing.T) {
 	wg.Wait()
 }
 
-func Test_CancelledWorkflow(t *testing.T) {
+func Test_CanceledWorkflow(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -83,7 +83,7 @@ func Test_CancelledWorkflow(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"CancelledWorkflow",
+		"CanceledWorkflow",
 		"Hello World",
 	)
 	assert.NoError(t, err)
@@ -94,12 +94,12 @@ func Test_CancelledWorkflow(t *testing.T) {
 
 	var result interface{}
 	assert.NoError(t, w.Get(context.Background(), &result))
-	assert.Equal(t, "CANCELLED", result)
+	assert.Equal(t, "CANCELED", result)
 	stopCh <- struct{}{}
 	wg.Wait()
 }
 
-func Test_CancelledWithCompensationWorkflow(t *testing.T) {
+func Test_CanceledWithCompensationWorkflow(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -110,7 +110,7 @@ func Test_CancelledWithCompensationWorkflow(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"CancelledWithCompensationWorkflow",
+		"CanceledWithCompensationWorkflow",
 		"Hello World",
 	)
 	assert.NoError(t, err)
@@ -134,7 +134,7 @@ func Test_CancelledWithCompensationWorkflow(t *testing.T) {
 			"yield",
 			"rollback",
 			"captured retry",
-			"captured promise on cancelled",
+			"captured promise on canceled",
 			"START rollback",
 			"WAIT ROLLBACK",
 			"RESULT (ROLLBACK)", "DONE rollback",
@@ -147,7 +147,7 @@ func Test_CancelledWithCompensationWorkflow(t *testing.T) {
 	wg.Wait()
 }
 
-func Test_CancelledNestedWorkflow(t *testing.T) {
+func Test_CanceledNestedWorkflow(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -158,7 +158,7 @@ func Test_CancelledNestedWorkflow(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"CancelledNestedWorkflow",
+		"CanceledNestedWorkflow",
 	)
 	assert.NoError(t, err)
 
@@ -169,7 +169,7 @@ func Test_CancelledNestedWorkflow(t *testing.T) {
 
 	var result interface{}
 	assert.NoError(t, w.Get(context.Background(), &result))
-	assert.Equal(t, "CANCELLED", result)
+	assert.Equal(t, "CANCELED", result)
 
 	e, err := s.Client().QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "getStatus")
 	assert.NoError(t, err)
@@ -184,8 +184,8 @@ func Test_CancelledNestedWorkflow(t *testing.T) {
 			"second scope",
 			"close second scope",
 			"close first scope",
-			"second scope cancelled",
-			"first scope cancelled",
+			"second scope canceled",
+			"first scope canceled",
 			"close process",
 		},
 		trace,
@@ -194,7 +194,7 @@ func Test_CancelledNestedWorkflow(t *testing.T) {
 	wg.Wait()
 }
 
-func Test_CancelledNSingleScopeWorkflow(t *testing.T) {
+func Test_CanceledNSingleScopeWorkflow(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -205,7 +205,7 @@ func Test_CancelledNSingleScopeWorkflow(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"CancelledSingleScopeWorkflow",
+		"CanceledSingleScopeWorkflow",
 	)
 	assert.NoError(t, err)
 
@@ -238,7 +238,7 @@ func Test_CancelledNSingleScopeWorkflow(t *testing.T) {
 	wg.Wait()
 }
 
-func Test_CancelledMidflightWorkflow(t *testing.T) {
+func Test_CanceledMidflightWorkflow(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -249,7 +249,7 @@ func Test_CancelledMidflightWorkflow(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"CancelledMidflightWorkflow",
+		"CanceledMidflightWorkflow",
 	)
 	assert.NoError(t, err)
 	assert.NotNil(t, w)
@@ -282,7 +282,7 @@ func Test_CancelledMidflightWorkflow(t *testing.T) {
 	wg.Wait()
 }
 
-func Test_CancelSignalledChildWorkflow(t *testing.T) {
+func Test_CancelSignaledChildWorkflow(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -293,13 +293,13 @@ func Test_CancelSignalledChildWorkflow(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"CancelSignalledChildWorkflow",
+		"CancelSignaledChildWorkflow",
 	)
 	assert.NoError(t, err)
 
 	var result interface{}
 	assert.NoError(t, w.Get(context.Background(), &result))
-	assert.Equal(t, "cancelled ok", result)
+	assert.Equal(t, "canceled ok", result)
 
 	e, err := s.Client().QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "getStatus")
 	assert.NoError(t, err)
@@ -311,8 +311,8 @@ func Test_CancelSignalledChildWorkflow(t *testing.T) {
 		[]string{
 			"start",
 			"child started",
-			"child signalled",
-			"scope cancelled",
+			"child signaled",
+			"scope canceled",
 			"process done",
 		},
 		trace,
@@ -336,7 +336,7 @@ func Test_SimpleWorkflowCancelProto(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"SimpleSignalledWorkflow")
+		"SimpleSignaledWorkflow")
 	assert.NoError(t, err)
 
 	time.Sleep(time.Millisecond * 500)
@@ -365,7 +365,7 @@ func Test_CancellableWorkflowScopeProto(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"CancelledScopeWorkflow",
+		"CanceledScopeWorkflow",
 		"Hello World",
 	)
 	assert.NoError(t, err)
@@ -385,7 +385,7 @@ func Test_CancellableWorkflowScopeProto(t *testing.T) {
 	wg.Wait()
 }
 
-func Test_CancelledWorkflowProto(t *testing.T) {
+func Test_CanceledWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -396,7 +396,7 @@ func Test_CancelledWorkflowProto(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"CancelledWorkflow",
+		"CanceledWorkflow",
 		"Hello World",
 	)
 	assert.NoError(t, err)
@@ -407,12 +407,12 @@ func Test_CancelledWorkflowProto(t *testing.T) {
 
 	var result interface{}
 	assert.NoError(t, w.Get(context.Background(), &result))
-	assert.Equal(t, "CANCELLED", result)
+	assert.Equal(t, "CANCELED", result)
 	stopCh <- struct{}{}
 	wg.Wait()
 }
 
-func Test_CancelledWithCompensationWorkflowProto(t *testing.T) {
+func Test_CanceledWithCompensationWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -423,7 +423,7 @@ func Test_CancelledWithCompensationWorkflowProto(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"CancelledWithCompensationWorkflow",
+		"CanceledWithCompensationWorkflow",
 		"Hello World",
 	)
 	assert.NoError(t, err)
@@ -447,7 +447,7 @@ func Test_CancelledWithCompensationWorkflowProto(t *testing.T) {
 			"yield",
 			"rollback",
 			"captured retry",
-			"captured promise on cancelled",
+			"captured promise on canceled",
 			"START rollback",
 			"WAIT ROLLBACK",
 			"RESULT (ROLLBACK)", "DONE rollback",
@@ -460,7 +460,7 @@ func Test_CancelledWithCompensationWorkflowProto(t *testing.T) {
 	wg.Wait()
 }
 
-func Test_CancelledNestedWorkflowProto(t *testing.T) {
+func Test_CanceledNestedWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -471,7 +471,7 @@ func Test_CancelledNestedWorkflowProto(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"CancelledNestedWorkflow",
+		"CanceledNestedWorkflow",
 	)
 	assert.NoError(t, err)
 
@@ -482,7 +482,7 @@ func Test_CancelledNestedWorkflowProto(t *testing.T) {
 
 	var result interface{}
 	assert.NoError(t, w.Get(context.Background(), &result))
-	assert.Equal(t, "CANCELLED", result)
+	assert.Equal(t, "CANCELED", result)
 
 	e, err := s.Client().QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "getStatus")
 	assert.NoError(t, err)
@@ -497,8 +497,8 @@ func Test_CancelledNestedWorkflowProto(t *testing.T) {
 			"second scope",
 			"close second scope",
 			"close first scope",
-			"second scope cancelled",
-			"first scope cancelled",
+			"second scope canceled",
+			"first scope canceled",
 			"close process",
 		},
 		trace,
@@ -507,7 +507,7 @@ func Test_CancelledNestedWorkflowProto(t *testing.T) {
 	wg.Wait()
 }
 
-func Test_CancelledNSingleScopeWorkflowProto(t *testing.T) {
+func Test_CanceledNSingleScopeWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -518,7 +518,7 @@ func Test_CancelledNSingleScopeWorkflowProto(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"CancelledSingleScopeWorkflow",
+		"CanceledSingleScopeWorkflow",
 	)
 	assert.NoError(t, err)
 
@@ -551,7 +551,7 @@ func Test_CancelledNSingleScopeWorkflowProto(t *testing.T) {
 	wg.Wait()
 }
 
-func Test_CancelledMidflightWorkflowProto(t *testing.T) {
+func Test_CanceledMidflightWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -562,7 +562,7 @@ func Test_CancelledMidflightWorkflowProto(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"CancelledMidflightWorkflow",
+		"CanceledMidflightWorkflow",
 	)
 	assert.NoError(t, err)
 	assert.NotNil(t, w)
@@ -596,7 +596,7 @@ func Test_CancelledMidflightWorkflowProto(t *testing.T) {
 	wg.Wait()
 }
 
-func Test_CancelSignalledChildWorkflowProto(t *testing.T) {
+func Test_CancelSignaledChildWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -607,13 +607,13 @@ func Test_CancelSignalledChildWorkflowProto(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"CancelSignalledChildWorkflow",
+		"CancelSignaledChildWorkflow",
 	)
 	assert.NoError(t, err)
 
 	var result interface{}
 	assert.NoError(t, w.Get(context.Background(), &result))
-	assert.Equal(t, "cancelled ok", result)
+	assert.Equal(t, "canceled ok", result)
 
 	e, err := s.Client().QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "getStatus")
 	assert.NoError(t, err)
@@ -625,8 +625,8 @@ func Test_CancelSignalledChildWorkflowProto(t *testing.T) {
 		[]string{
 			"start",
 			"child started",
-			"child signalled",
-			"scope cancelled",
+			"child signaled",
+			"scope canceled",
 			"process done",
 		},
 		trace,

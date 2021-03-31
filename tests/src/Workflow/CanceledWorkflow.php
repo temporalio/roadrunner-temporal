@@ -9,9 +9,9 @@ use Temporal\Workflow;
 use Temporal\Workflow\WorkflowMethod;
 
 #[Workflow\WorkflowInterface]
-class CancelledWorkflow
+class CanceledWorkflow
 {
-    #[WorkflowMethod(name: 'CancelledWorkflow')]
+    #[WorkflowMethod(name: 'CanceledWorkflow')]
     public function handler()
     {
         $simple = Workflow::newActivityStub(
@@ -25,7 +25,7 @@ class CancelledWorkflow
         try {
             return yield $slow;
         } catch (CanceledFailure $e) {
-            return "CANCELLED";
+            return "CANCELED";
         }
     }
 }
