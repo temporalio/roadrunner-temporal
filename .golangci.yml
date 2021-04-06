@@ -66,7 +66,6 @@ linters: # All available linters list: <https://golangci-lint.run/usage/linters/
     - misspell # Finds commonly misspelled English words in comments
     - nakedret # Finds naked returns in functions greater than a specified function length
     - noctx # finds sending http request without context.Context
-    - nolintlint # Reports ill-formed or insufficient nolint directives
     - prealloc # Finds slice declarations that could potentially be preallocated
     - rowserrcheck # Checks whether Err of rows is checked successfully
     - staticcheck # Staticcheck is a go vet on steroids, applying a ton of static analysis checks
