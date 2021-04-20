@@ -6,7 +6,8 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/spiral/roadrunner/v2/pkg/events"
-	"github.com/spiral/roadrunner/v2/pkg/worker"
+	"github.com/spiral/roadrunner/v2/pkg/process"
+	rrWorker "github.com/spiral/roadrunner/v2/pkg/worker"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	roadrunner_temporal "github.com/temporalio/roadrunner-temporal"
 
@@ -128,12 +129,34 @@ func (p *Plugin) RPC() interface{} {
 	return &rpc{srv: p, client: p.temporal.GetClient()}
 }
 
-// Workers returns pool workers.
-func (p *Plugin) Workers() []worker.BaseProcess {
+// BaseProcesses returns pool workers.
+func (p *Plugin) BaseProcesses() []rrWorker.BaseProcess {
 	if p.getPool() == nil {
 		return nil
 	}
 	return p.getPool().Workers()
+}
+
+// Workers returns workers process state
+func (p *Plugin) Workers() []process.State {
+	if p.getPool() == nil {
+		return nil
+	}
+	workers := p.pool.Workers()
+	states := make([]process.State, 0, len(workers))
+
+	for i := 0; i < len(workers); i++ {
+		st, err := process.WorkerProcessState(workers[i])
+		if err != nil {
+			// log error and continue
+			p.log.Error("worker process state error", "error", err)
+			continue
+		}
+
+		states = append(states, st)
+	}
+
+	return states
 }
 
 // ActivityNames returns list of all available activities.
