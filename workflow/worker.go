@@ -11,6 +11,7 @@ import (
 	"github.com/spiral/roadrunner/v2/pkg/payload"
 	rrPool "github.com/spiral/roadrunner/v2/pkg/pool"
 	rrWorker "github.com/spiral/roadrunner/v2/pkg/worker"
+	"github.com/spiral/roadrunner/v2/plugins/logger"
 	"github.com/spiral/roadrunner/v2/plugins/server"
 	roadrunner_temporal "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/client"
@@ -46,13 +47,17 @@ type workerImpl struct {
 	tWorkers  []tWorker.Worker
 	pool      rrPool.Pool
 	//
+	// logger
+	//
+	log logger.Logger
+	//
 	// graceful stop timeout for the worker
 	//
 	graceTimeout time.Duration
 }
 
 // newPool creates new workflow pool.
-func newPool(codec rrt.Codec, factory server.Server, graceTimeout time.Duration, listener ...events.Listener) (pool, error) {
+func newPool(codec rrt.Codec, factory server.Server, graceTimeout time.Duration, log logger.Logger, listener ...events.Listener) (pool, error) {
 	const op = errors.Op("new_workflow_pool")
 	env := map[string]string{RR_MODE: roadrunner_temporal.RRMode, RR_CODEC: codec.GetName()}
 
@@ -73,6 +78,7 @@ func newPool(codec rrt.Codec, factory server.Server, graceTimeout time.Duration,
 	wrk := &workerImpl{
 		codec:        codec,
 		pool:         p,
+		log:          log,
 		graceTimeout: graceTimeout,
 	}
 
@@ -167,6 +173,7 @@ func (w *workerImpl) initPool(ctx context.Context, temporal client.Temporal) err
 	w.tWorkers = make([]tWorker.Worker, 0, len(workerInfo))
 
 	for i := range workerInfo {
+		w.log.Debug("worker info", "taskqueue", workerInfo[i].TaskQueue, "options", workerInfo[i].Options)
 		// set the graceful timeout for the worker
 		workerInfo[i].Options.WorkerStopTimeout = w.graceTimeout
 		wrk, err := temporal.CreateWorker(workerInfo[i].TaskQueue, workerInfo[i].Options)
@@ -176,6 +183,7 @@ func (w *workerImpl) initPool(ctx context.Context, temporal client.Temporal) err
 
 		w.tWorkers = append(w.tWorkers, wrk)
 		for j := range workerInfo[i].Workflows {
+			w.log.Debug("workflows loop", "taskqueue", workerInfo[i].TaskQueue, "workflow name", workerInfo[i].Workflows[j].Name)
 			wrk.RegisterWorkflowWithOptions(w, workflow.RegisterOptions{
 				Name:                          workerInfo[i].Workflows[j].Name,
 				DisableAlreadyRegisteredCheck: false,

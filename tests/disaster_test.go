@@ -17,7 +17,7 @@ func Test_WorkerError_DisasterRecovery(t *testing.T) {
 	wg.Add(1)
 	s := NewTestServer(t, stopCh, wg, false)
 
-	p, err := os.FindProcess(int(s.workflows.Workers()[0].Pid()))
+	p, err := os.FindProcess(s.workflows.Workers()[0].Pid)
 	assert.NoError(t, err)
 
 	w, err := s.Client().ExecuteWorkflow(
@@ -100,7 +100,7 @@ func Test_ActivityError_DisasterRecovery(t *testing.T) {
 	_ = os.Rename("worker.php", "worker.bak")
 
 	// destroys all workers in activities
-	for _, wrk := range s.activities.Workers() {
+	for _, wrk := range s.activities.BaseProcesses() {
 		assert.NoError(t, wrk.Kill())
 	}
 
@@ -133,7 +133,7 @@ func Test_WorkerError_DisasterRecoveryProto(t *testing.T) {
 	wg.Add(1)
 	s := NewTestServer(t, stopCh, wg, true)
 
-	p, err := os.FindProcess(int(s.workflows.Workers()[0].Pid()))
+	p, err := os.FindProcess(s.workflows.Workers()[0].Pid)
 	assert.NoError(t, err)
 
 	w, err := s.Client().ExecuteWorkflow(
@@ -216,7 +216,7 @@ func Test_ActivityError_DisasterRecoveryProto(t *testing.T) {
 	_ = os.Rename("worker.php", "worker.bak")
 
 	// destroys all workers in activities
-	for _, wrk := range s.activities.Workers() {
+	for _, wrk := range s.activities.BaseProcesses() {
 		assert.NoError(t, wrk.Kill())
 	}
 

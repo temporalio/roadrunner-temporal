@@ -9,6 +9,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/events"
+	"github.com/spiral/roadrunner/v2/pkg/process"
 	rrWorker "github.com/spiral/roadrunner/v2/pkg/worker"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	"github.com/spiral/roadrunner/v2/plugins/logger"
@@ -102,13 +103,28 @@ func (p *Plugin) Name() string {
 }
 
 // Workers returns list of available workflow workers.
-func (p *Plugin) Workers() []rrWorker.BaseProcess {
+func (p *Plugin) Workers() []process.State {
 	p.Lock()
 	defer p.Unlock()
 	if p.pool == nil {
 		return nil
 	}
-	return p.pool.Workers()
+
+	workers := p.pool.Workers()
+	states := make([]process.State, 0, len(workers))
+
+	for i := 0; i < len(workers); i++ {
+		st, err := process.WorkerProcessState(workers[i])
+		if err != nil {
+			// log error and continue
+			p.log.Error("worker process state error", "error", err)
+			continue
+		}
+
+		states = append(states, st)
+	}
+
+	return states
 }
 
 // WorkflowNames returns list of all available workflows.
@@ -129,6 +145,7 @@ func (p *Plugin) startPool() (pool, error) {
 		p.temporal.GetCodec().WithLogger(p.log),
 		p.server,
 		p.gracePeriod,
+		p.log,
 		p.poolListener,
 	)
 	if err != nil {
