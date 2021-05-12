@@ -12,7 +12,7 @@ services:
 
   temporal:
     container_name: temporal
-    image: temporalio/auto-setup:1.8.2
+    image: temporalio/auto-setup:1.9.2
     depends_on:
       - postgresql
     environment:
@@ -26,7 +26,7 @@ services:
 
   temporal-admin-tools:
     container_name: temporal-admin-tools
-    image: temporalio/admin-tools:1.8.2
+    image: temporalio/admin-tools:1.9.2
     depends_on:
       - temporal
     environment:
@@ -36,7 +36,7 @@ services:
 
   temporal-web:
     container_name: temporal-web
-    image: temporalio/web:1.8.1
+    image: temporalio/web:1.9.0
     depends_on:
       - temporal
     environment:
