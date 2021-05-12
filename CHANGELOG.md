@@ -1,10 +1,24 @@
 CHANGELOG
 =========
 
+v1.0.6 (12.05.2021)
+-------------------
+
+## 🧹 Updates:
+
+- 📦 Bump RR to 2.2.0
+
+v1.0.5 (29.04.2021)
+-------------------
+
+## 🧹 Updates:
+
+- 📦 Bump RR to 2.1.1
+
 v1.0.4 (27.04.2021)
 -------------------
 
-## 🧹 Updates
+## 🧹 Updates:
 
 - 🤖 Update `informer` interface.
 - 📦 Bump RR to 2.1.0
@@ -16,14 +30,14 @@ v1.0.3 (06.04.2021)
 
 - 🐛 Fix bug with the worker which does not follow common grace period.
 
-## 🧹 Updates
+## 🧹 Updates:
 
 - 📦 Bump RR to 2.0.4
 
 v1.0.2 (09.03.2021)
 -------------------
 
-## 🧹 Updates
+## 🧹 Updates:
 
 - 📦 Bump RR to 2.0.2
 
