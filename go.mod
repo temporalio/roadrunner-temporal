@@ -3,9 +3,8 @@ module github.com/temporalio/roadrunner-temporal
 go 1.16
 
 require (
-	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.0
-	github.com/fatih/color v1.10.0
+	github.com/fatih/color v1.11.0
 	github.com/golang/protobuf v1.5.2
 	github.com/json-iterator/go v1.1.11
 	github.com/pborman/uuid v1.2.1
