@@ -3,7 +3,7 @@ module github.com/temporalio/roadrunner-temporal
 go 1.16
 
 require (
-	github.com/cenkalti/backoff/v4 v4.1.0
+	github.com/cenkalti/backoff/v4 v4.1.1
 	github.com/fatih/color v1.12.0
 	github.com/golang/protobuf v1.5.2
 	github.com/json-iterator/go v1.1.11
