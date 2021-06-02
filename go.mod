@@ -11,7 +11,7 @@ require (
 	// SPIRAL ========
 	github.com/spiral/endure v1.0.1
 	github.com/spiral/errors v1.0.9
-	github.com/spiral/roadrunner/v2 v2.2.0
+	github.com/spiral/roadrunner/v2 v2.2.1
 	// ===========
 	github.com/stretchr/testify v1.7.0
 	go.temporal.io/api v1.4.1-0.20210318194442-3f93fcec559f
