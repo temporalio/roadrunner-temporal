@@ -10,7 +10,7 @@ require (
 	github.com/pborman/uuid v1.2.1
 	// SPIRAL ========
 	github.com/spiral/endure v1.0.1
-	github.com/spiral/errors v1.0.9
+	github.com/spiral/errors v1.0.10
 	github.com/spiral/roadrunner/v2 v2.2.1
 	// ===========
 	github.com/stretchr/testify v1.7.0
