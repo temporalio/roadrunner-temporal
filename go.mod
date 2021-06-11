@@ -14,8 +14,8 @@ require (
 	github.com/spiral/roadrunner/v2 v2.2.1
 	// ===========
 	github.com/stretchr/testify v1.7.0
-	go.temporal.io/api v1.4.1-0.20210318194442-3f93fcec559f
-	go.temporal.io/sdk v1.6.0
+	go.temporal.io/api v1.4.1-0.20210420220407-6f00f7f98373
+	go.temporal.io/sdk v1.7.0
 	go.uber.org/zap v1.17.0
 	google.golang.org/protobuf v1.26.0
 )
