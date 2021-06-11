@@ -1,7 +1,7 @@
-package roadrunner_temporal //nolint:golint,stylecheck
+package roadrunner_temporal //nolint:revive,stylecheck
 
 const (
-	// Main plugin name
+	// RootPluginName ...
 	RootPluginName = "temporal"
 
 	// RRMode sets as RR_MODE env variable to let worker know about the mode to run.

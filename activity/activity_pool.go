@@ -11,10 +11,10 @@ import (
 	"github.com/spiral/roadrunner/v2/pkg/pool"
 	rrWorker "github.com/spiral/roadrunner/v2/pkg/worker"
 	"github.com/spiral/roadrunner/v2/plugins/server"
+	"github.com/spiral/roadrunner/v2/utils"
 	roadrunner_temporal "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/client"
 	rrt "github.com/temporalio/roadrunner-temporal/protocol"
-	"github.com/temporalio/roadrunner-temporal/utils"
 	"go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/converter"
@@ -23,9 +23,9 @@ import (
 )
 
 // RR_MODE env variable
-const RR_MODE = "RR_MODE" //nolint:golint,stylecheck
+const RR_MODE = "RR_MODE" //nolint:revive,stylecheck
 // RR_CODEC env variable
-const RR_CODEC = "RR_CODEC" //nolint:golint,stylecheck
+const RR_CODEC = "RR_CODEC" //nolint:revive,stylecheck
 
 //
 const doNotCompleteOnReturn = "doNotCompleteOnReturn"
@@ -118,7 +118,7 @@ func (pool *activityPoolImpl) ActivityNames() []string {
 // ActivityNames returns list of all available activity names.
 func (pool *activityPoolImpl) GetActivityContext(taskToken []byte) (context.Context, error) {
 	const op = errors.Op("activity_pool_get_activity_context")
-	c, ok := pool.running.Load(utils.ToString(taskToken))
+	c, ok := pool.running.Load(utils.AsString(taskToken))
 	if !ok {
 		return nil, errors.E(op, errors.Str("heartbeat on non running activity"))
 	}
@@ -187,8 +187,8 @@ func (pool *activityPoolImpl) executeActivity(ctx context.Context, args *common.
 		msg.Payloads.Payloads = append(msg.Payloads.Payloads, heartbeatDetails.Payloads...)
 	}
 
-	pool.running.Store(utils.ToString(info.TaskToken), ctx)
-	defer pool.running.Delete(utils.ToString(info.TaskToken))
+	pool.running.Store(utils.AsString(info.TaskToken), ctx)
+	defer pool.running.Delete(utils.AsString(info.TaskToken))
 
 	result, err := pool.codec.Execute(pool.wp, rrt.Context{TaskQueue: info.TaskQueue}, msg)
 	if err != nil {

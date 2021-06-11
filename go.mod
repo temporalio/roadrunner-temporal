@@ -9,9 +9,9 @@ require (
 	github.com/json-iterator/go v1.1.11
 	github.com/pborman/uuid v1.2.1
 	// SPIRAL ========
-	github.com/spiral/endure v1.0.1
+	github.com/spiral/endure v1.0.2
 	github.com/spiral/errors v1.0.11
-	github.com/spiral/roadrunner/v2 v2.2.1
+	github.com/spiral/roadrunner/v2 v2.3.0
 	// ===========
 	github.com/stretchr/testify v1.7.0
 	go.temporal.io/api v1.4.1-0.20210420220407-6f00f7f98373

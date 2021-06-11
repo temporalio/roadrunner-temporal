@@ -6,7 +6,7 @@ import (
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/payload"
 	"github.com/spiral/roadrunner/v2/plugins/logger"
-	"github.com/temporalio/roadrunner-temporal/utils"
+	"github.com/spiral/roadrunner/v2/utils"
 	"go.temporal.io/api/common/v1"
 	"go.temporal.io/api/failure/v1"
 )
@@ -99,7 +99,7 @@ func (c *JSONCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 	}
 
 	if c.level >= DebugNormal {
-		logMessage := utils.ToString(p.Body) + " " + utils.ToString(p.Context)
+		logMessage := utils.AsString(p.Body) + " " + utils.AsString(p.Context)
 		if c.level >= DebugHumanized {
 			logMessage = color.GreenString(logMessage)
 		}
@@ -118,7 +118,7 @@ func (c *JSONCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 	}
 
 	if c.level >= DebugNormal {
-		logMessage := utils.ToString(out.Body)
+		logMessage := utils.AsString(out.Body)
 		if c.level >= DebugHumanized {
 			logMessage = color.HiYellowString(logMessage)
 		}
