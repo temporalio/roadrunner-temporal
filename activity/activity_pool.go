@@ -70,7 +70,6 @@ func newActivityPool(codec rrt.Codec, graceTimeout time.Duration, listener event
 	}, nil
 }
 
-// initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
 func (pool *activityPoolImpl) Start(ctx context.Context, temporal client.Temporal) error {
 	const op = errors.Op("activity_pool_start")
 	pool.dc = temporal.GetDataConverter()
@@ -90,7 +89,6 @@ func (pool *activityPoolImpl) Start(ctx context.Context, temporal client.Tempora
 	return nil
 }
 
-// initWorkers request workers info from underlying PHP and configures temporal workers linked to the pool.
 func (pool *activityPoolImpl) Destroy(ctx context.Context) error {
 	for i := 0; i < len(pool.tWorkers); i++ {
 		pool.tWorkers[i].Stop()

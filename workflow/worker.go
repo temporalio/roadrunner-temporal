@@ -62,7 +62,13 @@ func newPool(codec rrt.Codec, factory server.Server, graceTimeout time.Duration,
 	env := map[string]string{RR_MODE: roadrunner_temporal.RRMode, RR_CODEC: codec.GetName()}
 
 	cfg := rrPool.Config{
-		NumWorkers: 1,
+		Debug:           false,
+		NumWorkers:      1,
+		MaxJobs:         0,
+		AllocateTimeout: time.Hour * 240,
+		DestroyTimeout:  time.Second * 30,
+		// no supervisor for the workflow worker
+		Supervisor:      nil,
 	}
 
 	p, err := factory.NewWorkerPool(
