@@ -68,7 +68,7 @@ func newPool(codec rrt.Codec, factory server.Server, graceTimeout time.Duration,
 		AllocateTimeout: time.Hour * 240,
 		DestroyTimeout:  time.Second * 30,
 		// no supervisor for the workflow worker
-		Supervisor:      nil,
+		Supervisor: nil,
 	}
 
 	p, err := factory.NewWorkerPool(
