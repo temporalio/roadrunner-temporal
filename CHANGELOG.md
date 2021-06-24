@@ -1,6 +1,17 @@
 CHANGELOG
 =========
 
+v1.0.8 (_.05.2021)
+-------------------
+
+## 🩹 Fixes:
+
+- 🐛 Fix increase workflow 1-worker pool allocate timeout to 10 days. [BUG](#73)
+
+## 🧹 Updates:
+
+- 📦 Bump RR to 2.3.1
+
 v1.0.6 (12.05.2021)
 -------------------
 
