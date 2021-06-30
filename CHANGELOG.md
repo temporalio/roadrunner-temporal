@@ -6,7 +6,7 @@ v1.0.8 (_.05.2021)
 
 ## 🩹 Fixes:
 
-- 🐛 Fix increase workflow 1-worker pool allocate timeout to 10 days. [BUG](#73)
+- 🐛 Fix increase workflow 1-worker pool allocate timeout to 10 days. [BUG](https://github.com/temporalio/roadrunner-temporal/pull/74)
 
 ## 🧹 Updates:
 
