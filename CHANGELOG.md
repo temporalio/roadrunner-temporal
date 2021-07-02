@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+v1.0.9 (--.07.2021)
+-------------------
+
+## 🩹 Fixes:
+
+- 🐛 Fix invalid child workflow ID error propagation to PHP worker. [BUG](https://github.com/temporalio/sdk-php/issues/113)
+
 v1.0.8 (30.06.2021)
 -------------------
 
