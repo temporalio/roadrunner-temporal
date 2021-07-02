@@ -212,9 +212,9 @@ func (wf *workflowProcess) handleMessage(msg rrt.Message) error {
 		wf.ids.listen(command.ID, func(w bindings.WorkflowExecution, err error) {
 			cl := wf.createCallback(msg.ID)
 
-			// TODO rewrite
 			if err != nil {
-				panic(err)
+				cl(nil, err)
+				return
 			}
 
 			p, er := wf.env.GetDataConverter().ToPayloads(w)
