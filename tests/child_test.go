@@ -32,6 +32,28 @@ func Test_ExecuteChildWorkflow(t *testing.T) {
 	wg.Wait()
 }
 
+func Test_ExecuteChildWorkflowWithError(t *testing.T) {
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg, false)
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"WithChild2Workflow",
+		"Hello World",
+	)
+	assert.NoError(t, err)
+
+	var result string
+	assert.Error(t, w.Get(context.Background(), &result))
+	stopCh <- struct{}{}
+	wg.Wait()
+}
+
 func Test_ExecuteChildStubWorkflow(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
