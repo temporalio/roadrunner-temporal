@@ -10,7 +10,7 @@ use Temporal\Workflow\WorkflowMethod;
 #[Workflow\WorkflowInterface]
 class WithChild2Workflow
 {
-    #[WorkflowMethod(name: 'WithChildWorkflow')]
+    #[WorkflowMethod(name: 'WithChild2Workflow')]
     public function handler(
         string $input
     ): iterable {
