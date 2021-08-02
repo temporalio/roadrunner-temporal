@@ -53,7 +53,7 @@ type activityPoolImpl struct {
 }
 
 // newActivityPool
-func newActivityPool(codec rrt.Codec, graceTimeout time.Duration, listener events.Listener, poolConfig pool.Config, server server.Server) (activityPool, error) {
+func newActivityPool(codec rrt.Codec, graceTimeout time.Duration, listener events.Listener, poolConfig *pool.Config, server server.Server) (activityPool, error) {
 	const op = errors.Op("new_activity_pool")
 	// env variables
 	env := map[string]string{RR_MODE: roadrunner_temporal.RRMode, RR_CODEC: codec.GetName()}

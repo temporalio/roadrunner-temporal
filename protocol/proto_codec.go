@@ -48,7 +48,7 @@ func (c *ProtoCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message
 		request.Messages = append(request.Messages, frame)
 	}
 
-	p := payload.Payload{}
+	p := &payload.Payload{}
 
 	// context is always in json format
 	if ctx.IsEmpty() {

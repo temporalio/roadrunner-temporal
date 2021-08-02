@@ -30,7 +30,7 @@ const RR_CODEC = "RR_CODEC" //nolint:revive,stylecheck
 // Workflow pool
 type pool interface {
 	SeqID() uint64
-	Exec(p payload.Payload) (payload.Payload, error)
+	Exec(p *payload.Payload) (*payload.Payload, error)
 	Start(ctx context.Context, temporal client.Temporal) error
 	Destroy(ctx context.Context) error
 	Workers() []rrWorker.BaseProcess
@@ -61,7 +61,7 @@ func newPool(codec rrt.Codec, factory server.Server, graceTimeout time.Duration,
 	const op = errors.Op("new_workflow_pool")
 	env := map[string]string{RR_MODE: roadrunner_temporal.RRMode, RR_CODEC: codec.GetName()}
 
-	cfg := rrPool.Config{
+	cfg := &rrPool.Config{
 		Debug:           false,
 		NumWorkers:      1,
 		MaxJobs:         0,
@@ -141,13 +141,13 @@ func (w *workerImpl) NewWorkflowDefinition() bindings.WorkflowDefinition {
 	}
 }
 
-// NewWorkflowDefinition initiates new workflow process.
+// SeqID - sequence id
 func (w *workerImpl) SeqID() uint64 {
 	return atomic.AddUint64(&w.seqID, 1)
 }
 
 // Exec set of commands in thread safe move.
-func (w *workerImpl) Exec(p payload.Payload) (payload.Payload, error) {
+func (w *workerImpl) Exec(p *payload.Payload) (*payload.Payload, error) {
 	w.Lock()
 	defer w.Unlock()
 

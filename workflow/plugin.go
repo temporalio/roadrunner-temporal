@@ -103,7 +103,7 @@ func (p *Plugin) Name() string {
 }
 
 // Workers returns list of available workflow workers.
-func (p *Plugin) Workers() []process.State {
+func (p *Plugin) Workers() []*process.State {
 	p.Lock()
 	defer p.Unlock()
 	if p.pool == nil {
@@ -111,7 +111,7 @@ func (p *Plugin) Workers() []process.State {
 	}
 
 	workers := p.pool.Workers()
-	states := make([]process.State, 0, len(workers))
+	states := make([]*process.State, 0, len(workers))
 
 	for i := 0; i < len(workers); i++ {
 		st, err := process.WorkerProcessState(workers[i])
