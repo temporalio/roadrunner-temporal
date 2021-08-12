@@ -3,16 +3,16 @@ version: '3.7'
 services:
   postgresql:
     container_name: temporal-postgresql
-    image: postgres:13.1
+    image: postgres:13.3
     environment:
       POSTGRES_PASSWORD: temporal
       POSTGRES_USER: temporal
     ports:
-      - 5432:5432
+      - "5432:5432"
 
   temporal:
     container_name: temporal
-    image: temporalio/auto-setup:1.9.2
+    image: temporalio/auto-setup:1.11.2
     depends_on:
       - postgresql
     environment:
@@ -22,11 +22,11 @@ services:
       - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=postgresql
     ports:
-      - 7233:7233
+      - "7233:7233"
 
   temporal-admin-tools:
     container_name: temporal-admin-tools
-    image: temporalio/admin-tools:1.9.2
+    image: temporalio/admin-tools:1.11.2
     depends_on:
       - temporal
     environment:
@@ -36,11 +36,11 @@ services:
 
   temporal-web:
     container_name: temporal-web
-    image: temporalio/web:1.9.0
+    image: temporalio/web:1.11.0
     depends_on:
       - temporal
     environment:
       - TEMPORAL_GRPC_ENDPOINT=temporal:7233
       - TEMPORAL_PERMIT_WRITE_API=true
     ports:
-      - 8088:8088
+      - "8088:8088"

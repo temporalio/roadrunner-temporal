@@ -8,6 +8,12 @@ v1.0.9 (--.07.2021)
 
 - 🐛 Fix invalid child workflow ID error propagation to PHP worker. [BUG](https://github.com/temporalio/sdk-php/issues/113)
 
+
+## 🧹 Updates:
+
+- 🤖 Update temporal go-sdk to `v1.9.0` [Release](https://github.com/temporalio/sdk-go/releases/tag/v1.9.0).
+- 📦 Update RR to 2.4.0
+
 v1.0.8 (30.06.2021)
 -------------------
 

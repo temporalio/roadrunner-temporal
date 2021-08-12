@@ -196,6 +196,7 @@ func (p *Plugin) startPool() (activityPool, error) {
 		p.poolListener,
 		p.temporal.GetConfig().Activities,
 		p.server,
+		p.log,
 	)
 
 	if err != nil {

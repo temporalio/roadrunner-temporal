@@ -119,6 +119,8 @@ func (w *workerImpl) Destroy(ctx context.Context) error {
 		w.tWorkers[i].Stop()
 	}
 
+	w.log.Debug("workerImpl destroy")
+
 	tWorker.PurgeStickyWorkflowCache()
 	// destroy pool
 	w.pool.Destroy(ctx)

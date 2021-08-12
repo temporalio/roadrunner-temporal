@@ -66,7 +66,7 @@ func (wf *workflowProcess) Execute(env bindings.WorkflowEnvironment, header *com
 }
 
 // OnWorkflowTaskStarted handles single workflow tick and batch of pipeline from temporal server.
-func (wf *workflowProcess) OnWorkflowTaskStarted() {
+func (wf *workflowProcess) OnWorkflowTaskStarted(_ time.Duration) {
 	wf.inLoop = true
 	defer func() { wf.inLoop = false }()
 
