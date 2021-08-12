@@ -138,12 +138,12 @@ func (p *Plugin) BaseProcesses() []rrWorker.BaseProcess {
 }
 
 // Workers returns workers process state
-func (p *Plugin) Workers() []process.State {
+func (p *Plugin) Workers() []*process.State {
 	if p.getPool() == nil {
 		return nil
 	}
 	workers := p.pool.Workers()
-	states := make([]process.State, 0, len(workers))
+	states := make([]*process.State, 0, len(workers))
 
 	for i := 0; i < len(workers); i++ {
 		st, err := process.WorkerProcessState(workers[i])
@@ -194,8 +194,9 @@ func (p *Plugin) startPool() (activityPool, error) {
 		p.temporal.GetCodec().WithLogger(p.log),
 		p.graceTimeout,
 		p.poolListener,
-		*p.temporal.GetConfig().Activities,
+		p.temporal.GetConfig().Activities,
 		p.server,
+		p.log,
 	)
 
 	if err != nil {

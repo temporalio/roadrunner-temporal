@@ -10,6 +10,7 @@ import (
 	"github.com/spiral/roadrunner/v2/pkg/events"
 	"github.com/spiral/roadrunner/v2/pkg/pool"
 	rrWorker "github.com/spiral/roadrunner/v2/pkg/worker"
+	"github.com/spiral/roadrunner/v2/plugins/logger"
 	"github.com/spiral/roadrunner/v2/plugins/server"
 	"github.com/spiral/roadrunner/v2/utils"
 	roadrunner_temporal "github.com/temporalio/roadrunner-temporal"
@@ -46,6 +47,7 @@ type activityPoolImpl struct {
 	wp         pool.Pool
 	tWorkers   []worker.Worker
 	running    sync.Map
+	log        logger.Logger
 	//
 	// graceful stop timeout for the worker
 	//
@@ -53,7 +55,7 @@ type activityPoolImpl struct {
 }
 
 // newActivityPool
-func newActivityPool(codec rrt.Codec, graceTimeout time.Duration, listener events.Listener, poolConfig pool.Config, server server.Server) (activityPool, error) {
+func newActivityPool(codec rrt.Codec, graceTimeout time.Duration, listener events.Listener, poolConfig *pool.Config, server server.Server, log logger.Logger) (activityPool, error) {
 	const op = errors.Op("new_activity_pool")
 	// env variables
 	env := map[string]string{RR_MODE: roadrunner_temporal.RRMode, RR_CODEC: codec.GetName()}
@@ -67,6 +69,7 @@ func newActivityPool(codec rrt.Codec, graceTimeout time.Duration, listener event
 		wp:           wp,
 		running:      sync.Map{},
 		graceTimeout: graceTimeout,
+		log:          log,
 	}, nil
 }
 
@@ -94,6 +97,8 @@ func (pool *activityPoolImpl) Destroy(ctx context.Context) error {
 		pool.tWorkers[i].Stop()
 	}
 
+	pool.log.Info("workers stopped")
+
 	pool.wp.Destroy(ctx)
 	return nil
 }
@@ -113,7 +118,6 @@ func (pool *activityPoolImpl) ActivityNames() []string {
 	return pool.activities
 }
 
-// ActivityNames returns list of all available activity names.
 func (pool *activityPoolImpl) GetActivityContext(taskToken []byte) (context.Context, error) {
 	const op = errors.Op("activity_pool_get_activity_context")
 	c, ok := pool.running.Load(utils.AsString(taskToken))

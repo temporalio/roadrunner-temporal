@@ -59,8 +59,8 @@ type Codec interface {
 
 // Endpoint provides the ability to send and receive messages.
 type Endpoint interface {
-	// ExecWithContext allow to set ExecTTL
-	Exec(p payload.Payload) (payload.Payload, error)
+	// Exec used to execute payload on the worker
+	Exec(p *payload.Payload) (*payload.Payload, error)
 }
 
 // DebugLevel configures debug level.

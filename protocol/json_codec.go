@@ -82,7 +82,9 @@ func (c *JSONCodec) Execute(e Endpoint, ctx Context, msg ...Message) ([]Message,
 		frames = append(frames, frame)
 	}
 
-	p := payload.Payload{}
+	// runtime.newobject(SB)
+	// Did this object prev allocated on the per-p local storage?
+	p := &payload.Payload{}
 
 	if ctx.IsEmpty() {
 		p.Context = []byte("null")
