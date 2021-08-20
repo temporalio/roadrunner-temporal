@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"sync/atomic"
 
@@ -21,11 +22,12 @@ const PluginName = "temporal"
 
 // Plugin implement Temporal contract.
 type Plugin struct {
-	workerID int32
-	cfg      *Config
-	dc       converter.DataConverter
-	log      logger.Logger
-	client   client.Client
+	workerID    int32
+	cfg         *Config
+	dc          converter.DataConverter
+	log         logger.Logger
+	client      client.Client
+	tallyCloser io.Closer
 }
 
 // Temporal define common interface for RoadRunner plugins.
@@ -89,7 +91,7 @@ func (p *Plugin) Serve() chan error {
 	var ms tally.Scope
 	var err error
 	if p.cfg.Metrics != nil {
-		ms, err = newPrometheusScope(prometheus.Configuration{
+		ms, p.tallyCloser, err = newPrometheusScope(prometheus.Configuration{
 			ListenAddress: p.cfg.Metrics.Address,
 			TimerType:     p.cfg.Metrics.Type,
 		}, p.cfg.Metrics.Prefix, p.log)
@@ -121,6 +123,10 @@ func (p *Plugin) Serve() chan error {
 func (p *Plugin) Stop() error {
 	if p.client != nil {
 		p.client.Close()
+	}
+
+	if p.tallyCloser != nil {
+		return p.tallyCloser.Close()
 	}
 
 	return nil

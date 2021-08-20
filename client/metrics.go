@@ -1,6 +1,7 @@
 package client
 
 import (
+	"io"
 	"time"
 
 	prom "github.com/m3db/prometheus_client_golang/prometheus"
@@ -33,7 +34,7 @@ var (
 	}
 )
 
-func newPrometheusScope(c prometheus.Configuration, prefix string, log logger.Logger) (tally.Scope, error) {
+func newPrometheusScope(c prometheus.Configuration, prefix string, log logger.Logger) (tally.Scope, io.Closer, error) {
 	reporter, err := c.NewReporter(
 		prometheus.ConfigurationOptions{
 			Registry: prom.NewRegistry(),
@@ -43,7 +44,7 @@ func newPrometheusScope(c prometheus.Configuration, prefix string, log logger.Lo
 		},
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	scopeOpts := tally.ScopeOptions{
 		CachedReporter:  reporter,
@@ -51,7 +52,7 @@ func newPrometheusScope(c prometheus.Configuration, prefix string, log logger.Lo
 		SanitizeOptions: &sanitizeOptions,
 		Prefix:          prefix,
 	}
-	scope, _ := tally.NewRootScope(scopeOpts, time.Second)
+	scope, closer := tally.NewRootScope(scopeOpts, time.Second)
 
-	return scope, nil
+	return scope, closer, nil
 }
