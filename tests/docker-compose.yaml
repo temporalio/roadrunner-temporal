@@ -44,3 +44,8 @@ services:
       - TEMPORAL_PERMIT_WRITE_API=true
     ports:
       - "8088:8088"
+
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9091:9090"

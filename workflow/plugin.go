@@ -9,7 +9,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/pkg/events"
-	"github.com/spiral/roadrunner/v2/pkg/process"
+	"github.com/spiral/roadrunner/v2/pkg/state/process"
 	rrWorker "github.com/spiral/roadrunner/v2/pkg/worker"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	"github.com/spiral/roadrunner/v2/plugins/logger"
@@ -126,6 +126,8 @@ func (p *Plugin) Workers() []*process.State {
 
 	return states
 }
+
+func (p *Plugin) Available() {}
 
 // WorkflowNames returns list of all available workflows.
 func (p *Plugin) WorkflowNames() []string {

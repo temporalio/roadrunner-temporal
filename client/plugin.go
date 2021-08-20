@@ -2,14 +2,16 @@ package client
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"sync/atomic"
 
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner/v2/pkg/pool"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	"github.com/spiral/roadrunner/v2/plugins/logger"
 	rrt "github.com/temporalio/roadrunner-temporal/protocol"
+	"github.com/uber-go/tally"
+	"github.com/uber-go/tally/prometheus"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
@@ -18,16 +20,14 @@ import (
 // PluginName defines public service name.
 const PluginName = "temporal"
 
-// indicates that the case size was set
-var stickyCacheSet = false
-
 // Plugin implement Temporal contract.
 type Plugin struct {
-	workerID int32
-	cfg      *Config
-	dc       converter.DataConverter
-	log      logger.Logger
-	client   client.Client
+	workerID    int32
+	cfg         *Config
+	dc          converter.DataConverter
+	log         logger.Logger
+	client      client.Client
+	tallyCloser io.Closer
 }
 
 // Temporal define common interface for RoadRunner plugins.
@@ -39,28 +39,21 @@ type Temporal interface {
 	CreateWorker(taskQueue string, options worker.Options) (worker.Worker, error)
 }
 
-// Config of the temporal client and depended services.
-type Config struct {
-	Address    string
-	Namespace  string
-	Activities *pool.Config
-	Codec      string
-	DebugLevel int `mapstructure:"debug_level"`
-	CacheSize  int `mapstructure:"cache_size"`
-}
-
 // Init initiates temporal client plugin.
 func (p *Plugin) Init(cfg config.Configurer, log logger.Logger) error {
 	const op = errors.Op("temporal_client_plugin_init")
 	if !cfg.Has(PluginName) {
 		return errors.E(op, errors.Disabled)
 	}
-	p.log = log
+
 	p.dc = rrt.NewDataConverter(converter.GetDefaultDataConverter())
 	err := cfg.UnmarshalKey(PluginName, &p.cfg)
 	if err != nil {
 		return errors.E(op, err)
 	}
+
+	p.log = log
+	p.cfg.InitDefault()
 
 	return nil
 }
@@ -93,11 +86,19 @@ func (p *Plugin) GetDataConverter() converter.DataConverter {
 func (p *Plugin) Serve() chan error {
 	const op = errors.Op("temporal_client_plugin_serve")
 	errCh := make(chan error, 1)
-	var err error
+	worker.SetStickyWorkflowCacheSize(p.cfg.CacheSize)
 
-	if stickyCacheSet == false && p.cfg.CacheSize != 0 { //nolint:gosimple
-		worker.SetStickyWorkflowCacheSize(p.cfg.CacheSize)
-		stickyCacheSet = true
+	var ms tally.Scope
+	var err error
+	if p.cfg.Metrics != nil {
+		ms, p.tallyCloser, err = newPrometheusScope(prometheus.Configuration{
+			ListenAddress: p.cfg.Metrics.Address,
+			TimerType:     p.cfg.Metrics.Type,
+		}, p.cfg.Metrics.Prefix, p.log)
+		if err != nil {
+			errCh <- errors.E(op, err)
+			return errCh
+		}
 	}
 
 	p.client, err = client.NewClient(client.Options{
@@ -105,6 +106,7 @@ func (p *Plugin) Serve() chan error {
 		HostPort:      p.cfg.Address,
 		Namespace:     p.cfg.Namespace,
 		DataConverter: p.dc,
+		MetricsScope:  ms,
 	})
 
 	if err != nil {
@@ -121,6 +123,10 @@ func (p *Plugin) Serve() chan error {
 func (p *Plugin) Stop() error {
 	if p.client != nil {
 		p.client.Close()
+	}
+
+	if p.tallyCloser != nil {
+		return p.tallyCloser.Close()
 	}
 
 	return nil

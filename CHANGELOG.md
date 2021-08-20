@@ -1,8 +1,12 @@
 CHANGELOG
 =========
 
-v1.0.9 (--.07.2021)
+v1.0.9 (--.08.2021)
 -------------------
+
+## 👀 New:
+
+- ✏️ Expose all temporal metrics. New `metrics` options in the configuration to set up prometheus metrics.
 
 ## 🩹 Fixes:
 
