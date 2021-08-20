@@ -31,6 +31,52 @@ type TestServer struct {
 	workflows  *workflow.Plugin
 }
 
+func NewTestServerWithMetrics(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *TestServer {
+	container, err := endure.NewContainer(initLogger(), endure.RetryOnFail(false))
+	assert.NoError(t, err)
+
+	tc := &rrClient.Plugin{}
+	a := &activity.Plugin{}
+	w := &workflow.Plugin{}
+
+	err = container.RegisterAll(
+		tc,
+		a,
+		w,
+		initConfigProtoWithMetrics(),
+		&logger.ZapLogger{},
+		&resetter.Plugin{},
+		&informer.Plugin{},
+		&server.Plugin{},
+		&rpc.Plugin{},
+	)
+
+	assert.NoError(t, err)
+	assert.NoError(t, container.Init())
+
+	errCh, err := container.Serve()
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case er := <-errCh:
+				assert.Fail(t, fmt.Sprintf("got error from vertex: %s, error: %v", er.VertexID, er.Error))
+				assert.NoError(t, container.Stop())
+				return
+			case <-stopCh:
+				assert.NoError(t, container.Stop())
+				return
+			}
+		}
+	}()
+
+	return &TestServer{temporal: tc, activities: a, workflows: w}
+}
+
 func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, proto bool) *TestServer {
 	container, err := endure.NewContainer(initLogger(), endure.RetryOnFail(false))
 	assert.NoError(t, err)
@@ -91,6 +137,16 @@ func initConfigJSON() config.Configurer {
 		CommonConfig: &config.General{GracefulTimeout: time.Second * 0},
 	}
 	cfg.Path = ".rr.yaml"
+	cfg.Prefix = "rr"
+
+	return cfg
+}
+
+func initConfigProtoWithMetrics() config.Configurer {
+	cfg := &config.Viper{
+		CommonConfig: &config.General{GracefulTimeout: time.Second * 0},
+	}
+	cfg.Path = ".rr-metrics.yaml"
 	cfg.Prefix = "rr"
 
 	return cfg

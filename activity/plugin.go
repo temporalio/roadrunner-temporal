@@ -6,7 +6,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/spiral/roadrunner/v2/pkg/events"
-	"github.com/spiral/roadrunner/v2/pkg/process"
+	"github.com/spiral/roadrunner/v2/pkg/state/process"
 	rrWorker "github.com/spiral/roadrunner/v2/pkg/worker"
 	"github.com/spiral/roadrunner/v2/plugins/config"
 	roadrunner_temporal "github.com/temporalio/roadrunner-temporal"
@@ -158,6 +158,8 @@ func (p *Plugin) Workers() []*process.State {
 
 	return states
 }
+
+func (p *Plugin) Available() {}
 
 // ActivityNames returns list of all available activities.
 func (p *Plugin) ActivityNames() []string {
