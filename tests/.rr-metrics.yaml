@@ -10,6 +10,7 @@ temporal:
   address: "127.0.0.1:7233"
   metrics:
     address: "127.0.0.1:9095"
+    prefix: "samples"
     type: "summary"
   activities:
     num_workers: 4

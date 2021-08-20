@@ -92,7 +92,7 @@ func (p *Plugin) Serve() chan error {
 		ms, err = newPrometheusScope(prometheus.Configuration{
 			ListenAddress: p.cfg.Metrics.Address,
 			TimerType:     p.cfg.Metrics.Type,
-		}, p.log)
+		}, p.cfg.Metrics.Prefix, p.log)
 		if err != nil {
 			errCh <- errors.E(op, err)
 			return errCh

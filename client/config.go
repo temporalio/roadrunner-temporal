@@ -9,6 +9,7 @@ const (
 type Metrics struct {
 	Address string `mapstructure:"address"`
 	Type    string `mapstructure:"type"`
+	Prefix  string `mapstructure:"prefix"`
 }
 
 // Config of the temporal client and depended services.

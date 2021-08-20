@@ -33,7 +33,7 @@ var (
 	}
 )
 
-func newPrometheusScope(c prometheus.Configuration, log logger.Logger) (tally.Scope, error) {
+func newPrometheusScope(c prometheus.Configuration, prefix string, log logger.Logger) (tally.Scope, error) {
 	reporter, err := c.NewReporter(
 		prometheus.ConfigurationOptions{
 			Registry: prom.NewRegistry(),
@@ -49,7 +49,7 @@ func newPrometheusScope(c prometheus.Configuration, log logger.Logger) (tally.Sc
 		CachedReporter:  reporter,
 		Separator:       prometheus.DefaultSeparator,
 		SanitizeOptions: &sanitizeOptions,
-		Prefix:          "temporal_samples",
+		Prefix:          prefix,
 	}
 	scope, _ := tally.NewRootScope(scopeOpts, time.Second)
 
