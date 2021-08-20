@@ -176,8 +176,6 @@ func (pool *activityPoolImpl) executeActivity(ctx context.Context, args *common.
 
 	var info = activity.GetInfo(ctx)
 
-
-
 	var msg = rrt.Message{
 		ID: atomic.AddUint64(&pool.seqID, 1),
 		Command: rrt.InvokeActivity{

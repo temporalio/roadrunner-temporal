@@ -84,16 +84,19 @@ func (p *Plugin) GetDataConverter() converter.DataConverter {
 func (p *Plugin) Serve() chan error {
 	const op = errors.Op("temporal_client_plugin_serve")
 	errCh := make(chan error, 1)
-	var err error
-
 	worker.SetStickyWorkflowCacheSize(p.cfg.CacheSize)
 
 	var ms tally.Scope
+	var err error
 	if p.cfg.Metrics != nil {
 		ms, err = newPrometheusScope(prometheus.Configuration{
 			ListenAddress: p.cfg.Metrics.Address,
 			TimerType:     p.cfg.Metrics.Type,
 		}, p.log)
+		if err != nil {
+			errCh <- errors.E(op, err)
+			return errCh
+		}
 	}
 
 	p.client, err = client.NewClient(client.Options{
