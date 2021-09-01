@@ -89,3 +89,4 @@ issues:
         - goconst
         - noctx
         - gosimple
+        - typecheck
