@@ -26,4 +26,4 @@ jobs:
         with:
           version: latest # without patch version
           only-new-issues: false # show only new issues if it's a pull request
-          args: --timeout=10m --config ./.golangci.yml
+          args: --timeout=10m --config ./.golangci.yml --disable typecheck
