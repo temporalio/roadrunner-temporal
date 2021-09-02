@@ -60,7 +60,7 @@ jobs:
           restore-keys: ${{ runner.os }}-go-
 
       - name: Install Go dependencies
-        run: go mod download
+        run: go mod tidy && go mod download
 
       - name: Golang tests [Linux] with JSON and PROTO codecs
         run: |
