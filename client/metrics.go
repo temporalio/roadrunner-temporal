@@ -5,7 +5,7 @@ import (
 	"time"
 
 	prom "github.com/m3db/prometheus_client_golang/prometheus"
-	"github.com/spiral/roadrunner/v2/plugins/logger"
+	"github.com/spiral/roadrunner-plugins/v2/logger"
 	"github.com/uber-go/tally"
 	"github.com/uber-go/tally/prometheus"
 )

@@ -7,8 +7,8 @@ import (
 	"sync/atomic"
 
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner/v2/plugins/config"
-	"github.com/spiral/roadrunner/v2/plugins/logger"
+	"github.com/spiral/roadrunner-plugins/v2/config"
+	"github.com/spiral/roadrunner-plugins/v2/logger"
 	rrt "github.com/temporalio/roadrunner-temporal/protocol"
 	"github.com/uber-go/tally"
 	"github.com/uber-go/tally/prometheus"

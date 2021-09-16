@@ -1,6 +1,6 @@
 package client
 
-import "github.com/spiral/roadrunner/v2/pkg/pool"
+import "github.com/spiral/roadrunner/v2/pool"
 
 const (
 	MetricsTypeSummary string = "summary"
