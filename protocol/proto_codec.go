@@ -4,8 +4,8 @@ import (
 	v1Proto "github.com/golang/protobuf/proto" //nolint:staticcheck
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner/v2/pkg/payload"
-	"github.com/spiral/roadrunner/v2/plugins/logger"
+	"github.com/spiral/roadrunner-plugins/v2/logger"
+	"github.com/spiral/roadrunner/v2/payload"
 	"github.com/temporalio/roadrunner-temporal/protocol/internal"
 	"google.golang.org/protobuf/proto"
 )

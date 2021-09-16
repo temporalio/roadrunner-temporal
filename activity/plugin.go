@@ -5,18 +5,18 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/spiral/roadrunner/v2/pkg/events"
-	"github.com/spiral/roadrunner/v2/pkg/state/process"
-	rrWorker "github.com/spiral/roadrunner/v2/pkg/worker"
-	"github.com/spiral/roadrunner/v2/plugins/config"
+	"github.com/spiral/roadrunner-plugins/v2/config"
+	"github.com/spiral/roadrunner/v2/events"
+	"github.com/spiral/roadrunner/v2/state/process"
+	rrWorker "github.com/spiral/roadrunner/v2/worker"
 	roadrunner_temporal "github.com/temporalio/roadrunner-temporal"
 
 	"sync"
 	"sync/atomic"
 
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner/v2/plugins/logger"
-	"github.com/spiral/roadrunner/v2/plugins/server"
+	"github.com/spiral/roadrunner-plugins/v2/logger"
+	"github.com/spiral/roadrunner-plugins/v2/server"
 	"github.com/temporalio/roadrunner-temporal/client"
 )
 
@@ -181,7 +181,7 @@ func (p *Plugin) AddListener(listener events.Listener) {
 // AddListener adds event listeners to the service.
 func (p *Plugin) poolListener(event interface{}) {
 	if ev, ok := event.(events.PoolEvent); ok {
-		if ev.Event == events.EventPoolError {
+		if ev.Event == events.EventWorkerProcessExit {
 			p.log.Error("Activity pool error", "error", ev.Payload.(error))
 			p.reset <- struct{}{}
 		}

@@ -1,8 +1,8 @@
 package protocol
 
 import (
-	"github.com/spiral/roadrunner/v2/pkg/payload"
-	"github.com/spiral/roadrunner/v2/plugins/logger"
+	"github.com/spiral/roadrunner-plugins/v2/logger"
+	"github.com/spiral/roadrunner/v2/payload"
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/api/failure/v1"
 )
