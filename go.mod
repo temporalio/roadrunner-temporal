@@ -13,7 +13,7 @@ require (
 	github.com/spiral/endure v1.0.4
 	github.com/spiral/errors v1.0.12
 	github.com/spiral/roadrunner-plugins/v2 v2.5.0-alpha.1
-	github.com/spiral/roadrunner/v2 v2.5.0-alpha.1
+	github.com/spiral/roadrunner/v2 v2.5.0-alpha.2
 	// ===========
 	github.com/stretchr/testify v1.7.0
 	github.com/uber-go/tally v3.4.2+incompatible
@@ -34,7 +34,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/gogo/status v1.1.0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
-	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
