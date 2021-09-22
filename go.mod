@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/cenkalti/backoff/v4 v4.1.1
-	github.com/fatih/color v1.12.0
+	github.com/fatih/color v1.13.0
 	github.com/golang/protobuf v1.5.2
 	github.com/json-iterator/go v1.1.12
 	github.com/m3db/prometheus_client_golang v0.8.1
@@ -42,7 +42,7 @@ require (
 	github.com/m3db/prometheus_common v0.1.0 // indirect
 	github.com/m3db/prometheus_procfs v0.8.1 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
-	github.com/mattn/go-colorable v0.1.8 // indirect
+	github.com/mattn/go-colorable v0.1.9 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.4.2 // indirect
