@@ -12,7 +12,7 @@ require (
 	// SPIRAL ========
 	github.com/spiral/endure v1.0.4
 	github.com/spiral/errors v1.0.12
-	github.com/spiral/roadrunner-plugins/v2 v2.5.0-alpha.3
+	github.com/spiral/roadrunner-plugins/v2 v2.5.0-beta.1
 	github.com/spiral/roadrunner/v2 v2.5.0-beta.1
 	// ===========
 	github.com/stretchr/testify v1.7.0
@@ -52,7 +52,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
-	github.com/shirou/gopsutil v3.21.8+incompatible // indirect
+	github.com/shirou/gopsutil v3.21.9+incompatible // indirect
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
