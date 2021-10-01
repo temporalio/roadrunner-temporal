@@ -2,6 +2,8 @@ package activity
 
 import (
 	"context"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
@@ -10,9 +12,6 @@ import (
 	"github.com/spiral/roadrunner/v2/state/process"
 	rrWorker "github.com/spiral/roadrunner/v2/worker"
 	roadrunner_temporal "github.com/temporalio/roadrunner-temporal"
-
-	"sync"
-	"sync/atomic"
 
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner-plugins/v2/logger"
