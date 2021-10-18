@@ -13,7 +13,7 @@ require (
 	github.com/spiral/endure v1.0.6
 	github.com/spiral/errors v1.0.12
 	github.com/spiral/roadrunner-plugins/v2 v2.5.0-rc.1
-	github.com/spiral/roadrunner/v2 v2.5.0-rc.1
+	github.com/spiral/roadrunner/v2 v2.5.0-rc.2
 	// ===========
 	github.com/stretchr/testify v1.7.0
 	github.com/uber-go/tally v3.4.2+incompatible
@@ -58,7 +58,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.9.0 // indirect
-	github.com/spiral/goridge/v3 v3.2.2 // indirect
+	github.com/spiral/goridge/v3 v3.2.3 // indirect
 	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.9 // indirect
