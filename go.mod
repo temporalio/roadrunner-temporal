@@ -12,8 +12,8 @@ require (
 	// SPIRAL ========
 	github.com/spiral/endure v1.0.6
 	github.com/spiral/errors v1.0.12
-	github.com/spiral/roadrunner-plugins/v2 v2.5.0-rc.2
-	github.com/spiral/roadrunner/v2 v2.5.0-rc.2
+	github.com/spiral/roadrunner-plugins/v2 v2.5.0
+	github.com/spiral/roadrunner/v2 v2.5.0
 	// ===========
 	github.com/stretchr/testify v1.7.0
 	github.com/uber-go/tally v3.4.2+incompatible
