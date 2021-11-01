@@ -147,7 +147,7 @@ func (wf *workflowProcess) handleCancel() {
 }
 
 // schedule the signal processing
-func (wf *workflowProcess) handleSignal(name string, input *commonpb.Payloads) {
+func (wf *workflowProcess) handleSignal(name string, input *commonpb.Payloads) error {
 	_ = wf.mq.pushCommand(
 		rrt.InvokeSignal{
 			RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID,
@@ -155,6 +155,7 @@ func (wf *workflowProcess) handleSignal(name string, input *commonpb.Payloads) {
 		},
 		input,
 	)
+	return nil
 }
 
 // Handle query in blocking mode.
