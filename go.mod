@@ -10,7 +10,7 @@ require (
 	github.com/m3db/prometheus_client_golang v0.8.1
 	github.com/pborman/uuid v1.2.1
 	// SPIRAL ========
-	github.com/spiral/endure v1.0.7
+	github.com/spiral/endure v1.0.8
 	github.com/spiral/errors v1.0.12
 	github.com/spiral/roadrunner-plugins/v2 v2.5.1
 	github.com/spiral/roadrunner/v2 v2.5.0
