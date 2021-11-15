@@ -18,7 +18,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/uber-go/tally v3.4.2+incompatible
 	go.temporal.io/api v1.6.0
-	go.temporal.io/sdk v1.10.0
+	go.temporal.io/sdk v1.11.1
 	go.uber.org/zap v1.19.1
 	google.golang.org/protobuf v1.27.1
 )
@@ -64,6 +64,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.9 // indirect
 	github.com/tklauser/numcpus v0.3.0 // indirect
 	github.com/twmb/murmur3 v1.1.6 // indirect
+	github.com/uber-go/tally/v4 v4.0.1 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
