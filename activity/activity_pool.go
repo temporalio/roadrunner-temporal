@@ -9,7 +9,6 @@ import (
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner-plugins/v2/logger"
 	"github.com/spiral/roadrunner-plugins/v2/server"
-	"github.com/spiral/roadrunner/v2/events"
 	"github.com/spiral/roadrunner/v2/pool"
 	"github.com/spiral/roadrunner/v2/utils"
 	rrWorker "github.com/spiral/roadrunner/v2/worker"
@@ -55,11 +54,11 @@ type activityPoolImpl struct {
 }
 
 // newActivityPool
-func newActivityPool(codec rrt.Codec, graceTimeout time.Duration, listener events.Listener, poolConfig *pool.Config, server server.Server, log logger.Logger) (activityPool, error) {
+func newActivityPool(codec rrt.Codec, graceTimeout time.Duration, poolConfig *pool.Config, server server.Server, log logger.Logger) (activityPool, error) {
 	const op = errors.Op("new_activity_pool")
 	// env variables
 	env := map[string]string{RR_MODE: roadrunner_temporal.RRMode, RR_CODEC: codec.GetName()}
-	wp, err := server.NewWorkerPool(context.Background(), poolConfig, env, listener)
+	wp, err := server.NewWorkerPool(context.Background(), poolConfig, env)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}

@@ -13,7 +13,6 @@ import (
 	"github.com/spiral/roadrunner-plugins/v2/server"
 	"github.com/spiral/roadrunner/v2/events"
 	"github.com/spiral/roadrunner/v2/state/process"
-	rrWorker "github.com/spiral/roadrunner/v2/worker"
 	roadrunner_temporal "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/client"
 )
@@ -29,14 +28,18 @@ type Plugin struct {
 	sync.Mutex
 	// plugins
 	temporal client.Temporal
-	events   events.Handler
-	server   server.Server
-	log      logger.Logger
+
+	events events.EventBus
+	id     string
+
+	server server.Server
+	log    logger.Logger
 
 	// graceful timeout for the worker
 	gracePeriod time.Duration
 
 	reset   chan struct{}
+	stopCh  chan struct{}
 	pool    pool
 	closing int64
 }
@@ -49,9 +52,10 @@ func (p *Plugin) Init(temporal client.Temporal, server server.Server, log logger
 	}
 	p.temporal = temporal
 	p.server = server
-	p.events = events.NewEventsHandler()
+	p.events, p.id = events.Bus()
 	p.log = log
 	p.reset = make(chan struct{}, 1)
+	p.stopCh = make(chan struct{}, 1)
 
 	// it can't be 0 (except set by user), because it would be set by the rr-binary (cli)
 	p.gracePeriod = cfg.GetCommonConfig().GracefulTimeout
@@ -93,6 +97,8 @@ func (p *Plugin) Stop() error {
 		}
 		return nil
 	}
+
+	p.stopCh <- struct{}{}
 
 	return nil
 }
@@ -148,7 +154,6 @@ func (p *Plugin) startPool() (pool, error) {
 		p.server,
 		p.gracePeriod,
 		p.log,
-		p.poolListener,
 	)
 	if err != nil {
 		return nil, errors.E(op, err)
@@ -227,28 +232,29 @@ func (p *Plugin) watch(errCh chan error) {
 			}
 		}
 	}()
-}
 
-// AddListener adds event listeners to the service.
-func (p *Plugin) poolListener(event interface{}) {
-	if ev, ok := event.(events.PoolEvent); ok {
-		if ev.Event == events.EventWorkerProcessExit {
-			p.log.Error("workflow pool error", "error", ev.Payload.(error))
-			p.reset <- struct{}{}
+	go func() {
+		eventsCh := make(chan events.Event, 10)
+		err := p.events.SubscribeP(p.id, "*.EventWorkerWaitExit", eventsCh)
+		if err != nil {
+			errCh <- err
+			return
 		}
-	}
 
-	if ev, ok := event.(events.WorkerEvent); ok {
-		if ev.Event == events.EventWorkerError {
-			// if destroyed, do not reset, because RR-pool will handle this signal
-			if ev.Worker.(rrWorker.BaseProcess).State().Value() == rrWorker.StateDestroyed {
-				p.events.Push(event)
+		err = p.events.SubscribeP(p.id, "*.EventWorkerError", eventsCh)
+		if err != nil {
+			errCh <- err
+			return
+		}
+
+		for {
+			select {
+			case <-eventsCh:
+				p.reset <- struct{}{}
+			case <-p.stopCh:
+				p.events.Unsubscribe(p.id)
 				return
 			}
-			p.reset <- struct{}{}
-			p.log.Error("worker error", "error", ev.Payload.(error))
 		}
-	}
-
-	p.events.Push(event)
+	}()
 }

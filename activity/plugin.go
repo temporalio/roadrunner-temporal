@@ -27,12 +27,16 @@ const (
 // Plugin to manage activity execution.
 type Plugin struct {
 	temporal client.Temporal
-	events   events.Handler
-	server   server.Server
-	log      logger.Logger
-	mu       sync.Mutex
-	reset    chan struct{}
-	pool     activityPool
+
+	events events.EventBus
+	id     string
+
+	server server.Server
+	log    logger.Logger
+	mu     sync.Mutex
+	reset  chan struct{}
+	stopCh chan struct{}
+	pool   activityPool
 	// graceful timeout for the worker
 	graceTimeout time.Duration
 	closing      int64
@@ -52,9 +56,10 @@ func (p *Plugin) Init(temporal client.Temporal, server server.Server, log logger
 
 	p.temporal = temporal
 	p.server = server
-	p.events = events.NewEventsHandler()
+	p.events, p.id = events.Bus()
 	p.log = log
 	p.reset = make(chan struct{})
+	p.stopCh = make(chan struct{})
 
 	// it can't be 0 (except set by user), because it would be set by the rr-binary (cli)
 	p.graceTimeout = cfg.GetCommonConfig().GracefulTimeout
@@ -67,13 +72,12 @@ func (p *Plugin) Serve() chan error {
 	const op = errors.Op("activity_plugin_serve")
 
 	errCh := make(chan error, 1)
-	pool, err := p.startPool()
+	var err error
+	p.pool, err = p.startPool()
 	if err != nil {
 		errCh <- errors.E(op, err)
 		return errCh
 	}
-
-	p.pool = pool
 
 	go func() {
 		// single case loop
@@ -97,6 +101,26 @@ func (p *Plugin) Serve() chan error {
 		}
 	}()
 
+	go func() {
+		eventsCh := make(chan events.Event, 10)
+		err := p.events.SubscribeP(p.id, "pool.EventWorkerProcessExit", eventsCh)
+		if err != nil {
+			errCh <- err
+			return
+		}
+
+		for {
+			select {
+			case ev := <-eventsCh:
+				p.log.Error("Activity pool error", "error", ev.Message())
+				p.reset <- struct{}{}
+			case <-p.stopCh:
+				p.events.Unsubscribe(p.id)
+				return
+			}
+		}
+	}()
+
 	return errCh
 }
 
@@ -114,6 +138,8 @@ func (p *Plugin) Stop() error {
 		}
 		return nil
 	}
+
+	p.stopCh <- struct{}{}
 
 	return nil
 }
@@ -172,29 +198,10 @@ func (p *Plugin) Reset() error {
 	return nil
 }
 
-// AddListener adds event listeners to the service.
-func (p *Plugin) AddListener(listener events.Listener) {
-	p.events.AddListener(listener)
-}
-
-// AddListener adds event listeners to the service.
-func (p *Plugin) poolListener(event interface{}) {
-	if ev, ok := event.(events.PoolEvent); ok {
-		if ev.Event == events.EventWorkerProcessExit {
-			p.log.Error("Activity pool error", "error", ev.Payload.(error))
-			p.reset <- struct{}{}
-		}
-	}
-
-	p.events.Push(event)
-}
-
-// AddListener adds event listeners to the service.
 func (p *Plugin) startPool() (activityPool, error) {
 	pool, err := newActivityPool(
 		p.temporal.GetCodec().WithLogger(p.log),
 		p.graceTimeout,
-		p.poolListener,
 		p.temporal.GetConfig().Activities,
 		p.server,
 		p.log,

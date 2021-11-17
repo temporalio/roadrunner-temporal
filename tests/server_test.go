@@ -78,7 +78,7 @@ func NewTestServerWithMetrics(t *testing.T, stopCh chan struct{}, wg *sync.WaitG
 }
 
 func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, proto bool) *TestServer {
-	container, err := endure.NewContainer(initLogger(), endure.RetryOnFail(false))
+	container, err := endure.NewContainer(initLogger(), endure.RetryOnFail(false), endure.GracefulShutdownTimeout(time.Second*30))
 	assert.NoError(t, err)
 
 	tc := &rrClient.Plugin{}
@@ -134,7 +134,7 @@ func (s *TestServer) Client() temporalClient.Client {
 
 func initConfigJSON() config.Configurer {
 	cfg := &config.Viper{
-		CommonConfig: &config.General{GracefulTimeout: time.Second * 0},
+		CommonConfig: &config.General{GracefulTimeout: time.Second * 10},
 	}
 	cfg.Path = ".rr.yaml"
 	cfg.Prefix = "rr"
