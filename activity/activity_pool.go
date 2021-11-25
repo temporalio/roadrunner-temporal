@@ -174,6 +174,7 @@ func (pool *activityPoolImpl) executeActivity(ctx context.Context, args *common.
 	}
 
 	var info = activity.GetInfo(ctx)
+	pool.running.Store(utils.AsString(info.TaskToken), ctx)
 
 	var msg = rrt.Message{
 		ID: atomic.AddUint64(&pool.seqID, 1),
@@ -189,13 +190,13 @@ func (pool *activityPoolImpl) executeActivity(ctx context.Context, args *common.
 		msg.Payloads.Payloads = append(msg.Payloads.Payloads, heartbeatDetails.Payloads...)
 	}
 
-	pool.running.Store(utils.AsString(info.TaskToken), ctx)
-	defer pool.running.Delete(utils.AsString(info.TaskToken))
-
 	result, err := pool.codec.Execute(pool.wp, rrt.Context{TaskQueue: info.TaskQueue}, msg)
 	if err != nil {
+		pool.running.Delete(utils.AsString(info.TaskToken))
 		return nil, errors.E(op, err)
 	}
+
+	pool.running.Delete(utils.AsString(info.TaskToken))
 
 	if len(result) != 1 {
 		return nil, errors.E(op, errors.Str("invalid activity worker response"))
