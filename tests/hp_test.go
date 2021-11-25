@@ -12,10 +12,10 @@ import (
 	"go.temporal.io/api/common/v1"
 
 	"github.com/fatih/color"
+	"github.com/spiral/sdk-go/client"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
-	"go.temporal.io/sdk/client"
 )
 
 func init() { //nolint:gochecknoinits

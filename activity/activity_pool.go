@@ -9,18 +9,17 @@ import (
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner-plugins/v2/logger"
 	"github.com/spiral/roadrunner-plugins/v2/server"
-	"github.com/spiral/roadrunner/v2/events"
 	"github.com/spiral/roadrunner/v2/pool"
 	"github.com/spiral/roadrunner/v2/utils"
 	rrWorker "github.com/spiral/roadrunner/v2/worker"
+	"github.com/spiral/sdk-go/activity"
+	"github.com/spiral/sdk-go/converter"
+	"github.com/spiral/sdk-go/internalbindings"
+	"github.com/spiral/sdk-go/worker"
 	roadrunner_temporal "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/client"
 	rrt "github.com/temporalio/roadrunner-temporal/protocol"
 	"go.temporal.io/api/common/v1"
-	"go.temporal.io/sdk/activity"
-	"go.temporal.io/sdk/converter"
-	"go.temporal.io/sdk/internalbindings"
-	"go.temporal.io/sdk/worker"
 )
 
 // RR_MODE env variable
@@ -55,11 +54,11 @@ type activityPoolImpl struct {
 }
 
 // newActivityPool
-func newActivityPool(codec rrt.Codec, graceTimeout time.Duration, listener events.Listener, poolConfig *pool.Config, server server.Server, log logger.Logger) (activityPool, error) {
+func newActivityPool(codec rrt.Codec, graceTimeout time.Duration, poolConfig *pool.Config, server server.Server, log logger.Logger) (activityPool, error) {
 	const op = errors.Op("new_activity_pool")
 	// env variables
 	env := map[string]string{RR_MODE: roadrunner_temporal.RRMode, RR_CODEC: codec.GetName()}
-	wp, err := server.NewWorkerPool(context.Background(), poolConfig, env, listener)
+	wp, err := server.NewWorkerPool(context.Background(), poolConfig, env)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}

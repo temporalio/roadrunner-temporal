@@ -2,8 +2,8 @@ package protocol
 
 import (
 	"github.com/spiral/errors"
-	"go.temporal.io/sdk/converter"
-	"go.temporal.io/sdk/worker"
+	"github.com/spiral/sdk-go/converter"
+	"github.com/spiral/sdk-go/worker"
 )
 
 // WorkerInfo outlines information about every available worker and it's TaskQueues.

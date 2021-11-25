@@ -14,13 +14,13 @@ import (
 	"github.com/spiral/roadrunner-plugins/v2/resetter"
 	"github.com/spiral/roadrunner-plugins/v2/rpc"
 	"github.com/spiral/roadrunner-plugins/v2/server"
+	temporalClient "github.com/spiral/sdk-go/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/temporalio/roadrunner-temporal/activity"
 	rrClient "github.com/temporalio/roadrunner-temporal/client"
 	"github.com/temporalio/roadrunner-temporal/workflow"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
-	temporalClient "go.temporal.io/sdk/client"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -78,7 +78,7 @@ func NewTestServerWithMetrics(t *testing.T, stopCh chan struct{}, wg *sync.WaitG
 }
 
 func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, proto bool) *TestServer {
-	container, err := endure.NewContainer(initLogger(), endure.RetryOnFail(false))
+	container, err := endure.NewContainer(initLogger(), endure.RetryOnFail(false), endure.GracefulShutdownTimeout(time.Second*30))
 	assert.NoError(t, err)
 
 	tc := &rrClient.Plugin{}
@@ -134,7 +134,7 @@ func (s *TestServer) Client() temporalClient.Client {
 
 func initConfigJSON() config.Configurer {
 	cfg := &config.Viper{
-		CommonConfig: &config.General{GracefulTimeout: time.Second * 0},
+		CommonConfig: &config.General{GracefulTimeout: time.Second * 10},
 	}
 	cfg.Path = ".rr.yaml"
 	cfg.Prefix = "rr"

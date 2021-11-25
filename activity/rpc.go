@@ -2,9 +2,9 @@ package activity
 
 import (
 	v1Proto "github.com/golang/protobuf/proto" //nolint:staticcheck
+	"github.com/spiral/sdk-go/activity"
+	"github.com/spiral/sdk-go/client"
 	commonpb "go.temporal.io/api/common/v1"
-	"go.temporal.io/sdk/activity"
-	"go.temporal.io/sdk/client"
 	"google.golang.org/protobuf/proto"
 )
 

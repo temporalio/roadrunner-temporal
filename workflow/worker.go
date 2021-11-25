@@ -9,16 +9,15 @@ import (
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner-plugins/v2/logger"
 	"github.com/spiral/roadrunner-plugins/v2/server"
-	"github.com/spiral/roadrunner/v2/events"
 	"github.com/spiral/roadrunner/v2/payload"
 	rrPool "github.com/spiral/roadrunner/v2/pool"
 	rrWorker "github.com/spiral/roadrunner/v2/worker"
+	bindings "github.com/spiral/sdk-go/internalbindings"
+	tWorker "github.com/spiral/sdk-go/worker"
+	"github.com/spiral/sdk-go/workflow"
 	roadrunner_temporal "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/client"
 	rrt "github.com/temporalio/roadrunner-temporal/protocol"
-	bindings "go.temporal.io/sdk/internalbindings"
-	tWorker "go.temporal.io/sdk/worker"
-	"go.temporal.io/sdk/workflow"
 )
 
 // RR_MODE env variable key
@@ -57,7 +56,7 @@ type workerImpl struct {
 }
 
 // newPool creates new workflow pool.
-func newPool(codec rrt.Codec, factory server.Server, graceTimeout time.Duration, log logger.Logger, listener ...events.Listener) (pool, error) {
+func newPool(codec rrt.Codec, factory server.Server, graceTimeout time.Duration, log logger.Logger) (pool, error) {
 	const op = errors.Op("new_workflow_pool")
 	env := map[string]string{RR_MODE: roadrunner_temporal.RRMode, RR_CODEC: codec.GetName()}
 
@@ -75,7 +74,6 @@ func newPool(codec rrt.Codec, factory server.Server, graceTimeout time.Duration,
 		context.Background(),
 		cfg,
 		env,
-		listener...,
 	)
 	if err != nil {
 		return nil, errors.E(op, err)

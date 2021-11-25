@@ -3,7 +3,7 @@ package workflow
 import (
 	"sync"
 
-	bindings "go.temporal.io/sdk/internalbindings"
+	bindings "github.com/spiral/sdk-go/internalbindings"
 )
 
 // used to gain access to child workflow ids after they become available via callback result.

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spiral/sdk-go/client"
 	"github.com/stretchr/testify/assert"
-	"go.temporal.io/sdk/client"
 )
 
 func Test_WorkerError_DisasterRecovery(t *testing.T) {
