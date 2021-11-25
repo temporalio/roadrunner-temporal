@@ -9,12 +9,12 @@ import (
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner-plugins/v2/config"
 	"github.com/spiral/roadrunner-plugins/v2/logger"
+	"github.com/spiral/sdk-go/client"
+	"github.com/spiral/sdk-go/converter"
+	"github.com/spiral/sdk-go/worker"
 	rrt "github.com/temporalio/roadrunner-temporal/protocol"
-	"github.com/uber-go/tally"
-	"github.com/uber-go/tally/prometheus"
-	"go.temporal.io/sdk/client"
-	"go.temporal.io/sdk/converter"
-	"go.temporal.io/sdk/worker"
+	"github.com/uber-go/tally/v4"
+	"github.com/uber-go/tally/v4/prometheus"
 )
 
 // PluginName defines public service name.

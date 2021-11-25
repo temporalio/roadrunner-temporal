@@ -12,12 +12,12 @@ import (
 	"github.com/spiral/roadrunner/v2/payload"
 	rrPool "github.com/spiral/roadrunner/v2/pool"
 	rrWorker "github.com/spiral/roadrunner/v2/worker"
+	bindings "github.com/spiral/sdk-go/internalbindings"
+	tWorker "github.com/spiral/sdk-go/worker"
+	"github.com/spiral/sdk-go/workflow"
 	roadrunner_temporal "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/client"
 	rrt "github.com/temporalio/roadrunner-temporal/protocol"
-	bindings "go.temporal.io/sdk/internalbindings"
-	tWorker "go.temporal.io/sdk/worker"
-	"go.temporal.io/sdk/workflow"
 )
 
 // RR_MODE env variable key

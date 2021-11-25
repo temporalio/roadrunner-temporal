@@ -4,10 +4,10 @@ import (
 	"time"
 
 	"github.com/spiral/errors"
+	"github.com/spiral/sdk-go/activity"
+	bindings "github.com/spiral/sdk-go/internalbindings"
+	"github.com/spiral/sdk-go/workflow"
 	commonpb "go.temporal.io/api/common/v1"
-	"go.temporal.io/sdk/activity"
-	bindings "go.temporal.io/sdk/internalbindings"
-	"go.temporal.io/sdk/workflow"
 )
 
 const (

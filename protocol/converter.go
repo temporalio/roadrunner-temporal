@@ -1,8 +1,8 @@
 package protocol
 
 import (
+	"github.com/spiral/sdk-go/converter"
 	commonpb "go.temporal.io/api/common/v1"
-	"go.temporal.io/sdk/converter"
 )
 
 type (

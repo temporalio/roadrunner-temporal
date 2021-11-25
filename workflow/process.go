@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/spiral/errors"
+	bindings "github.com/spiral/sdk-go/internalbindings"
+	"github.com/spiral/sdk-go/workflow"
 	rrt "github.com/temporalio/roadrunner-temporal/protocol"
 	commonpb "go.temporal.io/api/common/v1"
-	bindings "go.temporal.io/sdk/internalbindings"
-	"go.temporal.io/sdk/workflow"
 )
 
 // wraps single workflow process
@@ -147,7 +147,7 @@ func (wf *workflowProcess) handleCancel() {
 }
 
 // schedule the signal processing
-func (wf *workflowProcess) handleSignal(name string, input *commonpb.Payloads) {
+func (wf *workflowProcess) handleSignal(name string, input *commonpb.Payloads) error {
 	_ = wf.mq.pushCommand(
 		rrt.InvokeSignal{
 			RunID: wf.env.WorkflowInfo().WorkflowExecution.RunID,
@@ -155,6 +155,8 @@ func (wf *workflowProcess) handleSignal(name string, input *commonpb.Payloads) {
 		},
 		input,
 	)
+
+	return nil
 }
 
 // Handle query in blocking mode.

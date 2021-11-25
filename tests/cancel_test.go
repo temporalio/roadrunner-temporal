@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spiral/sdk-go/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
-	"go.temporal.io/sdk/client"
 )
 
 func Test_SimpleWorkflowCancel(t *testing.T) {
