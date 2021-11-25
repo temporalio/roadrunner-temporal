@@ -16,7 +16,7 @@ require (
 	github.com/spiral/roadrunner/v2 v2.5.0
 	// ===========
 	github.com/stretchr/testify v1.7.0
-	github.com/uber-go/tally v3.4.2+incompatible
+	github.com/uber-go/tally v3.4.3+incompatible
 	go.temporal.io/api v1.6.0
 	go.temporal.io/sdk v1.10.0
 	go.uber.org/zap v1.19.1
