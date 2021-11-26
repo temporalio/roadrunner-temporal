@@ -65,18 +65,18 @@ func (p *Plugin) Init(temporal client.Temporal, server server.Server, log logger
 
 // Serve starts workflow service.
 func (p *Plugin) Serve() chan error {
+	errCh := make(chan error, 1)
+	const op = errors.Op("workflow_plugin_serve")
+
 	p.Lock()
 	defer p.Unlock()
-	const op = errors.Op("workflow_plugin_serve")
-	errCh := make(chan error, 1)
 
-	workflowPool, err := p.startPool()
+	var err error
+	p.pool, err = p.startPool()
 	if err != nil {
 		errCh <- errors.E(op, err)
 		return errCh
 	}
-
-	p.pool = workflowPool
 
 	// start pool watcher
 	go p.watch(errCh)

@@ -73,6 +73,9 @@ func (p *Plugin) Serve() chan error {
 
 	errCh := make(chan error, 1)
 	var err error
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.pool, err = p.startPool()
 	if err != nil {
 		errCh <- errors.E(op, err)
