@@ -3,7 +3,7 @@ version: '3.7'
 services:
   postgresql:
     container_name: temporal-postgresql
-    image: postgres:13.3
+    image: postgres:14.1
     environment:
       POSTGRES_PASSWORD: temporal
       POSTGRES_USER: temporal
@@ -12,7 +12,7 @@ services:
 
   temporal:
     container_name: temporal
-    image: temporalio/auto-setup:1.13.0
+    image: temporalio/auto-setup:1.13.1
     depends_on:
       - postgresql
     environment:
@@ -26,7 +26,7 @@ services:
 
   temporal-admin-tools:
     container_name: temporal-admin-tools
-    image: temporalio/admin-tools:1.13.0
+    image: temporalio/admin-tools:1.13.1
     depends_on:
       - temporal
     environment:
