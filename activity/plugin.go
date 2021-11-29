@@ -7,15 +7,14 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner-plugins/v2/config"
+	"github.com/spiral/roadrunner-plugins/v2/logger"
+	"github.com/spiral/roadrunner-plugins/v2/server"
 	"github.com/spiral/roadrunner/v2/events"
 	"github.com/spiral/roadrunner/v2/state/process"
 	rrWorker "github.com/spiral/roadrunner/v2/worker"
-	roadrunner_temporal "github.com/temporalio/roadrunner-temporal"
-
-	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner-plugins/v2/logger"
-	"github.com/spiral/roadrunner-plugins/v2/server"
+	rrt "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/client"
 )
 
@@ -45,7 +44,7 @@ type Plugin struct {
 // Init configures activity service.
 func (p *Plugin) Init(temporal client.Temporal, server server.Server, log logger.Logger, cfg config.Configurer) error {
 	const op = errors.Op("activity_plugin_init")
-	if !cfg.Has(roadrunner_temporal.RootPluginName) {
+	if !cfg.Has(rrt.RootPluginName) {
 		return errors.E(op, errors.Disabled)
 	}
 
