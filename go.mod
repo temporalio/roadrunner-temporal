@@ -11,7 +11,7 @@ require (
 	// SPIRAL ========
 	github.com/spiral/endure v1.0.9
 	github.com/spiral/errors v1.0.12
-	github.com/spiral/roadrunner-plugins/v2 v2.6.0
+	github.com/spiral/roadrunner-plugins/v2 v2.6.1
 	github.com/spiral/roadrunner/v2 v2.6.0
 	github.com/spiral/sdk-go v1.11.2
 	// ===========
@@ -23,7 +23,6 @@ require (
 )
 
 require (
-	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -52,7 +51,7 @@ require (
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
-	github.com/shirou/gopsutil v3.21.10+incompatible // indirect
+	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
@@ -81,3 +80,5 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
+
+require github.com/yusufpapurcu/wmi v1.2.2 // indirect
