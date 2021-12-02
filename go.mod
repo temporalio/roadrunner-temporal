@@ -9,7 +9,7 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/pborman/uuid v1.2.1
 	// SPIRAL ========
-	github.com/spiral/endure v1.0.9
+	github.com/spiral/endure v1.0.10
 	github.com/spiral/errors v1.0.12
 	github.com/spiral/roadrunner-plugins/v2 v2.6.1
 	github.com/spiral/roadrunner/v2 v2.6.0
