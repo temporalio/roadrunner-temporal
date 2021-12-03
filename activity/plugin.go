@@ -186,8 +186,6 @@ func (p *Plugin) Workers() []*process.State {
 	return states
 }
 
-func (p *Plugin) Available() {}
-
 // ActivityNames returns list of all available activities.
 func (p *Plugin) ActivityNames() []string {
 	return p.pool.ActivityNames()

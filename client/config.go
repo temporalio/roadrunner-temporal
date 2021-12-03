@@ -36,6 +36,10 @@ func (c *Config) InitDefault() {
 		c.CacheSize = 10000
 	}
 
+	if c.Namespace == "" {
+		c.Namespace = "default"
+	}
+
 	if c.Metrics != nil {
 		if c.Metrics.Type == "" {
 			c.Metrics.Type = MetricsTypeSummary
