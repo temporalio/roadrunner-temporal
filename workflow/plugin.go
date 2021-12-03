@@ -133,8 +133,6 @@ func (p *Plugin) Workers() []*process.State {
 	return states
 }
 
-func (p *Plugin) Available() {}
-
 // WorkflowNames returns list of all available workflows.
 func (p *Plugin) WorkflowNames() []string {
 	return p.pool.WorkflowNames()
