@@ -1,4 +1,4 @@
-package protocol
+package data_converter
 
 import (
 	"testing"

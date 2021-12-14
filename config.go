@@ -1,4 +1,4 @@
-package client
+package roadrunner_temporal
 
 import "github.com/spiral/roadrunner/v2/pool"
 
@@ -12,7 +12,7 @@ type Metrics struct {
 	Prefix  string `mapstructure:"prefix"`
 }
 
-// Config of the temporal client and depended services.
+// Config of the temporal client and dependent services.
 type Config struct {
 	Address    string
 	Namespace  string

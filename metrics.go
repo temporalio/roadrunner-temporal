@@ -1,4 +1,4 @@
-package client
+package roadrunner_temporal
 
 import (
 	"io"
