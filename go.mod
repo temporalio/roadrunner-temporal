@@ -13,7 +13,7 @@ require (
 	github.com/spiral/errors v1.0.12
 	github.com/spiral/roadrunner-plugins/v2 v2.6.5
 	github.com/spiral/roadrunner/v2 v2.6.1
-	github.com/spiral/sdk-go v1.11.2
+	github.com/spiral/sdk-go v1.12.0
 	// ===========
 	github.com/stretchr/testify v1.7.0
 	github.com/uber-go/tally/v4 v4.1.1
