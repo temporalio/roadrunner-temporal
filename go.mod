@@ -11,7 +11,7 @@ require (
 	// SPIRAL ========
 	github.com/spiral/endure v1.1.0
 	github.com/spiral/errors v1.0.12
-	github.com/spiral/roadrunner-plugins/v2 v2.6.5
+	github.com/spiral/roadrunner-plugins/v2 v2.6.6
 	github.com/spiral/roadrunner/v2 v2.6.2
 	github.com/spiral/sdk-go v1.11.2
 	// ===========
