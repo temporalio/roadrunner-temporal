@@ -23,8 +23,6 @@ require (
 	google.golang.org/protobuf v1.27.1
 )
 
-replace github.com/spiral/roadrunner-plugins/v2 => ../roadrunner-plugins
-
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
