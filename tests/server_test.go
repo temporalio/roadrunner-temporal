@@ -104,7 +104,7 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, proto
 	container, err := endure.NewContainer(initLogger(), endure.RetryOnFail(false), endure.GracefulShutdownTimeout(time.Second*30))
 	assert.NoError(t, err)
 
-	cfg := &config.Plugin{
+	cfg := &config.Viper{
 		CommonConfig: &config.General{GracefulTimeout: time.Second * 0},
 	}
 	cfg.Path = "configs/.rr-proto.yaml"
@@ -160,7 +160,7 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, proto
 }
 
 func initConfigProtoWithMetrics() config.Configurer {
-	cfg := &config.Plugin{
+	cfg := &config.Viper{
 		CommonConfig: &config.General{GracefulTimeout: time.Second * 0},
 	}
 	cfg.Path = "configs/.rr-metrics.yaml"

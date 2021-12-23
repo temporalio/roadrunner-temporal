@@ -11,4 +11,4 @@ temporal:
 
 logs:
   mode: development
-  level: info
+  level: warn
