@@ -252,6 +252,28 @@ func (p *Plugin) Workers() []*process.State {
 	return states
 }
 
+func (p *Plugin) Reset() error {
+	const op = errors.Op("temporal_reset")
+	p.Lock()
+	defer p.Unlock()
+
+	p.log.Info("reset signal received, resetting activity and workflow worker pools")
+
+	err := p.wfP.Reset(context.Background())
+	if err != nil {
+		return errors.E(op, err)
+	}
+	p.log.Info("workflow pool restarted")
+
+	err = p.actP.Reset(context.Background())
+	if err != nil {
+		return errors.E(op, err)
+	}
+	p.log.Info("activity pool restarted")
+
+	return nil
+}
+
 func (p *Plugin) Name() string {
 	return PluginName
 }

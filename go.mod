@@ -12,7 +12,7 @@ require (
 	github.com/spiral/endure v1.1.0
 	github.com/spiral/errors v1.0.12
 	github.com/spiral/roadrunner-plugins/v2 v2.6.7
-	github.com/spiral/roadrunner/v2 v2.6.2
+	github.com/spiral/roadrunner/v2 v2.6.3
 	github.com/spiral/sdk-go v1.12.0
 	github.com/spiral/sdk-go/contrib/tally v0.0.0-20211210212330-614642034d01
 	// ===========
