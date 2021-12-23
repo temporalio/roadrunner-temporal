@@ -23,11 +23,11 @@ test_coverage:
 	docker-compose -f tests/env/docker-compose.yaml up -d --remove-orphans
 	rm -rf coverage-ci
 	mkdir ./coverage-ci
-	go test -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./coverage-ci/temporal.txt -covermode=atomic ./tests
-	go test -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./coverage-ci/temporal_protocol.txt -covermode=atomic ./internal/data_converter
-	go test -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./coverage-ci/temporal_workflow.txt -covermode=atomic ./workflow
-	go test -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./coverage-ci/canceller.txt -covermode=atomic ./workflow/canceller
-	go test -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./coverage-ci/queue.txt -covermode=atomic ./workflow/queue
+	go test -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./coverage-ci/temporal.out -covermode=atomic ./tests
+	go test -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./coverage-ci/temporal_protocol.out -covermode=atomic ./internal/data_converter
+	go test -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./coverage-ci/temporal_workflow.out -covermode=atomic ./workflow
+	go test -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./coverage-ci/canceller.out -covermode=atomic ./workflow/canceller
+	go test -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./coverage-ci/queue.out -covermode=atomic ./workflow/queue
 	echo 'mode: atomic' > ./coverage-ci/summary.txt
 	tail -q -n +2 ./coverage-ci/*.out >> ./coverage-ci/summary.txt
 	docker-compose -f tests/env/docker-compose.yaml down
