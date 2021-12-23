@@ -205,15 +205,15 @@ func (p *Plugin) Stop() error {
 
 	p.wfP.Destroy(context.Background())
 
-	if p.client != nil {
-		p.client.Close()
-	}
-
 	if p.tallyCloser != nil {
 		err := p.tallyCloser.Close()
 		if err != nil {
 			return err
 		}
+	}
+
+	if p.client != nil {
+		p.client.Close()
 	}
 
 	return nil
