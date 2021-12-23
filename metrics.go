@@ -1,4 +1,4 @@
-package roadrunner_temporal
+package roadrunner_temporal //nolint:revive,stylecheck
 
 import (
 	"io"

@@ -7,16 +7,30 @@ stop-docker-compose:
 
 # Installs all needed composer dependencies
 install-dependencies:
-	go get -u golang.org/x/lint/golint
-	composer --working-dir=./test/ install
-
-# Run integration tests
-test-feature:
-	go test -v -race -tags=debug ./tests
-
-test-unit:
-	go test -v -race -tags=debug ./protocol/
-	go test -v -race -tags=debug ./workflow
+	composer --working-dir=./tests/php_test_files install
 
 # Run all tests and code-style checks
-test: test-unit test-feature
+test:
+	docker-compose -f tests/env/docker-compose.yaml up -d --remove-orphans
+	sleep 20
+	go test -v -race -cover -tags=debug -failfast  ./tests
+	go test -v -race -cover -tags=debug -failfast  ./internal/data_converter
+	go test -v -race -cover -tags=debug -failfast  ./workflow/canceller
+	go test -v -race -cover -tags=debug -failfast  ./workflow/queue
+	docker compose -f tests/env/docker-compose.yaml down
+
+test_coverage:
+	docker-compose -f tests/env/docker-compose.yaml up -d --remove-orphans
+	rm -rf coverage-ci
+	mkdir ./coverage-ci
+	go test -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./coverage-ci/temporal.txt -covermode=atomic ./tests
+	go test -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./coverage-ci/temporal_protocol.txt -covermode=atomic ./internal/data_converter
+	go test -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./coverage-ci/temporal_workflow.txt -covermode=atomic ./workflow
+	go test -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./coverage-ci/canceller.txt -covermode=atomic ./workflow/canceller
+	go test -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./coverage-ci/queue.txt -covermode=atomic ./workflow/queue
+	echo 'mode: atomic' > ./coverage-ci/summary.txt
+	tail -q -n +2 ./coverage-ci/*.out >> ./coverage-ci/summary.txt
+	docker-compose -f tests/env/docker-compose.yaml down
+
+generate-proto:
+	protoc -I./proto/api  -I./proto  --go_out=proto/protocol/v1 ./proto/protocol/v1/protocol.proto

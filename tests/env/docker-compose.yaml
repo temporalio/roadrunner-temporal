@@ -46,6 +46,6 @@ services:
       - "8088:8088"
 
   prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:latest
     ports:
       - "9091:9090"

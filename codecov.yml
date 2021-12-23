@@ -14,4 +14,7 @@ coverage:
 # do not include tests folders
 ignore:
   - "tests"
-  - "protocol/internal"
+  - "proto"
+  - "internal/codec/interface"
+  - "internal/interface"
+  - "internal/data_converter/converter_test.go"

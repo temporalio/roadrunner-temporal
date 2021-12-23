@@ -3,14 +3,18 @@ rpc:
   listen: tcp://127.0.0.1:6001
 
 server:
-  command: "php worker.php"
+  command: "php php_test_files/worker.php"
 
 # Workflow and activity mesh service
 temporal:
   address: "127.0.0.1:7233"
+  metrics:
+    address: "127.0.0.1:9095"
+    prefix: "samples"
+    type: "summary"
   activities:
     num_workers: 4
-  codec: json
+  codec: proto
   debug_level: 2
 
 logs:

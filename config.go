@@ -1,4 +1,4 @@
-package roadrunner_temporal
+package roadrunner_temporal //nolint:revive,stylecheck
 
 import "github.com/spiral/roadrunner/v2/pool"
 
@@ -14,22 +14,16 @@ type Metrics struct {
 
 // Config of the temporal client and dependent services.
 type Config struct {
-	Address    string
-	Namespace  string
-	Metrics    *Metrics
-	Activities *pool.Config
-	Codec      string
-	DebugLevel int `mapstructure:"debug_level"`
-	CacheSize  int `mapstructure:"cache_size"`
+	Address    string       `mapstructure:"address"`
+	Namespace  string       `mapstructure:"namespace"`
+	Metrics    *Metrics     `mapstructure:"metrics"`
+	Activities *pool.Config `mapstructure:"activities"`
+	CacheSize  int          `mapstructure:"cache_size"`
 }
 
 func (c *Config) InitDefault() {
 	if c.Activities != nil {
 		c.Activities.InitDefaults()
-	}
-
-	if c.Codec == "" {
-		c.Codec = "proto"
 	}
 
 	if c.CacheSize == 0 {
