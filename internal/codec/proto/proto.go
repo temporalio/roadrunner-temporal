@@ -9,10 +9,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/spiral/roadrunner/v2/utils"
 	"github.com/spiral/sdk-go/workflow"
+	"go.uber.org/zap"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner-plugins/v2/logger"
 	"github.com/spiral/roadrunner/v2/payload"
 	"github.com/spiral/roadrunner/v2/pool"
 	temporalClient "github.com/spiral/sdk-go/client"
@@ -30,7 +30,7 @@ const name string = "protobuf"
 // ProtoCodec uses protobuf to exchange messages with underlying workers.
 type codec struct {
 	sync.RWMutex
-	log logger.Logger
+	log *zap.Logger
 
 	dc converter.DataConverter
 
@@ -39,7 +39,7 @@ type codec struct {
 }
 
 // NewCodec creates new Proto communication codec.
-func NewCodec(pool pool.Pool, log logger.Logger, dc converter.DataConverter) _codec.Codec {
+func NewCodec(pool pool.Pool, log *zap.Logger, dc converter.DataConverter) _codec.Codec {
 	return &codec{
 		rrPool: pool,
 		log:    log,
@@ -98,7 +98,7 @@ func (c *codec) Execute(ctx *internal.Context, msg ...*internal.Message) ([]*int
 		return nil, errors.E(errors.Op("encode_payload"), err)
 	}
 
-	c.log.Debug("outgoing message", "data", color.GreenString(utils.AsString(p.Body)+" "+utils.AsString(p.Context)))
+	c.log.Debug("outgoing message", zap.String("data", color.GreenString(utils.AsString(p.Body)+" "+utils.AsString(p.Context))))
 
 	c.RLock()
 	out, err := c.rrPool.Exec(p)
@@ -117,7 +117,7 @@ func (c *codec) Execute(ctx *internal.Context, msg ...*internal.Message) ([]*int
 		return nil, errors.E(errors.Op("codec_parse_response"), err)
 	}
 
-	c.log.Debug("received message", "data", color.HiYellowString(utils.AsString(out.Body)))
+	c.log.Debug("received message", zap.String("data", color.HiYellowString(utils.AsString(out.Body))))
 
 	for _, f := range response.Messages {
 		msg, errM := c.parseMessage(f)
@@ -197,7 +197,7 @@ func (c *codec) FetchWFInfo(client temporalClient.Client, definition internalbin
 	}
 
 	for i := 0; i < len(workerInfo); i++ {
-		c.log.Debug("worker info", "taskqueue", workerInfo[i].TaskQueue, "options", workerInfo[i].Options)
+		c.log.Debug("worker info", zap.String("taskqueue", workerInfo[i].TaskQueue), zap.Any("options", workerInfo[i].Options))
 
 		// todo(rustatian) properly set grace timeout
 		workerInfo[i].Options.WorkerStopTimeout = time.Second * 30
@@ -217,7 +217,7 @@ func (c *codec) FetchWFInfo(client temporalClient.Client, definition internalbin
 		wrk := worker.New(client, workerInfo[i].TaskQueue, workerInfo[i].Options)
 
 		for j := 0; j < len(workerInfo[i].Workflows); j++ {
-			c.log.Debug("register workflow with options", "taskqueue", workerInfo[i].TaskQueue, "workflow name", workerInfo[i].Workflows[j].Name)
+			c.log.Debug("register workflow with options", zap.String("taskqueue", workerInfo[i].TaskQueue), zap.String("workflow name", workerInfo[i].Workflows[j].Name))
 
 			wrk.RegisterWorkflowWithOptions(definition, workflow.RegisterOptions{
 				Name:                          workerInfo[i].Workflows[j].Name,

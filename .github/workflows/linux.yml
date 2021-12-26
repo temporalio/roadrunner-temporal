@@ -64,10 +64,11 @@ jobs:
       - name: Install Go dependencies
         run: go mod tidy && go mod download
 
-      - name: Golang tests [Linux] with JSON and PROTO codecs
+      - name: Golang tests
         run: make test_coverage
 
       - uses: codecov/codecov-action@v1 # Docs: <https://github.com/codecov/codecov-action>
+        if: ${{ !env.ACT }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage-ci/summary.txt

@@ -9,7 +9,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner-plugins/v2/logger"
 	"github.com/spiral/roadrunner/v2/utils"
 	tActivity "github.com/spiral/sdk-go/activity"
 	temporalClient "github.com/spiral/sdk-go/client"
@@ -19,6 +18,7 @@ import (
 	"github.com/temporalio/roadrunner-temporal/internal"
 	"github.com/temporalio/roadrunner-temporal/internal/codec"
 	commonpb "go.temporal.io/api/common/v1"
+	"go.uber.org/zap"
 )
 
 const doNotCompleteOnReturn = "doNotCompleteOnReturn"
@@ -30,7 +30,7 @@ var (
 type activity struct {
 	codec   codec.Codec
 	client  temporalClient.Client
-	log     logger.Logger
+	log     *zap.Logger
 	dc      converter.DataConverter
 	seqID   uint64
 	running sync.Map
@@ -40,7 +40,7 @@ type activity struct {
 	graceTimout time.Duration
 }
 
-func NewActivityDefinition(ac codec.Codec, log logger.Logger, dc converter.DataConverter, client temporalClient.Client, gt time.Duration) internal.Activity {
+func NewActivityDefinition(ac codec.Codec, log *zap.Logger, dc converter.DataConverter, client temporalClient.Client, gt time.Duration) internal.Activity {
 	return &activity{
 		log:         log,
 		client:      client,
@@ -88,7 +88,7 @@ func (a *activity) Init() ([]worker.Worker, error) {
 				DisableAlreadyRegisteredCheck: false,
 			})
 
-			a.log.Debug("activity registered", "name", wi[i].Activities[j].Name)
+			a.log.Debug("activity registered", zap.String("name", wi[i].Activities[j].Name))
 			a.activities = append(a.activities, wi[i].Activities[j].Name)
 		}
 
@@ -102,7 +102,7 @@ func (a *activity) Init() ([]worker.Worker, error) {
 		}
 	}
 
-	a.log.Debug("activity workers started", "num_workers", len(a.tWorkers))
+	a.log.Debug("activity workers started", zap.Int("num_workers", len(a.tWorkers)))
 
 	return a.tWorkers, nil
 }

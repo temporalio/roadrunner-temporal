@@ -5,9 +5,9 @@ import (
 	"time"
 
 	prom "github.com/prometheus/client_golang/prometheus"
-	"github.com/spiral/roadrunner-plugins/v2/logger"
 	"github.com/uber-go/tally/v4"
 	"github.com/uber-go/tally/v4/prometheus"
+	"go.uber.org/zap"
 )
 
 // tally sanitizer options that satisfy Prometheus restrictions.
@@ -34,12 +34,12 @@ var (
 	}
 )
 
-func newPrometheusScope(c prometheus.Configuration, prefix string, log logger.Logger) (tally.Scope, io.Closer, error) {
+func newPrometheusScope(c prometheus.Configuration, prefix string, log *zap.Logger) (tally.Scope, io.Closer, error) {
 	reporter, err := c.NewReporter(
 		prometheus.ConfigurationOptions{
 			Registry: prom.NewRegistry(),
 			OnError: func(err error) {
-				log.Error("prometheus registry", "error", err)
+				log.Error("prometheus registry", zap.Error(err))
 			},
 		},
 	)

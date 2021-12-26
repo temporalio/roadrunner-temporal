@@ -8,9 +8,8 @@ import (
 	"time"
 
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner-plugins/v2/config"
-	"github.com/spiral/roadrunner-plugins/v2/logger"
-	"github.com/spiral/roadrunner-plugins/v2/server"
+	"github.com/spiral/roadrunner-plugins/v2/api/v2/config"
+	"github.com/spiral/roadrunner-plugins/v2/api/v2/server"
 	rrPool "github.com/spiral/roadrunner/v2/pool"
 	"github.com/spiral/roadrunner/v2/state/process"
 	temporalClient "github.com/spiral/sdk-go/client"
@@ -21,8 +20,10 @@ import (
 	"github.com/temporalio/roadrunner-temporal/internal"
 	"github.com/temporalio/roadrunner-temporal/internal/codec/proto"
 	"github.com/temporalio/roadrunner-temporal/internal/data_converter"
+	"github.com/temporalio/roadrunner-temporal/internal/logger"
 	"github.com/temporalio/roadrunner-temporal/workflow"
 	"github.com/uber-go/tally/v4/prometheus"
+	"go.uber.org/zap"
 )
 
 // PluginName defines public service name.
@@ -42,7 +43,7 @@ type Plugin struct {
 	sync.RWMutex
 
 	server      server.Server
-	log         logger.Logger
+	log         *zap.Logger
 	config      *Config
 	tallyCloser io.Closer
 
@@ -63,7 +64,7 @@ type Plugin struct {
 	graceTimeout time.Duration
 }
 
-func (p *Plugin) Init(cfg config.Configurer, log logger.Logger, server server.Server) error {
+func (p *Plugin) Init(cfg config.Configurer, log *zap.Logger, server server.Server) error {
 	const op = errors.Op("temporal_plugin_init")
 
 	if !cfg.Has(PluginName) {
@@ -97,7 +98,7 @@ func (p *Plugin) Serve() chan error {
 	opts := temporalClient.Options{
 		HostPort:      p.config.Address,
 		Namespace:     p.config.Namespace,
-		Logger:        p.log,
+		Logger:        logger.NewZapAdapter(p.log),
 		DataConverter: p.dataConverter,
 	}
 
@@ -123,7 +124,7 @@ func (p *Plugin) Serve() chan error {
 
 	worker.SetStickyWorkflowCacheSize(p.config.CacheSize)
 
-	p.log.Info("connected to temporal server", "address", p.config.Address)
+	p.log.Info("connected to temporal server", zap.String("address", p.config.Address))
 
 	pl, err := p.server.NewWorkerPool(context.Background(), p.config.Activities, env)
 	if err != nil {
@@ -231,7 +232,7 @@ func (p *Plugin) Workers() []*process.State {
 		st, err := process.WorkerProcessState(wfPw[i])
 		if err != nil {
 			// log error and continue
-			p.log.Error("worker process state error", "error", err)
+			p.log.Error("worker process state error", zap.Error(err))
 			continue
 		}
 
@@ -242,7 +243,7 @@ func (p *Plugin) Workers() []*process.State {
 		st, err := process.WorkerProcessState(actPw[i])
 		if err != nil {
 			// log error and continue
-			p.log.Error("worker process state error", "error", err)
+			p.log.Error("worker process state error", zap.Error(err))
 			continue
 		}
 
@@ -283,7 +284,7 @@ func (p *Plugin) RPC() interface{} {
 }
 
 func (p *Plugin) SedID() uint64 {
-	p.log.Debug("sequenceID", "before", atomic.LoadUint64(&p.seqID))
-	defer p.log.Debug("sequenceID", "after", atomic.LoadUint64(&p.seqID)+1)
+	p.log.Debug("sequenceID", zap.Uint64("before", atomic.LoadUint64(&p.seqID)))
+	defer p.log.Debug("sequenceID", zap.Uint64("after", atomic.LoadUint64(&p.seqID)+1))
 	return atomic.AddUint64(&p.seqID, 1)
 }

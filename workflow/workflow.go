@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner-plugins/v2/logger"
 	temporalClient "github.com/spiral/sdk-go/client"
 	bindings "github.com/spiral/sdk-go/internalbindings"
 	"github.com/spiral/sdk-go/worker"
@@ -18,17 +17,7 @@ import (
 	"github.com/temporalio/roadrunner-temporal/workflow/queue"
 	"github.com/temporalio/roadrunner-temporal/workflow/registry"
 	commonpb "go.temporal.io/api/common/v1"
-)
-
-// PluginName defines public service name.
-const (
-	PluginName = "temporal"
-
-	// RrMode env variable key
-	RrMode = "RR_MODE"
-
-	// RrCodec env variable key
-	RrCodec = "RR_CODEC"
+	"go.uber.org/zap"
 )
 
 // implements WorkflowDefinition interface
@@ -61,11 +50,11 @@ type process struct {
 	workflows map[string]internal.WorkflowInfo
 	tWorkers  []worker.Worker
 
-	log          logger.Logger
+	log          *zap.Logger
 	graceTimeout time.Duration
 }
 
-func NewWorkflowDefinition(codec codec.Codec, log logger.Logger, seqID func() uint64, client temporalClient.Client, gt time.Duration) internal.Workflow {
+func NewWorkflowDefinition(codec codec.Codec, log *zap.Logger, seqID func() uint64, client temporalClient.Client, gt time.Duration) internal.Workflow {
 	return &process{
 		client:       client,
 		log:          log,
@@ -90,7 +79,7 @@ func (wp *process) NewWorkflowDefinition() bindings.WorkflowDefinition {
 
 // Execute implementation must be asynchronous.
 func (wp *process) Execute(env bindings.WorkflowEnvironment, header *commonpb.Header, input *commonpb.Payloads) {
-	wp.log.Debug("workflow execute", "runID", env.WorkflowInfo().WorkflowExecution.RunID, "workflow info", env.WorkflowInfo())
+	wp.log.Debug("workflow execute", zap.String("runID", env.WorkflowInfo().WorkflowExecution.RunID), zap.Any("workflow info", env.WorkflowInfo()))
 
 	wp.env = env
 	wp.header = header
@@ -138,7 +127,7 @@ func (wp *process) OnWorkflowTaskStarted(t time.Duration) {
 		atomic.StoreUint32(&wp.inLoop, 0)
 	}()
 
-	wp.log.Debug("workflow task started", "time", t.String())
+	wp.log.Debug("workflow task started", zap.Duration("time", t))
 
 	var err error
 	// do not copy
@@ -212,7 +201,7 @@ func (wp *process) Init() ([]worker.Worker, error) {
 	}
 
 	for i := 0; i < len(wi); i++ {
-		wp.log.Debug("worker info", "taskqueue", wi[i].TaskQueue, "options", wi[i].Options)
+		wp.log.Debug("worker info", zap.String("taskqueue", wi[i].TaskQueue), zap.Any("options", wi[i].Options))
 
 		wi[i].Options.WorkerStopTimeout = wp.graceTimeout
 
@@ -231,7 +220,7 @@ func (wp *process) Init() ([]worker.Worker, error) {
 		wrk := worker.New(wp.client, wi[i].TaskQueue, wi[i].Options)
 
 		for j := 0; j < len(wi[i].Workflows); j++ {
-			wp.log.Debug("register workflow with options", "taskqueue", wi[i].TaskQueue, "workflow name", wi[i].Workflows[j].Name)
+			wp.log.Debug("register workflow with options", zap.String("taskqueue", wi[i].TaskQueue), zap.Any("workflow name", wi[i].Workflows[j].Name))
 
 			wrk.RegisterWorkflowWithOptions(wp, workflow.RegisterOptions{
 				Name:                          wi[i].Workflows[j].Name,
