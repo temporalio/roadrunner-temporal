@@ -36,7 +36,7 @@ func Test_VerifyRegistrationProto(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
-	_ = NewTestServer(t, stopCh, wg, true)
+	_ = NewTestServer(t, stopCh, wg)
 
 	activities := getActivities(t)
 	workflows := getWorkflows(t)
@@ -55,7 +55,7 @@ func Test_ExecuteSimpleWorkflow_1Proto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -78,7 +78,7 @@ func Test_ExecuteSimpleDTOWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -104,7 +104,7 @@ func Test_ExecuteSimpleWorkflowWithSequenceInBatchProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -127,7 +127,7 @@ func Test_MultipleWorkflowsInSingleWorkerProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -163,7 +163,7 @@ func Test_ExecuteWorkflowWithParallelScopesProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -186,7 +186,7 @@ func Test_TimerProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	start := time.Now()
 	w, err := s.Client().ExecuteWorkflow(
@@ -215,7 +215,7 @@ func Test_SideEffectProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -242,7 +242,7 @@ func Test_EmptyWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -265,7 +265,7 @@ func Test_PromiseChainingProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -289,7 +289,7 @@ func Test_ActivityHeartbeatProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -323,7 +323,7 @@ func Test_BinaryPayloadProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	rnd := make([]byte, 2500)
 
@@ -352,7 +352,7 @@ func Test_ContinueAsNewProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -385,7 +385,7 @@ func Test_ActivityStubWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -413,7 +413,7 @@ func Test_ExecuteProtoWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -436,7 +436,7 @@ func Test_SagaWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),

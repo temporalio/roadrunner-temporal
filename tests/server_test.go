@@ -8,7 +8,8 @@ import (
 	"time"
 
 	endure "github.com/spiral/endure/pkg/container"
-	"github.com/spiral/roadrunner-plugins/v2/config"
+	"github.com/spiral/roadrunner-plugins/v2/api/v2/config"
+	configImpl "github.com/spiral/roadrunner-plugins/v2/config"
 	"github.com/spiral/roadrunner-plugins/v2/informer"
 	"github.com/spiral/roadrunner-plugins/v2/logger"
 	"github.com/spiral/roadrunner-plugins/v2/resetter"
@@ -18,7 +19,7 @@ import (
 	"github.com/spiral/sdk-go/converter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	roadrunner_temporal "github.com/temporalio/roadrunner-temporal"
+	roadrunnerTemporal "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/internal/data_converter"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
@@ -30,12 +31,60 @@ type TestServer struct {
 	client temporalClient.Client
 }
 
+type log struct {
+	zl *zap.Logger
+}
+
+// NewZapAdapter ... which uses general log interface
+func newZapAdapter(zapLogger *zap.Logger) *log {
+	return &log{
+		zl: zapLogger.WithOptions(zap.AddCallerSkip(1)),
+	}
+}
+
+func (l *log) Debug(msg string, keyvals ...interface{}) {
+	l.zl.Debug(msg, l.fields(keyvals)...)
+}
+
+func (l *log) Info(msg string, keyvals ...interface{}) {
+	l.zl.Info(msg, l.fields(keyvals)...)
+}
+
+func (l *log) Warn(msg string, keyvals ...interface{}) {
+	l.zl.Warn(msg, l.fields(keyvals)...)
+}
+
+func (l *log) Error(msg string, keyvals ...interface{}) {
+	l.zl.Error(msg, l.fields(keyvals)...)
+}
+
+func (l *log) fields(keyvals []interface{}) []zap.Field {
+	// we should have even number of keys and values
+	if len(keyvals)%2 != 0 {
+		return []zap.Field{zap.Error(fmt.Errorf("odd number of keyvals pairs: %v", keyvals))}
+	}
+
+	zf := make([]zap.Field, len(keyvals)/2)
+	j := 0
+	for i := 0; i < len(keyvals); i += 2 {
+		key, ok := keyvals[i].(string)
+		if !ok {
+			key = fmt.Sprintf("%v", keyvals[i])
+		}
+
+		zf[j] = zap.Any(key, keyvals[i+1])
+		j++
+	}
+
+	return zf
+}
+
 func NewTestServerWithMetrics(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *TestServer {
 	container, err := endure.NewContainer(initLogger(), endure.RetryOnFail(false))
 	assert.NoError(t, err)
 
 	err = container.RegisterAll(
-		&roadrunner_temporal.Plugin{},
+		&roadrunnerTemporal.Plugin{},
 		initConfigProtoWithMetrics(),
 		&logger.ZapLogger{},
 		&resetter.Plugin{},
@@ -69,29 +118,10 @@ func NewTestServerWithMetrics(t *testing.T, stopCh chan struct{}, wg *sync.WaitG
 
 	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
 	client, err := temporalClient.NewClient(temporalClient.Options{
-		HostPort:           "127.0.0.1:7233",
-		Namespace:          "default",
-		Logger:             nil,
-		MetricsHandler:     nil,
-		Identity:           "",
-		DataConverter:      dc,
-		ContextPropagators: nil,
-		ConnectionOptions: temporalClient.ConnectionOptions{
-			TLS:                          nil,
-			Authority:                    "",
-			DisableHealthCheck:           false,
-			HealthCheckAttemptTimeout:    0,
-			HealthCheckTimeout:           0,
-			EnableKeepAliveCheck:         false,
-			KeepAliveTime:                0,
-			KeepAliveTimeout:             0,
-			KeepAlivePermitWithoutStream: false,
-			MaxPayloadSize:               0,
-			DialOptions:                  nil,
-		},
-		HeadersProvider:   nil,
-		TrafficController: nil,
-		Interceptors:      nil,
+		HostPort:      "127.0.0.1:7233",
+		Namespace:     "default",
+		Logger:        newZapAdapter(initLogger()),
+		DataConverter: dc,
 	})
 	require.NoError(t, err)
 
@@ -100,19 +130,19 @@ func NewTestServerWithMetrics(t *testing.T, stopCh chan struct{}, wg *sync.WaitG
 	}
 }
 
-func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, proto bool) *TestServer {
+func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *TestServer {
 	container, err := endure.NewContainer(initLogger(), endure.RetryOnFail(false), endure.GracefulShutdownTimeout(time.Second*30))
 	assert.NoError(t, err)
 
-	cfg := &config.Plugin{
-		CommonConfig: &config.General{GracefulTimeout: time.Second * 0},
+	cfg := &configImpl.Plugin{
+		CommonConfig: &config.General{GracefulTimeout: time.Second * 30},
 	}
 	cfg.Path = "configs/.rr-proto.yaml"
 	cfg.Prefix = "rr"
 
 	err = container.RegisterAll(
 		cfg,
-		&roadrunner_temporal.Plugin{},
+		&roadrunnerTemporal.Plugin{},
 		&logger.ZapLogger{},
 		&resetter.Plugin{},
 		&informer.Plugin{},
@@ -148,6 +178,7 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, proto
 		HostPort:      "127.0.0.1:7233",
 		Namespace:     "default",
 		DataConverter: dc,
+		Logger:        newZapAdapter(initLogger()),
 	})
 	if err != nil {
 		panic(err)
@@ -160,7 +191,7 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, proto
 }
 
 func initConfigProtoWithMetrics() config.Configurer {
-	cfg := &config.Plugin{
+	cfg := &configImpl.Plugin{
 		CommonConfig: &config.General{GracefulTimeout: time.Second * 0},
 	}
 	cfg.Path = "configs/.rr-metrics.yaml"
@@ -199,29 +230,10 @@ func initLogger() *zap.Logger {
 func (s *TestServer) AssertContainsEvent(t *testing.T, w temporalClient.WorkflowRun, assert func(*history.HistoryEvent) bool) {
 	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
 	client, err := temporalClient.NewClient(temporalClient.Options{
-		HostPort:           "127.0.0.1:7233",
-		Namespace:          "default",
-		Logger:             nil,
-		MetricsHandler:     nil,
-		Identity:           "",
-		DataConverter:      dc,
-		ContextPropagators: nil,
-		ConnectionOptions: temporalClient.ConnectionOptions{
-			TLS:                          nil,
-			Authority:                    "",
-			DisableHealthCheck:           false,
-			HealthCheckAttemptTimeout:    0,
-			HealthCheckTimeout:           0,
-			EnableKeepAliveCheck:         false,
-			KeepAliveTime:                0,
-			KeepAliveTimeout:             0,
-			KeepAlivePermitWithoutStream: false,
-			MaxPayloadSize:               0,
-			DialOptions:                  nil,
-		},
-		HeadersProvider:   nil,
-		TrafficController: nil,
-		Interceptors:      nil,
+		HostPort:      "127.0.0.1:7233",
+		Namespace:     "default",
+		Logger:        newZapAdapter(initLogger()),
+		DataConverter: dc,
 	})
 	require.NoError(t, err)
 

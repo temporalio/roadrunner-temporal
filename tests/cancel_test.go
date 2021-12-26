@@ -17,7 +17,7 @@ func Test_SimpleWorkflowCancelProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -46,7 +46,7 @@ func Test_CancellableWorkflowScopeProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -77,7 +77,7 @@ func Test_CanceledWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -104,7 +104,7 @@ func Test_CanceledWithCompensationWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -153,7 +153,7 @@ func Test_CanceledNestedWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -200,7 +200,7 @@ func Test_CanceledNSingleScopeWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -244,7 +244,7 @@ func Test_CanceledMidflightWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -289,7 +289,7 @@ func Test_CancelSignaledChildWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),

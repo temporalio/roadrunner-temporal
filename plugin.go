@@ -26,8 +26,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// PluginName defines public service name.
 const (
+	// PluginName defines public service name.
 	PluginName string = "temporal"
 
 	// RrMode env variable key
@@ -36,6 +36,7 @@ const (
 	// RrCodec env variable key
 	RrCodec string = "RR_CODEC"
 
+	// RrCodecVal - codec name, should be in sync with the PHP-SDK
 	RrCodecVal string = "protobuf"
 )
 
@@ -197,14 +198,6 @@ func (p *Plugin) Stop() error {
 	for i := 0; i < len(p.actW); i++ {
 		p.actW[i].Stop()
 	}
-
-	p.actP.Destroy(context.Background())
-
-	for i := 0; i < len(p.wfW); i++ {
-		p.wfW[i].Stop()
-	}
-
-	p.wfP.Destroy(context.Background())
 
 	if p.tallyCloser != nil {
 		err := p.tallyCloser.Close()

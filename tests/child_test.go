@@ -13,7 +13,7 @@ func Test_ExecuteChildWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -36,7 +36,7 @@ func Test_ExecuteChildStubWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -59,7 +59,7 @@ func Test_ExecuteChildStubWorkflow_02Proto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -82,7 +82,7 @@ func Test_SignalChildViaStubWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),

@@ -17,7 +17,7 @@ func Test_SignalsWithoutSignalsProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -40,7 +40,7 @@ func Test_SendSignalDuringTimerProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().SignalWithStartWorkflow(
 		context.Background(),
@@ -77,7 +77,7 @@ func Test_SendSignalBeforeCompletingWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -114,7 +114,7 @@ func Test_RuntimeSignalProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().SignalWithStartWorkflow(
 		context.Background(),
@@ -148,7 +148,7 @@ func Test_SignalStepsProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),

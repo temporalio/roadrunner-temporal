@@ -20,7 +20,7 @@ func Test_WorkerError_DisasterRecovery(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, false)
+	s := NewTestServer(t, stopCh, wg)
 
 	workers := getWorkers(t)
 	require.Len(t, workers, 5)
@@ -54,7 +54,7 @@ func Test_ResetAll(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, false)
+	s := NewTestServer(t, stopCh, wg)
 
 	w, err := s.Client().ExecuteWorkflow(
 		context.Background(),
@@ -96,7 +96,7 @@ func Test_ResetAll(t *testing.T) {
 //	stopCh := make(chan struct{}, 1)
 //	wg := &sync.WaitGroup{}
 //	wg.Add(1)
-//	s := NewTestServer(t, stopCh, wg, false)
+//	s := NewTestServer(t, stopCh, wg)
 //
 //	defer func() {
 //		// always restore script
@@ -138,7 +138,7 @@ func Test_ActivityError_DisasterRecovery(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, false)
+	s := NewTestServer(t, stopCh, wg)
 
 	defer func() {
 		// always restore script
@@ -186,7 +186,7 @@ func Test_WorkerError_DisasterRecoveryProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	workers := getWorkers(t)
 	require.Len(t, workers, 5)
@@ -221,7 +221,7 @@ func Test_WorkerError_DisasterRecoveryProto(t *testing.T) {
 //	stopCh := make(chan struct{}, 1)
 //	wg := &sync.WaitGroup{}
 //	wg.Add(1)
-//	s := NewTestServer(t, stopCh, wg, true)
+//	s := NewTestServer(t, stopCh, wg)
 //
 //	defer func() {
 //		// always restore script
@@ -263,7 +263,7 @@ func Test_ActivityError_DisasterRecoveryProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	defer func() {
 		// always restore script
