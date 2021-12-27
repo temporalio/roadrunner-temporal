@@ -8,17 +8,19 @@ import (
 	"time"
 
 	endure "github.com/spiral/endure/pkg/container"
-	"github.com/spiral/roadrunner-plugins/v2/config"
+	"github.com/spiral/roadrunner-plugins/v2/api/v2/config"
+	configImpl "github.com/spiral/roadrunner-plugins/v2/config"
 	"github.com/spiral/roadrunner-plugins/v2/informer"
 	"github.com/spiral/roadrunner-plugins/v2/logger"
 	"github.com/spiral/roadrunner-plugins/v2/resetter"
 	"github.com/spiral/roadrunner-plugins/v2/rpc"
 	"github.com/spiral/roadrunner-plugins/v2/server"
 	temporalClient "github.com/spiral/sdk-go/client"
+	"github.com/spiral/sdk-go/converter"
 	"github.com/stretchr/testify/assert"
-	"github.com/temporalio/roadrunner-temporal/activity"
-	rrClient "github.com/temporalio/roadrunner-temporal/client"
-	"github.com/temporalio/roadrunner-temporal/workflow"
+	"github.com/stretchr/testify/require"
+	roadrunnerTemporal "github.com/temporalio/roadrunner-temporal"
+	"github.com/temporalio/roadrunner-temporal/internal/data_converter"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
 	"go.uber.org/zap"
@@ -26,23 +28,63 @@ import (
 )
 
 type TestServer struct {
-	temporal   rrClient.Temporal
-	activities *activity.Plugin
-	workflows  *workflow.Plugin
+	client temporalClient.Client
+}
+
+type log struct {
+	zl *zap.Logger
+}
+
+// NewZapAdapter ... which uses general log interface
+func newZapAdapter(zapLogger *zap.Logger) *log {
+	return &log{
+		zl: zapLogger.WithOptions(zap.AddCallerSkip(1)),
+	}
+}
+
+func (l *log) Debug(msg string, keyvals ...interface{}) {
+	l.zl.Debug(msg, l.fields(keyvals)...)
+}
+
+func (l *log) Info(msg string, keyvals ...interface{}) {
+	l.zl.Info(msg, l.fields(keyvals)...)
+}
+
+func (l *log) Warn(msg string, keyvals ...interface{}) {
+	l.zl.Warn(msg, l.fields(keyvals)...)
+}
+
+func (l *log) Error(msg string, keyvals ...interface{}) {
+	l.zl.Error(msg, l.fields(keyvals)...)
+}
+
+func (l *log) fields(keyvals []interface{}) []zap.Field {
+	// we should have even number of keys and values
+	if len(keyvals)%2 != 0 {
+		return []zap.Field{zap.Error(fmt.Errorf("odd number of keyvals pairs: %v", keyvals))}
+	}
+
+	zf := make([]zap.Field, len(keyvals)/2)
+	j := 0
+	for i := 0; i < len(keyvals); i += 2 {
+		key, ok := keyvals[i].(string)
+		if !ok {
+			key = fmt.Sprintf("%v", keyvals[i])
+		}
+
+		zf[j] = zap.Any(key, keyvals[i+1])
+		j++
+	}
+
+	return zf
 }
 
 func NewTestServerWithMetrics(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *TestServer {
 	container, err := endure.NewContainer(initLogger(), endure.RetryOnFail(false))
 	assert.NoError(t, err)
 
-	tc := &rrClient.Plugin{}
-	a := &activity.Plugin{}
-	w := &workflow.Plugin{}
-
 	err = container.RegisterAll(
-		tc,
-		a,
-		w,
+		&roadrunnerTemporal.Plugin{},
 		initConfigProtoWithMetrics(),
 		&logger.ZapLogger{},
 		&resetter.Plugin{},
@@ -74,27 +116,33 @@ func NewTestServerWithMetrics(t *testing.T, stopCh chan struct{}, wg *sync.WaitG
 		}
 	}()
 
-	return &TestServer{temporal: tc, activities: a, workflows: w}
+	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
+	client, err := temporalClient.NewClient(temporalClient.Options{
+		HostPort:      "127.0.0.1:7233",
+		Namespace:     "default",
+		Logger:        newZapAdapter(initLogger()),
+		DataConverter: dc,
+	})
+	require.NoError(t, err)
+
+	return &TestServer{
+		client: client,
+	}
 }
 
-func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, proto bool) *TestServer {
+func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *TestServer {
 	container, err := endure.NewContainer(initLogger(), endure.RetryOnFail(false), endure.GracefulShutdownTimeout(time.Second*30))
 	assert.NoError(t, err)
 
-	tc := &rrClient.Plugin{}
-	a := &activity.Plugin{}
-	w := &workflow.Plugin{}
-
-	cfg := initConfigJSON()
-	if proto {
-		cfg = initConfigProto()
+	cfg := &configImpl.Plugin{
+		CommonConfig: &config.General{GracefulTimeout: time.Second * 30},
 	}
+	cfg.Path = "configs/.rr-proto.yaml"
+	cfg.Prefix = "rr"
 
 	err = container.RegisterAll(
-		tc,
-		a,
-		w,
 		cfg,
+		&roadrunnerTemporal.Plugin{},
 		&logger.ZapLogger{},
 		&resetter.Plugin{},
 		&informer.Plugin{},
@@ -125,38 +173,28 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, proto
 		}
 	}()
 
-	return &TestServer{temporal: tc, activities: a, workflows: w}
-}
-
-func (s *TestServer) Client() temporalClient.Client {
-	return s.temporal.GetClient()
-}
-
-func initConfigJSON() config.Configurer {
-	cfg := &config.Viper{
-		CommonConfig: &config.General{GracefulTimeout: time.Second * 10},
+	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
+	client, err := temporalClient.NewClient(temporalClient.Options{
+		HostPort:      "127.0.0.1:7233",
+		Namespace:     "default",
+		DataConverter: dc,
+		Logger:        newZapAdapter(initLogger()),
+	})
+	if err != nil {
+		panic(err)
 	}
-	cfg.Path = ".rr.yaml"
-	cfg.Prefix = "rr"
+	require.NoError(t, err)
 
-	return cfg
+	return &TestServer{
+		client: client,
+	}
 }
 
 func initConfigProtoWithMetrics() config.Configurer {
-	cfg := &config.Viper{
+	cfg := &configImpl.Plugin{
 		CommonConfig: &config.General{GracefulTimeout: time.Second * 0},
 	}
-	cfg.Path = ".rr-metrics.yaml"
-	cfg.Prefix = "rr"
-
-	return cfg
-}
-
-func initConfigProto() config.Configurer {
-	cfg := &config.Viper{
-		CommonConfig: &config.General{GracefulTimeout: time.Second * 0},
-	}
-	cfg.Path = ".rr-proto.yaml"
+	cfg.Path = "configs/.rr-metrics.yaml"
 	cfg.Prefix = "rr"
 
 	return cfg
@@ -190,7 +228,16 @@ func initLogger() *zap.Logger {
 }
 
 func (s *TestServer) AssertContainsEvent(t *testing.T, w temporalClient.WorkflowRun, assert func(*history.HistoryEvent) bool) {
-	i := s.Client().GetWorkflowHistory(
+	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
+	client, err := temporalClient.NewClient(temporalClient.Options{
+		HostPort:      "127.0.0.1:7233",
+		Namespace:     "default",
+		Logger:        newZapAdapter(initLogger()),
+		DataConverter: dc,
+	})
+	require.NoError(t, err)
+
+	i := client.GetWorkflowHistory(
 		context.Background(),
 		w.GetID(),
 		w.GetRunID(),
@@ -217,7 +264,35 @@ func (s *TestServer) AssertContainsEvent(t *testing.T, w temporalClient.Workflow
 }
 
 func (s *TestServer) AssertNotContainsEvent(t *testing.T, w temporalClient.WorkflowRun, assert func(*history.HistoryEvent) bool) {
-	i := s.Client().GetWorkflowHistory(
+	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
+	client, err := temporalClient.NewClient(temporalClient.Options{
+		HostPort:           "",
+		Namespace:          "default",
+		Logger:             nil,
+		MetricsHandler:     nil,
+		Identity:           "",
+		DataConverter:      dc,
+		ContextPropagators: nil,
+		ConnectionOptions: temporalClient.ConnectionOptions{
+			TLS:                          nil,
+			Authority:                    "",
+			DisableHealthCheck:           false,
+			HealthCheckAttemptTimeout:    0,
+			HealthCheckTimeout:           0,
+			EnableKeepAliveCheck:         false,
+			KeepAliveTime:                0,
+			KeepAliveTimeout:             0,
+			KeepAlivePermitWithoutStream: false,
+			MaxPayloadSize:               0,
+			DialOptions:                  nil,
+		},
+		HeadersProvider:   nil,
+		TrafficController: nil,
+		Interceptors:      nil,
+	})
+	require.NoError(t, err)
+
+	i := client.GetWorkflowHistory(
 		context.Background(),
 		w.GetID(),
 		w.GetRunID(),
@@ -241,4 +316,8 @@ func (s *TestServer) AssertNotContainsEvent(t *testing.T, w temporalClient.Workf
 			break
 		}
 	}
+}
+
+func (s *TestServer) Client() temporalClient.Client {
+	return s.client
 }

@@ -17,7 +17,6 @@
 # vendor/
 .idea
 
-tests/composer.lock
-tests/vendor
-config
-go.sum
+**/composer.json
+**/composer.lock
+**/vendor

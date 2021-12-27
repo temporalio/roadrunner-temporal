@@ -2,22 +2,30 @@ package tests
 
 import (
 	"context"
+	"net"
+	"net/rpc"
 	"os"
 	"sync"
 	"testing"
 	"time"
 
+	goridgeRpc "github.com/spiral/goridge/v3/pkg/rpc"
+	"github.com/spiral/roadrunner/v2/state/process"
 	"github.com/spiral/sdk-go/client"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_WorkerError_DisasterRecovery(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, false)
+	s := NewTestServer(t, stopCh, wg)
 
-	p, err := os.FindProcess(s.workflows.Workers()[0].Pid)
+	workers := getWorkers(t)
+	require.Len(t, workers, 5)
+
+	p, err := os.FindProcess(workers[0].Pid)
 	assert.NoError(t, err)
 
 	w, err := s.Client().ExecuteWorkflow(
@@ -42,12 +50,53 @@ func Test_WorkerError_DisasterRecovery(t *testing.T) {
 	wg.Wait()
 }
 
+func Test_ResetAll(t *testing.T) {
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := NewTestServer(t, stopCh, wg)
+
+	w, err := s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"TimerWorkflow",
+		"Hello World",
+	)
+	assert.NoError(t, err)
+	time.Sleep(time.Millisecond * 750)
+
+	var result string
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "hello world", result)
+
+	reset(t)
+
+	w, err = s.Client().ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"TimerWorkflow",
+		"Hello World",
+	)
+	assert.NoError(t, err)
+	time.Sleep(time.Millisecond * 750)
+
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "hello world", result)
+
+	stopCh <- struct{}{}
+	wg.Wait()
+}
+
 // TODO find a solution
 // func Test_WorkerError_DisasterRecovery_Heavy(t *testing.T) {
 //	stopCh := make(chan struct{}, 1)
 //	wg := &sync.WaitGroup{}
 //	wg.Add(1)
-//	s := NewTestServer(t, stopCh, wg, false)
+//	s := NewTestServer(t, stopCh, wg)
 //
 //	defer func() {
 //		// always restore script
@@ -89,7 +138,7 @@ func Test_ActivityError_DisasterRecovery(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, false)
+	s := NewTestServer(t, stopCh, wg)
 
 	defer func() {
 		// always restore script
@@ -100,8 +149,14 @@ func Test_ActivityError_DisasterRecovery(t *testing.T) {
 	_ = os.Rename("worker.php", "worker.bak")
 
 	// destroys all workers in activities
-	for _, wrk := range s.activities.BaseProcesses() {
-		assert.NoError(t, wrk.Kill())
+
+	workers := getWorkers(t)
+	require.Len(t, workers, 5)
+
+	for i := 1; i < len(workers); i++ {
+		p, err := os.FindProcess(workers[i].Pid)
+		require.NoError(t, err)
+		require.NoError(t, p.Kill())
 	}
 
 	w, err := s.Client().ExecuteWorkflow(
@@ -131,9 +186,12 @@ func Test_WorkerError_DisasterRecoveryProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
-	p, err := os.FindProcess(s.workflows.Workers()[0].Pid)
+	workers := getWorkers(t)
+	require.Len(t, workers, 5)
+
+	p, err := os.FindProcess(workers[0].Pid)
 	assert.NoError(t, err)
 
 	w, err := s.Client().ExecuteWorkflow(
@@ -163,7 +221,7 @@ func Test_WorkerError_DisasterRecoveryProto(t *testing.T) {
 //	stopCh := make(chan struct{}, 1)
 //	wg := &sync.WaitGroup{}
 //	wg.Add(1)
-//	s := NewTestServer(t, stopCh, wg, true)
+//	s := NewTestServer(t, stopCh, wg)
 //
 //	defer func() {
 //		// always restore script
@@ -205,7 +263,7 @@ func Test_ActivityError_DisasterRecoveryProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, true)
+	s := NewTestServer(t, stopCh, wg)
 
 	defer func() {
 		// always restore script
@@ -216,8 +274,13 @@ func Test_ActivityError_DisasterRecoveryProto(t *testing.T) {
 	_ = os.Rename("worker.php", "worker.bak")
 
 	// destroys all workers in activities
-	for _, wrk := range s.activities.BaseProcesses() {
-		assert.NoError(t, wrk.Kill())
+	workers := getWorkers(t)
+	require.Len(t, workers, 5)
+
+	for i := 1; i < len(workers); i++ {
+		p, err := os.FindProcess(workers[i].Pid)
+		require.NoError(t, err)
+		require.NoError(t, p.Kill())
 	}
 
 	w, err := s.Client().ExecuteWorkflow(
@@ -241,4 +304,32 @@ func Test_ActivityError_DisasterRecoveryProto(t *testing.T) {
 	assert.Equal(t, "HELLO WORLD", result)
 	stopCh <- struct{}{}
 	wg.Wait()
+}
+
+func getWorkers(t *testing.T) []*process.State {
+	conn, err := net.Dial("tcp", "127.0.0.1:6001")
+	assert.NoError(t, err)
+	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
+	// WorkerList contains list of workers.
+	list := struct {
+		// Workers is list of workers.
+		Workers []*process.State `json:"workers"`
+	}{}
+
+	err = c.Call("informer.Workers", "temporal", &list)
+	assert.NoError(t, err)
+	assert.Len(t, list.Workers, 5)
+
+	return list.Workers
+}
+
+func reset(t *testing.T) {
+	conn, err := net.Dial("tcp", "127.0.0.1:6001")
+	assert.NoError(t, err)
+	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
+
+	var ret bool
+	err = c.Call("resetter.Reset", "temporal", &ret)
+	assert.NoError(t, err)
+	require.True(t, ret)
 }
