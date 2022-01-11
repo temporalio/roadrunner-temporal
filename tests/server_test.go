@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/roadrunner-server/api/v2/plugins/config"
 	endure "github.com/spiral/endure/pkg/container"
-	"github.com/spiral/roadrunner-plugins/v2/api/v2/config"
 	configImpl "github.com/spiral/roadrunner-plugins/v2/config"
 	"github.com/spiral/roadrunner-plugins/v2/informer"
 	"github.com/spiral/roadrunner-plugins/v2/logger"
@@ -135,7 +135,7 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *Test
 	assert.NoError(t, err)
 
 	cfg := &configImpl.Plugin{
-		CommonConfig: &config.General{GracefulTimeout: time.Second * 30},
+		Timeout: time.Second * 30,
 	}
 	cfg.Path = "configs/.rr-proto.yaml"
 	cfg.Prefix = "rr"
@@ -192,7 +192,7 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *Test
 
 func initConfigProtoWithMetrics() config.Configurer {
 	cfg := &configImpl.Plugin{
-		CommonConfig: &config.General{GracefulTimeout: time.Second * 0},
+		Timeout: time.Second * 30,
 	}
 	cfg.Path = "configs/.rr-metrics.yaml"
 	cfg.Prefix = "rr"
