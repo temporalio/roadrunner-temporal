@@ -7,9 +7,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/roadrunner-server/api/v2/plugins/config"
+	"github.com/roadrunner-server/api/v2/plugins/server"
 	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner-plugins/v2/api/v2/config"
-	"github.com/spiral/roadrunner-plugins/v2/api/v2/server"
 	rrPool "github.com/spiral/roadrunner/v2/pool"
 	"github.com/spiral/roadrunner/v2/state/process"
 	temporalClient "github.com/spiral/sdk-go/client"
@@ -82,7 +82,7 @@ func (p *Plugin) Init(cfg config.Configurer, log *zap.Logger, server server.Serv
 	p.dataConverter = data_converter.NewDataConverter(converter.GetDefaultDataConverter())
 	p.log = log
 	p.server = server
-	p.graceTimeout = cfg.GetCommonConfig().GracefulTimeout
+	p.graceTimeout = cfg.GracefulTimeout()
 
 	return nil
 }

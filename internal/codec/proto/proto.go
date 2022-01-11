@@ -6,22 +6,21 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/goccy/go-json"
 	"github.com/google/uuid"
-	"github.com/spiral/roadrunner/v2/utils"
-	"github.com/spiral/sdk-go/workflow"
-	"go.uber.org/zap"
-
-	jsoniter "github.com/json-iterator/go"
 	"github.com/spiral/errors"
 	"github.com/spiral/roadrunner/v2/payload"
 	"github.com/spiral/roadrunner/v2/pool"
+	"github.com/spiral/roadrunner/v2/utils"
 	temporalClient "github.com/spiral/sdk-go/client"
 	"github.com/spiral/sdk-go/converter"
 	"github.com/spiral/sdk-go/internalbindings"
 	"github.com/spiral/sdk-go/worker"
+	"github.com/spiral/sdk-go/workflow"
 	"github.com/temporalio/roadrunner-temporal/internal"
 	_codec "github.com/temporalio/roadrunner-temporal/internal/codec"
 	protocolV1 "github.com/temporalio/roadrunner-temporal/proto/protocol/v1"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -88,7 +87,7 @@ func (c *codec) Execute(ctx *internal.Context, msg ...*internal.Message) ([]*int
 	}
 
 	var err error
-	p.Context, err = jsoniter.Marshal(ctx)
+	p.Context, err = json.Marshal(ctx)
 	if err != nil {
 		return nil, errors.E(errors.Op("encode_context"), err)
 	}
@@ -248,7 +247,7 @@ func (c *codec) packMessage(msg *internal.Message) (*protocolV1.Message, error) 
 			return nil, err
 		}
 
-		frame.Options, err = jsoniter.Marshal(msg.Command)
+		frame.Options, err = json.Marshal(msg.Command)
 		if err != nil {
 			return nil, err
 		}
@@ -273,7 +272,7 @@ func (c *codec) parseMessage(frame *protocolV1.Message) (*internal.Message, erro
 			return nil, errors.E(op, err)
 		}
 
-		err = jsoniter.Unmarshal(frame.Options, &msg.Command)
+		err = json.Unmarshal(frame.Options, &msg.Command)
 		if err != nil {
 			return nil, errors.E(op, err)
 		}
