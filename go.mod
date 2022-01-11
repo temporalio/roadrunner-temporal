@@ -13,8 +13,11 @@ require (
 	github.com/spiral/errors v1.0.12
 	github.com/spiral/roadrunner-plugins/v2 v2.7.0-rc.1
 	github.com/spiral/roadrunner/v2 v2.7.0-rc.1
+	github.com/roadrunner-server/api/v2 v2.0.0-alpha.1
 	github.com/spiral/sdk-go v1.12.0
+	github.com/spiral/goridge/v3 v3.2.4
 	github.com/spiral/sdk-go/contrib/tally v0.0.0-20211210212330-614642034d01
+	github.com/google/uuid v1.3.0
 	// ===========
 	github.com/stretchr/testify v1.7.0
 	github.com/uber-go/tally/v4 v4.1.1
@@ -34,7 +37,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/gogo/status v1.1.0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
-	github.com/google/uuid v1.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/hashicorp/go-version v1.4.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
@@ -59,7 +61,6 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.10.1 // indirect
-	github.com/spiral/goridge/v3 v3.2.4
 	github.com/spiral/tcplisten v1.0.0 // indirect
 	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
@@ -82,9 +83,6 @@ require (
 	gopkg.in/ini.v1 v1.66.2 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	github.com/goccy/go-json v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
-
-require github.com/roadrunner-server/api/v2 v2.0.0-alpha.1
-
-require github.com/goccy/go-json v0.9.1 // indirect
