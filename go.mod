@@ -15,7 +15,7 @@ require (
 	github.com/spiral/errors v1.0.12
 	github.com/spiral/goridge/v3 v3.2.4
 	github.com/spiral/roadrunner-plugins/v2 v2.7.0-rc.1
-	github.com/spiral/roadrunner/v2 v2.7.0-rc.1
+	github.com/spiral/roadrunner/v2 v2.7.0-rc.2
 	github.com/spiral/sdk-go v1.12.0
 	github.com/spiral/sdk-go/contrib/tally v0.0.0-20211210212330-614642034d01
 	// ===========
@@ -75,7 +75,6 @@ require (
 	go.uber.org/goleak v1.1.12 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/net v0.0.0-20220111093109-d55c255bac03 // indirect
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220111092808-5a964db01320 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11 // indirect
