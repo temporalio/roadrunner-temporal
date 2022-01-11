@@ -247,7 +247,7 @@ func (c *codec) packMessage(msg *internal.Message) (*protocolV1.Message, error) 
 			return nil, err
 		}
 
-		frame.Options, err = jsoniter.Marshal(msg.Command)
+		frame.Options, err = json.Marshal(msg.Command)
 		if err != nil {
 			return nil, err
 		}
@@ -272,7 +272,7 @@ func (c *codec) parseMessage(frame *protocolV1.Message) (*internal.Message, erro
 			return nil, errors.E(op, err)
 		}
 
-		err = jsoniter.Unmarshal(frame.Options, &msg.Command)
+		err = json.Unmarshal(frame.Options, &msg.Command)
 		if err != nil {
 			return nil, errors.E(op, err)
 		}
