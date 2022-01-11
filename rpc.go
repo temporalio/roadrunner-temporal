@@ -1,7 +1,7 @@
 package roadrunner_temporal //nolint:revive,stylecheck
 
 import (
-	v1Proto "github.com/golang/protobuf/proto" //nolint:staticcheck
+	v1Proto "github.com/golang/protobuf/proto" //nolint:staticcheck,nolintlint
 	"github.com/spiral/sdk-go/activity"
 	"github.com/spiral/sdk-go/client"
 	commonpb "go.temporal.io/api/common/v1"
