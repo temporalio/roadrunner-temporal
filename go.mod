@@ -13,9 +13,9 @@ require (
 	// SPIRAL ========
 	github.com/spiral/endure v1.1.0
 	github.com/spiral/errors v1.0.12
-	github.com/spiral/goridge/v3 v3.2.6
-	github.com/spiral/roadrunner-plugins/v2 v2.7.0
-	github.com/spiral/roadrunner/v2 v2.7.0
+	github.com/spiral/goridge/v3 v3.2.7
+	github.com/spiral/roadrunner-plugins/v2 v2.7.1
+	github.com/spiral/roadrunner/v2 v2.7.1
 	github.com/spiral/sdk-go v1.12.0
 	github.com/spiral/sdk-go/contrib/tally v0.0.0-20211210212330-614642034d01
 	// ===========
@@ -78,7 +78,7 @@ require (
 	golang.org/x/sys v0.0.0-20220111092808-5a964db01320 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11 // indirect
-	google.golang.org/genproto v0.0.0-20220111164026-67b88f271998 // indirect
+	google.golang.org/genproto v0.0.0-20220112215332-a9c7c0acf9f2 // indirect
 	google.golang.org/grpc v1.43.0 // indirect
 	gopkg.in/ini.v1 v1.66.2 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
