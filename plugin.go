@@ -9,9 +9,9 @@ import (
 
 	"github.com/roadrunner-server/api/v2/plugins/config"
 	"github.com/roadrunner-server/api/v2/plugins/server"
-	"github.com/spiral/errors"
-	rrPool "github.com/spiral/roadrunner/v2/pool"
-	"github.com/spiral/roadrunner/v2/state/process"
+	"github.com/roadrunner-server/errors"
+	rrPool "github.com/roadrunner-server/sdk/v2/pool"
+	"github.com/roadrunner-server/sdk/v2/state/process"
 	temporalClient "github.com/spiral/sdk-go/client"
 	"github.com/spiral/sdk-go/contrib/tally"
 	"github.com/spiral/sdk-go/converter"

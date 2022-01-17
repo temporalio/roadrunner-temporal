@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/spiral/errors"
-	"github.com/spiral/roadrunner/v2/utils"
+	"github.com/roadrunner-server/errors"
+	"github.com/roadrunner-server/sdk/v2/utils"
 	tActivity "github.com/spiral/sdk-go/activity"
 	temporalClient "github.com/spiral/sdk-go/client"
 	"github.com/spiral/sdk-go/converter"

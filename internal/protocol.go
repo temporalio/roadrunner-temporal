@@ -3,7 +3,7 @@ package internal
 import (
 	"time"
 
-	"github.com/spiral/errors"
+	"github.com/roadrunner-server/errors"
 	"github.com/spiral/sdk-go/activity"
 	bindings "github.com/spiral/sdk-go/internalbindings"
 	"github.com/spiral/sdk-go/workflow"
