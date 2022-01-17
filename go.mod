@@ -16,7 +16,7 @@ require (
 	github.com/roadrunner-server/errors v1.1.0
 	github.com/roadrunner-server/goridge/v3 v3.3.0
 	github.com/roadrunner-server/informer/v2 v2.0.0-rc.2
-	github.com/roadrunner-server/logger/v2 v2.0.0-rc.2
+	github.com/roadrunner-server/logger/v2 v2.0.0-rc.3
 	github.com/roadrunner-server/resetter/v2 v2.0.0-rc.1
 	github.com/roadrunner-server/rpc/v2 v2.0.0-rc.2
 	github.com/roadrunner-server/sdk/v2 v2.0.0-rc.1
@@ -89,5 +89,3 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
-
-require github.com/roadrunner-server/api v0.0.0-20220109175659-238f1b160729 // indirect
