@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/spiral/errors"
+	"github.com/roadrunner-server/errors"
 	bindings "github.com/spiral/sdk-go/internalbindings"
 	"github.com/spiral/sdk-go/workflow"
 	"github.com/temporalio/roadrunner-temporal/internal"
