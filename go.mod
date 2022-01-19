@@ -20,7 +20,7 @@ require (
 	github.com/roadrunner-server/resetter/v2 v2.0.0-rc.1
 	github.com/roadrunner-server/rpc/v2 v2.0.0-rc.2
 	github.com/roadrunner-server/sdk/v2 v2.0.0-rc.1
-	github.com/roadrunner-server/server/v2 v2.0.0-rc.1
+	github.com/roadrunner-server/server/v2 v2.0.0-rc.2
 	github.com/spiral/sdk-go v1.12.0
 	github.com/spiral/sdk-go/contrib/tally v0.0.0-20211210212330-614642034d01
 	github.com/stretchr/testify v1.7.0
