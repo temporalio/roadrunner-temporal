@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
 	github.com/fatih/color v1.13.0
-	github.com/goccy/go-json v0.9.3
+	github.com/goccy/go-json v0.9.4
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
 	github.com/json-iterator/go v1.1.12 // indirect
