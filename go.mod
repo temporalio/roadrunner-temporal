@@ -10,16 +10,16 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/pborman/uuid v1.2.1
-	github.com/roadrunner-server/api/v2 v2.0.0-rc.2
-	github.com/roadrunner-server/config/v2 v2.0.0-rc.3
+	github.com/roadrunner-server/api/v2 v2.8.0-rc.1
+	github.com/roadrunner-server/config/v2 v2.8.0-rc.2
 	github.com/roadrunner-server/endure v1.2.1
-	github.com/roadrunner-server/errors v1.1.0
+	github.com/roadrunner-server/errors v1.1.1
 	github.com/roadrunner-server/goridge/v3 v3.3.0
 	github.com/roadrunner-server/informer/v2 v2.0.0-rc.2
 	github.com/roadrunner-server/logger/v2 v2.0.0-rc.4
 	github.com/roadrunner-server/resetter/v2 v2.0.0-rc.1
 	github.com/roadrunner-server/rpc/v2 v2.0.0-rc.2
-	github.com/roadrunner-server/sdk/v2 v2.0.0-rc.1
+	github.com/roadrunner-server/sdk/v2 v2.8.0-rc.1
 	github.com/roadrunner-server/server/v2 v2.0.0-rc.2
 	github.com/spiral/sdk-go v1.12.0
 	github.com/spiral/sdk-go/contrib/tally v0.0.0-20211210212330-614642034d01
@@ -84,7 +84,7 @@ require (
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11 // indirect
 	google.golang.org/genproto v0.0.0-20220114231437-d2e6a121cae0 // indirect
 	google.golang.org/grpc v1.43.0 // indirect
-	gopkg.in/ini.v1 v1.66.2 // indirect
+	gopkg.in/ini.v1 v1.66.3 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
