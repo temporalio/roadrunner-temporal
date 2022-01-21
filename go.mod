@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/pborman/uuid v1.2.1
-	github.com/roadrunner-server/api/v2 v2.0.0-rc.2
+	github.com/roadrunner-server/api/v2 v2.8.0-rc.1
 	github.com/roadrunner-server/config/v2 v2.0.0-rc.3
 	github.com/roadrunner-server/endure v1.2.1
 	github.com/roadrunner-server/errors v1.1.0
