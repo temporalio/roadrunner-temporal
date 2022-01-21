@@ -10,16 +10,16 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/pborman/uuid v1.2.1
-	github.com/roadrunner-server/api/v2 v2.0.0-rc.2
+	github.com/roadrunner-server/api/v2 v2.8.0-rc.1
 	github.com/roadrunner-server/config/v2 v2.0.0-rc.3
 	github.com/roadrunner-server/endure v1.2.1
-	github.com/roadrunner-server/errors v1.1.0
+	github.com/roadrunner-server/errors v1.1.1
 	github.com/roadrunner-server/goridge/v3 v3.3.0
-	github.com/roadrunner-server/informer/v2 v2.0.0-rc.2
+	github.com/roadrunner-server/informer/v2 v2.8.0-rc.1
 	github.com/roadrunner-server/logger/v2 v2.0.0-rc.4
 	github.com/roadrunner-server/resetter/v2 v2.0.0-rc.1
 	github.com/roadrunner-server/rpc/v2 v2.0.0-rc.2
-	github.com/roadrunner-server/sdk/v2 v2.0.0-rc.1
+	github.com/roadrunner-server/sdk/v2 v2.8.0-rc.1
 	github.com/roadrunner-server/server/v2 v2.0.0-rc.2
 	github.com/spiral/sdk-go v1.12.0
 	github.com/spiral/sdk-go/contrib/tally v0.0.0-20211210212330-614642034d01
