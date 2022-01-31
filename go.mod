@@ -14,7 +14,7 @@ require (
 	github.com/roadrunner-server/errors v1.1.1
 	github.com/roadrunner-server/goridge/v3 v3.3.0
 	github.com/roadrunner-server/informer/v2 v2.8.0-rc.1
-	github.com/roadrunner-server/logger/v2 v2.8.0-rc.1
+	github.com/roadrunner-server/logger/v2 v2.8.0-rc.2
 	github.com/roadrunner-server/resetter/v2 v2.8.0-rc.1
 	github.com/roadrunner-server/rpc/v2 v2.8.0-rc.1
 	github.com/roadrunner-server/sdk/v2 v2.8.0-rc.1
