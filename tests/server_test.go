@@ -86,7 +86,7 @@ func NewTestServerWithMetrics(t *testing.T, stopCh chan struct{}, wg *sync.WaitG
 	err = container.RegisterAll(
 		&roadrunnerTemporal.Plugin{},
 		initConfigProtoWithMetrics(),
-		&logger.ZapLogger{},
+		&logger.Plugin{},
 		&resetter.Plugin{},
 		&informer.Plugin{},
 		&server.Plugin{},
@@ -143,7 +143,7 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *Test
 	err = container.RegisterAll(
 		cfg,
 		&roadrunnerTemporal.Plugin{},
-		&logger.ZapLogger{},
+		&logger.Plugin{},
 		&resetter.Plugin{},
 		&informer.Plugin{},
 		&server.Plugin{},
