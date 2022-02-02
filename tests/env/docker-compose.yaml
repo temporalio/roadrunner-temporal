@@ -3,7 +3,7 @@ version: '3.7'
 services:
   postgresql:
     container_name: temporal-postgresql
-    image: postgres:14.1
+    image: postgres:14
     environment:
       POSTGRES_PASSWORD: temporal
       POSTGRES_USER: temporal
@@ -12,7 +12,7 @@ services:
 
   temporal:
     container_name: temporal
-    image: temporalio/auto-setup:1.13.1
+    image: temporalio/auto-setup:1.14.2
     depends_on:
       - postgresql
     environment:
@@ -21,12 +21,13 @@ services:
       - POSTGRES_USER=temporal
       - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=postgresql
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development.yaml
     ports:
       - "7233:7233"
 
   temporal-admin-tools:
     container_name: temporal-admin-tools
-    image: temporalio/admin-tools:1.13.1
+    image: temporalio/admin-tools:1.14.2
     depends_on:
       - temporal
     environment:

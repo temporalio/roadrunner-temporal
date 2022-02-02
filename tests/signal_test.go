@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/pborman/uuid"
-	"github.com/spiral/sdk-go/client"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
+	"go.temporal.io/sdk/client"
 )
 
 func Test_SignalsWithoutSignalsProto(t *testing.T) {

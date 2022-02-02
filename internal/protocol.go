@@ -4,11 +4,11 @@ import (
 	"time"
 
 	"github.com/roadrunner-server/errors"
-	"github.com/spiral/sdk-go/activity"
-	bindings "github.com/spiral/sdk-go/internalbindings"
-	"github.com/spiral/sdk-go/workflow"
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/api/failure/v1"
+	"go.temporal.io/sdk/activity"
+	bindings "go.temporal.io/sdk/internalbindings"
+	"go.temporal.io/sdk/workflow"
 )
 
 const (
@@ -64,6 +64,9 @@ type Message struct {
 
 	// Payloads contains message specific payloads in binary format.
 	Payloads *commonpb.Payloads `json:"payloads,omitempty"`
+
+	// Header
+	Header *commonpb.Header `json:"header,omitempty"`
 }
 
 // IsEmpty only check if task queue set.

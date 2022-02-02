@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spiral/sdk-go/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
+	"go.temporal.io/sdk/client"
 )
 
 func Test_SimpleWorkflowCancelProto(t *testing.T) {
@@ -116,7 +116,6 @@ func Test_CanceledWithCompensationWorkflowProto(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	time.Sleep(time.Second)
 	err = s.Client().CancelWorkflow(context.Background(), w.GetID(), w.GetRunID())
 	assert.NoError(t, err)
 
@@ -125,8 +124,8 @@ func Test_CanceledWithCompensationWorkflowProto(t *testing.T) {
 	assert.Equal(t, "OK", result)
 
 	e, err := s.Client().QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "getStatus")
-	require.NotNil(t, e)
 	require.NoError(t, err)
+	require.NotNil(t, e)
 
 	trace := make([]string, 0)
 	assert.NoError(t, e.Get(&trace))
@@ -221,7 +220,7 @@ func Test_CanceledNSingleScopeWorkflowProto(t *testing.T) {
 	assert.Equal(t, "OK", result)
 
 	e, err := s.Client().QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "getStatus")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	trace := make([]string, 0)
 	assert.NoError(t, e.Get(&trace))

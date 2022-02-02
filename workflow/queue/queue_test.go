@@ -44,7 +44,7 @@ func Test_MessageQueueCommandID(t *testing.T) {
 		return atomic.AddUint64(&index, 1)
 	})
 
-	n := mq.PushCommand(internal.StartWorkflow{}, &common.Payloads{})
+	n := mq.PushCommand(internal.StartWorkflow{}, &common.Payloads{}, &common.Header{})
 	assert.Equal(t, n, index)
 	assert.Len(t, mq.Queue, 1)
 

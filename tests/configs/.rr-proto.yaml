@@ -6,9 +6,10 @@ server:
 
 temporal:
   address: "localhost:7233"
+  cache_size: 100000
   activities:
     num_workers: 4
 
 logs:
   mode: development
-  level: warn
+  level: error

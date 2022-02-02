@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"github.com/spiral/sdk-go/worker"
+	"go.temporal.io/sdk/worker"
 )
 
 // WorkerInfo outlines information about every available worker and it's TaskQueues.

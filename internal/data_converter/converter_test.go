@@ -3,9 +3,9 @@ package data_converter //nolint:revive,stylecheck
 import (
 	"testing"
 
-	"github.com/spiral/sdk-go/converter"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/api/common/v1"
+	"go.temporal.io/sdk/converter"
 )
 
 func Test_Passthough(t *testing.T) {
