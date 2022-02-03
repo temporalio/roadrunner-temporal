@@ -22,18 +22,19 @@ func (mq *MessageQueue) Flush() {
 	mq.Queue = mq.Queue[0:0]
 }
 
-func (mq *MessageQueue) AllocateMessage(cmd interface{}, payloads *common.Payloads) (uint64, internal.Message) {
+func (mq *MessageQueue) AllocateMessage(cmd interface{}, payloads *common.Payloads, header *common.Header) (uint64, internal.Message) {
 	msg := internal.Message{
 		ID:       mq.SeqID(),
 		Command:  cmd,
 		Payloads: payloads,
+		Header:   header,
 	}
 
 	return msg.ID, msg
 }
 
-func (mq *MessageQueue) PushCommand(cmd interface{}, payloads *common.Payloads) uint64 {
-	id, msg := mq.AllocateMessage(cmd, payloads)
+func (mq *MessageQueue) PushCommand(cmd interface{}, payloads *common.Payloads, header *common.Header) uint64 {
+	id, msg := mq.AllocateMessage(cmd, payloads, header)
 	mq.Queue = append(mq.Queue, &msg)
 	return id
 }

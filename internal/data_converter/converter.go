@@ -1,8 +1,8 @@
 package data_converter //nolint:revive,stylecheck
 
 import (
-	"github.com/spiral/sdk-go/converter"
 	commonpb "go.temporal.io/api/common/v1"
+	"go.temporal.io/sdk/converter"
 )
 
 // DataConverter wraps Temporal data converter to enable direct access to the payloads.

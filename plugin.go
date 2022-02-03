@@ -12,10 +12,6 @@ import (
 	"github.com/roadrunner-server/errors"
 	rrPool "github.com/roadrunner-server/sdk/v2/pool"
 	"github.com/roadrunner-server/sdk/v2/state/process"
-	temporalClient "github.com/spiral/sdk-go/client"
-	"github.com/spiral/sdk-go/contrib/tally"
-	"github.com/spiral/sdk-go/converter"
-	"github.com/spiral/sdk-go/worker"
 	"github.com/temporalio/roadrunner-temporal/activity"
 	"github.com/temporalio/roadrunner-temporal/internal"
 	"github.com/temporalio/roadrunner-temporal/internal/codec/proto"
@@ -23,6 +19,10 @@ import (
 	"github.com/temporalio/roadrunner-temporal/internal/logger"
 	"github.com/temporalio/roadrunner-temporal/workflow"
 	"github.com/uber-go/tally/v4/prometheus"
+	temporalClient "go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/contrib/tally"
+	"go.temporal.io/sdk/converter"
+	"go.temporal.io/sdk/worker"
 	"go.uber.org/zap"
 )
 

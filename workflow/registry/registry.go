@@ -3,7 +3,7 @@ package registry
 import (
 	"sync"
 
-	bindings "github.com/spiral/sdk-go/internalbindings"
+	bindings "go.temporal.io/sdk/internalbindings"
 )
 
 // IDRegistry used to gain access to child workflow ids after they become available via callback result.

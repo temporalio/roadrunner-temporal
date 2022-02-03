@@ -7,16 +7,16 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/roadrunner-server/errors"
-	temporalClient "github.com/spiral/sdk-go/client"
-	bindings "github.com/spiral/sdk-go/internalbindings"
-	"github.com/spiral/sdk-go/worker"
-	"github.com/spiral/sdk-go/workflow"
 	"github.com/temporalio/roadrunner-temporal/internal"
 	"github.com/temporalio/roadrunner-temporal/internal/codec"
 	"github.com/temporalio/roadrunner-temporal/workflow/canceller"
 	"github.com/temporalio/roadrunner-temporal/workflow/queue"
 	"github.com/temporalio/roadrunner-temporal/workflow/registry"
 	commonpb "go.temporal.io/api/common/v1"
+	temporalClient "go.temporal.io/sdk/client"
+	bindings "go.temporal.io/sdk/internalbindings"
+	"go.temporal.io/sdk/worker"
+	"go.temporal.io/sdk/workflow"
 	"go.uber.org/zap"
 )
 
@@ -113,6 +113,7 @@ func (wp *process) Execute(env bindings.WorkflowEnvironment, header *commonpb.He
 			LastCompletion: lastCompletionOffset,
 		},
 		input,
+		wp.header,
 	)
 }
 
@@ -165,6 +166,7 @@ func (wp *process) StackTrace() string {
 			RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
 		},
 		nil,
+		wp.header,
 	)
 
 	if err != nil {
@@ -186,7 +188,7 @@ func (wp *process) StackTrace() string {
 
 func (wp *process) Close() {
 	// send destroy command
-	_, _ = wp.runCommand(internal.DestroyWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID}, nil)
+	_, _ = wp.runCommand(internal.DestroyWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID}, nil, wp.header)
 	// flush queue
 	wp.mq.Flush()
 }

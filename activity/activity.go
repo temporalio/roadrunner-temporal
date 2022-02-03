@@ -10,14 +10,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/sdk/v2/utils"
-	tActivity "github.com/spiral/sdk-go/activity"
-	temporalClient "github.com/spiral/sdk-go/client"
-	"github.com/spiral/sdk-go/converter"
-	"github.com/spiral/sdk-go/internalbindings"
-	"github.com/spiral/sdk-go/worker"
 	"github.com/temporalio/roadrunner-temporal/internal"
 	"github.com/temporalio/roadrunner-temporal/internal/codec"
 	commonpb "go.temporal.io/api/common/v1"
+	tActivity "go.temporal.io/sdk/activity"
+	temporalClient "go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/converter"
+	"go.temporal.io/sdk/internalbindings"
+	"go.temporal.io/sdk/worker"
 	"go.uber.org/zap"
 )
 
@@ -80,6 +80,7 @@ func (a *activity) Init() ([]worker.Worker, error) {
 			)
 		}
 
+		wi[i].Options.DisableWorkflowWorker = true
 		wrk := worker.New(a.client, wi[i].TaskQueue, wi[i].Options)
 
 		for j := 0; j < len(wi[i].Activities); j++ {

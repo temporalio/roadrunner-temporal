@@ -3,7 +3,7 @@ package internal
 import (
 	"context"
 
-	"github.com/spiral/sdk-go/worker"
+	"go.temporal.io/sdk/worker"
 )
 
 type Activity interface {

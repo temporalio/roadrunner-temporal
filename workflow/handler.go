@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/roadrunner-server/errors"
-	bindings "github.com/spiral/sdk-go/internalbindings"
-	"github.com/spiral/sdk-go/workflow"
 	"github.com/temporalio/roadrunner-temporal/internal"
 	commonpb "go.temporal.io/api/common/v1"
+	bindings "go.temporal.io/sdk/internalbindings"
+	"go.temporal.io/sdk/workflow"
 )
 
 const completed string = "completed"
@@ -28,29 +28,31 @@ func (wp *process) handleCancel() {
 	_ = wp.mq.PushCommand(
 		internal.CancelWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID},
 		nil,
+		wp.header,
 	)
 }
 
 // schedule the signal processing
-func (wp *process) handleSignal(name string, input *commonpb.Payloads) error {
+func (wp *process) handleSignal(name string, input *commonpb.Payloads, header *commonpb.Header) error {
 	_ = wp.mq.PushCommand(
 		internal.InvokeSignal{
 			RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
 			Name:  name,
 		},
 		input,
+		header,
 	)
 
 	return nil
 }
 
 // Handle query in blocking mode.
-func (wp *process) handleQuery(queryType string, queryArgs *commonpb.Payloads) (*commonpb.Payloads, error) {
+func (wp *process) handleQuery(queryType string, queryArgs *commonpb.Payloads, header *commonpb.Header) (*commonpb.Payloads, error) {
 	const op = errors.Op("workflow_process_handle_query")
 	result, err := wp.runCommand(internal.InvokeQuery{
 		RunID: wp.runID,
 		Name:  queryType,
-	}, queryArgs)
+	}, queryArgs, header)
 
 	if err != nil {
 		return nil, errors.E(op, err)
@@ -165,7 +167,7 @@ func (wp *process) handleMessage(msg *internal.Message) error {
 		wp.env.Complete(nil, &workflow.ContinueAsNewError{
 			WorkflowType:             &bindings.WorkflowType{Name: command.Name},
 			Input:                    msg.Payloads,
-			Header:                   wp.header,
+			Header:                   msg.Header,
 			TaskQueueName:            command.Options.TaskQueueName,
 			WorkflowExecutionTimeout: command.Options.WorkflowExecutionTimeout,
 			WorkflowRunTimeout:       command.Options.WorkflowRunTimeout,
@@ -180,6 +182,7 @@ func (wp *process) handleMessage(msg *internal.Message) error {
 			command.Signal,
 			msg.Payloads,
 			nil,
+			msg.Header,
 			command.ChildWorkflowOnly,
 			wp.createCallback(msg.ID),
 		)
@@ -281,9 +284,9 @@ func (wp *process) flushQueue() error {
 }
 
 // Run single command and return single result.
-func (wp *process) runCommand(cmd interface{}, payloads *commonpb.Payloads) (*internal.Message, error) {
+func (wp *process) runCommand(cmd interface{}, payloads *commonpb.Payloads, header *commonpb.Header) (*internal.Message, error) {
 	const op = errors.Op("workflow_process_runcommand")
-	_, msg := wp.mq.AllocateMessage(cmd, payloads)
+	_, msg := wp.mq.AllocateMessage(cmd, payloads, header)
 
 	result, err := wp.codec.Execute(wp.getContext(), &msg)
 	if err != nil {

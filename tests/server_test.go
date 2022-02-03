@@ -15,14 +15,14 @@ import (
 	"github.com/roadrunner-server/resetter/v2"
 	"github.com/roadrunner-server/rpc/v2"
 	"github.com/roadrunner-server/server/v2"
-	temporalClient "github.com/spiral/sdk-go/client"
-	"github.com/spiral/sdk-go/converter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	roadrunnerTemporal "github.com/temporalio/roadrunner-temporal"
 	"github.com/temporalio/roadrunner-temporal/internal/data_converter"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
+	temporalClient "go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/converter"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -86,7 +86,7 @@ func NewTestServerWithMetrics(t *testing.T, stopCh chan struct{}, wg *sync.WaitG
 	err = container.RegisterAll(
 		&roadrunnerTemporal.Plugin{},
 		initConfigProtoWithMetrics(),
-		&logger.ZapLogger{},
+		&logger.Plugin{},
 		&resetter.Plugin{},
 		&informer.Plugin{},
 		&server.Plugin{},
@@ -143,7 +143,7 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *Test
 	err = container.RegisterAll(
 		cfg,
 		&roadrunnerTemporal.Plugin{},
-		&logger.ZapLogger{},
+		&logger.Plugin{},
 		&resetter.Plugin{},
 		&informer.Plugin{},
 		&server.Plugin{},
