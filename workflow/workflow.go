@@ -219,6 +219,7 @@ func (wp *process) Init() ([]worker.Worker, error) {
 			)
 		}
 
+		wi[i].Options.LocalActivityWorkerOnly = true
 		wrk := worker.New(wp.client, wi[i].TaskQueue, wi[i].Options)
 
 		for j := 0; j < len(wi[i].Workflows); j++ {
@@ -234,6 +235,8 @@ func (wp *process) Init() ([]worker.Worker, error) {
 
 		wp.tWorkers = append(wp.tWorkers, wrk)
 	}
+
+	wp.log.Debug("workflow workers initialized", zap.Int("num_workers", len(wp.tWorkers)))
 
 	return wp.tWorkers, nil
 }
