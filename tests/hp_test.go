@@ -285,7 +285,6 @@ func Test_PromiseChainingProto(t *testing.T) {
 }
 
 func Test_ActivityHeartbeatProto(t *testing.T) {
-	t.Skip("update php-sdk")
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -309,7 +308,7 @@ func Test_ActivityHeartbeatProto(t *testing.T) {
 
 	require.Len(t, we.PendingActivities, 1)
 	act := we.PendingActivities[0]
-	require.Len(t, act.HeartbeatDetails, 1)
+	require.Len(t, act.HeartbeatDetails.Payloads, 1)
 	assert.Equal(t, `{"value":2}`, string(act.HeartbeatDetails.Payloads[0].Data))
 
 	var result string

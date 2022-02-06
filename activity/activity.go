@@ -96,14 +96,7 @@ func (a *activity) Init() ([]worker.Worker, error) {
 		a.tWorkers = append(a.tWorkers, wrk)
 	}
 
-	for i := 0; i < len(a.tWorkers); i++ {
-		err = a.tWorkers[i].Start()
-		if err != nil {
-			return nil, errors.E(op, err)
-		}
-	}
-
-	a.log.Debug("activity workers started", zap.Int("num_workers", len(a.tWorkers)))
+	a.log.Debug("activity workers initialized", zap.Int("num_workers", len(a.tWorkers)))
 
 	return a.tWorkers, nil
 }

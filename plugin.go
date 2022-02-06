@@ -94,6 +94,8 @@ func (p *Plugin) Serve() chan error {
 	p.Lock()
 	defer p.Unlock()
 
+	worker.SetStickyWorkflowCacheSize(p.config.CacheSize)
+
 	env := map[string]string{RrMode: PluginName, RrCodec: RrCodecVal}
 	var err error
 	opts := temporalClient.Options{
@@ -123,10 +125,9 @@ func (p *Plugin) Serve() chan error {
 		return errCh
 	}
 
-	worker.SetStickyWorkflowCacheSize(p.config.CacheSize)
-
 	p.log.Info("connected to temporal server", zap.String("address", p.config.Address))
 
+	// ------ ACTIVITIES POOL --------
 	pl, err := p.server.NewWorkerPool(context.Background(), p.config.Activities, env)
 	if err != nil {
 		errCh <- errors.E(op, err)
@@ -140,6 +141,7 @@ func (p *Plugin) Serve() chan error {
 		errCh <- errors.E(op, err)
 		return errCh
 	}
+	// --------------------------------
 
 	// ---------- WORKFLOWS -------------
 	wpl, err := p.server.NewWorkerPool(
@@ -167,6 +169,9 @@ func (p *Plugin) Serve() chan error {
 		return errCh
 	}
 
+	// --------------------------------
+
+	// ---------- START WORKERS ---------------
 	for i := 0; i < len(p.wfW); i++ {
 		err = p.wfW[i].Start()
 		if err != nil {
@@ -174,6 +179,7 @@ func (p *Plugin) Serve() chan error {
 			return errCh
 		}
 	}
+
 	for i := 0; i < len(p.actW); i++ {
 		err = p.actW[i].Start()
 		if err != nil {
@@ -181,6 +187,8 @@ func (p *Plugin) Serve() chan error {
 			return errCh
 		}
 	}
+
+	// --------------------------------
 
 	p.rrActivity = ap
 	p.rrWorkflow = wfDef
