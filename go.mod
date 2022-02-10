@@ -17,7 +17,7 @@ require (
 	github.com/roadrunner-server/logger/v2 v2.8.0-rc.3
 	github.com/roadrunner-server/resetter/v2 v2.8.0-rc.2
 	github.com/roadrunner-server/rpc/v2 v2.8.0-rc.3
-	github.com/roadrunner-server/sdk/v2 v2.8.0-rc.3
+	github.com/roadrunner-server/sdk/v2 v2.8.0-rc.4
 	github.com/roadrunner-server/server/v2 v2.8.0-rc.4
 	github.com/stretchr/testify v1.7.0
 	github.com/uber-go/tally/v4 v4.1.1
