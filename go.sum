@@ -362,8 +362,9 @@ github.com/prometheus/procfs v0.1.3/go.mod h1:lV6e/gmhEcM9IjHGsFOCxxuZ+z1YqCvr4O
 github.com/prometheus/procfs v0.6.0/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1xBZuNvfVA=
 github.com/prometheus/procfs v0.7.3 h1:4jVXhlkAyzOScmCkXBTOLRLTz8EeU+eyjrwB/EPq0VU=
 github.com/prometheus/procfs v0.7.3/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1xBZuNvfVA=
-github.com/roadrunner-server/api/v2 v2.8.0-rc.3 h1:UD0WMHJecrPTco4eulBqDUMrrUhEhmL3dbMHm8h3c9c=
 github.com/roadrunner-server/api/v2 v2.8.0-rc.3/go.mod h1:67Gn4n5f/NMd3BTci96NuvW6LdaMIXf5+v4zxbOs0+I=
+github.com/roadrunner-server/api/v2 v2.8.0-rc.4 h1:q83N+r1FOteIxhZALNZA1QJLY6OVf0A9IHpteY+S8g0=
+github.com/roadrunner-server/api/v2 v2.8.0-rc.4/go.mod h1:rUrwi8TZigkIskl13RGm2xrrPokI53ywfkjoddd2GdI=
 github.com/roadrunner-server/config/v2 v2.8.0-rc.5 h1:MN0fPKKHBhH8UNdZH+ZAkkysFOoMsvBXW9GWZjIDg54=
 github.com/roadrunner-server/config/v2 v2.8.0-rc.5/go.mod h1:ZjTTyuQ9RvgmhPuLS3W8wMEvso+OHm4N3QFYKTLdFaQ=
 github.com/roadrunner-server/endure v1.2.1 h1:LwapekBTGlsgEXR6Fbp50WYIjAGq/FwTssZThemyawE=
@@ -381,8 +382,9 @@ github.com/roadrunner-server/resetter/v2 v2.8.0-rc.2 h1:bNsf1IUBmu1ZVqIE99eMdPgk
 github.com/roadrunner-server/resetter/v2 v2.8.0-rc.2/go.mod h1:8/l7RE3NXQzai9ksPZ9XsT1L9eA+J4+4H6jkd0V6DCQ=
 github.com/roadrunner-server/rpc/v2 v2.8.0-rc.3 h1:sYQwoUiPXQt6rKnJsL7f94UwcsZpIQdk2oBBJpV9Imo=
 github.com/roadrunner-server/rpc/v2 v2.8.0-rc.3/go.mod h1:XIA6PUBPtzXumYQLYl7zwkECpjfe8lnahvMtwb02jHE=
-github.com/roadrunner-server/sdk/v2 v2.8.0-rc.3 h1:9+3YbWs70TAK/1ot9YG7zXvRbStYpbSI4l7SQfoRPB4=
 github.com/roadrunner-server/sdk/v2 v2.8.0-rc.3/go.mod h1:aiopFkQXKqz/EWG7M5JRhEyeERT8Yf/pIuFWosircME=
+github.com/roadrunner-server/sdk/v2 v2.8.0-rc.4 h1:VCe331PzD9+3ApjNCKSnZK8sw7OkFSfz3dO1nCM1fFk=
+github.com/roadrunner-server/sdk/v2 v2.8.0-rc.4/go.mod h1:oqohHdPseV3P3woXk3H1XUnU8YeprC63O8wRmjCkP5Q=
 github.com/roadrunner-server/server/v2 v2.8.0-rc.4 h1:p0Z6RFRBdMbuoKSaf3vgy4yZLI6wUOWzNAn+GW5A6rY=
 github.com/roadrunner-server/server/v2 v2.8.0-rc.4/go.mod h1:YXNQ7Rah6dGxIqJIcuRsxuVSc6vgHt4s+R034Sp3fSk=
 github.com/roadrunner-server/tcplisten v1.1.1 h1:uVJVdg/zaasD2A4Mg+GyMlsUy2nLp9ADKec/REzql9Y=
