@@ -8,7 +8,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
 	github.com/pborman/uuid v1.2.1
-	github.com/roadrunner-server/api/v2 v2.8.0-rc.4
+	github.com/roadrunner-server/api/v2 v2.8.0-rc.6
 	github.com/roadrunner-server/config/v2 v2.8.0-rc.5
 	github.com/roadrunner-server/endure v1.2.1
 	github.com/roadrunner-server/errors v1.1.1
@@ -16,8 +16,8 @@ require (
 	github.com/roadrunner-server/informer/v2 v2.8.0-rc.4
 	github.com/roadrunner-server/logger/v2 v2.8.0-rc.3
 	github.com/roadrunner-server/resetter/v2 v2.8.0-rc.2
-	github.com/roadrunner-server/rpc/v2 v2.8.0-rc.3
-	github.com/roadrunner-server/sdk/v2 v2.8.0-rc.4
+	github.com/roadrunner-server/rpc/v2 v2.8.0
+	github.com/roadrunner-server/sdk/v2 v2.8.0
 	github.com/roadrunner-server/server/v2 v2.8.0-rc.4
 	github.com/stretchr/testify v1.7.0
 	github.com/uber-go/tally/v4 v4.1.1
@@ -76,7 +76,7 @@ require (
 	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220207234003-57398862261d // indirect
+	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11 // indirect
 	google.golang.org/genproto v0.0.0-20220207185906-7721543eae58 // indirect
