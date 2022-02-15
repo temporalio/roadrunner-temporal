@@ -9,9 +9,11 @@ import (
 
 	"github.com/roadrunner-server/api/v2/plugins/config"
 	"github.com/roadrunner-server/api/v2/plugins/server"
+	rrPool "github.com/roadrunner-server/api/v2/pool"
+	"github.com/roadrunner-server/api/v2/state/process"
 	"github.com/roadrunner-server/errors"
-	rrPool "github.com/roadrunner-server/sdk/v2/pool"
-	"github.com/roadrunner-server/sdk/v2/state/process"
+	poolImpl "github.com/roadrunner-server/sdk/v2/pool"
+	processImpl "github.com/roadrunner-server/sdk/v2/state/process"
 	"github.com/temporalio/roadrunner-temporal/activity"
 	"github.com/temporalio/roadrunner-temporal/internal"
 	"github.com/temporalio/roadrunner-temporal/internal/codec/proto"
@@ -128,7 +130,7 @@ func (p *Plugin) Serve() chan error {
 	p.log.Info("connected to temporal server", zap.String("address", p.config.Address))
 
 	// ------ ACTIVITIES POOL --------
-	pl, err := p.server.NewWorkerPool(context.Background(), p.config.Activities, env)
+	pl, err := p.server.NewWorkerPool(context.Background(), p.config.Activities, env, nil)
 	if err != nil {
 		errCh <- errors.E(op, err)
 		return errCh
@@ -146,7 +148,7 @@ func (p *Plugin) Serve() chan error {
 	// ---------- WORKFLOWS -------------
 	wpl, err := p.server.NewWorkerPool(
 		context.Background(),
-		&rrPool.Config{
+		&poolImpl.Config{
 			NumWorkers:      1,
 			AllocateTimeout: time.Hour * 240,
 			DestroyTimeout:  time.Second * 30,
@@ -154,6 +156,7 @@ func (p *Plugin) Serve() chan error {
 			Supervisor: nil,
 		},
 		env,
+		nil,
 	)
 	if err != nil {
 		errCh <- err
@@ -230,7 +233,7 @@ func (p *Plugin) Workers() []*process.State {
 	states := make([]*process.State, 0, len(wfPw)+len(actPw))
 
 	for i := 0; i < len(wfPw); i++ {
-		st, err := process.WorkerProcessState(wfPw[i])
+		st, err := processImpl.WorkerProcessState(wfPw[i])
 		if err != nil {
 			// log error and continue
 			p.log.Error("worker process state error", zap.Error(err))
@@ -241,7 +244,7 @@ func (p *Plugin) Workers() []*process.State {
 	}
 
 	for i := 0; i < len(actPw); i++ {
-		st, err := process.WorkerProcessState(actPw[i])
+		st, err := processImpl.WorkerProcessState(actPw[i])
 		if err != nil {
 			// log error and continue
 			p.log.Error("worker process state error", zap.Error(err))
