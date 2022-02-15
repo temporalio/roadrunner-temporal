@@ -8,16 +8,16 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
 	github.com/pborman/uuid v1.2.1
-	github.com/roadrunner-server/api/v2 v2.8.0-rc.6
+	github.com/roadrunner-server/api/v2 v2.8.0
 	github.com/roadrunner-server/config/v2 v2.8.0
 	github.com/roadrunner-server/endure v1.2.1
 	github.com/roadrunner-server/errors v1.1.1
 	github.com/roadrunner-server/goridge/v3 v3.3.1
 	github.com/roadrunner-server/informer/v2 v2.8.0
 	github.com/roadrunner-server/logger/v2 v2.8.0
-	github.com/roadrunner-server/resetter/v2 v2.8.0
+	github.com/roadrunner-server/resetter/v2 v2.8.1
 	github.com/roadrunner-server/rpc/v2 v2.8.0
-	github.com/roadrunner-server/sdk/v2 v2.8.0
+	github.com/roadrunner-server/sdk/v2 v2.8.1
 	github.com/roadrunner-server/server/v2 v2.8.0
 	github.com/stretchr/testify v1.7.0
 	github.com/uber-go/tally/v4 v4.1.1
