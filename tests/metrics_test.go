@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/client"
@@ -23,15 +22,14 @@ func Test_SimpleWorkflowCancelMetrics(t *testing.T) {
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"SimpleSignaledWorkflow")
+		"WithChildStubWorkflow",
+		"Hello World",
+	)
 	assert.NoError(t, err)
 
-	time.Sleep(time.Millisecond * 500)
-	err = s.Client().CancelWorkflow(context.Background(), w.GetID(), w.GetRunID())
-	assert.NoError(t, err)
-
-	var result interface{}
-	assert.Error(t, w.Get(context.Background(), &result))
+	var result string
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "Child: CHILD HELLO WORLD", result)
 
 	we, err := s.Client().DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
 	assert.NoError(t, err)
@@ -53,12 +51,14 @@ func Test_SimpleWorkflowCancelMetrics(t *testing.T) {
 	assert.Contains(t, metrics, "workflow_endtoend_latency")
 	assert.Contains(t, metrics, "workflow_task_execution_latency")
 	assert.Contains(t, metrics, "workflow_task_execution_latency_sum")
+	assert.Contains(t, metrics, "samples_rr_activities_pool_queue_size")
+	assert.Contains(t, metrics, "samples_rr_workflows_pool_queue_size")
 
 	assert.Contains(t, metrics, "workflow_task_queue_poll_succeed")
 	assert.Contains(t, metrics, "workflow_task_replay_latency")
 	assert.Contains(t, metrics, "workflow_task_schedule_to_start_latency")
 
-	assert.Equal(t, "Canceled", we.WorkflowExecutionInfo.Status.String())
+	assert.Equal(t, "Completed", we.WorkflowExecutionInfo.Status.String())
 	stopCh <- struct{}{}
 	wg.Wait()
 }

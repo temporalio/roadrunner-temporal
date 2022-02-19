@@ -52,6 +52,7 @@ type process struct {
 
 	log          *zap.Logger
 	graceTimeout time.Duration
+	mh           temporalClient.MetricsHandler
 }
 
 func NewWorkflowDefinition(codec codec.Codec, log *zap.Logger, seqID func() uint64, client temporalClient.Client, gt time.Duration) internal.Workflow {
@@ -81,6 +82,7 @@ func (wp *process) NewWorkflowDefinition() bindings.WorkflowDefinition {
 func (wp *process) Execute(env bindings.WorkflowEnvironment, header *commonpb.Header, input *commonpb.Payloads) {
 	wp.log.Debug("workflow execute", zap.String("runID", env.WorkflowInfo().WorkflowExecution.RunID), zap.Any("workflow info", env.WorkflowInfo()))
 
+	wp.mh = env.GetMetricsHandler()
 	wp.env = env
 	wp.header = header
 	wp.seqID = 0

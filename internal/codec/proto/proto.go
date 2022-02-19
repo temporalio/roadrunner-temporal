@@ -56,6 +56,14 @@ func (c *codec) Name() string {
 	return name
 }
 
+func (c *codec) QueueSize() uint64 {
+	if queuer, ok := c.rrPool.(pool.Queuer); ok {
+		return queuer.QueueSize()
+	}
+
+	return 0
+}
+
 // Execute exchanges commands with worker.
 func (c *codec) Execute(ctx *internal.Context, msg ...*internal.Message) ([]*internal.Message, error) {
 	if len(msg) == 0 {

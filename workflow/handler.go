@@ -12,7 +12,10 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-const completed string = "completed"
+const (
+	completed    string = "completed"
+	RrMetricName string = "rr_workflows_pool_queue_size"
+)
 
 // execution context.
 func (wp *process) getContext() *internal.Context {
@@ -271,6 +274,12 @@ func (wp *process) createContinuableCallback(id uint64) bindings.ResultHandler {
 // Exchange messages between host and pool processes and add new commands to the queue.
 func (wp *process) flushQueue() error {
 	const op = errors.Op("flush queue")
+
+	if wp.mh != nil {
+		wp.mh.Gauge(RrMetricName).Update(float64(wp.codec.QueueSize()))
+		defer wp.mh.Gauge(RrMetricName).Update(float64(wp.codec.QueueSize()))
+	}
+
 	messages, err := wp.codec.Execute(wp.getContext(), wp.mq.Queue...)
 	wp.mq.Flush()
 
@@ -287,6 +296,11 @@ func (wp *process) flushQueue() error {
 func (wp *process) runCommand(cmd interface{}, payloads *commonpb.Payloads, header *commonpb.Header) (*internal.Message, error) {
 	const op = errors.Op("workflow_process_runcommand")
 	_, msg := wp.mq.AllocateMessage(cmd, payloads, header)
+
+	if wp.mh != nil {
+		wp.mh.Gauge(RrMetricName).Update(float64(wp.codec.QueueSize()))
+		defer wp.mh.Gauge(RrMetricName).Update(float64(wp.codec.QueueSize()))
+	}
 
 	result, err := wp.codec.Execute(wp.getContext(), &msg)
 	if err != nil {
