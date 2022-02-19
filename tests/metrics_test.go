@@ -58,7 +58,7 @@ func Test_SimpleWorkflowCancelMetrics(t *testing.T) {
 	assert.Contains(t, metrics, "workflow_task_replay_latency")
 	assert.Contains(t, metrics, "workflow_task_schedule_to_start_latency")
 
-	assert.Equal(t, "Canceled", we.WorkflowExecutionInfo.Status.String())
+	assert.Equal(t, "Completed", we.WorkflowExecutionInfo.Status.String())
 	stopCh <- struct{}{}
 	wg.Wait()
 }
