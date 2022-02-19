@@ -21,7 +21,10 @@ import (
 	"go.uber.org/zap"
 )
 
-const doNotCompleteOnReturn = "doNotCompleteOnReturn"
+const (
+	doNotCompleteOnReturn        = "doNotCompleteOnReturn"
+	RrMetricName          string = "rr_activities_pool_queue_size"
+)
 
 var (
 	_ internal.Activity = (*activity)(nil)
@@ -129,6 +132,12 @@ func (a *activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 
 	var info = tActivity.GetInfo(ctx)
 	a.running.Store(utils.AsString(info.TaskToken), ctx)
+	mh := tActivity.GetMetricsHandler(ctx)
+	// if the mh is not nil, record the RR metric
+	if mh != nil {
+		mh.Gauge(RrMetricName).Update(float64(a.codec.QueueSize()))
+		defer mh.Gauge(RrMetricName).Update(float64(a.codec.QueueSize()))
+	}
 
 	var msg = &internal.Message{
 		ID: atomic.AddUint64(&a.seqID, 1),
