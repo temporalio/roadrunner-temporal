@@ -1,48 +1,32 @@
 package proto
 
 import (
-	"fmt"
 	"sync"
-	"time"
 
 	"github.com/fatih/color"
 	"github.com/goccy/go-json"
-	"github.com/google/uuid"
 	"github.com/roadrunner-server/api/v2/payload"
-	"github.com/roadrunner-server/api/v2/pool"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/sdk/v2/utils"
 	"github.com/temporalio/roadrunner-temporal/internal"
-	_codec "github.com/temporalio/roadrunner-temporal/internal/codec"
 	protocolV1 "github.com/temporalio/roadrunner-temporal/proto/protocol/v1"
-	temporalClient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
-	"go.temporal.io/sdk/internalbindings"
-	"go.temporal.io/sdk/worker"
-	"go.temporal.io/sdk/workflow"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
 
-const name string = "protobuf"
-
-// ProtoCodec uses protobuf to exchange messages with underlying workers.
-type codec struct {
-	sync.RWMutex
-	log *zap.Logger
-
-	dc converter.DataConverter
-
-	rrPool pool.Pool
+// Codec uses protobuf to exchange messages with underlying workers.
+type Codec struct {
+	log    *zap.Logger
+	dc     converter.DataConverter
 	frPool sync.Pool
 }
 
-// NewCodec creates new Proto communication codec.
-func NewCodec(pool pool.Pool, log *zap.Logger, dc converter.DataConverter) _codec.Codec {
-	return &codec{
-		rrPool: pool,
-		log:    log,
-		dc:     dc,
+// NewCodec creates new Proto communication Codec.
+func NewCodec(log *zap.Logger, dc converter.DataConverter) *Codec {
+	return &Codec{
+		log: log,
+		dc:  dc,
 		frPool: sync.Pool{
 			New: func() interface{} {
 				return &protocolV1.Frame{}
@@ -51,43 +35,24 @@ func NewCodec(pool pool.Pool, log *zap.Logger, dc converter.DataConverter) _code
 	}
 }
 
-// Name returns codec name.
-func (c *codec) Name() string {
-	return name
-}
-
-func (c *codec) QueueSize() uint64 {
-	if queuer, ok := c.rrPool.(pool.Queuer); ok {
-		return queuer.QueueSize()
-	}
-
-	return 0
-}
-
-// Execute exchanges commands with worker.
-func (c *codec) Execute(ctx *internal.Context, msg ...*internal.Message) ([]*internal.Message, error) {
+func (c *Codec) Encode(ctx *internal.Context, p *payload.Payload, msg ...*internal.Message) error {
 	if len(msg) == 0 {
 		c.log.Debug("nil message")
-		return nil, nil
+		return nil
 	}
 
 	request := c.getFrame()
-	response := c.getFrame()
-	defer c.putFrame(response)
 	defer c.putFrame(request)
 
-	var result = make([]*internal.Message, 0, 5)
 	request.Messages = make([]*protocolV1.Message, len(msg))
 
 	for i := 0; i < len(msg); i++ {
 		frame, err := c.packMessage(msg[i])
 		if err != nil {
-			return nil, err
+			return err
 		}
 		request.Messages[i] = frame
 	}
-
-	p := &payload.Payload{}
 
 	// context is always in json format
 	if ctx.IsEmpty() {
@@ -97,54 +62,57 @@ func (c *codec) Execute(ctx *internal.Context, msg ...*internal.Message) ([]*int
 	var err error
 	p.Context, err = json.Marshal(ctx)
 	if err != nil {
-		return nil, errors.E(errors.Op("encode_context"), err)
+		return errors.E(errors.Op("encode_context"), err)
 	}
 
 	p.Body, err = proto.Marshal(request)
 	if err != nil {
-		return nil, errors.E(errors.Op("encode_payload"), err)
+		return errors.E(errors.Op("encode_payload"), err)
 	}
 
 	c.log.Debug("outgoing message", zap.String("data", color.GreenString(utils.AsString(p.Body)+" "+utils.AsString(p.Context))))
 
-	c.RLock()
-	out, err := c.rrPool.Exec(p)
-	c.RUnlock()
-	if err != nil {
-		return nil, errors.E(errors.Op("codec_execute"), err)
-	}
+	return nil
+}
 
-	if len(out.Body) == 0 {
+func (c *Codec) Decode(pld *payload.Payload, result *[]*internal.Message) error {
+	if len(pld.Body) == 0 || result == nil {
 		// worker inactive or closed
-		return nil, nil
+		return nil
 	}
 
-	err = proto.Unmarshal(out.Body, response)
+	response := c.getFrame()
+	defer c.putFrame(response)
+
+	err := proto.Unmarshal(pld.Body, response)
 	if err != nil {
-		return nil, errors.E(errors.Op("codec_parse_response"), err)
+		return errors.E(errors.Op("codec_parse_response"), err)
 	}
 
-	c.log.Debug("received message", zap.String("data", color.HiYellowString(utils.AsString(out.Body))))
+	c.log.Debug("received message", zap.String("data", color.HiYellowString(string(pld.Body))))
 
 	for _, f := range response.Messages {
 		msg, errM := c.parseMessage(f)
 		if errM != nil {
-			return nil, errM
+			return errM
 		}
 
-		result = append(result, msg)
+		*result = append(*result, msg)
 	}
 
-	return result, nil
+	return nil
 }
 
-func (c *codec) FetchWorkerInfo(workerInfo *[]*internal.WorkerInfo) error {
+// DecodeWorkerInfo ... info []*internal.Message is read-only
+// wi *[]*internal.WorkerInfo should be pre-allocated
+func (c *Codec) DecodeWorkerInfo(p *payload.Payload, wi *[]*internal.WorkerInfo) error {
 	const op = errors.Op("workflow_fetch_wf_info")
 
-	// fetch wf info
-	info, err := c.Execute(&internal.Context{}, &internal.Message{ID: 0, Command: internal.GetWorkerInfo{}})
+	// should be only 1
+	info := make([]*internal.Message, 0, 1)
+	err := c.Decode(p, &info)
 	if err != nil {
-		return errors.E(op, err)
+		return err
 	}
 
 	if len(info) != 1 {
@@ -159,88 +127,18 @@ func (c *codec) FetchWorkerInfo(workerInfo *[]*internal.WorkerInfo) error {
 	payloads := info[0].Payloads.GetPayloads()
 
 	for i := 0; i < len(payloads); i++ {
-		wi := &internal.WorkerInfo{}
-		err = c.dc.FromPayload(payloads[i], wi)
+		tmp := &internal.WorkerInfo{}
+		err = c.dc.FromPayload(payloads[i], tmp)
 		if err != nil {
 			return errors.E(op, err)
 		}
-		*workerInfo = append(*workerInfo, wi)
+		*wi = append(*wi, tmp)
 	}
 
 	return nil
 }
 
-func (c *codec) FetchWFInfo(client temporalClient.Client, definition internalbindings.WorkflowDefinition) (map[string]internal.WorkflowInfo, []worker.Worker, error) {
-	const op = errors.Op("workflow_fetch_wf_info")
-
-	// fetch wf info
-	info, err := c.Execute(&internal.Context{}, &internal.Message{ID: 0, Command: internal.GetWorkerInfo{}})
-	if err != nil {
-		return nil, nil, errors.E(op, err)
-	}
-
-	if len(info) != 1 {
-		return nil, nil, errors.E(op, errors.Str("unable to read worker info"))
-	}
-
-	// internal convention
-	if info[0].ID != 0 {
-		return nil, nil, errors.E(op, errors.Errorf("fetch confirmation missing, need ID: 0, got: %d", info[0].ID))
-	}
-
-	workerInfo := make([]*internal.WorkerInfo, 0, 5)
-	payloads := info[0].Payloads.GetPayloads()
-
-	workflows := make(map[string]internal.WorkflowInfo)
-	workers := make([]worker.Worker, 0, 1)
-
-	for i := 0; i < len(payloads); i++ {
-		wi := &internal.WorkerInfo{}
-		err = c.dc.FromPayload(payloads[i], wi)
-		if err != nil {
-			return nil, nil, errors.E(op, err)
-		}
-		workerInfo = append(workerInfo, wi)
-	}
-
-	for i := 0; i < len(workerInfo); i++ {
-		c.log.Debug("worker info", zap.String("taskqueue", workerInfo[i].TaskQueue), zap.Any("options", workerInfo[i].Options))
-
-		// todo(rustatian) properly set grace timeout
-		workerInfo[i].Options.WorkerStopTimeout = time.Second * 30
-
-		if workerInfo[i].TaskQueue == "" {
-			workerInfo[i].TaskQueue = temporalClient.DefaultNamespace
-		}
-
-		if workerInfo[i].Options.Identity == "" {
-			workerInfo[i].Options.Identity = fmt.Sprintf(
-				"%s:%s",
-				workerInfo[i].TaskQueue,
-				uuid.NewString(),
-			)
-		}
-
-		wrk := worker.New(client, workerInfo[i].TaskQueue, workerInfo[i].Options)
-
-		for j := 0; j < len(workerInfo[i].Workflows); j++ {
-			c.log.Debug("register workflow with options", zap.String("taskqueue", workerInfo[i].TaskQueue), zap.String("workflow name", workerInfo[i].Workflows[j].Name))
-
-			wrk.RegisterWorkflowWithOptions(definition, workflow.RegisterOptions{
-				Name:                          workerInfo[i].Workflows[j].Name,
-				DisableAlreadyRegisteredCheck: false,
-			})
-
-			workflows[workerInfo[i].Workflows[j].Name] = workerInfo[i].Workflows[j]
-		}
-
-		workers = append(workers, wrk)
-	}
-
-	return workflows, workers, nil
-}
-
-func (c *codec) packMessage(msg *internal.Message) (*protocolV1.Message, error) {
+func (c *Codec) packMessage(msg *internal.Message) (*protocolV1.Message, error) {
 	var err error
 
 	frame := &protocolV1.Message{
@@ -264,7 +162,7 @@ func (c *codec) packMessage(msg *internal.Message) (*protocolV1.Message, error) 
 	return frame, nil
 }
 
-func (c *codec) parseMessage(frame *protocolV1.Message) (*internal.Message, error) {
+func (c *Codec) parseMessage(frame *protocolV1.Message) (*internal.Message, error) {
 	const op = errors.Op("proto_codec_parse_message")
 	var err error
 
@@ -289,11 +187,11 @@ func (c *codec) parseMessage(frame *protocolV1.Message) (*internal.Message, erro
 	return msg, nil
 }
 
-func (c *codec) getFrame() *protocolV1.Frame {
+func (c *Codec) getFrame() *protocolV1.Frame {
 	return c.frPool.Get().(*protocolV1.Frame)
 }
 
-func (c *codec) putFrame(fr *protocolV1.Frame) {
+func (c *Codec) putFrame(fr *protocolV1.Frame) {
 	fr.Reset()
 	c.frPool.Put(fr)
 }

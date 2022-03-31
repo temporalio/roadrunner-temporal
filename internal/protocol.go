@@ -7,6 +7,7 @@ import (
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/api/failure/v1"
 	"go.temporal.io/sdk/activity"
+	"go.temporal.io/sdk/converter"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
 )
@@ -14,15 +15,17 @@ import (
 const (
 	getWorkerInfoCommand = "GetWorkerInfo"
 
-	invokeActivityCommand  = "InvokeActivity"
-	startWorkflowCommand   = "StartWorkflow"
-	invokeSignalCommand    = "InvokeSignal"
-	invokeQueryCommand     = "InvokeQuery"
-	destroyWorkflowCommand = "DestroyWorkflow"
-	cancelWorkflowCommand  = "CancelWorkflow"
-	getStackTraceCommand   = "StackTrace"
+	invokeActivityCommand      = "InvokeActivity"
+	invokeLocalActivityCommand = "InvokeLocalActivity"
+	startWorkflowCommand       = "StartWorkflow"
+	invokeSignalCommand        = "InvokeSignal"
+	invokeQueryCommand         = "InvokeQuery"
+	destroyWorkflowCommand     = "DestroyWorkflow"
+	cancelWorkflowCommand      = "CancelWorkflow"
+	getStackTraceCommand       = "StackTrace"
 
 	executeActivityCommand           = "ExecuteActivity"
+	executeLocalActivityCommand      = "ExecuteLocalActivity"
 	executeChildWorkflowCommand      = "ExecuteChildWorkflow"
 	getChildWorkflowExecutionCommand = "GetChildWorkflowExecution"
 
@@ -79,6 +82,14 @@ func (msg Message) IsCommand() bool {
 	return msg.Command != nil
 }
 
+func (msg *Message) Reset() {
+	msg.ID = 0
+	msg.Command = nil
+	msg.Failure = nil
+	msg.Payloads = nil
+	msg.Header = nil
+}
+
 // GetWorkerInfo reads worker information.
 type GetWorkerInfo struct {
 	RRVersion string `json:"rr_version"`
@@ -94,6 +105,15 @@ type InvokeActivity struct {
 
 	// HeartbeatDetails indicates that the payload also contains last heartbeat details.
 	HeartbeatDetails int `json:"heartbeatDetails,omitempty"`
+}
+
+// InvokeLocalActivity invokes local activity.
+type InvokeLocalActivity struct {
+	// Name defines activity name.
+	Name string `json:"name"`
+
+	// Info contains execution context.
+	Info activity.Info `json:"info"`
 }
 
 // StartWorkflow sends worker command to start workflow.
@@ -146,6 +166,14 @@ type ExecuteActivity struct {
 	Name string `json:"name"`
 	// Options to run activity.
 	Options bindings.ExecuteActivityOptions `json:"options,omitempty"`
+}
+
+// ExecuteLocalActivity command by workflow worker.
+type ExecuteLocalActivity struct {
+	// Name defines activity name.
+	Name string `json:"name"`
+	// Options to run activity.
+	Options bindings.ExecuteLocalActivityOptions `json:"options,omitempty"`
 }
 
 // ExecuteChildWorkflow executes child workflow.
@@ -238,6 +266,20 @@ func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment, payl
 	return params
 }
 
+// LocalActivityParams maps activity command to activity params.
+func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnvironment, fn interface{}, dc converter.DataConverter, payloads *commonpb.Payloads) bindings.ExecuteLocalActivityParams {
+	params := bindings.ExecuteLocalActivityParams{
+		ExecuteLocalActivityOptions: cmd.Options,
+		ActivityFn:                  fn,
+		ActivityType:                cmd.Name,
+		InputArgs:                   []interface{}{payloads},
+		WorkflowInfo:                env.WorkflowInfo(),
+		DataConverter:               dc,
+	}
+
+	return params
+}
+
 // WorkflowParams maps workflow command to workflow params.
 func (cmd ExecuteChildWorkflow) WorkflowParams(env bindings.WorkflowEnvironment, payloads *commonpb.Payloads) bindings.ExecuteWorkflowParams {
 	params := bindings.ExecuteWorkflowParams{
@@ -280,6 +322,10 @@ func CommandName(cmd interface{}) (string, error) {
 		return invokeActivityCommand, nil
 	case ExecuteActivity, *ExecuteActivity:
 		return executeActivityCommand, nil
+	case InvokeLocalActivity, *InvokeLocalActivity:
+		return invokeLocalActivityCommand, nil
+	case ExecuteLocalActivity, *ExecuteLocalActivity:
+		return executeLocalActivityCommand, nil
 	case ExecuteChildWorkflow, *ExecuteChildWorkflow:
 		return executeChildWorkflowCommand, nil
 	case GetChildWorkflowExecution, *GetChildWorkflowExecution:
@@ -337,6 +383,9 @@ func InitCommand(name string) (interface{}, error) {
 
 	case executeActivityCommand:
 		return &ExecuteActivity{}, nil
+
+	case executeLocalActivityCommand:
+		return &ExecuteLocalActivity{}, nil
 
 	case executeChildWorkflowCommand:
 		return &ExecuteChildWorkflow{}, nil

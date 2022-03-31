@@ -22,6 +22,7 @@ func (mq *MessageQueue) Flush() {
 	mq.Queue = mq.Queue[0:0]
 }
 
+// TODO(rustatian) allocate??? -> to sync.Pool
 func (mq *MessageQueue) AllocateMessage(cmd interface{}, payloads *common.Payloads, header *common.Header) (uint64, internal.Message) {
 	msg := internal.Message{
 		ID:       mq.SeqID(),
@@ -34,8 +35,14 @@ func (mq *MessageQueue) AllocateMessage(cmd interface{}, payloads *common.Payloa
 }
 
 func (mq *MessageQueue) PushCommand(cmd interface{}, payloads *common.Payloads, header *common.Header) uint64 {
-	id, msg := mq.AllocateMessage(cmd, payloads, header)
-	mq.Queue = append(mq.Queue, &msg)
+	id := mq.SeqID()
+	mq.Queue = append(mq.Queue, &internal.Message{
+		ID:       id,
+		Command:  cmd,
+		Failure:  nil,
+		Payloads: payloads,
+		Header:   header,
+	})
 	return id
 }
 
