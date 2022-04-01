@@ -7,7 +7,6 @@ import (
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/api/failure/v1"
 	"go.temporal.io/sdk/activity"
-	"go.temporal.io/sdk/converter"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
 )
@@ -267,14 +266,17 @@ func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment, payl
 }
 
 // LocalActivityParams maps activity command to activity params.
-func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnvironment, fn interface{}, dc converter.DataConverter, payloads *commonpb.Payloads) bindings.ExecuteLocalActivityParams {
+func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnvironment, fn interface{}, payloads *commonpb.Payloads) bindings.ExecuteLocalActivityParams {
 	params := bindings.ExecuteLocalActivityParams{
 		ExecuteLocalActivityOptions: cmd.Options,
 		ActivityFn:                  fn,
 		ActivityType:                cmd.Name,
 		InputArgs:                   []interface{}{payloads},
 		WorkflowInfo:                env.WorkflowInfo(),
-		DataConverter:               dc,
+		// always starts from 1
+		Attempt:       1,
+		ScheduledTime: time.Time{},
+		Header:        nil,
 	}
 
 	return params

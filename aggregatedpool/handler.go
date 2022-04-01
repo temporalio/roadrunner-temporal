@@ -84,15 +84,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		})
 
 	case *internal.ExecuteLocalActivity:
-		/*
-			// LocalActivityClient for requesting local activity execution
-			LocalActivityClient interface {
-				ExecuteLocalActivity(params ExecuteLocalActivityParams, callback LocalActivityResultHandler) LocalActivityID
-
-				RequestCancelLocalActivity(activityID LocalActivityID)
-				}
-		*/
-		params := command.LocalActivityParams(wp.env, wp.execute, wp.dc, msg.Payloads)
+		params := command.LocalActivityParams(wp.env, wp.execute, msg.Payloads)
 		activityID := wp.env.ExecuteLocalActivity(params, wp.createLocalActivityCallback(msg.ID))
 		wp.canceller.Register(msg.ID, func() error {
 			wp.env.RequestCancelLocalActivity(activityID)
@@ -255,11 +247,6 @@ func (wp *Workflow) createLocalActivityCallback(id uint64) bindings.LocalActivit
 			if lar.Err != nil {
 				panic(lar.Err)
 			}
-			return
-		}
-
-		if lar.Err != nil {
-			wp.mq.PushError(id, bindings.ConvertErrorToFailure(lar.Err, wp.env.GetDataConverter()))
 			return
 		}
 
