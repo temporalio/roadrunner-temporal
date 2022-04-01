@@ -157,7 +157,7 @@ func (p *Plugin) Serve() chan error {
 		return errCh
 	}
 
-	wfDef := aggregatedpool.NewWorkflowDefinition(codec, ap, p.dataConverter, wpl, p.log, p.SedID, p.client, p.graceTimeout)
+	wfDef := aggregatedpool.NewWorkflowDefinition(codec, p.dataConverter, wpl, p.log, p.SedID, p.client, p.graceTimeout)
 
 	var workers []worker.Worker
 	workers, p.workflows, p.activities, err = aggregatedpool.Init(wfDef, ap, wpl, codec, p.log, p.client, p.graceTimeout)

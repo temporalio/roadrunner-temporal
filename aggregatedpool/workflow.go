@@ -1,19 +1,23 @@
 package aggregatedpool
 
 import (
+	"context"
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/roadrunner-server/api/v2/payload"
 	"github.com/roadrunner-server/api/v2/pool"
+	"github.com/roadrunner-server/errors"
 	"github.com/temporalio/roadrunner-temporal/aggregatedpool/canceller"
 	"github.com/temporalio/roadrunner-temporal/aggregatedpool/queue"
 	"github.com/temporalio/roadrunner-temporal/aggregatedpool/registry"
 	"github.com/temporalio/roadrunner-temporal/internal"
 	commonpb "go.temporal.io/api/common/v1"
+	tActivity "go.temporal.io/sdk/activity"
 	temporalClient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	bindings "go.temporal.io/sdk/internalbindings"
-	"go.temporal.io/sdk/worker"
 	"go.uber.org/zap"
 )
 
@@ -47,18 +51,15 @@ type Workflow struct {
 	callbacks []Callback
 	canceller *canceller.Canceller
 	inLoop    uint32
-	actDef    *Activity
 
-	dc        converter.DataConverter
-	workflows map[string]internal.WorkflowInfo
-	tWorkers  []worker.Worker
+	dc converter.DataConverter
 
 	log          *zap.Logger
 	graceTimeout time.Duration
 	mh           temporalClient.MetricsHandler
 }
 
-func NewWorkflowDefinition(codec Codec, actDef *Activity, dc converter.DataConverter, pool pool.Pool, log *zap.Logger, seqID func() uint64, client temporalClient.Client, gt time.Duration) *Workflow {
+func NewWorkflowDefinition(codec Codec, dc converter.DataConverter, pool pool.Pool, log *zap.Logger, seqID func() uint64, client temporalClient.Client, gt time.Duration) *Workflow {
 	return &Workflow{
 		client:       client,
 		log:          log,
@@ -67,10 +68,6 @@ func NewWorkflowDefinition(codec Codec, actDef *Activity, dc converter.DataConve
 		graceTimeout: gt,
 		dc:           dc,
 		pool:         pool,
-		actDef:       actDef,
-
-		workflows: make(map[string]internal.WorkflowInfo),
-		tWorkers:  make([]worker.Worker, 0, 2),
 	}
 }
 
@@ -78,11 +75,10 @@ func NewWorkflowDefinition(codec Codec, actDef *Activity, dc converter.DataConve
 // DO NOT USE THIS FUNCTION DIRECTLY!!!!
 func (wp *Workflow) NewWorkflowDefinition() bindings.WorkflowDefinition {
 	return &Workflow{
-		actDef: wp.actDef,
-		pool:   wp.pool,
-		codec:  wp.codec,
-		log:    wp.log,
-		sID:    wp.sID,
+		pool:  wp.pool,
+		codec: wp.codec,
+		log:   wp.log,
+		sID:   wp.sID,
 	}
 }
 
@@ -95,11 +91,11 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 	wp.header = header
 	wp.seqID = 0
 	wp.runID = env.WorkflowInfo().WorkflowExecution.RunID
-	wp.canceller = &canceller.Canceller{}
+	wp.canceller = new(canceller.Canceller)
 
 	// sequenceID shared for all pool workflows
 	wp.mq = queue.NewMessageQueue(wp.sID)
-	wp.ids = &registry.IDRegistry{}
+	wp.ids = new(registry.IDRegistry)
 
 	env.RegisterCancelHandler(wp.handleCancel)
 	env.RegisterSignalHandler(wp.handleSignal)
@@ -162,7 +158,7 @@ func (wp *Workflow) OnWorkflowTaskStarted(t time.Duration) {
 		wp.pipeline = wp.pipeline[1:]
 
 		if msg.IsCommand() {
-			err = wp.handleMessage(msg, wp.actDef, wp.dc)
+			err = wp.handleMessage(msg)
 		}
 
 		if err != nil {
@@ -205,11 +201,56 @@ func (wp *Workflow) Close() {
 	wp.mq.Flush()
 }
 
-func (wp *Workflow) WorkflowNames() []string {
-	names := make([]string, 0, len(wp.workflows))
-	for name := range wp.workflows {
-		names = append(names, name)
+func (wp *Workflow) execute(ctx context.Context, args *commonpb.Payloads) (*commonpb.Payloads, error) {
+	const op = errors.Op("activity_pool_execute_activity")
+
+	var info = tActivity.GetInfo(ctx)
+	info.TaskToken = []byte(uuid.NewString())
+	mh := tActivity.GetMetricsHandler(ctx)
+	// if the mh is not nil, record the RR metric
+	if mh != nil {
+		mh.Gauge(RrMetricName).Update(float64(wp.pool.(pool.Queuer).QueueSize()))
+		defer mh.Gauge(RrMetricName).Update(float64(wp.pool.(pool.Queuer).QueueSize()))
 	}
 
-	return names
+	var msg = &internal.Message{
+		ID: atomic.AddUint64(&wp.seqID, 1),
+		Command: internal.InvokeLocalActivity{
+			Name: info.ActivityType.Name,
+			Info: info,
+		},
+		Payloads: args,
+	}
+
+	pld := &payload.Payload{}
+	err := wp.codec.Encode(&internal.Context{TaskQueue: info.TaskQueue}, pld, msg)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := wp.pool.Exec(pld)
+	if err != nil {
+		return nil, errors.E(op, err)
+	}
+
+	out := make([]*internal.Message, 0, 2)
+	err = wp.codec.Decode(result, &out)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(out) != 1 {
+		return nil, errors.E(op, errors.Str("invalid local activity worker response"))
+	}
+
+	retPld := out[0]
+	if retPld.Failure != nil {
+		if retPld.Failure.Message == doNotCompleteOnReturn {
+			return nil, tActivity.ErrResultPending
+		}
+
+		return nil, bindings.ConvertFailureToError(retPld.Failure, wp.dc)
+	}
+
+	return retPld.Payloads, nil
 }

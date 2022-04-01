@@ -10,7 +10,6 @@ import (
 	"github.com/roadrunner-server/errors"
 	"github.com/temporalio/roadrunner-temporal/internal"
 	commonpb "go.temporal.io/api/common/v1"
-	"go.temporal.io/sdk/converter"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
 )
@@ -71,7 +70,7 @@ func (wp *Workflow) handleQuery(queryType string, queryArgs *commonpb.Payloads, 
 }
 
 // Workflow incoming command
-func (wp *Workflow) handleMessage(msg *internal.Message, actDef *Activity, dc converter.DataConverter) error {
+func (wp *Workflow) handleMessage(msg *internal.Message) error {
 	const op = errors.Op("handleMessage")
 
 	switch command := msg.Command.(type) {
@@ -93,7 +92,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message, actDef *Activity, dc co
 				RequestCancelLocalActivity(activityID LocalActivityID)
 				}
 		*/
-		params := command.LocalActivityParams(wp.env, actDef.ExecuteLA, dc, msg.Payloads)
+		params := command.LocalActivityParams(wp.env, wp.execute, wp.dc, msg.Payloads)
 		activityID := wp.env.ExecuteLocalActivity(params, wp.createLocalActivityCallback(msg.ID))
 		wp.canceller.Register(msg.ID, func() error {
 			wp.env.RequestCancelLocalActivity(activityID)
