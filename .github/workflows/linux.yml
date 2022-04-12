@@ -25,7 +25,7 @@ jobs:
         os: [ ubuntu-latest ]
     steps:
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v2 # action page: <https://github.com/actions/setup-go>
+        uses: actions/setup-go@v3 # action page: <https://github.com/actions/setup-go>
         with:
           go-version: ${{ matrix.go }}
 
@@ -45,7 +45,7 @@ jobs:
       - name: Golang tests
         run: make test_coverage
 
-      - uses: codecov/codecov-action@v2.1.0 # Docs: <https://github.com/codecov/codecov-action>
+      - uses: codecov/codecov-action@v3.0.0 # Docs: <https://github.com/codecov/codecov-action>
         if: ${{ !env.ACT }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
