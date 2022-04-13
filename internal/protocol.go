@@ -274,8 +274,8 @@ func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnviron
 		InputArgs:                   []interface{}{payloads},
 		WorkflowInfo:                env.WorkflowInfo(),
 		// always starts from 1
-		Attempt:       1,
-		ScheduledTime: time.Time{},
+		//Attempt:       1,
+		ScheduledTime: time.Now(),
 		Header:        nil,
 	}
 

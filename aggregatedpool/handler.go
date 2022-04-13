@@ -243,47 +243,39 @@ func (wp *Workflow) createLocalActivityCallback(id uint64) bindings.LocalActivit
 		// timer cancel callback can happen inside the loop
 		if atomic.LoadUint32(&wp.inLoop) == 1 {
 			callback(lar)
-
-			if lar.Err != nil {
-				panic(lar.Err)
-			}
 			return
 		}
 
 		wp.callbacks = append(wp.callbacks, func() error {
 			callback(lar)
-			return lar.Err
+			return nil
 		})
 	}
 }
 
 func (wp *Workflow) createCallback(id uint64) bindings.ResultHandler {
-	callback := func(result *commonpb.Payloads, err error) error {
+	callback := func(result *commonpb.Payloads, err error) {
 		wp.canceller.Discard(id)
 
 		if err != nil {
 			wp.mq.PushError(id, bindings.ConvertErrorToFailure(err, wp.env.GetDataConverter()))
-			return nil
+			return
 		}
 
 		// fetch original payload
 		wp.mq.PushResponse(id, result)
-		return nil
 	}
 
 	return func(result *commonpb.Payloads, err error) {
 		// timer cancel callback can happen inside the loop
 		if atomic.LoadUint32(&wp.inLoop) == 1 {
-			errC := callback(result, err)
-			if errC != nil {
-				panic(errC)
-			}
-
+			callback(result, err)
 			return
 		}
 
 		wp.callbacks = append(wp.callbacks, func() error {
-			return callback(result, err)
+			callback(result, err)
+			return nil
 		})
 	}
 }
@@ -314,7 +306,7 @@ func (wp *Workflow) createContinuableCallback(id uint64) bindings.ResultHandler 
 func (wp *Workflow) flushQueue() error {
 	const op = errors.Op("flush queue")
 
-	if len(wp.mq.Queue) == 0 {
+	if len(wp.mq.Messages()) == 0 {
 		return nil
 	}
 
@@ -324,7 +316,7 @@ func (wp *Workflow) flushQueue() error {
 	}
 
 	pld := &payload.Payload{}
-	err := wp.codec.Encode(wp.getContext(), pld, wp.mq.Queue...)
+	err := wp.codec.Encode(wp.getContext(), pld, wp.mq.Messages()...)
 	if err != nil {
 		return err
 	}

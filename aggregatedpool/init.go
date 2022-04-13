@@ -16,12 +16,12 @@ import (
 	"go.uber.org/zap"
 )
 
-func Init(wDef *Workflow, actDef *Activity, p pool.Pool, c Codec, log *zap.Logger, tc temporalClient.Client, graceTimeout time.Duration) ([]worker.Worker, map[string]internal.WorkflowInfo, []string, error) {
+func Init(wDef *Workflow, actDef *Activity, p pool.Pool, c Codec, log *zap.Logger, tc temporalClient.Client, graceTimeout time.Duration, version string) ([]worker.Worker, map[string]internal.WorkflowInfo, []string, error) {
 	const op = errors.Op("workflow_definition_init")
 
 	// todo(rustatian): to sync.Pool
 	pld := &payload.Payload{}
-	err := c.Encode(&internal.Context{}, pld, &internal.Message{ID: 0, Command: internal.GetWorkerInfo{}})
+	err := c.Encode(&internal.Context{}, pld, &internal.Message{ID: 0, Command: internal.GetWorkerInfo{RRVersion: version}})
 	if err != nil {
 		return nil, nil, nil, errors.E(op, err)
 	}
@@ -75,6 +75,7 @@ func Init(wDef *Workflow, actDef *Activity, p pool.Pool, c Codec, log *zap.Logge
 			wrk.RegisterActivityWithOptions(actDef.execute, tActivity.RegisterOptions{
 				Name:                          wi[i].Activities[j].Name,
 				DisableAlreadyRegisteredCheck: false,
+				SkipInvalidStructFunctions:    false,
 			})
 
 			log.Debug("activity registered", zap.String("taskqueue", wi[i].TaskQueue), zap.Any("workflow name", wi[i].Activities[j].Name))

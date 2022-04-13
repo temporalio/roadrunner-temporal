@@ -55,6 +55,7 @@ type Plugin struct {
 	actP rrPool.Pool
 	wfP  rrPool.Pool
 
+	rrVersion  string
 	rrActivity *aggregatedpool.Activity
 	rrWorkflow *aggregatedpool.Workflow
 	workflows  map[string]internal.WorkflowInfo
@@ -83,6 +84,7 @@ func (p *Plugin) Init(cfg config.Configurer, log *zap.Logger, server server.Serv
 	p.log = log
 	p.server = server
 	p.graceTimeout = cfg.GracefulTimeout()
+	p.rrVersion = cfg.RRVersion()
 
 	return nil
 }
@@ -160,7 +162,7 @@ func (p *Plugin) Serve() chan error {
 	wfDef := aggregatedpool.NewWorkflowDefinition(codec, p.dataConverter, wpl, p.log, p.SedID, p.client, p.graceTimeout)
 
 	var workers []worker.Worker
-	workers, p.workflows, p.activities, err = aggregatedpool.Init(wfDef, ap, wpl, codec, p.log, p.client, p.graceTimeout)
+	workers, p.workflows, p.activities, err = aggregatedpool.Init(wfDef, ap, wpl, codec, p.log, p.client, p.graceTimeout, p.rrVersion)
 	if err != nil {
 		return nil
 	}

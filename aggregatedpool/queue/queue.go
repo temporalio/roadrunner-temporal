@@ -8,18 +8,18 @@ import (
 
 type MessageQueue struct {
 	SeqID func() uint64
-	Queue []*internal.Message
+	queue []*internal.Message
 }
 
 func NewMessageQueue(sedID func() uint64) *MessageQueue {
 	return &MessageQueue{
 		SeqID: sedID,
-		Queue: make([]*internal.Message, 0, 5),
+		queue: make([]*internal.Message, 0, 5),
 	}
 }
 
 func (mq *MessageQueue) Flush() {
-	mq.Queue = mq.Queue[0:0]
+	mq.queue = mq.queue[0:0]
 }
 
 // TODO(rustatian) allocate??? -> to sync.Pool
@@ -36,7 +36,7 @@ func (mq *MessageQueue) AllocateMessage(cmd interface{}, payloads *common.Payloa
 
 func (mq *MessageQueue) PushCommand(cmd interface{}, payloads *common.Payloads, header *common.Header) uint64 {
 	id := mq.SeqID()
-	mq.Queue = append(mq.Queue, &internal.Message{
+	mq.queue = append(mq.queue, &internal.Message{
 		ID:       id,
 		Command:  cmd,
 		Failure:  nil,
@@ -47,9 +47,13 @@ func (mq *MessageQueue) PushCommand(cmd interface{}, payloads *common.Payloads, 
 }
 
 func (mq *MessageQueue) PushResponse(id uint64, payloads *common.Payloads) {
-	mq.Queue = append(mq.Queue, &internal.Message{ID: id, Payloads: payloads})
+	mq.queue = append(mq.queue, &internal.Message{ID: id, Payloads: payloads})
 }
 
 func (mq *MessageQueue) PushError(id uint64, failure *failure.Failure) {
-	mq.Queue = append(mq.Queue, &internal.Message{ID: id, Failure: failure})
+	mq.queue = append(mq.queue, &internal.Message{ID: id, Failure: failure})
+}
+
+func (mq *MessageQueue) Messages() []*internal.Message {
+	return mq.queue
 }
