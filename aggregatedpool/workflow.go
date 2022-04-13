@@ -1,22 +1,23 @@
-package workflow
+package aggregatedpool
 
 import (
-	"fmt"
+	"context"
 	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/roadrunner-server/api/v2/payload"
+	"github.com/roadrunner-server/api/v2/pool"
 	"github.com/roadrunner-server/errors"
+	"github.com/temporalio/roadrunner-temporal/aggregatedpool/canceller"
+	"github.com/temporalio/roadrunner-temporal/aggregatedpool/queue"
+	"github.com/temporalio/roadrunner-temporal/aggregatedpool/registry"
 	"github.com/temporalio/roadrunner-temporal/internal"
-	"github.com/temporalio/roadrunner-temporal/internal/codec"
-	"github.com/temporalio/roadrunner-temporal/workflow/canceller"
-	"github.com/temporalio/roadrunner-temporal/workflow/queue"
-	"github.com/temporalio/roadrunner-temporal/workflow/registry"
 	commonpb "go.temporal.io/api/common/v1"
+	tActivity "go.temporal.io/sdk/activity"
 	temporalClient "go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/converter"
 	bindings "go.temporal.io/sdk/internalbindings"
-	"go.temporal.io/sdk/worker"
-	"go.temporal.io/sdk/workflow"
 	"go.uber.org/zap"
 )
 
@@ -31,8 +32,12 @@ import (
 		Close()
 	}
 */
-type process struct {
-	codec  codec.Codec
+
+type Callback func() error
+
+type Workflow struct {
+	codec  Codec
+	pool   pool.Pool
 	client temporalClient.Client
 
 	env       bindings.WorkflowEnvironment
@@ -43,35 +48,34 @@ type process struct {
 	sID       func() uint64
 	runID     string
 	pipeline  []*internal.Message
-	callbacks []func() error
+	callbacks []Callback
 	canceller *canceller.Canceller
 	inLoop    uint32
 
-	workflows map[string]internal.WorkflowInfo
-	tWorkers  []worker.Worker
+	dc converter.DataConverter
 
 	log          *zap.Logger
 	graceTimeout time.Duration
 	mh           temporalClient.MetricsHandler
 }
 
-func NewWorkflowDefinition(codec codec.Codec, log *zap.Logger, seqID func() uint64, client temporalClient.Client, gt time.Duration) internal.Workflow {
-	return &process{
+func NewWorkflowDefinition(codec Codec, dc converter.DataConverter, pool pool.Pool, log *zap.Logger, seqID func() uint64, client temporalClient.Client, gt time.Duration) *Workflow {
+	return &Workflow{
 		client:       client,
 		log:          log,
 		sID:          seqID,
 		codec:        codec,
 		graceTimeout: gt,
-
-		workflows: make(map[string]internal.WorkflowInfo),
-		tWorkers:  make([]worker.Worker, 0, 2),
+		dc:           dc,
+		pool:         pool,
 	}
 }
 
-// NewWorkflowDefinition ... process should match the WorkflowDefinitionFactory interface (sdk-go/internal/internal_worker.go:463, RegisterWorkflowWithOptions func)
+// NewWorkflowDefinition ... Workflow should match the WorkflowDefinitionFactory interface (sdk-go/internal/internal_worker.go:463, RegisterWorkflowWithOptions func)
 // DO NOT USE THIS FUNCTION DIRECTLY!!!!
-func (wp *process) NewWorkflowDefinition() bindings.WorkflowDefinition {
-	return &process{
+func (wp *Workflow) NewWorkflowDefinition() bindings.WorkflowDefinition {
+	return &Workflow{
+		pool:  wp.pool,
 		codec: wp.codec,
 		log:   wp.log,
 		sID:   wp.sID,
@@ -79,7 +83,7 @@ func (wp *process) NewWorkflowDefinition() bindings.WorkflowDefinition {
 }
 
 // Execute implementation must be asynchronous.
-func (wp *process) Execute(env bindings.WorkflowEnvironment, header *commonpb.Header, input *commonpb.Payloads) {
+func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.Header, input *commonpb.Payloads) {
 	wp.log.Debug("workflow execute", zap.String("runID", env.WorkflowInfo().WorkflowExecution.RunID), zap.Any("workflow info", env.WorkflowInfo()))
 
 	wp.mh = env.GetMetricsHandler()
@@ -109,7 +113,7 @@ func (wp *process) Execute(env bindings.WorkflowEnvironment, header *commonpb.He
 		lastCompletionOffset = len(lastCompletion.Payloads)
 	}
 
-	_ = wp.mq.PushCommand(
+	wp.mq.PushCommand(
 		internal.StartWorkflow{
 			Info:           env.WorkflowInfo(),
 			LastCompletion: lastCompletionOffset,
@@ -124,7 +128,8 @@ func (wp *process) Execute(env bindings.WorkflowEnvironment, header *commonpb.He
 // Application level code must be executed from this function only.
 // Execute call as well as callbacks called from WorkflowEnvironment functions can only schedule callbacks
 // which can be executed from OnWorkflowTaskStarted().
-func (wp *process) OnWorkflowTaskStarted(t time.Duration) {
+// FROM THE TEMPORAL DESCRIPTION
+func (wp *Workflow) OnWorkflowTaskStarted(t time.Duration) {
 	atomic.StoreUint32(&wp.inLoop, 1)
 	defer func() {
 		atomic.StoreUint32(&wp.inLoop, 0)
@@ -140,6 +145,7 @@ func (wp *process) OnWorkflowTaskStarted(t time.Duration) {
 			panic(err)
 		}
 	}
+
 	wp.callbacks = nil
 
 	err = wp.flushQueue()
@@ -162,7 +168,7 @@ func (wp *process) OnWorkflowTaskStarted(t time.Duration) {
 }
 
 // StackTrace of all coroutines owned by the Dispatcher instance.
-func (wp *process) StackTrace() string {
+func (wp *Workflow) StackTrace() string {
 	result, err := wp.runCommand(
 		internal.GetStackTrace{
 			RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
@@ -188,66 +194,63 @@ func (wp *process) StackTrace() string {
 	return stacktrace
 }
 
-func (wp *process) Close() {
+func (wp *Workflow) Close() {
 	// send destroy command
 	_, _ = wp.runCommand(internal.DestroyWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID}, nil, wp.header)
 	// flush queue
 	wp.mq.Flush()
 }
 
-func (wp *process) Init() ([]worker.Worker, error) {
-	const op = errors.Op("workflow_definition_init")
+func (wp *Workflow) execute(ctx context.Context, args *commonpb.Payloads) (*commonpb.Payloads, error) {
+	const op = errors.Op("activity_pool_execute_activity")
 
-	wi := make([]*internal.WorkerInfo, 0, 2)
-	err := wp.codec.FetchWorkerInfo(&wi)
+	var info = tActivity.GetInfo(ctx)
+	info.TaskToken = []byte(uuid.NewString())
+	mh := tActivity.GetMetricsHandler(ctx)
+	// if the mh is not nil, record the RR metric
+	if mh != nil {
+		mh.Gauge(RrMetricName).Update(float64(wp.pool.(pool.Queuer).QueueSize()))
+		defer mh.Gauge(RrMetricName).Update(float64(wp.pool.(pool.Queuer).QueueSize()))
+	}
+
+	var msg = &internal.Message{
+		ID: atomic.AddUint64(&wp.seqID, 1),
+		Command: internal.InvokeLocalActivity{
+			Name: info.ActivityType.Name,
+			Info: info,
+		},
+		Payloads: args,
+	}
+
+	pld := &payload.Payload{}
+	err := wp.codec.Encode(&internal.Context{TaskQueue: info.TaskQueue}, pld, msg)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := wp.pool.Exec(pld)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
 
-	for i := 0; i < len(wi); i++ {
-		wp.log.Debug("worker info", zap.String("taskqueue", wi[i].TaskQueue), zap.Any("options", wi[i].Options))
-
-		wi[i].Options.WorkerStopTimeout = wp.graceTimeout
-
-		if wi[i].TaskQueue == "" {
-			wi[i].TaskQueue = temporalClient.DefaultNamespace
-		}
-
-		if wi[i].Options.Identity == "" {
-			wi[i].Options.Identity = fmt.Sprintf(
-				"%s:%s",
-				wi[i].TaskQueue,
-				uuid.NewString(),
-			)
-		}
-
-		wi[i].Options.LocalActivityWorkerOnly = true
-		wrk := worker.New(wp.client, wi[i].TaskQueue, wi[i].Options)
-
-		for j := 0; j < len(wi[i].Workflows); j++ {
-			wp.log.Debug("register workflow with options", zap.String("taskqueue", wi[i].TaskQueue), zap.Any("workflow name", wi[i].Workflows[j].Name))
-
-			wrk.RegisterWorkflowWithOptions(wp, workflow.RegisterOptions{
-				Name:                          wi[i].Workflows[j].Name,
-				DisableAlreadyRegisteredCheck: false,
-			})
-
-			wp.workflows[wi[i].Workflows[j].Name] = wi[i].Workflows[j]
-		}
-
-		wp.tWorkers = append(wp.tWorkers, wrk)
+	out := make([]*internal.Message, 0, 2)
+	err = wp.codec.Decode(result, &out)
+	if err != nil {
+		return nil, err
 	}
 
-	wp.log.Debug("workflow workers initialized", zap.Int("num_workers", len(wp.tWorkers)))
-
-	return wp.tWorkers, nil
-}
-
-func (wp *process) WorkflowNames() []string {
-	names := make([]string, 0, len(wp.workflows))
-	for name := range wp.workflows {
-		names = append(names, name)
+	if len(out) != 1 {
+		return nil, errors.E(op, errors.Str("invalid local activity worker response"))
 	}
 
-	return names
+	retPld := out[0]
+	if retPld.Failure != nil {
+		if retPld.Failure.Message == doNotCompleteOnReturn {
+			return nil, tActivity.ErrResultPending
+		}
+
+		return nil, bindings.ConvertFailureToError(retPld.Failure, wp.dc)
+	}
+
+	return retPld.Payloads, nil
 }

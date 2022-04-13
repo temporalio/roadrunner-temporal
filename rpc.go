@@ -71,13 +71,17 @@ func (r *rpc) RecordActivityHeartbeat(in RecordHeartbeatRequest, out *RecordHear
 func (r *rpc) GetActivityNames(_ bool, out *[]string) error {
 	r.srv.RLock()
 	defer r.srv.RUnlock()
-	*out = r.srv.rrActivity.ActivityNames()
+	*out = r.srv.activities
 	return nil
 }
 
 func (r *rpc) GetWorkflowNames(_ bool, out *[]string) error {
 	r.srv.RLock()
 	defer r.srv.RUnlock()
-	*out = r.srv.rrWorkflow.WorkflowNames()
+
+	for k := range r.srv.workflows {
+		*out = append(*out, k)
+	}
+
 	return nil
 }

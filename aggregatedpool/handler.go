@@ -1,24 +1,26 @@
-package workflow
+package aggregatedpool
 
 import (
 	"strconv"
 	"sync/atomic"
 	"time"
 
+	"github.com/roadrunner-server/api/v2/payload"
+	"github.com/roadrunner-server/api/v2/pool"
 	"github.com/roadrunner-server/errors"
 	"github.com/temporalio/roadrunner-temporal/internal"
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
+	"go.uber.org/zap"
 )
 
 const (
-	completed    string = "completed"
-	RrMetricName string = "rr_workflows_pool_queue_size"
+	completed string = "completed"
 )
 
 // execution context.
-func (wp *process) getContext() *internal.Context {
+func (wp *Workflow) getContext() *internal.Context {
 	return &internal.Context{
 		TaskQueue: wp.env.WorkflowInfo().TaskQueueName,
 		TickTime:  wp.env.Now().Format(time.RFC3339),
@@ -27,8 +29,8 @@ func (wp *process) getContext() *internal.Context {
 }
 
 // schedule cancel command
-func (wp *process) handleCancel() {
-	_ = wp.mq.PushCommand(
+func (wp *Workflow) handleCancel() {
+	wp.mq.PushCommand(
 		internal.CancelWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID},
 		nil,
 		wp.header,
@@ -36,8 +38,8 @@ func (wp *process) handleCancel() {
 }
 
 // schedule the signal processing
-func (wp *process) handleSignal(name string, input *commonpb.Payloads, header *commonpb.Header) error {
-	_ = wp.mq.PushCommand(
+func (wp *Workflow) handleSignal(name string, input *commonpb.Payloads, header *commonpb.Header) error {
+	wp.mq.PushCommand(
 		internal.InvokeSignal{
 			RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
 			Name:  name,
@@ -50,7 +52,7 @@ func (wp *process) handleSignal(name string, input *commonpb.Payloads, header *c
 }
 
 // Handle query in blocking mode.
-func (wp *process) handleQuery(queryType string, queryArgs *commonpb.Payloads, header *commonpb.Header) (*commonpb.Payloads, error) {
+func (wp *Workflow) handleQuery(queryType string, queryArgs *commonpb.Payloads, header *commonpb.Header) (*commonpb.Payloads, error) {
 	const op = errors.Op("workflow_process_handle_query")
 	result, err := wp.runCommand(internal.InvokeQuery{
 		RunID: wp.runID,
@@ -68,8 +70,8 @@ func (wp *process) handleQuery(queryType string, queryArgs *commonpb.Payloads, h
 	return result.Payloads, nil
 }
 
-// process incoming command
-func (wp *process) handleMessage(msg *internal.Message) error {
+// Workflow incoming command
+func (wp *Workflow) handleMessage(msg *internal.Message) error {
 	const op = errors.Op("handleMessage")
 
 	switch command := msg.Command.(type) {
@@ -79,6 +81,14 @@ func (wp *process) handleMessage(msg *internal.Message) error {
 
 		wp.canceller.Register(msg.ID, func() error {
 			wp.env.RequestCancelActivity(activityID)
+			return nil
+		})
+
+	case *internal.ExecuteLocalActivity:
+		params := command.LocalActivityParams(wp.env, wp.execute, msg.Payloads)
+		activityID := wp.env.ExecuteLocalActivity(params, wp.createLocalActivityCallback(msg.ID))
+		wp.canceller.Register(msg.ID, func() error {
+			wp.env.RequestCancelLocalActivity(activityID)
 			return nil
 		})
 
@@ -218,39 +228,62 @@ func (wp *process) handleMessage(msg *internal.Message) error {
 	return nil
 }
 
-func (wp *process) createCallback(id uint64) bindings.ResultHandler {
-	callback := func(result *commonpb.Payloads, err error) error {
+func (wp *Workflow) createLocalActivityCallback(id uint64) bindings.LocalActivityResultHandler {
+	callback := func(lar *bindings.LocalActivityResultWrapper) {
+		wp.canceller.Discard(id)
+
+		if lar.Err != nil {
+			wp.log.Error("local activity", zap.Error(lar.Err), zap.Int32("attempt", lar.Attempt), zap.Duration("backoff", lar.Backoff))
+			wp.mq.PushError(id, bindings.ConvertErrorToFailure(lar.Err, wp.env.GetDataConverter()))
+			return
+		}
+
+		wp.mq.PushResponse(id, lar.Result)
+	}
+
+	return func(lar *bindings.LocalActivityResultWrapper) {
+		// timer cancel callback can happen inside the loop
+		if atomic.LoadUint32(&wp.inLoop) == 1 {
+			callback(lar)
+			return
+		}
+
+		wp.callbacks = append(wp.callbacks, func() error {
+			callback(lar)
+			return nil
+		})
+	}
+}
+
+func (wp *Workflow) createCallback(id uint64) bindings.ResultHandler {
+	callback := func(result *commonpb.Payloads, err error) {
 		wp.canceller.Discard(id)
 
 		if err != nil {
 			wp.mq.PushError(id, bindings.ConvertErrorToFailure(err, wp.env.GetDataConverter()))
-			return nil
+			return
 		}
 
 		// fetch original payload
 		wp.mq.PushResponse(id, result)
-		return nil
 	}
 
 	return func(result *commonpb.Payloads, err error) {
 		// timer cancel callback can happen inside the loop
 		if atomic.LoadUint32(&wp.inLoop) == 1 {
-			errC := callback(result, err)
-			if errC != nil {
-				panic(errC)
-			}
-
+			callback(result, err)
 			return
 		}
 
 		wp.callbacks = append(wp.callbacks, func() error {
-			return callback(result, err)
+			callback(result, err)
+			return nil
 		})
 	}
 }
 
 // callback to be called inside the queue processing, adds new messages at the end of the queue
-func (wp *process) createContinuableCallback(id uint64) bindings.ResultHandler {
+func (wp *Workflow) createContinuableCallback(id uint64) bindings.ResultHandler {
 	callback := func(result *commonpb.Payloads, err error) {
 		wp.canceller.Discard(id)
 
@@ -272,44 +305,75 @@ func (wp *process) createContinuableCallback(id uint64) bindings.ResultHandler {
 }
 
 // Exchange messages between host and pool processes and add new commands to the queue.
-func (wp *process) flushQueue() error {
+func (wp *Workflow) flushQueue() error {
 	const op = errors.Op("flush queue")
 
-	if wp.mh != nil {
-		wp.mh.Gauge(RrMetricName).Update(float64(wp.codec.QueueSize()))
-		defer wp.mh.Gauge(RrMetricName).Update(float64(wp.codec.QueueSize()))
+	if len(wp.mq.Messages()) == 0 {
+		return nil
 	}
 
-	messages, err := wp.codec.Execute(wp.getContext(), wp.mq.Queue...)
+	if wp.mh != nil {
+		wp.mh.Gauge(RrWorkflowsMetricName).Update(float64(wp.pool.(pool.Queuer).QueueSize()))
+		defer wp.mh.Gauge(RrWorkflowsMetricName).Update(float64(wp.pool.(pool.Queuer).QueueSize()))
+	}
+
+	pld := &payload.Payload{}
+	err := wp.codec.Encode(wp.getContext(), pld, wp.mq.Messages()...)
+	if err != nil {
+		return err
+	}
+
+	resp, err := wp.pool.Exec(pld)
+	if err != nil {
+		return err
+	}
+
+	msgs := make([]*internal.Message, 0, 2)
+	err = wp.codec.Decode(resp, &msgs)
+	if err != nil {
+		return err
+	}
 	wp.mq.Flush()
 
 	if err != nil {
 		return errors.E(op, err)
 	}
 
-	wp.pipeline = append(wp.pipeline, messages...)
+	wp.pipeline = append(wp.pipeline, msgs...)
 
 	return nil
 }
 
 // Run single command and return single result.
-func (wp *process) runCommand(cmd interface{}, payloads *commonpb.Payloads, header *commonpb.Header) (*internal.Message, error) {
+func (wp *Workflow) runCommand(cmd interface{}, payloads *commonpb.Payloads, header *commonpb.Header) (*internal.Message, error) {
 	const op = errors.Op("workflow_process_runcommand")
-	_, msg := wp.mq.AllocateMessage(cmd, payloads, header)
+	msg := wp.mq.AllocateMessage(cmd, payloads, header)
 
 	if wp.mh != nil {
-		wp.mh.Gauge(RrMetricName).Update(float64(wp.codec.QueueSize()))
-		defer wp.mh.Gauge(RrMetricName).Update(float64(wp.codec.QueueSize()))
+		wp.mh.Gauge(RrMetricName).Update(float64(wp.pool.(pool.Queuer).QueueSize()))
+		defer wp.mh.Gauge(RrMetricName).Update(float64(wp.pool.(pool.Queuer).QueueSize()))
 	}
 
-	result, err := wp.codec.Execute(wp.getContext(), &msg)
+	pld := &payload.Payload{}
+	err := wp.codec.Encode(wp.getContext(), pld, msg)
 	if err != nil {
-		return nil, errors.E(op, err)
+		return nil, err
 	}
 
-	if len(result) != 1 {
+	resp, err := wp.pool.Exec(pld)
+	if err != nil {
+		return nil, err
+	}
+
+	msgs := make([]*internal.Message, 0, 2)
+	err = wp.codec.Decode(resp, &msgs)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(msgs) != 1 {
 		return nil, errors.E(op, errors.Str("unexpected pool response"))
 	}
 
-	return result[0], nil
+	return msgs[0], nil
 }

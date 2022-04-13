@@ -14,12 +14,11 @@ import (
 	"github.com/roadrunner-server/errors"
 	poolImpl "github.com/roadrunner-server/sdk/v2/pool"
 	processImpl "github.com/roadrunner-server/sdk/v2/state/process"
-	"github.com/temporalio/roadrunner-temporal/activity"
+	"github.com/temporalio/roadrunner-temporal/aggregatedpool"
 	"github.com/temporalio/roadrunner-temporal/data_converter"
 	"github.com/temporalio/roadrunner-temporal/internal"
 	"github.com/temporalio/roadrunner-temporal/internal/codec/proto"
 	"github.com/temporalio/roadrunner-temporal/internal/logger"
-	"github.com/temporalio/roadrunner-temporal/workflow"
 	"github.com/uber-go/tally/v4/prometheus"
 	temporalClient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/contrib/tally"
@@ -56,14 +55,14 @@ type Plugin struct {
 	actP rrPool.Pool
 	wfP  rrPool.Pool
 
-	rrActivity internal.Activity
-	rrWorkflow internal.Workflow
+	rrVersion  string
+	rrActivity *aggregatedpool.Activity
+	rrWorkflow *aggregatedpool.Workflow
+	workflows  map[string]internal.WorkflowInfo
+	activities []string
 
-	seqID uint64
-
-	actW []worker.Worker
-	wfW  []worker.Worker
-
+	seqID        uint64
+	workers      []worker.Worker
 	graceTimeout time.Duration
 }
 
@@ -85,6 +84,7 @@ func (p *Plugin) Init(cfg config.Configurer, log *zap.Logger, server server.Serv
 	p.log = log
 	p.server = server
 	p.graceTimeout = cfg.GracefulTimeout()
+	p.rrVersion = cfg.RRVersion()
 
 	return nil
 }
@@ -128,6 +128,7 @@ func (p *Plugin) Serve() chan error {
 	}
 
 	p.log.Info("connected to temporal server", zap.String("address", p.config.Address))
+	codec := proto.NewCodec(p.log, p.dataConverter)
 
 	// ------ ACTIVITIES POOL --------
 	pl, err := p.server.NewWorkerPool(context.Background(), p.config.Activities, env, nil)
@@ -136,13 +137,8 @@ func (p *Plugin) Serve() chan error {
 		return errCh
 	}
 
-	activityCodec := proto.NewCodec(pl, p.log, p.dataConverter)
-	ap := activity.NewActivityDefinition(activityCodec, p.log, p.dataConverter, p.client, p.graceTimeout)
-	p.actW, err = ap.Init()
-	if err != nil {
-		errCh <- errors.E(op, err)
-		return errCh
-	}
+	// init codec
+	ap := aggregatedpool.NewActivityDefinition(codec, pl, p.log, p.dataConverter, p.client, p.graceTimeout)
 	// --------------------------------
 
 	// ---------- WORKFLOWS -------------
@@ -163,28 +159,19 @@ func (p *Plugin) Serve() chan error {
 		return errCh
 	}
 
-	wfCodec := proto.NewCodec(wpl, p.log, p.dataConverter)
-	// can be 2+ workflow workers
-	wfDef := workflow.NewWorkflowDefinition(wfCodec, p.log, p.SedID, p.client, p.graceTimeout)
-	p.wfW, err = wfDef.Init()
+	wfDef := aggregatedpool.NewWorkflowDefinition(codec, p.dataConverter, wpl, p.log, p.SedID, p.client, p.graceTimeout)
+
+	var workers []worker.Worker
+	workers, p.workflows, p.activities, err = aggregatedpool.Init(wfDef, ap, wpl, codec, p.log, p.client, p.graceTimeout, p.rrVersion)
 	if err != nil {
-		errCh <- err
-		return errCh
+		return nil
 	}
 
 	// --------------------------------
 
 	// ---------- START WORKERS ---------------
-	for i := 0; i < len(p.wfW); i++ {
-		err = p.wfW[i].Start()
-		if err != nil {
-			errCh <- err
-			return errCh
-		}
-	}
-
-	for i := 0; i < len(p.actW); i++ {
-		err = p.actW[i].Start()
+	for i := 0; i < len(workers); i++ {
+		err = workers[i].Start()
 		if err != nil {
 			errCh <- err
 			return errCh
@@ -195,7 +182,7 @@ func (p *Plugin) Serve() chan error {
 
 	p.rrActivity = ap
 	p.rrWorkflow = wfDef
-
+	p.workers = workers
 	p.actP = pl
 	p.wfP = wpl
 
@@ -206,8 +193,8 @@ func (p *Plugin) Stop() error {
 	p.Lock()
 	defer p.Unlock()
 
-	for i := 0; i < len(p.actW); i++ {
-		p.actW[i].Stop()
+	for i := 0; i < len(p.workers); i++ {
+		p.workers[i].Stop()
 	}
 
 	if p.tallyCloser != nil {
