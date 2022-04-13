@@ -12,6 +12,7 @@ import (
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
+	"go.uber.org/zap"
 )
 
 const (
@@ -29,7 +30,7 @@ func (wp *Workflow) getContext() *internal.Context {
 
 // schedule cancel command
 func (wp *Workflow) handleCancel() {
-	_ = wp.mq.PushCommand(
+	wp.mq.PushCommand(
 		internal.CancelWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID},
 		nil,
 		wp.header,
@@ -38,7 +39,7 @@ func (wp *Workflow) handleCancel() {
 
 // schedule the signal processing
 func (wp *Workflow) handleSignal(name string, input *commonpb.Payloads, header *commonpb.Header) error {
-	_ = wp.mq.PushCommand(
+	wp.mq.PushCommand(
 		internal.InvokeSignal{
 			RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
 			Name:  name,
@@ -232,6 +233,7 @@ func (wp *Workflow) createLocalActivityCallback(id uint64) bindings.LocalActivit
 		wp.canceller.Discard(id)
 
 		if lar.Err != nil {
+			wp.log.Error("local activity", zap.Error(lar.Err), zap.Int32("attempt", lar.Attempt), zap.Duration("backoff", lar.Backoff))
 			wp.mq.PushError(id, bindings.ConvertErrorToFailure(lar.Err, wp.env.GetDataConverter()))
 			return
 		}
@@ -345,7 +347,7 @@ func (wp *Workflow) flushQueue() error {
 // Run single command and return single result.
 func (wp *Workflow) runCommand(cmd interface{}, payloads *commonpb.Payloads, header *commonpb.Header) (*internal.Message, error) {
 	const op = errors.Op("workflow_process_runcommand")
-	_, msg := wp.mq.AllocateMessage(cmd, payloads, header)
+	msg := wp.mq.AllocateMessage(cmd, payloads, header)
 
 	if wp.mh != nil {
 		wp.mh.Gauge(RrMetricName).Update(float64(wp.pool.(pool.Queuer).QueueSize()))
@@ -353,7 +355,7 @@ func (wp *Workflow) runCommand(cmd interface{}, payloads *commonpb.Payloads, hea
 	}
 
 	pld := &payload.Payload{}
-	err := wp.codec.Encode(wp.getContext(), pld, &msg)
+	err := wp.codec.Encode(wp.getContext(), pld, msg)
 	if err != nil {
 		return nil, err
 	}

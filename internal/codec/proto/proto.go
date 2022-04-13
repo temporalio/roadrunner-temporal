@@ -3,11 +3,9 @@ package proto
 import (
 	"sync"
 
-	"github.com/fatih/color"
 	"github.com/goccy/go-json"
 	"github.com/roadrunner-server/api/v2/payload"
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/sdk/v2/utils"
 	"github.com/temporalio/roadrunner-temporal/internal"
 	protocolV1 "github.com/temporalio/roadrunner-temporal/proto/protocol/v1"
 	"go.temporal.io/sdk/converter"
@@ -51,6 +49,7 @@ func (c *Codec) Encode(ctx *internal.Context, p *payload.Payload, msg ...*intern
 		if err != nil {
 			return err
 		}
+		c.log.Debug("outgoing message", zap.Uint64("id", frame.Id), zap.ByteString("data", p.Body), zap.ByteString("context", p.Context))
 		request.Messages[i] = frame
 	}
 
@@ -70,8 +69,6 @@ func (c *Codec) Encode(ctx *internal.Context, p *payload.Payload, msg ...*intern
 		return errors.E(errors.Op("encode_payload"), err)
 	}
 
-	c.log.Debug("outgoing message", zap.String("data", color.GreenString(utils.AsString(p.Body)+" "+utils.AsString(p.Context))))
-
 	return nil
 }
 
@@ -89,10 +86,10 @@ func (c *Codec) Decode(pld *payload.Payload, result *[]*internal.Message) error 
 		return errors.E(errors.Op("codec_parse_response"), err)
 	}
 
-	c.log.Debug("received message", zap.String("data", color.HiYellowString(string(pld.Body))))
-
 	for _, f := range response.Messages {
 		msg, errM := c.parseMessage(f)
+
+		c.log.Debug("received message", zap.Any("command", msg.Command), zap.Uint64("id", msg.ID), zap.ByteString("data", pld.Body))
 		if errM != nil {
 			return errM
 		}

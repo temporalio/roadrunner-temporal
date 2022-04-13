@@ -113,7 +113,7 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 		lastCompletionOffset = len(lastCompletion.Payloads)
 	}
 
-	_ = wp.mq.PushCommand(
+	wp.mq.PushCommand(
 		internal.StartWorkflow{
 			Info:           env.WorkflowInfo(),
 			LastCompletion: lastCompletionOffset,

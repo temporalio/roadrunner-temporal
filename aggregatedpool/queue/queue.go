@@ -19,31 +19,31 @@ func NewMessageQueue(sedID func() uint64) *MessageQueue {
 }
 
 func (mq *MessageQueue) Flush() {
-	mq.queue = mq.queue[0:0]
+	mq.queue = mq.queue[:0]
 }
 
+// AllocateMessage ..
 // TODO(rustatian) allocate??? -> to sync.Pool
-func (mq *MessageQueue) AllocateMessage(cmd interface{}, payloads *common.Payloads, header *common.Header) (uint64, internal.Message) {
-	msg := internal.Message{
+// Remove this method if flavor of sync.Pool with internal.Message
+func (mq *MessageQueue) AllocateMessage(cmd interface{}, payloads *common.Payloads, header *common.Header) *internal.Message {
+	msg := &internal.Message{
 		ID:       mq.SeqID(),
 		Command:  cmd,
 		Payloads: payloads,
 		Header:   header,
 	}
 
-	return msg.ID, msg
+	return msg
 }
 
-func (mq *MessageQueue) PushCommand(cmd interface{}, payloads *common.Payloads, header *common.Header) uint64 {
-	id := mq.SeqID()
+func (mq *MessageQueue) PushCommand(cmd interface{}, payloads *common.Payloads, header *common.Header) {
 	mq.queue = append(mq.queue, &internal.Message{
-		ID:       id,
+		ID:       mq.SeqID(),
 		Command:  cmd,
 		Failure:  nil,
 		Payloads: payloads,
 		Header:   header,
 	})
-	return id
 }
 
 func (mq *MessageQueue) PushResponse(id uint64, payloads *common.Payloads) {

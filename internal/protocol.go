@@ -8,6 +8,7 @@ import (
 	"go.temporal.io/api/failure/v1"
 	"go.temporal.io/sdk/activity"
 	bindings "go.temporal.io/sdk/internalbindings"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -167,12 +168,19 @@ type ExecuteActivity struct {
 	Options bindings.ExecuteActivityOptions `json:"options,omitempty"`
 }
 
+// ExecuteLocalActivityOptions .. since we use proto everywhere we need to convert Activity options (proto) to non-proto LA options
+type ExecuteLocalActivityOptions struct {
+	ScheduleToCloseTimeout time.Duration
+	StartToCloseTimeout    time.Duration
+	RetryPolicy            *commonpb.RetryPolicy
+}
+
 // ExecuteLocalActivity command by workflow worker.
 type ExecuteLocalActivity struct {
 	// Name defines activity name.
 	Name string `json:"name"`
 	// Options to run activity.
-	Options bindings.ExecuteLocalActivityOptions `json:"options,omitempty"`
+	Options ExecuteLocalActivityOptions `json:"options,omitempty"`
 }
 
 // ExecuteChildWorkflow executes child workflow.
@@ -267,19 +275,48 @@ func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment, payl
 
 // LocalActivityParams maps activity command to activity params.
 func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnvironment, fn interface{}, payloads *commonpb.Payloads) bindings.ExecuteLocalActivityParams {
+	if cmd.Options.StartToCloseTimeout == 0 {
+		cmd.Options.StartToCloseTimeout = time.Minute
+	}
+	if cmd.Options.ScheduleToCloseTimeout == 0 {
+		cmd.Options.ScheduleToCloseTimeout = time.Minute
+	}
+
+	truTemOptions := bindings.ExecuteLocalActivityOptions{
+		ScheduleToCloseTimeout: cmd.Options.ScheduleToCloseTimeout,
+		StartToCloseTimeout:    cmd.Options.StartToCloseTimeout,
+	}
+
+	if cmd.Options.RetryPolicy != nil {
+		rp := &temporal.RetryPolicy{
+			InitialInterval:        ifNotNil(cmd.Options.RetryPolicy.InitialInterval),
+			BackoffCoefficient:     cmd.Options.RetryPolicy.BackoffCoefficient,
+			MaximumInterval:        ifNotNil(cmd.Options.RetryPolicy.MaximumInterval),
+			MaximumAttempts:        cmd.Options.RetryPolicy.MaximumAttempts,
+			NonRetryableErrorTypes: cmd.Options.RetryPolicy.NonRetryableErrorTypes,
+		}
+
+		truTemOptions.RetryPolicy = rp
+	}
+
 	params := bindings.ExecuteLocalActivityParams{
-		ExecuteLocalActivityOptions: cmd.Options,
+		ExecuteLocalActivityOptions: truTemOptions,
 		ActivityFn:                  fn,
 		ActivityType:                cmd.Name,
 		InputArgs:                   []interface{}{payloads},
 		WorkflowInfo:                env.WorkflowInfo(),
-		// always starts from 1
-		//Attempt:       1,
-		ScheduledTime: time.Now(),
-		Header:        nil,
+		ScheduledTime:               time.Now(),
+		Header:                      nil,
 	}
 
 	return params
+}
+
+func ifNotNil(val *time.Duration) time.Duration {
+	if val != nil {
+		return *val
+	}
+	return 0
 }
 
 // WorkflowParams maps workflow command to workflow params.

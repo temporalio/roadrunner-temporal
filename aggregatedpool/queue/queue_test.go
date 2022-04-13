@@ -17,10 +17,10 @@ func Test_MessageQueueFlushError(t *testing.T) {
 	})
 
 	mq.PushError(1, &failure.Failure{})
-	assert.Len(t, mq.Queue, 1)
+	assert.Len(t, mq.Messages(), 1)
 
 	mq.Flush()
-	assert.Len(t, mq.Queue, 0)
+	assert.Len(t, mq.Messages(), 0)
 	assert.Equal(t, uint64(0), index)
 }
 
@@ -31,10 +31,10 @@ func Test_MessageQueueFlushResponse(t *testing.T) {
 	})
 
 	mq.PushResponse(1, &common.Payloads{})
-	assert.Len(t, mq.Queue, 1)
+	assert.Len(t, mq.Messages(), 1)
 
 	mq.Flush()
-	assert.Len(t, mq.Queue, 0)
+	assert.Len(t, mq.Messages(), 0)
 	assert.Equal(t, uint64(0), index)
 }
 
@@ -44,10 +44,9 @@ func Test_MessageQueueCommandID(t *testing.T) {
 		return atomic.AddUint64(&index, 1)
 	})
 
-	n := mq.PushCommand(internal.StartWorkflow{}, &common.Payloads{}, &common.Header{})
-	assert.Equal(t, n, index)
-	assert.Len(t, mq.Queue, 1)
+	mq.PushCommand(internal.StartWorkflow{}, &common.Payloads{}, &common.Header{})
+	assert.Len(t, mq.Messages(), 1)
 
 	mq.Flush()
-	assert.Len(t, mq.Queue, 0)
+	assert.Len(t, mq.Messages(), 0)
 }
