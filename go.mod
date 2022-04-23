@@ -3,8 +3,7 @@ module github.com/temporalio/roadrunner-temporal
 go 1.18
 
 require (
-	github.com/fatih/color v1.13.0
-	github.com/goccy/go-json v0.9.6
+	github.com/goccy/go-json v0.9.7
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
 	github.com/roadrunner-server/api/v2 v2.14.0
@@ -30,8 +29,6 @@ require (
 	github.com/gogo/status v1.1.0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
-	github.com/mattn/go-colorable v0.1.12 // indirect
-	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
