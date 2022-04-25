@@ -234,10 +234,10 @@ github.com/roadrunner-server/api/v2 v2.14.0 h1:U7CrMXv5h8qlO9vvqdvPDK0g+zMLwcERU
 github.com/roadrunner-server/api/v2 v2.14.0/go.mod h1:COjb3T7DYHydaKIfino/N8gVa8op1jGAXFF+qKHMnk0=
 github.com/roadrunner-server/errors v1.1.2 h1:+LPw9Akgg+8LAGM4wASMWLAoBIbyP+mhNfR+FBS2Slw=
 github.com/roadrunner-server/errors v1.1.2/go.mod h1:jVSh32nFtRMzKItYUM9W2CTLLpXAM8HseL2lUENPYtU=
-github.com/roadrunner-server/goridge/v3 v3.4.0 h1:6sIm8Dk+ykDzDkOB27vStAdriYuEymi8OSiro7y4Wbc=
-github.com/roadrunner-server/goridge/v3 v3.4.0/go.mod h1:i7Y1z7dr48E6KZ+bEBS7lBRh4t9eWSUCsEOivEPpS5s=
-github.com/roadrunner-server/sdk/v2 v2.13.1 h1:DZHWwp63xa4dvUaflJ4PaRN+GOEGrD2H1btKcg/UrZQ=
-github.com/roadrunner-server/sdk/v2 v2.13.1/go.mod h1:katxDBnU7298CaluLBRgHEJOSobkCuzcXH1PcrcMZY4=
+github.com/roadrunner-server/goridge/v3 v3.4.1 h1:ngamQzKHUN3LV6vGnlEDk2zfftXLzpXsgdDjwFBpvvs=
+github.com/roadrunner-server/goridge/v3 v3.4.1/go.mod h1:Xmnn1oSEC8cLtd+DixoS7sbCpGYuCPPORUXiWDgUudI=
+github.com/roadrunner-server/sdk/v2 v2.13.2 h1:hUlyfLwfO8Ljj1tfNOEbSvu19wkkVXMZXUv3IT83mbM=
+github.com/roadrunner-server/sdk/v2 v2.13.2/go.mod h1:H5kq9qkpb07g+ndmwqscxg4E0+y/B07GTIfCSYH44Pk=
 github.com/roadrunner-server/tcplisten v1.1.2 h1:GBjKlSEbA67UB2y83rFWsQKqMQGyalhTN9Q9HCIMBC0=
 github.com/roadrunner-server/tcplisten v1.1.2/go.mod h1:wN2/X46Vo60sC9L5Bf/eC8kL+X3//7KIFmANEXZaLsg=
 github.com/robfig/cron v1.2.0 h1:ZjScXvvxeQ63Dbyxy76Fj3AT3Ut0aKsyd2/tl3DTMuQ=
