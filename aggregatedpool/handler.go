@@ -306,7 +306,7 @@ func (wp *Workflow) createContinuableCallback(id uint64) bindings.ResultHandler 
 
 // Exchange messages between host and pool processes and add new commands to the queue.
 func (wp *Workflow) flushQueue() error {
-	const op = errors.Op("flush queue")
+	const op = errors.Op("flush_queue")
 
 	if len(wp.mq.Messages()) == 0 {
 		return nil
@@ -317,6 +317,7 @@ func (wp *Workflow) flushQueue() error {
 		defer wp.mh.Gauge(RrWorkflowsMetricName).Update(float64(wp.pool.(pool.Queuer).QueueSize()))
 	}
 
+	// todo(rustatian) to sync.Pool
 	pld := &payload.Payload{}
 	err := wp.codec.Encode(wp.getContext(), pld, wp.mq.Messages()...)
 	if err != nil {
