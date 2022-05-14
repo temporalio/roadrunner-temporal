@@ -60,6 +60,7 @@ type Plugin struct {
 	rrWorkflow *aggregatedpool.Workflow
 	workflows  map[string]internal.WorkflowInfo
 	activities []string
+	codec      *proto.Codec
 
 	seqID        uint64
 	workers      []worker.Worker
@@ -98,7 +99,6 @@ func (p *Plugin) Serve() chan error {
 
 	worker.SetStickyWorkflowCacheSize(p.config.CacheSize)
 
-	env := map[string]string{RrMode: PluginName, RrCodec: RrCodecVal}
 	var err error
 	opts := temporalClient.Options{
 		HostPort:      p.config.Address,
@@ -128,17 +128,26 @@ func (p *Plugin) Serve() chan error {
 	}
 
 	p.log.Info("connected to temporal server", zap.String("address", p.config.Address))
-	codec := proto.NewCodec(p.log, p.dataConverter)
+	p.codec = proto.NewCodec(p.log, p.dataConverter)
 
-	// ------ ACTIVITIES POOL --------
-	pl, err := p.server.NewWorkerPool(context.Background(), p.config.Activities, env, nil)
+	err = p.initPool()
 	if err != nil {
-		errCh <- errors.E(op, err)
+		errCh <- err
 		return errCh
 	}
 
+	return errCh
+}
+
+func (p *Plugin) initPool() error {
+	// ------ ACTIVITIES POOL --------
+	pl, err := p.server.NewWorkerPool(context.Background(), p.config.Activities, map[string]string{RrMode: PluginName, RrCodec: RrCodecVal}, p.log)
+	if err != nil {
+		return err
+	}
+
 	// init codec
-	ap := aggregatedpool.NewActivityDefinition(codec, pl, p.log, p.dataConverter, p.client, p.graceTimeout)
+	ap := aggregatedpool.NewActivityDefinition(p.codec, pl, p.log, p.dataConverter, p.client, p.graceTimeout)
 	// --------------------------------
 
 	// ---------- WORKFLOWS -------------
@@ -151,30 +160,26 @@ func (p *Plugin) Serve() chan error {
 			// no supervisor for the workflow worker
 			Supervisor: nil,
 		},
-		env,
+		map[string]string{RrMode: PluginName, RrCodec: RrCodecVal},
 		nil,
 	)
 	if err != nil {
-		errCh <- err
-		return errCh
+		return err
 	}
 
-	wfDef := aggregatedpool.NewWorkflowDefinition(codec, p.dataConverter, wpl, p.log, p.SedID, p.client, p.graceTimeout)
+	wfDef := aggregatedpool.NewWorkflowDefinition(p.codec, p.dataConverter, wpl, p.log, p.SedID, p.client, p.graceTimeout)
 
 	var workers []worker.Worker
-	workers, p.workflows, p.activities, err = aggregatedpool.Init(wfDef, ap, wpl, codec, p.log, p.client, p.graceTimeout, p.rrVersion)
+	workers, p.workflows, p.activities, err = aggregatedpool.Init(wfDef, ap, wpl, p.codec, p.log, p.client, p.graceTimeout, p.rrVersion)
 	if err != nil {
-		return nil
+		return err
 	}
-
-	// --------------------------------
 
 	// ---------- START WORKERS ---------------
 	for i := 0; i < len(workers); i++ {
 		err = workers[i].Start()
 		if err != nil {
-			errCh <- err
-			return errCh
+			return err
 		}
 	}
 
@@ -186,7 +191,7 @@ func (p *Plugin) Serve() chan error {
 	p.actP = pl
 	p.wfP = wpl
 
-	return errCh
+	return nil
 }
 
 func (p *Plugin) Stop() error {

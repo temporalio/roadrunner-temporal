@@ -85,7 +85,7 @@ func Init(wDef *Workflow, actDef *Activity, p pool.Pool, c Codec, log *zap.Logge
 		workers = append(workers, wrk)
 	}
 
-	log.Debug("workflow workers initialized", zap.Int("num_workers", len(workers)))
+	log.Debug("workers initialized", zap.Int("num_workers", len(workers)))
 
 	return workers, workflows, activities, nil
 }
