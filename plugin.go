@@ -2,16 +2,19 @@ package roadrunner_temporal //nolint:revive,stylecheck
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/roadrunner-server/api/v2/event_bus"
 	"github.com/roadrunner-server/api/v2/plugins/config"
 	"github.com/roadrunner-server/api/v2/plugins/server"
 	rrPool "github.com/roadrunner-server/api/v2/pool"
 	"github.com/roadrunner-server/api/v2/state/process"
 	"github.com/roadrunner-server/errors"
+	"github.com/roadrunner-server/sdk/v2/events"
 	poolImpl "github.com/roadrunner-server/sdk/v2/pool"
 	processImpl "github.com/roadrunner-server/sdk/v2/state/process"
 	"github.com/temporalio/roadrunner-temporal/aggregatedpool"
@@ -62,6 +65,11 @@ type Plugin struct {
 	activities []string
 	codec      *proto.Codec
 
+	eventBus event_bus.EventBus
+	id       string
+	events   chan event_bus.Event
+	stopCh   chan struct{}
+
 	seqID        uint64
 	workers      []worker.Worker
 	graceTimeout time.Duration
@@ -86,6 +94,11 @@ func (p *Plugin) Init(cfg config.Configurer, log *zap.Logger, server server.Serv
 	p.server = server
 	p.graceTimeout = cfg.GracefulTimeout()
 	p.rrVersion = cfg.RRVersion()
+
+	// events
+	p.events = make(chan event_bus.Event, 1)
+	p.eventBus, p.id = events.Bus()
+	p.stopCh = make(chan struct{}, 1)
 
 	return nil
 }
@@ -136,21 +149,41 @@ func (p *Plugin) Serve() chan error {
 		return errCh
 	}
 
+	err = p.eventBus.SubscribeP(p.id, fmt.Sprintf("*.%s", events.EventWorkerStopped.String()), p.events)
+	if err != nil {
+		errCh <- err
+		return errCh
+	}
+
+	go func() {
+		for {
+			select {
+			case ev := <-p.events:
+				p.log.Debug("worker stopped, restarting pool and temporal workers", zap.String("message", ev.Message()))
+				errR := p.Reset()
+				if errR != nil {
+					errCh <- errors.E(op, errors.Errorf("error during reset: %#v, event: %s", errR, ev.Message()))
+					return
+				}
+			case <-p.stopCh:
+				return
+			}
+		}
+	}()
+
 	return errCh
 }
 
 func (p *Plugin) initPool() error {
-	// ------ ACTIVITIES POOL --------
+	// ------ ACTIVITY POOL --------
 	pl, err := p.server.NewWorkerPool(context.Background(), p.config.Activities, map[string]string{RrMode: PluginName, RrCodec: RrCodecVal}, p.log)
 	if err != nil {
 		return err
 	}
 
-	// init codec
 	ap := aggregatedpool.NewActivityDefinition(p.codec, pl, p.log, p.dataConverter, p.client, p.graceTimeout)
-	// --------------------------------
 
-	// ---------- WORKFLOWS -------------
+	// ---------- WORKFLOW POOL -------------
 	wpl, err := p.server.NewWorkerPool(
 		context.Background(),
 		&poolImpl.Config{
@@ -197,6 +230,11 @@ func (p *Plugin) initPool() error {
 func (p *Plugin) Stop() error {
 	p.Lock()
 	defer p.Unlock()
+
+	// stop events
+	p.eventBus.Unsubscribe(p.id)
+	p.stopCh <- struct{}{}
+	p.eventBus = nil
 
 	for i := 0; i < len(p.workers); i++ {
 		p.workers[i].Stop()
@@ -267,6 +305,25 @@ func (p *Plugin) Reset() error {
 		return errors.E(op, err)
 	}
 	p.log.Info("activity pool restarted")
+
+	// stop temporal workers
+	for i := 0; i < len(p.workers); i++ {
+		p.workers[i].Stop()
+	}
+
+	p.workers = nil
+
+	p.workers, p.workflows, p.activities, err = aggregatedpool.Init(p.rrWorkflow, p.rrActivity, p.wfP, p.codec, p.log, p.client, p.graceTimeout, p.rrVersion)
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < len(p.workers); i++ {
+		err = p.workers[i].Start()
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
