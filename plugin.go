@@ -261,6 +261,7 @@ func (p *Plugin) Reset() error {
 	}
 
 	p.workers = nil
+	worker.PurgeStickyWorkflowCache()
 
 	// get worker info
 	wi := make([]*internal.WorkerInfo, 0, 5)
