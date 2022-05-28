@@ -2,16 +2,19 @@ package roadrunner_temporal //nolint:revive,stylecheck
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/roadrunner-server/api/v2/event_bus"
 	"github.com/roadrunner-server/api/v2/plugins/config"
 	"github.com/roadrunner-server/api/v2/plugins/server"
 	rrPool "github.com/roadrunner-server/api/v2/pool"
 	"github.com/roadrunner-server/api/v2/state/process"
 	"github.com/roadrunner-server/errors"
+	"github.com/roadrunner-server/sdk/v2/events"
 	poolImpl "github.com/roadrunner-server/sdk/v2/pool"
 	processImpl "github.com/roadrunner-server/sdk/v2/state/process"
 	"github.com/temporalio/roadrunner-temporal/aggregatedpool"
@@ -42,7 +45,7 @@ const (
 )
 
 type Plugin struct {
-	sync.RWMutex
+	mu sync.RWMutex
 
 	server      server.Server
 	log         *zap.Logger
@@ -55,12 +58,17 @@ type Plugin struct {
 	actP rrPool.Pool
 	wfP  rrPool.Pool
 
-	rrVersion  string
-	rrActivity *aggregatedpool.Activity
-	rrWorkflow *aggregatedpool.Workflow
-	workflows  map[string]internal.WorkflowInfo
-	activities []string
-	codec      *proto.Codec
+	rrVersion     string
+	rrActivityDef *aggregatedpool.Activity
+	rrWorkflowDef *aggregatedpool.Workflow
+	workflows     map[string]internal.WorkflowInfo
+	activities    []string
+	codec         *proto.Codec
+
+	eventBus event_bus.EventBus
+	id       string
+	events   chan event_bus.Event
+	stopCh   chan struct{}
 
 	seqID        uint64
 	workers      []worker.Worker
@@ -82,10 +90,17 @@ func (p *Plugin) Init(cfg config.Configurer, log *zap.Logger, server server.Serv
 	p.config.InitDefault()
 
 	p.dataConverter = data_converter.NewDataConverter(converter.GetDefaultDataConverter())
-	p.log = log
+	p.log = &zap.Logger{}
+	*p.log = *log
+
 	p.server = server
 	p.graceTimeout = cfg.GracefulTimeout()
 	p.rrVersion = cfg.RRVersion()
+
+	// events
+	p.events = make(chan event_bus.Event, 1)
+	p.eventBus, p.id = events.Bus()
+	p.stopCh = make(chan struct{}, 1)
 
 	return nil
 }
@@ -94,8 +109,8 @@ func (p *Plugin) Serve() chan error {
 	errCh := make(chan error, 1)
 	const op = errors.Op("temporal_serve")
 
-	p.Lock()
-	defer p.Unlock()
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	worker.SetStickyWorkflowCacheSize(p.config.CacheSize)
 
@@ -136,67 +151,39 @@ func (p *Plugin) Serve() chan error {
 		return errCh
 	}
 
+	err = p.eventBus.SubscribeP(p.id, fmt.Sprintf("*.%s", events.EventWorkerStopped.String()), p.events)
+	if err != nil {
+		errCh <- err
+		return errCh
+	}
+
+	go func() {
+		for {
+			select {
+			case ev := <-p.events:
+				p.log.Debug("worker stopped, restarting pool and temporal workers", zap.String("message", ev.Message()))
+				errR := p.Reset()
+				if errR != nil {
+					errCh <- errors.E(op, errors.Errorf("error during reset: %#v, event: %s", errR, ev.Message()))
+					return
+				}
+			case <-p.stopCh:
+				return
+			}
+		}
+	}()
+
 	return errCh
 }
 
-func (p *Plugin) initPool() error {
-	// ------ ACTIVITIES POOL --------
-	pl, err := p.server.NewWorkerPool(context.Background(), p.config.Activities, map[string]string{RrMode: PluginName, RrCodec: RrCodecVal}, p.log)
-	if err != nil {
-		return err
-	}
-
-	// init codec
-	ap := aggregatedpool.NewActivityDefinition(p.codec, pl, p.log, p.dataConverter, p.client, p.graceTimeout)
-	// --------------------------------
-
-	// ---------- WORKFLOWS -------------
-	wpl, err := p.server.NewWorkerPool(
-		context.Background(),
-		&poolImpl.Config{
-			NumWorkers:      1,
-			AllocateTimeout: time.Hour * 240,
-			DestroyTimeout:  time.Second * 30,
-			// no supervisor for the workflow worker
-			Supervisor: nil,
-		},
-		map[string]string{RrMode: PluginName, RrCodec: RrCodecVal},
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
-	wfDef := aggregatedpool.NewWorkflowDefinition(p.codec, p.dataConverter, wpl, p.log, p.SedID, p.client, p.graceTimeout)
-
-	var workers []worker.Worker
-	workers, p.workflows, p.activities, err = aggregatedpool.Init(wfDef, ap, wpl, p.codec, p.log, p.client, p.graceTimeout, p.rrVersion)
-	if err != nil {
-		return err
-	}
-
-	// ---------- START WORKERS ---------------
-	for i := 0; i < len(workers); i++ {
-		err = workers[i].Start()
-		if err != nil {
-			return err
-		}
-	}
-
-	// --------------------------------
-
-	p.rrActivity = ap
-	p.rrWorkflow = wfDef
-	p.workers = workers
-	p.actP = pl
-	p.wfP = wpl
-
-	return nil
-}
-
 func (p *Plugin) Stop() error {
-	p.Lock()
-	defer p.Unlock()
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	// stop events
+	p.eventBus.Unsubscribe(p.id)
+	p.stopCh <- struct{}{}
+	p.eventBus = nil
 
 	for i := 0; i < len(p.workers); i++ {
 		p.workers[i].Stop()
@@ -217,10 +204,10 @@ func (p *Plugin) Stop() error {
 }
 
 func (p *Plugin) Workers() []*process.State {
-	p.RLock()
+	p.mu.RLock()
 	wfPw := p.wfP.Workers()
 	actPw := p.actP.Workers()
-	p.RUnlock()
+	p.mu.RUnlock()
 
 	states := make([]*process.State, 0, len(wfPw)+len(actPw))
 
@@ -250,25 +237,22 @@ func (p *Plugin) Workers() []*process.State {
 }
 
 func (p *Plugin) Reset() error {
-	const op = errors.Op("temporal_reset")
-	p.Lock()
-	defer p.Unlock()
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	p.log.Info("reset signal received, resetting activity and workflow worker pools")
 
-	err := p.wfP.Reset(context.Background())
-	if err != nil {
-		return errors.E(op, err)
+	// stop temporal workers
+	for i := 0; i < len(p.workers); i++ {
+		p.workers[i].Stop()
 	}
-	p.log.Info("workflow pool restarted")
 
-	err = p.actP.Reset(context.Background())
-	if err != nil {
-		return errors.E(op, err)
-	}
-	p.log.Info("activity pool restarted")
+	p.workers = nil
 
-	return nil
+	p.wfP.Destroy(context.Background())
+	p.actP.Destroy(context.Background())
+
+	return p.initPool()
 }
 
 func (p *Plugin) Name() string {
@@ -283,4 +267,51 @@ func (p *Plugin) SedID() uint64 {
 	p.log.Debug("sequenceID", zap.Uint64("before", atomic.LoadUint64(&p.seqID)))
 	defer p.log.Debug("sequenceID", zap.Uint64("after", atomic.LoadUint64(&p.seqID)+1))
 	return atomic.AddUint64(&p.seqID, 1)
+}
+
+func (p *Plugin) initPool() error {
+	// ------ ACTIVITY POOL --------
+	var err error
+	p.actP, err = p.server.NewWorkerPool(context.Background(), p.config.Activities, map[string]string{RrMode: PluginName, RrCodec: RrCodecVal}, p.log)
+	if err != nil {
+		return err
+	}
+
+	p.rrActivityDef = aggregatedpool.NewActivityDefinition(p.codec, p.actP, p.log, p.dataConverter, p.client, p.graceTimeout)
+
+	// ---------- WORKFLOW POOL -------------
+	p.wfP, err = p.server.NewWorkerPool(
+		context.Background(),
+		&poolImpl.Config{
+			NumWorkers:      1,
+			AllocateTimeout: time.Hour * 240,
+			DestroyTimeout:  time.Second * 30,
+			// no supervisor for the workflow worker
+			Supervisor: nil,
+		},
+		map[string]string{RrMode: PluginName, RrCodec: RrCodecVal},
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	p.rrWorkflowDef = aggregatedpool.NewWorkflowDefinition(p.codec, p.dataConverter, p.wfP, p.log, p.SedID, p.client, p.graceTimeout)
+
+	p.workers, p.workflows, p.activities, err = aggregatedpool.Init(p.rrWorkflowDef, p.rrActivityDef, p.wfP, p.codec, p.log, p.client, p.graceTimeout, p.rrVersion)
+	if err != nil {
+		return err
+	}
+
+	// ---------- START WORKERS ---------------
+	for i := 0; i < len(p.workers); i++ {
+		err = p.workers[i].Start()
+		if err != nil {
+			return err
+		}
+	}
+
+	// --------------------------------
+
+	return nil
 }

@@ -40,7 +40,6 @@ func (mq *MessageQueue) PushCommand(cmd interface{}, payloads *common.Payloads, 
 	mq.queue = append(mq.queue, &internal.Message{
 		ID:       mq.SeqID(),
 		Command:  cmd,
-		Failure:  nil,
 		Payloads: payloads,
 		Header:   header,
 	})
