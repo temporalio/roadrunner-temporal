@@ -48,13 +48,13 @@ func (r *rpc) RecordActivityHeartbeat(in RecordHeartbeatRequest, out *RecordHear
 	}
 
 	// find running activity
-	r.srv.RLock()
-	ctx, err := r.srv.rrActivity.GetActivityContext(in.TaskToken)
+	r.srv.mu.RLock()
+	ctx, err := r.srv.rrActivityDef.GetActivityContext(in.TaskToken)
 	if err != nil {
-		r.srv.RUnlock()
+		r.srv.mu.RUnlock()
 		return err
 	}
-	r.srv.RUnlock()
+	r.srv.mu.RUnlock()
 
 	activity.RecordHeartbeat(ctx, details)
 
@@ -69,15 +69,15 @@ func (r *rpc) RecordActivityHeartbeat(in RecordHeartbeatRequest, out *RecordHear
 }
 
 func (r *rpc) GetActivityNames(_ bool, out *[]string) error {
-	r.srv.RLock()
-	defer r.srv.RUnlock()
+	r.srv.mu.RLock()
+	defer r.srv.mu.RUnlock()
 	*out = r.srv.activities
 	return nil
 }
 
 func (r *rpc) GetWorkflowNames(_ bool, out *[]string) error {
-	r.srv.RLock()
-	defer r.srv.RUnlock()
+	r.srv.mu.RLock()
+	defer r.srv.mu.RUnlock()
 
 	for k := range r.srv.workflows {
 		*out = append(*out, k)
