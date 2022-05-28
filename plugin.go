@@ -61,8 +61,8 @@ type Plugin struct {
 	rrVersion     string
 	rrActivityDef *aggregatedpool.Activity
 	rrWorkflowDef *aggregatedpool.Workflow
-	workflows     map[string]internal.WorkflowInfo
-	activities    []string
+	workflows     map[string]*internal.WorkflowInfo
+	activities    map[string]*internal.ActivityInfo
 	codec         *proto.Codec
 
 	eventBus event_bus.EventBus
@@ -107,7 +107,7 @@ func (p *Plugin) Init(cfg config.Configurer, log *zap.Logger, server server.Serv
 
 func (p *Plugin) Serve() chan error {
 	errCh := make(chan error, 1)
-	const op = errors.Op("temporal_serve")
+	const op = errors.Op("temporal_plugin_serve")
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -138,7 +138,7 @@ func (p *Plugin) Serve() chan error {
 
 	p.client, err = temporalClient.NewClient(opts)
 	if err != nil {
-		errCh <- err
+		errCh <- errors.E(op, err)
 		return errCh
 	}
 
@@ -147,13 +147,13 @@ func (p *Plugin) Serve() chan error {
 
 	err = p.initPool()
 	if err != nil {
-		errCh <- err
+		errCh <- errors.E(op, err)
 		return errCh
 	}
 
 	err = p.eventBus.SubscribeP(p.id, fmt.Sprintf("*.%s", events.EventWorkerStopped.String()), p.events)
 	if err != nil {
-		errCh <- err
+		errCh <- errors.E(op, err)
 		return errCh
 	}
 
@@ -237,10 +237,23 @@ func (p *Plugin) Workers() []*process.State {
 }
 
 func (p *Plugin) Reset() error {
+	const op = errors.Op("temporal_reset")
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	p.log.Info("reset signal received, resetting activity and workflow worker pools")
+
+	errWp := p.wfP.Reset(context.Background())
+	if errWp != nil {
+		return errors.E(op, errWp)
+	}
+	p.log.Info("workflow pool restarted")
+
+	errAp := p.actP.Reset(context.Background())
+	if errAp != nil {
+		return errors.E(op, errAp)
+	}
+	p.log.Info("activity pool restarted")
 
 	// stop temporal workers
 	for i := 0; i < len(p.workers); i++ {
@@ -249,10 +262,31 @@ func (p *Plugin) Reset() error {
 
 	p.workers = nil
 
-	p.wfP.Destroy(context.Background())
-	p.actP.Destroy(context.Background())
+	// get worker info
+	wi := make([]*internal.WorkerInfo, 0, 5)
+	err := aggregatedpool.GetWorkerInfo(p.codec, p.wfP, p.rrVersion, &wi)
+	if err != nil {
+		return err
+	}
 
-	return p.initPool()
+	// based on the worker info -> initialize workers
+	p.workers, err = aggregatedpool.InitWorkers(p.rrWorkflowDef, p.rrActivityDef, wi, p.log, p.client, p.graceTimeout)
+	if err != nil {
+		return err
+	}
+
+	// start workers
+	for i := 0; i < len(p.workers); i++ {
+		err = p.workers[i].Start()
+		if err != nil {
+			return err
+		}
+	}
+
+	p.activities = aggregatedpool.GrabActivities(wi)
+	p.workflows = aggregatedpool.GrabWorkflows(wi)
+
+	return nil
 }
 
 func (p *Plugin) Name() string {
@@ -270,17 +304,16 @@ func (p *Plugin) SedID() uint64 {
 }
 
 func (p *Plugin) initPool() error {
-	// ------ ACTIVITY POOL --------
 	var err error
-	p.actP, err = p.server.NewWorkerPool(context.Background(), p.config.Activities, map[string]string{RrMode: PluginName, RrCodec: RrCodecVal}, p.log)
+	ap, err := p.server.NewWorkerPool(context.Background(), p.config.Activities, map[string]string{RrMode: PluginName, RrCodec: RrCodecVal}, p.log)
 	if err != nil {
 		return err
 	}
 
-	p.rrActivityDef = aggregatedpool.NewActivityDefinition(p.codec, p.actP, p.log, p.dataConverter, p.client, p.graceTimeout)
+	p.rrActivityDef = aggregatedpool.NewActivityDefinition(p.codec, ap, p.log, p.dataConverter, p.client, p.graceTimeout)
 
 	// ---------- WORKFLOW POOL -------------
-	p.wfP, err = p.server.NewWorkerPool(
+	wp, err := p.server.NewWorkerPool(
 		context.Background(),
 		&poolImpl.Config{
 			NumWorkers:      1,
@@ -296,14 +329,20 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	p.rrWorkflowDef = aggregatedpool.NewWorkflowDefinition(p.codec, p.dataConverter, p.wfP, p.log, p.SedID, p.client, p.graceTimeout)
+	p.rrWorkflowDef = aggregatedpool.NewWorkflowDefinition(p.codec, p.dataConverter, wp, p.log, p.SedID, p.client, p.graceTimeout)
 
-	p.workers, p.workflows, p.activities, err = aggregatedpool.Init(p.rrWorkflowDef, p.rrActivityDef, p.wfP, p.codec, p.log, p.client, p.graceTimeout, p.rrVersion)
+	// get worker information
+	wi := make([]*internal.WorkerInfo, 0, 5)
+	err = aggregatedpool.GetWorkerInfo(p.codec, wp, p.rrVersion, &wi)
 	if err != nil {
 		return err
 	}
 
-	// ---------- START WORKERS ---------------
+	p.workers, err = aggregatedpool.InitWorkers(p.rrWorkflowDef, p.rrActivityDef, wi, p.log, p.client, p.graceTimeout)
+	if err != nil {
+		return err
+	}
+
 	for i := 0; i < len(p.workers); i++ {
 		err = p.workers[i].Start()
 		if err != nil {
@@ -311,7 +350,10 @@ func (p *Plugin) initPool() error {
 		}
 	}
 
-	// --------------------------------
+	p.activities = aggregatedpool.GrabActivities(wi)
+	p.workflows = aggregatedpool.GrabWorkflows(wi)
+	p.actP = ap
+	p.wfP = wp
 
 	return nil
 }

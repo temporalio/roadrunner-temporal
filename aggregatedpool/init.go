@@ -16,30 +16,55 @@ import (
 	"go.uber.org/zap"
 )
 
-func Init(wDef *Workflow, actDef *Activity, p pool.Pool, c Codec, log *zap.Logger, tc temporalClient.Client, graceTimeout time.Duration, version string) ([]worker.Worker, map[string]internal.WorkflowInfo, []string, error) {
+func GetWorkerInfo(c Codec, p pool.Pool, rrVersion string, wi *[]*internal.WorkerInfo) error {
 	const op = errors.Op("workflow_definition_init")
 
 	// todo(rustatian): to sync.Pool
 	pld := &payload.Payload{}
-	err := c.Encode(&internal.Context{}, pld, &internal.Message{ID: 0, Command: internal.GetWorkerInfo{RRVersion: version}})
+	err := c.Encode(&internal.Context{}, pld, &internal.Message{ID: 0, Command: internal.GetWorkerInfo{RRVersion: rrVersion}})
 	if err != nil {
-		return nil, nil, nil, errors.E(op, err)
+		return errors.E(op, err)
 	}
 
 	resp, err := p.Exec(pld)
 	if err != nil {
-		return nil, nil, nil, errors.E(op, err)
+		return errors.E(op, err)
 	}
 
-	wi := make([]*internal.WorkerInfo, 0, 1)
-	err = c.DecodeWorkerInfo(resp, &wi)
+	err = c.DecodeWorkerInfo(resp, wi)
 	if err != nil {
-		return nil, nil, nil, errors.E(op, err)
+		return errors.E(op, err)
 	}
 
+	return nil
+}
+
+func GrabWorkflows(wi []*internal.WorkerInfo) map[string]*internal.WorkflowInfo {
+	workflowInfo := make(map[string]*internal.WorkflowInfo)
+
+	for i := 0; i < len(wi); i++ {
+		for j := 0; j < len(wi[i].Workflows); j++ {
+			workflowInfo[wi[i].Workflows[j].Name] = &wi[i].Workflows[j]
+		}
+	}
+
+	return workflowInfo
+}
+
+func GrabActivities(wi []*internal.WorkerInfo) map[string]*internal.ActivityInfo {
+	activitiesInfo := make(map[string]*internal.ActivityInfo)
+
+	for i := 0; i < len(wi); i++ {
+		for j := 0; j < len(wi[i].Activities); j++ {
+			activitiesInfo[wi[i].Activities[j].Name] = &wi[i].Activities[j]
+		}
+	}
+
+	return activitiesInfo
+}
+
+func InitWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo, log *zap.Logger, tc temporalClient.Client, graceTimeout time.Duration) ([]worker.Worker, error) {
 	workers := make([]worker.Worker, 0, 1)
-	workflows := make(map[string]internal.WorkflowInfo, 2)
-	activities := make([]string, 0, 2)
 
 	for i := 0; i < len(wi); i++ {
 		log.Debug("worker info", zap.String("taskqueue", wi[i].TaskQueue), zap.Any("options", wi[i].Options))
@@ -66,8 +91,6 @@ func Init(wDef *Workflow, actDef *Activity, p pool.Pool, c Codec, log *zap.Logge
 				DisableAlreadyRegisteredCheck: false,
 			})
 
-			workflows[wi[i].Workflows[j].Name] = wi[i].Workflows[j]
-
 			log.Debug("workflow registered", zap.String("taskqueue", wi[i].TaskQueue), zap.Any("workflow name", wi[i].Workflows[j].Name))
 		}
 
@@ -79,7 +102,6 @@ func Init(wDef *Workflow, actDef *Activity, p pool.Pool, c Codec, log *zap.Logge
 			})
 
 			log.Debug("activity registered", zap.String("taskqueue", wi[i].TaskQueue), zap.Any("workflow name", wi[i].Activities[j].Name))
-			activities = append(activities, wi[i].Activities[j].Name)
 		}
 
 		workers = append(workers, wrk)
@@ -87,5 +109,5 @@ func Init(wDef *Workflow, actDef *Activity, p pool.Pool, c Codec, log *zap.Logge
 
 	log.Debug("workers initialized", zap.Int("num_workers", len(workers)))
 
-	return workers, workflows, activities, nil
+	return workers, nil
 }
