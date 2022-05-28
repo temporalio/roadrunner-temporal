@@ -89,9 +89,10 @@ func (p *Plugin) Init(cfg config.Configurer, log *zap.Logger, server server.Serv
 
 	p.config.InitDefault()
 
-	worker.EnableVerboseLogging(true)
 	p.dataConverter = data_converter.NewDataConverter(converter.GetDefaultDataConverter())
-	p.log = log
+	p.log = &zap.Logger{}
+	*p.log = *log
+
 	p.server = server
 	p.graceTimeout = cfg.GracefulTimeout()
 	p.rrVersion = cfg.RRVersion()
