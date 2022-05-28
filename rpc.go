@@ -71,7 +71,9 @@ func (r *rpc) RecordActivityHeartbeat(in RecordHeartbeatRequest, out *RecordHear
 func (r *rpc) GetActivityNames(_ bool, out *[]string) error {
 	r.srv.mu.RLock()
 	defer r.srv.mu.RUnlock()
-	*out = r.srv.activities
+	for k := range r.srv.activities {
+		*out = append(*out, k)
+	}
 	return nil
 }
 
