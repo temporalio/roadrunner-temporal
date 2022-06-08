@@ -136,7 +136,7 @@ func (p *Plugin) Serve() chan error {
 		p.tallyCloser = cl
 	}
 
-	p.client, err = temporalClient.NewClient(opts)
+	p.client, err = temporalClient.Dial(opts)
 	if err != nil {
 		errCh <- errors.E(op, err)
 		return errCh
