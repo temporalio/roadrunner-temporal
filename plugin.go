@@ -243,6 +243,13 @@ func (p *Plugin) Reset() error {
 
 	p.log.Info("reset signal received, resetting activity and workflow worker pools")
 
+	// stop temporal workers
+	for i := 0; i < len(p.workers); i++ {
+		p.workers[i].Stop()
+	}
+
+	p.workers = nil
+
 	errWp := p.wfP.Reset(context.Background())
 	if errWp != nil {
 		return errors.E(op, errWp)
@@ -254,14 +261,6 @@ func (p *Plugin) Reset() error {
 		return errors.E(op, errAp)
 	}
 	p.log.Info("activity pool restarted")
-
-	// stop temporal workers
-	for i := 0; i < len(p.workers); i++ {
-		p.workers[i].Stop()
-	}
-
-	p.workers = nil
-	worker.PurgeStickyWorkflowCache()
 
 	// get worker info
 	wi := make([]*internal.WorkerInfo, 0, 5)
