@@ -249,6 +249,7 @@ func (p *Plugin) Reset() error {
 	}
 
 	p.workers = nil
+	worker.PurgeStickyWorkflowCache()
 
 	errWp := p.wfP.Reset(context.Background())
 	if errWp != nil {
