@@ -10,7 +10,7 @@ require (
 	github.com/roadrunner-server/errors v1.1.2
 	github.com/roadrunner-server/sdk/v2 v2.15.0
 	github.com/stretchr/testify v1.7.2
-	github.com/uber-go/tally/v4 v4.1.1
+	github.com/uber-go/tally/v4 v4.1.2
 	go.temporal.io/api v1.8.0
 	go.temporal.io/sdk v1.15.0
 	go.temporal.io/sdk/contrib/tally v0.1.0
