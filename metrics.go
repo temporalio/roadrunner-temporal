@@ -5,6 +5,8 @@ import (
 	"time"
 
 	prom "github.com/prometheus/client_golang/prometheus"
+	"github.com/roadrunner-server/api/v2/plugins/informer"
+	"github.com/roadrunner-server/sdk/v2/metrics"
 	"github.com/uber-go/tally/v4"
 	"github.com/uber-go/tally/v4/prometheus"
 	"go.uber.org/zap"
@@ -55,4 +57,27 @@ func newPrometheusScope(c prometheus.Configuration, prefix string, log *zap.Logg
 	scope, closer := tally.NewRootScope(scopeOpts, time.Second)
 
 	return scope, closer, nil
+}
+
+func (p *Plugin) MetricsCollector() []prom.Collector {
+	// p - implements Exporter interface (workers)
+	// other - request duration and count
+	return []prom.Collector{p.statsExporter}
+}
+
+const (
+	namespace = "rr_temporal"
+)
+
+func newStatsExporter(stats informer.Informer) *metrics.StatsExporter {
+	return &metrics.StatsExporter{
+		TotalMemoryDesc:  prom.NewDesc(prom.BuildFQName(namespace, "", "workers_memory_bytes"), "Memory usage by workers", nil, nil),
+		StateDesc:        prom.NewDesc(prom.BuildFQName(namespace, "", "worker_state"), "Worker current state", []string{"state", "pid"}, nil),
+		WorkerMemoryDesc: prom.NewDesc(prom.BuildFQName(namespace, "", "worker_memory_bytes"), "Worker current memory usage", []string{"pid"}, nil),
+		TotalWorkersDesc: prom.NewDesc(prom.BuildFQName(namespace, "", "total_workers"), "Total number of workers used by the plugin", nil, nil),
+		WorkersReady:     prom.NewDesc(prom.BuildFQName(namespace, "", "workers_ready"), "Workers currently in ready state", nil, nil),
+		WorkersWorking:   prom.NewDesc(prom.BuildFQName(namespace, "", "workers_working"), "Workers currently in working state", nil, nil),
+		WorkersInvalid:   prom.NewDesc(prom.BuildFQName(namespace, "", "workers_invalid"), "Workers currently in invalid,killing,destroyed,errored,inactive states", nil, nil),
+		Workers:          stats,
+	}
 }

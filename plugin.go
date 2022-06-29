@@ -15,6 +15,7 @@ import (
 	"github.com/roadrunner-server/api/v2/state/process"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/sdk/v2/events"
+	"github.com/roadrunner-server/sdk/v2/metrics"
 	poolImpl "github.com/roadrunner-server/sdk/v2/pool"
 	processImpl "github.com/roadrunner-server/sdk/v2/state/process"
 	"github.com/temporalio/roadrunner-temporal/aggregatedpool"
@@ -47,10 +48,11 @@ const (
 type Plugin struct {
 	mu sync.RWMutex
 
-	server      server.Server
-	log         *zap.Logger
-	config      *Config
-	tallyCloser io.Closer
+	server        server.Server
+	log           *zap.Logger
+	config        *Config
+	tallyCloser   io.Closer
+	statsExporter *metrics.StatsExporter
 
 	client        temporalClient.Client
 	dataConverter converter.DataConverter
@@ -101,6 +103,7 @@ func (p *Plugin) Init(cfg config.Configurer, log *zap.Logger, server server.Serv
 	p.events = make(chan event_bus.Event, 1)
 	p.eventBus, p.id = events.Bus()
 	p.stopCh = make(chan struct{}, 1)
+	p.statsExporter = newStatsExporter(p)
 
 	return nil
 }
