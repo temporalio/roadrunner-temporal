@@ -318,6 +318,7 @@ func (p *Plugin) initPool() error {
 		context.Background(),
 		&poolImpl.Config{
 			NumWorkers:      1,
+			Command:         p.config.Activities.Command,
 			AllocateTimeout: time.Hour * 240,
 			DestroyTimeout:  time.Second * 30,
 			// no supervisor for the workflow worker
