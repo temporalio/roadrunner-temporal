@@ -3,7 +3,7 @@ module github.com/temporalio/roadrunner-temporal
 go 1.18
 
 require (
-	github.com/goccy/go-json v0.9.7
+	github.com/goccy/go-json v0.9.8
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
 	github.com/roadrunner-server/api/v2 v2.18.0
