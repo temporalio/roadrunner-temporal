@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/roadrunner-server/api/v2 v2.18.0
 	github.com/roadrunner-server/errors v1.1.2
-	github.com/roadrunner-server/sdk/v2 v2.17.1
+	github.com/roadrunner-server/sdk/v2 v2.17.3
 	github.com/stretchr/testify v1.8.0
 	github.com/uber-go/tally/v4 v4.1.2
 	go.temporal.io/api v1.8.0
