@@ -238,8 +238,8 @@ github.com/roadrunner-server/errors v1.1.2 h1:+LPw9Akgg+8LAGM4wASMWLAoBIbyP+mhNf
 github.com/roadrunner-server/errors v1.1.2/go.mod h1:jVSh32nFtRMzKItYUM9W2CTLLpXAM8HseL2lUENPYtU=
 github.com/roadrunner-server/goridge/v3 v3.4.5 h1:g7K9kOmyAOQQ9TusDYksgyKBsKQrQVNc0CT1HKhaphg=
 github.com/roadrunner-server/goridge/v3 v3.4.5/go.mod h1:zGbUad2YyaaW9Vt9dqLBDcyrA45KlYoRh8jB7TUsStM=
-github.com/roadrunner-server/sdk/v2 v2.17.3 h1:BkBDcdO+YhEvbmsbPtak5yg91FDW+GFoZr5UBrWOQJc=
-github.com/roadrunner-server/sdk/v2 v2.17.3/go.mod h1:n05/SPVQ9WFj4UJEruVbXrSUfo2hkGiO4HxMgvsAlWM=
+github.com/roadrunner-server/sdk/v2 v2.18.0 h1:cPu3o8Z13NKFND3ybk6J4HAnSq4qYLkFT1T5CDd42Hs=
+github.com/roadrunner-server/sdk/v2 v2.18.0/go.mod h1:u4QeEEr/Aa7ZamQw1duZSmsl3LMeuMIQKzdENqWEKLI=
 github.com/roadrunner-server/tcplisten v1.1.2 h1:GBjKlSEbA67UB2y83rFWsQKqMQGyalhTN9Q9HCIMBC0=
 github.com/roadrunner-server/tcplisten v1.1.2/go.mod h1:wN2/X46Vo60sC9L5Bf/eC8kL+X3//7KIFmANEXZaLsg=
 github.com/robfig/cron v1.2.0 h1:ZjScXvvxeQ63Dbyxy76Fj3AT3Ut0aKsyd2/tl3DTMuQ=
