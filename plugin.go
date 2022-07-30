@@ -174,14 +174,14 @@ func (p *Plugin) Serve() chan error {
 				switch strings.Contains(ev.Message(), strconv.Itoa(p.wwPID)) {
 				// stopped workflow worker
 				case true:
-					errR := p.ResetAll()
+					errR := p.Reset()
 					if errR != nil {
 						errCh <- errors.E(op, errors.Errorf("error during reset: %#v, event: %s", errR, ev.Message()))
 						return
 					}
 					// stopped one of the activity workers
 				case false:
-					errR := p.Reset()
+					errR := p.ResetAP()
 					if errR != nil {
 						errCh <- errors.E(op, errors.Errorf("error during reset: %#v, event: %s", errR, ev.Message()))
 						return
@@ -257,10 +257,13 @@ func (p *Plugin) Workers() []*process.State {
 	return states
 }
 
-func (p *Plugin) Reset() error {
+func (p *Plugin) ResetAP() error {
 	const op = errors.Op("temporal_plugin_reset")
 
-	p.log.Info("reset signal received, resetting activity and workflow worker pools")
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.log.Info("reset signal received, resetting activity pool")
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
@@ -274,7 +277,7 @@ func (p *Plugin) Reset() error {
 	return nil
 }
 
-func (p *Plugin) ResetAll() error {
+func (p *Plugin) Reset() error {
 	const op = errors.Op("temporal_reset")
 	p.mu.Lock()
 	defer p.mu.Unlock()
