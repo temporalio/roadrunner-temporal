@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -57,8 +59,9 @@ type Plugin struct {
 	client        temporalClient.Client
 	dataConverter converter.DataConverter
 
-	actP rrPool.Pool
-	wfP  rrPool.Pool
+	actP  rrPool.Pool
+	wfP   rrPool.Pool
+	wwPID int
 
 	rrVersion     string
 	rrActivityDef *aggregatedpool.Activity
@@ -165,11 +168,26 @@ func (p *Plugin) Serve() chan error {
 			select {
 			case ev := <-p.events:
 				p.log.Debug("worker stopped, restarting pool and temporal workers", zap.String("message", ev.Message()))
-				errR := p.Reset()
-				if errR != nil {
-					errCh <- errors.E(op, errors.Errorf("error during reset: %#v, event: %s", errR, ev.Message()))
-					return
+
+				// check pid, message from the go sdk is: process exited, pid: 334455 <-- we are looking for this pid
+				// sdk 2.18.1
+				switch strings.Contains(ev.Message(), strconv.Itoa(p.wwPID)) {
+				// stopped workflow worker
+				case true:
+					errR := p.ResetAll()
+					if errR != nil {
+						errCh <- errors.E(op, errors.Errorf("error during reset: %#v, event: %s", errR, ev.Message()))
+						return
+					}
+					// stopped one of the activity workers
+				case false:
+					errR := p.Reset()
+					if errR != nil {
+						errCh <- errors.E(op, errors.Errorf("error during reset: %#v, event: %s", errR, ev.Message()))
+						return
+					}
 				}
+
 			case <-p.stopCh:
 				return
 			}
@@ -240,6 +258,23 @@ func (p *Plugin) Workers() []*process.State {
 }
 
 func (p *Plugin) Reset() error {
+	const op = errors.Op("temporal_plugin_reset")
+
+	p.log.Info("reset signal received, resetting activity and workflow worker pools")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	errAp := p.actP.Reset(ctx)
+	if errAp != nil {
+		return errors.E(op, errAp)
+	}
+	p.log.Info("activity pool restarted")
+
+	return nil
+}
+
+func (p *Plugin) ResetAll() error {
 	const op = errors.Op("temporal_reset")
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -254,13 +289,17 @@ func (p *Plugin) Reset() error {
 	p.workers = nil
 	worker.PurgeStickyWorkflowCache()
 
-	errWp := p.wfP.Reset(context.Background())
+	ctxW, cancelW := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancelW()
+	errWp := p.wfP.Reset(ctxW)
 	if errWp != nil {
 		return errors.E(op, errWp)
 	}
 	p.log.Info("workflow pool restarted")
 
-	errAp := p.actP.Reset(context.Background())
+	ctxA, cancelA := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancelA()
+	errAp := p.actP.Reset(ctxA)
 	if errAp != nil {
 		return errors.E(op, errAp)
 	}
@@ -359,6 +398,13 @@ func (p *Plugin) initPool() error {
 	p.workflows = aggregatedpool.GrabWorkflows(wi)
 	p.actP = ap
 	p.wfP = wp
+
+	if len(p.wfP.Workers()) < 1 {
+		return errors.E(errors.Str("failed to allocate a workflow worker"))
+	}
+
+	// we have only 1 worker for the workflow pool
+	p.wwPID = int(p.wfP.Workers()[0].Pid())
 
 	return nil
 }
