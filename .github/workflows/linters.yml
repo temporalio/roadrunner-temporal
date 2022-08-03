@@ -7,7 +7,7 @@ jobs:
     name: Golang-CI (lint)
     runs-on: ubuntu-latest
     steps:
-      - name: Check out codeg
+      - name: Check out code
         uses: actions/checkout@v3
 
       - name: Set up Go
