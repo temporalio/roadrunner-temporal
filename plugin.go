@@ -2,6 +2,7 @@ package roadrunner_temporal //nolint:revive,stylecheck
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"strconv"
@@ -92,7 +93,10 @@ func (p *Plugin) Init(cfg config.Configurer, log *zap.Logger, server server.Serv
 		return errors.E(op, err)
 	}
 
-	p.config.InitDefault()
+	err = p.config.InitDefault()
+	if err != nil {
+		return errors.E(op, err)
+	}
 
 	p.dataConverter = data_converter.NewDataConverter(converter.GetDefaultDataConverter())
 	p.log = &zap.Logger{}
@@ -120,12 +124,21 @@ func (p *Plugin) Serve() chan error {
 
 	worker.SetStickyWorkflowCacheSize(p.config.CacheSize)
 
-	var err error
 	opts := temporalClient.Options{
 		HostPort:      p.config.Address,
 		Namespace:     p.config.Namespace,
 		Logger:        logger.NewZapAdapter(p.log),
 		DataConverter: p.dataConverter,
+	}
+
+	// simple TLS based on the cert and key
+	if p.config.TLS != nil {
+		cert, err := tls.LoadX509KeyPair(p.config.TLS.Cert, p.config.TLS.Key)
+		if err != nil {
+			errCh <- err
+			return errCh
+		}
+		opts.ConnectionOptions.TLS.Certificates = []tls.Certificate{cert}
 	}
 
 	if p.config.Metrics != nil {
@@ -142,6 +155,7 @@ func (p *Plugin) Serve() chan error {
 		p.tallyCloser = cl
 	}
 
+	var err error
 	p.client, err = temporalClient.Dial(opts)
 	if err != nil {
 		errCh <- errors.E(op, err)
