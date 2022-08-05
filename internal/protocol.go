@@ -60,7 +60,7 @@ type Message struct {
 	ID uint64 `json:"id"`
 
 	// Command of the message in unmarshalled form. Pointer.
-	Command interface{} `json:"command,omitempty"`
+	Command any `json:"command,omitempty"`
 
 	// Failure associated with command id.
 	Failure *failure.Failure `json:"failure,omitempty"`
@@ -274,7 +274,7 @@ func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment, payl
 }
 
 // LocalActivityParams maps activity command to activity params.
-func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnvironment, fn interface{}, payloads *commonpb.Payloads) bindings.ExecuteLocalActivityParams {
+func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnvironment, fn any, payloads *commonpb.Payloads) bindings.ExecuteLocalActivityParams {
 	if cmd.Options.StartToCloseTimeout == 0 {
 		cmd.Options.StartToCloseTimeout = time.Minute
 	}
@@ -303,7 +303,7 @@ func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnviron
 		ExecuteLocalActivityOptions: truTemOptions,
 		ActivityFn:                  fn,
 		ActivityType:                cmd.Name,
-		InputArgs:                   []interface{}{payloads},
+		InputArgs:                   []any{payloads},
 		WorkflowInfo:                env.WorkflowInfo(),
 		ScheduledTime:               time.Now(),
 		Header:                      nil,
@@ -340,7 +340,7 @@ func (cmd NewTimer) ToDuration() time.Duration {
 }
 
 // CommandName returns command name (only for the commands sent to the worker)
-func CommandName(cmd interface{}) (string, error) {
+func CommandName(cmd any) (string, error) {
 	const op = errors.Op("command_name")
 	switch cmd.(type) {
 	case GetWorkerInfo, *GetWorkerInfo:
@@ -393,7 +393,7 @@ func CommandName(cmd interface{}) (string, error) {
 }
 
 // InitCommand reads command from binary payload
-func InitCommand(name string) (interface{}, error) {
+func InitCommand(name string) (any, error) {
 	const op = errors.Op("init_command")
 	switch name {
 	case getWorkerInfoCommand:

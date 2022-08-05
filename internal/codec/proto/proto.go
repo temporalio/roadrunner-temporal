@@ -26,7 +26,7 @@ func NewCodec(log *zap.Logger, dc converter.DataConverter) *Codec {
 		log: log,
 		dc:  dc,
 		frPool: sync.Pool{
-			New: func() interface{} {
+			New: func() any {
 				return &protocolV1.Frame{}
 			},
 		},

@@ -346,7 +346,7 @@ func (wp *Workflow) flushQueue() error {
 }
 
 // Run single command and return single result.
-func (wp *Workflow) runCommand(cmd interface{}, payloads *commonpb.Payloads, header *commonpb.Header) (*internal.Message, error) {
+func (wp *Workflow) runCommand(cmd any, payloads *commonpb.Payloads, header *commonpb.Header) (*internal.Message, error) {
 	const op = errors.Op("workflow_process_runcommand")
 	msg := wp.mq.AllocateMessage(cmd, payloads, header)
 
