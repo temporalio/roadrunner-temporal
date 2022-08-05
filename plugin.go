@@ -353,7 +353,7 @@ func (p *Plugin) Name() string {
 	return PluginName
 }
 
-func (p *Plugin) RPC() interface{} {
+func (p *Plugin) RPC() any {
 	return &rpc{srv: p, client: p.client}
 }
 

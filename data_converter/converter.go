@@ -17,7 +17,7 @@ func NewDataConverter(fallback converter.DataConverter) converter.DataConverter 
 }
 
 // ToPayloads converts a list of values.
-func (r *DataConverter) ToPayloads(values ...interface{}) (*commonpb.Payloads, error) {
+func (r *DataConverter) ToPayloads(values ...any) (*commonpb.Payloads, error) {
 	for _, v := range values {
 		if aggregated, ok := v.(*commonpb.Payloads); ok {
 			// bypassing
@@ -29,13 +29,13 @@ func (r *DataConverter) ToPayloads(values ...interface{}) (*commonpb.Payloads, e
 }
 
 // ToPayload converts single value to payload.
-func (r *DataConverter) ToPayload(value interface{}) (*commonpb.Payload, error) {
+func (r *DataConverter) ToPayload(value any) (*commonpb.Payload, error) {
 	return r.dc.ToPayload(value)
 }
 
 // FromPayloads converts to a list of values of different types.
 // Useful for deserializing arguments of function invocations.
-func (r *DataConverter) FromPayloads(payloads *commonpb.Payloads, valuePtrs ...interface{}) error {
+func (r *DataConverter) FromPayloads(payloads *commonpb.Payloads, valuePtrs ...any) error {
 	if payloads == nil {
 		return nil
 	}
@@ -60,7 +60,7 @@ func (r *DataConverter) FromPayloads(payloads *commonpb.Payloads, valuePtrs ...i
 }
 
 // FromPayload converts single value from payload.
-func (r *DataConverter) FromPayload(payload *commonpb.Payload, valuePtr interface{}) error {
+func (r *DataConverter) FromPayload(payload *commonpb.Payload, valuePtr any) error {
 	return r.dc.FromPayload(payload, valuePtr)
 }
 

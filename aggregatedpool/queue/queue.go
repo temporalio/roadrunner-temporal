@@ -25,7 +25,7 @@ func (mq *MessageQueue) Flush() {
 // AllocateMessage ..
 // TODO(rustatian) allocate??? -> to sync.Pool
 // Remove this method if flavor of sync.Pool with internal.Message
-func (mq *MessageQueue) AllocateMessage(cmd interface{}, payloads *common.Payloads, header *common.Header) *internal.Message {
+func (mq *MessageQueue) AllocateMessage(cmd any, payloads *common.Payloads, header *common.Header) *internal.Message {
 	msg := &internal.Message{
 		ID:       mq.SeqID(),
 		Command:  cmd,
@@ -36,7 +36,7 @@ func (mq *MessageQueue) AllocateMessage(cmd interface{}, payloads *common.Payloa
 	return msg
 }
 
-func (mq *MessageQueue) PushCommand(cmd interface{}, payloads *common.Payloads, header *common.Header) {
+func (mq *MessageQueue) PushCommand(cmd any, payloads *common.Payloads, header *common.Header) {
 	mq.queue = append(mq.queue, &internal.Message{
 		ID:       mq.SeqID(),
 		Command:  cmd,
