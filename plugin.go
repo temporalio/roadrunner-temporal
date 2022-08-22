@@ -32,6 +32,8 @@ import (
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 const (
@@ -46,6 +48,12 @@ const (
 
 	// RrCodecVal - codec name, should be in sync with the PHP-SDK
 	RrCodecVal string = "protobuf"
+
+	// temporal, sync with https://github.com/temporalio/sdk-go/blob/master/internal/internal_utils.go#L44
+	clientNameHeaderName     = "client-name"
+	clientNameHeaderValue    = "roadrunner-temporal"
+	clientVersionHeaderName  = "client-version"
+	clientVersionHeaderValue = "1.5.1"
 )
 
 type Plugin struct {
@@ -129,6 +137,11 @@ func (p *Plugin) Serve() chan error {
 		Namespace:     p.config.Namespace,
 		Logger:        logger.NewZapAdapter(p.log),
 		DataConverter: p.dataConverter,
+		ConnectionOptions: temporalClient.ConnectionOptions{
+			DialOptions: []grpc.DialOption{
+				grpc.WithUnaryInterceptor(rewriteNameAndVersion),
+			},
+		},
 	}
 
 	// simple TLS based on the cert and key
@@ -361,6 +374,20 @@ func (p *Plugin) SedID() uint64 {
 	p.log.Debug("sequenceID", zap.Uint64("before", atomic.LoadUint64(&p.seqID)))
 	defer p.log.Debug("sequenceID", zap.Uint64("after", atomic.LoadUint64(&p.seqID)+1))
 	return atomic.AddUint64(&p.seqID, 1)
+}
+
+func rewriteNameAndVersion(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	md, _, _ := metadata.FromOutgoingContextRaw(ctx)
+	if md == nil {
+		return nil
+	}
+
+	md.Set(clientNameHeaderName, clientNameHeaderValue)
+	md.Set(clientVersionHeaderName, clientVersionHeaderValue)
+
+	ctx = metadata.NewOutgoingContext(ctx, md)
+
+	return invoker(ctx, method, req, reply, cc, opts...)
 }
 
 func (p *Plugin) initPool() error {
