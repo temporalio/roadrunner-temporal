@@ -151,7 +151,10 @@ func (p *Plugin) Serve() chan error {
 			errCh <- err
 			return errCh
 		}
-		opts.ConnectionOptions.TLS.Certificates = []tls.Certificate{cert}
+
+		opts.ConnectionOptions.TLS = &tls.Config{
+			Certificates: []tls.Certificate{cert},
+		}
 	}
 
 	if p.config.Metrics != nil {
