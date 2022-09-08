@@ -153,6 +153,7 @@ func (p *Plugin) Serve() chan error {
 		}
 
 		opts.ConnectionOptions.TLS = &tls.Config{
+			MinVersion:   tls.VersionTLS12,
 			Certificates: []tls.Certificate{cert},
 		}
 	}
