@@ -269,13 +269,13 @@ func (p *Plugin) Stop() error {
 	return nil
 }
 
-func (p *Plugin) Workers() []process.State {
+func (p *Plugin) Workers() []*process.State {
 	p.mu.RLock()
 	wfPw := p.wfP.Workers()
 	actPw := p.actP.Workers()
 	p.mu.RUnlock()
 
-	states := make([]process.State, 0, len(wfPw)+len(actPw))
+	states := make([]*process.State, 0, len(wfPw)+len(actPw))
 
 	for i := 0; i < len(wfPw); i++ {
 		st, err := processImpl.WorkerProcessState(wfPw[i])
