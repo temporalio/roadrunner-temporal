@@ -155,17 +155,31 @@ func (p *Plugin) Serve() chan error {
 	}
 
 	if p.config.Metrics != nil {
-		ms, cl, errPs := newPrometheusScope(prometheus.Configuration{
-			ListenAddress: p.config.Metrics.Address,
-			TimerType:     p.config.Metrics.Type,
-		}, p.config.Metrics.Prefix, p.log)
-		if errPs != nil {
-			errCh <- errors.E(op, errPs)
+		switch p.config.Metrics.Driver {
+		case driverPrometheus:
+			ms, cl, errPs := newPrometheusScope(prometheus.Configuration{
+				ListenAddress: p.config.Metrics.Prometheus.Address,
+				TimerType:     p.config.Metrics.Prometheus.Type,
+			}, p.config.Metrics.Prometheus.Prefix, p.log)
+			if errPs != nil {
+				errCh <- errors.E(op, errPs)
+				return errCh
+			}
+
+			opts.MetricsHandler = tally.NewMetricsHandler(ms)
+			p.tallyCloser = cl
+		case driverStatsd:
+			ms, cl, errSt := newStatsdScope(p.config.Metrics.Statsd)
+			if errSt != nil {
+				errCh <- errSt
+				return errCh
+			}
+			opts.MetricsHandler = tally.NewMetricsHandler(ms)
+			p.tallyCloser = cl
+		default:
+			errCh <- errors.E(op, errors.Errorf("unknown driver provided: %s", p.config.Metrics.Driver))
 			return errCh
 		}
-
-		opts.MetricsHandler = tally.NewMetricsHandler(ms)
-		p.tallyCloser = cl
 	}
 
 	var err error
@@ -251,13 +265,13 @@ func (p *Plugin) Stop() error {
 	return nil
 }
 
-func (p *Plugin) Workers() []*process.State {
+func (p *Plugin) Workers() []process.State {
 	p.mu.RLock()
 	wfPw := p.wfP.Workers()
 	actPw := p.actP.Workers()
 	p.mu.RUnlock()
 
-	states := make([]*process.State, 0, len(wfPw)+len(actPw))
+	states := make([]process.State, 0, len(wfPw)+len(actPw))
 
 	for i := 0; i < len(wfPw); i++ {
 		st, err := processImpl.WorkerProcessState(wfPw[i])
