@@ -90,15 +90,18 @@ func (c *Config) InitDefault() error {
 
 		switch c.Metrics.Driver {
 		case driverPrometheus:
-			if c.Metrics.Prometheus != nil {
-				if c.Metrics.Prometheus.Type == "" {
-					c.Metrics.Prometheus.Type = MetricsTypeSummary
-				}
-
-				if c.Metrics.Prometheus.Address == "" {
-					c.Metrics.Prometheus.Address = "127.0.0.1:9091"
-				}
+			if c.Metrics.Prometheus == nil {
+				c.Metrics.Prometheus = &Prometheus{}
 			}
+
+			if c.Metrics.Prometheus.Type == "" {
+				c.Metrics.Prometheus.Type = MetricsTypeSummary
+			}
+
+			if c.Metrics.Prometheus.Address == "" {
+				c.Metrics.Prometheus.Address = "127.0.0.1:9091"
+			}
+
 		case driverStatsd:
 			if c.Metrics.Statsd != nil {
 				if c.Metrics.Statsd.HostPort == "" {

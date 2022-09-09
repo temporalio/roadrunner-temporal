@@ -39,6 +39,7 @@ import (
 const (
 	// PluginName defines public service name.
 	PluginName string = "temporal"
+	metricsKey string = "temporal.metrics"
 
 	// RrMode env variable key
 	RrMode string = "RR_MODE"
@@ -101,6 +102,30 @@ func (p *Plugin) Init(cfg config.Configurer, log *zap.Logger, server server.Serv
 		return errors.E(op, err)
 	}
 
+	/*
+		Parse metrics configuration
+		default (no BC): prometheus
+	*/
+	if p.config.Metrics != nil {
+		switch p.config.Metrics.Driver {
+		case driverPrometheus:
+			err = cfg.UnmarshalKey(metricsKey, &p.config.Metrics.Prometheus)
+			if err != nil {
+				return errors.E(op, err)
+			}
+		case driverStatsd:
+			err = cfg.UnmarshalKey(metricsKey, &p.config.Metrics.Statsd)
+			if err != nil {
+				return errors.E(op, err)
+			}
+		default:
+			err = cfg.UnmarshalKey(metricsKey, &p.config.Metrics.Prometheus)
+			if err != nil {
+				return errors.E(op, err)
+			}
+		}
+	}
+
 	err = p.config.InitDefault()
 	if err != nil {
 		return errors.E(op, err)
@@ -158,6 +183,10 @@ func (p *Plugin) Serve() chan error {
 		}
 	}
 
+	/*
+		TODO(rustatian): simplify
+		set up metrics handler
+	*/
 	if p.config.Metrics != nil {
 		switch p.config.Metrics.Driver {
 		case driverPrometheus:
