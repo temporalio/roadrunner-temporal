@@ -39,6 +39,7 @@ import (
 const (
 	// PluginName defines public service name.
 	PluginName string = "temporal"
+	metricsKey string = "temporal.metrics"
 
 	// RrMode env variable key
 	RrMode string = "RR_MODE"
@@ -101,6 +102,30 @@ func (p *Plugin) Init(cfg config.Configurer, log *zap.Logger, server server.Serv
 		return errors.E(op, err)
 	}
 
+	/*
+		Parse metrics configuration
+		default (no BC): prometheus
+	*/
+	if p.config.Metrics != nil {
+		switch p.config.Metrics.Driver {
+		case driverPrometheus:
+			err = cfg.UnmarshalKey(metricsKey, &p.config.Metrics.Prometheus)
+			if err != nil {
+				return errors.E(op, err)
+			}
+		case driverStatsd:
+			err = cfg.UnmarshalKey(metricsKey, &p.config.Metrics.Statsd)
+			if err != nil {
+				return errors.E(op, err)
+			}
+		default:
+			err = cfg.UnmarshalKey(metricsKey, &p.config.Metrics.Prometheus)
+			if err != nil {
+				return errors.E(op, err)
+			}
+		}
+	}
+
 	err = p.config.InitDefault()
 	if err != nil {
 		return errors.E(op, err)
@@ -151,21 +176,43 @@ func (p *Plugin) Serve() chan error {
 			errCh <- err
 			return errCh
 		}
-		opts.ConnectionOptions.TLS.Certificates = []tls.Certificate{cert}
+
+		opts.ConnectionOptions.TLS = &tls.Config{
+			MinVersion:   tls.VersionTLS12,
+			Certificates: []tls.Certificate{cert},
+		}
 	}
 
+	/*
+		TODO(rustatian): simplify
+		set up metrics handler
+	*/
 	if p.config.Metrics != nil {
-		ms, cl, errPs := newPrometheusScope(prometheus.Configuration{
-			ListenAddress: p.config.Metrics.Address,
-			TimerType:     p.config.Metrics.Type,
-		}, p.config.Metrics.Prefix, p.log)
-		if errPs != nil {
-			errCh <- errors.E(op, errPs)
+		switch p.config.Metrics.Driver {
+		case driverPrometheus:
+			ms, cl, errPs := newPrometheusScope(prometheus.Configuration{
+				ListenAddress: p.config.Metrics.Prometheus.Address,
+				TimerType:     p.config.Metrics.Prometheus.Type,
+			}, p.config.Metrics.Prometheus.Prefix, p.log)
+			if errPs != nil {
+				errCh <- errors.E(op, errPs)
+				return errCh
+			}
+
+			opts.MetricsHandler = tally.NewMetricsHandler(ms)
+			p.tallyCloser = cl
+		case driverStatsd:
+			ms, cl, errSt := newStatsdScope(p.config.Metrics.Statsd)
+			if errSt != nil {
+				errCh <- errSt
+				return errCh
+			}
+			opts.MetricsHandler = tally.NewMetricsHandler(ms)
+			p.tallyCloser = cl
+		default:
+			errCh <- errors.E(op, errors.Errorf("unknown driver provided: %s", p.config.Metrics.Driver))
 			return errCh
 		}
-
-		opts.MetricsHandler = tally.NewMetricsHandler(ms)
-		p.tallyCloser = cl
 	}
 
 	var err error
