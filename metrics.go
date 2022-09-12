@@ -86,7 +86,7 @@ func newStatsdScope(statsdConfig *Statsd) (tally.Scope, io.Closer, error) {
 	st, err := statsd.NewClientWithConfig(&statsd.ClientConfig{
 		Address:       statsdConfig.HostPort,
 		Prefix:        statsdConfig.Prefix,
-		UseBuffered:   false,
+		UseBuffered:   true,
 		FlushInterval: statsdConfig.FlushInterval,
 		FlushBytes:    statsdConfig.FlushBytes,
 	})
@@ -98,13 +98,13 @@ func newStatsdScope(statsdConfig *Statsd) (tally.Scope, io.Closer, error) {
 	// NOTE: according to (https://github.com/uber-go/tally) Tally's statsd implementation doesn't support tagging.
 	// Therefore, we implement Tally interface to have a statsd reporter that can support tagging
 	opts := statsdreporter.Options{
-		TagSeparator: statsdConfig.Reporter.TagSeparator,
+		TagSeparator: statsdConfig.TagSeparator,
 	}
 
 	reporter := statsdreporter.NewReporter(st, opts)
 	scopeOpts := tally.ScopeOptions{
-		Tags:     nil,
-		Prefix:   "",
+		Tags:     statsdConfig.Tags,
+		Prefix:   statsdConfig.Prefix,
 		Reporter: reporter,
 	}
 

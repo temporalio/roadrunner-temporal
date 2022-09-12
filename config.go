@@ -20,18 +20,23 @@ const (
 // ref:https://github.dev/temporalio/temporal/common/metrics/config.go:79
 type Statsd struct {
 	// The host and port of the statsd server
-	HostPort string `yaml:"host_port" validate:"nonzero"`
+	HostPort string `mapstructure:"host_port" validate:"nonzero"`
 	// The prefix to use in reporting to statsd
-	Prefix string `yaml:"prefix" validate:"nonzero"`
+	Prefix string `mapstructure:"prefix" validate:"nonzero"`
 	// FlushInterval is the maximum interval for sending packets.
 	// If it is not specified, it defaults to 1 second.
-	FlushInterval time.Duration `yaml:"flush_interval"`
+	FlushInterval time.Duration `mapstructure:"flush_interval"`
 	// FlushBytes specifies the maximum udp packet size you wish to send.
 	// If FlushBytes is unspecified, it defaults  to 1432 bytes, which is
 	// considered safe for local traffic.
-	FlushBytes int `yaml:"flush_bytes"`
-	// Reporter allows additional configuration of the stats reporter, e.g. with custom tagging options.
-	Reporter *StatsdReporterConfig `yaml:"reporter"`
+	FlushBytes int `mapstructure:"flush_bytes"`
+	// Tags to pass to the Tally scope options
+	Tags map[string]string `mapstructure:"tags"`
+	// TagPrefix ...
+	TagPrefix string `mapstructure:"tag_prefix"`
+	// TagSeparator allows tags to be appended with a separator. If not specified tag keys and values
+	// are embedded to the stat name directly.
+	TagSeparator string `mapstructure:"tag_separator"`
 }
 
 type StatsdReporterConfig struct {
@@ -106,11 +111,6 @@ func (c *Config) InitDefault() error {
 			if c.Metrics.Statsd != nil {
 				if c.Metrics.Statsd.HostPort == "" {
 					c.Metrics.Statsd.HostPort = "127.0.0.1:8125"
-				}
-
-				// init with empty
-				if c.Metrics.Statsd.Reporter == nil {
-					c.Metrics.Statsd.Reporter = &StatsdReporterConfig{TagSeparator: ""}
 				}
 			}
 		}
