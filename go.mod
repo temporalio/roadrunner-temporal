@@ -7,9 +7,9 @@ require (
 	github.com/goccy/go-json v0.9.11
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
-	github.com/roadrunner-server/api/v2 v2.23.0-rc.2
+	github.com/roadrunner-server/api/v2 v2.23.0
 	github.com/roadrunner-server/errors v1.2.0
-	github.com/roadrunner-server/sdk/v2 v2.19.0-rc.4
+	github.com/roadrunner-server/sdk/v2 v2.19.0
 	github.com/stretchr/testify v1.8.0
 	github.com/uber-go/tally/v4 v4.1.2
 	go.temporal.io/api v1.11.1-0.20220907050538-6de5285cf463
