@@ -1,6 +1,7 @@
 package roadrunner_temporal //nolint:revive,stylecheck
 
 import (
+	"errors"
 	"io"
 	"time"
 
@@ -82,7 +83,7 @@ func newPrometheusScope(c prometheus.Configuration, prefix string, log *zap.Logg
 }
 
 // ref: https://github.dev/temporalio/temporal/common/metrics/config.go:391
-func newStatsdScope(statsdConfig *Statsd) (tally.Scope, io.Closer, error) {
+func newStatsdScope(statsdConfig *Statsd, log *zap.Logger) (tally.Scope, io.Closer, error) {
 	st, err := statsd.NewClientWithConfig(&statsd.ClientConfig{
 		Address:       statsdConfig.HostPort,
 		Prefix:        statsdConfig.Prefix,
@@ -101,7 +102,15 @@ func newStatsdScope(statsdConfig *Statsd) (tally.Scope, io.Closer, error) {
 		TagSeparator: statsdConfig.TagSeparator,
 	}
 
-	reporter := statsdreporter.NewReporter(st, opts)
+	var reporter tally.StatsReporter
+	if statsdConfig.FormatType == statsdFormatBasic {
+		reporter = statsdreporter.NewReporter(st, opts)
+	} else if statsdConfig.FormatType == statsdFormatDataDog {
+		reporter = NewDataDogMetricsReporter(statsdConfig, log)
+	} else {
+		return nil, nil, errors.New("statsd format type is not supported")
+	}
+
 	scopeOpts := tally.ScopeOptions{
 		Tags:     statsdConfig.Tags,
 		Prefix:   statsdConfig.Prefix,

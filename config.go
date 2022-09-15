@@ -15,6 +15,10 @@ const (
 
 	driverPrometheus string = "prometheus"
 	driverStatsd     string = "statsd"
+
+	// statsd format
+	statsdFormatBasic   string = "basic"
+	statsdFormatDataDog string = "datadog"
 )
 
 // ref:https://github.dev/temporalio/temporal/common/metrics/config.go:79
@@ -37,6 +41,7 @@ type Statsd struct {
 	// TagSeparator allows tags to be appended with a separator. If not specified tag keys and values
 	// are embedded to the stat name directly.
 	TagSeparator string `mapstructure:"tag_separator"`
+	FormatType   string `mapstructure:"format_type"`
 }
 
 type StatsdReporterConfig struct {
@@ -111,6 +116,10 @@ func (c *Config) InitDefault() error {
 			if c.Metrics.Statsd != nil {
 				if c.Metrics.Statsd.HostPort == "" {
 					c.Metrics.Statsd.HostPort = "127.0.0.1:8125"
+				}
+
+				if c.Metrics.Statsd.FormatType == "" {
+					c.Metrics.Statsd.FormatType = statsdFormatBasic
 				}
 			}
 		}

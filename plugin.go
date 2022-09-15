@@ -202,7 +202,7 @@ func (p *Plugin) Serve() chan error {
 			opts.MetricsHandler = tally.NewMetricsHandler(ms)
 			p.tallyCloser = cl
 		case driverStatsd:
-			ms, cl, errSt := newStatsdScope(p.config.Metrics.Statsd)
+			ms, cl, errSt := newStatsdScope(p.config.Metrics.Statsd, p.log)
 			if errSt != nil {
 				errCh <- errSt
 				return errCh

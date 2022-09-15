@@ -3,6 +3,7 @@ module github.com/temporalio/roadrunner-temporal
 go 1.19
 
 require (
+	github.com/DataDog/datadog-go v4.8.3+incompatible
 	github.com/cactus/go-statsd-client/statsd v0.0.0-20200423205355-cb0885a1018c
 	github.com/goccy/go-json v0.9.11
 	github.com/golang/protobuf v1.5.2
@@ -19,6 +20,8 @@ require (
 	go.uber.org/zap v1.23.0
 	google.golang.org/protobuf v1.28.1
 )
+
+require github.com/Microsoft/go-winio v0.5.2 // indirect
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
