@@ -3,8 +3,10 @@ package roadrunner_temporal //nolint:revive,stylecheck
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -54,7 +56,7 @@ const (
 	clientNameHeaderName     = "client-name"
 	clientNameHeaderValue    = "roadrunner-temporal"
 	clientVersionHeaderName  = "client-version"
-	clientVersionHeaderValue = "1.5.1"
+	clientVersionHeaderValue = "1.6.1"
 )
 
 type Plugin struct {
@@ -171,15 +173,60 @@ func (p *Plugin) Serve() chan error {
 
 	// simple TLS based on the cert and key
 	if p.config.TLS != nil {
-		cert, err := tls.LoadX509KeyPair(p.config.TLS.Cert, p.config.TLS.Key)
-		if err != nil {
-			errCh <- err
-			return errCh
-		}
+		var cert tls.Certificate
+		var certPool *x509.CertPool
+		var rca []byte
+		var err error
 
-		opts.ConnectionOptions.TLS = &tls.Config{
-			MinVersion:   tls.VersionTLS12,
-			Certificates: []tls.Certificate{cert},
+		// if client CA is not empty we combine it with Cert and Key
+		if p.config.TLS.RootCA != "" {
+			cert, err = tls.LoadX509KeyPair(p.config.TLS.Cert, p.config.TLS.Key)
+			if err != nil {
+				errCh <- errors.E(op, err)
+				return errCh
+			}
+
+			certPool, err = x509.SystemCertPool()
+			if err != nil {
+				errCh <- errors.E(op, err)
+				return errCh
+			}
+			if certPool == nil {
+				certPool = x509.NewCertPool()
+			}
+
+			// we already checked this file in the config.go
+			rca, err = os.ReadFile(p.config.TLS.RootCA)
+			if err != nil {
+				errCh <- errors.E(op, err)
+				return errCh
+			}
+
+			if ok := certPool.AppendCertsFromPEM(rca); !ok {
+				errCh <- errors.E(op, errors.Str("could not append Certs from PEM"))
+				return errCh
+			}
+
+			opts.ConnectionOptions.TLS = &tls.Config{
+				MinVersion:   tls.VersionTLS12,
+				ClientAuth:   p.config.TLS.auth,
+				Certificates: []tls.Certificate{cert},
+				ClientCAs:    certPool,
+				RootCAs:      certPool,
+				ServerName:   p.config.TLS.ServerName,
+			}
+		} else {
+			cert, err = tls.LoadX509KeyPair(p.config.TLS.Cert, p.config.TLS.Key)
+			if err != nil {
+				errCh <- err
+				return errCh
+			}
+
+			opts.ConnectionOptions.TLS = &tls.Config{
+				ServerName:   p.config.TLS.ServerName,
+				MinVersion:   tls.VersionTLS12,
+				Certificates: []tls.Certificate{cert},
+			}
 		}
 	}
 
@@ -426,7 +473,7 @@ func (p *Plugin) SedID() uint64 {
 func rewriteNameAndVersion(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	md, _, _ := metadata.FromOutgoingContextRaw(ctx)
 	if md == nil {
-		return nil
+		return invoker(ctx, method, req, reply, cc, opts...)
 	}
 
 	md.Set(clientNameHeaderName, clientNameHeaderValue)
