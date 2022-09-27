@@ -56,7 +56,7 @@ const (
 	clientNameHeaderName     = "client-name"
 	clientNameHeaderValue    = "roadrunner-temporal"
 	clientVersionHeaderName  = "client-version"
-	clientVersionHeaderValue = "1.6.1"
+	clientVersionHeaderValue = "1.6.2"
 )
 
 type Plugin struct {
