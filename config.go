@@ -1,6 +1,7 @@
 package roadrunner_temporal //nolint:revive,stylecheck
 
 import (
+	"crypto/tls"
 	"os"
 	"time"
 
@@ -15,6 +16,16 @@ const (
 
 	driverPrometheus string = "prometheus"
 	driverStatsd     string = "statsd"
+)
+
+type ClientAuthType string
+
+const (
+	NoClientCert               ClientAuthType = "no_client_cert"
+	RequestClientCert          ClientAuthType = "request_client_cert"
+	RequireAnyClientCert       ClientAuthType = "require_any_client_cert"
+	VerifyClientCertIfGiven    ClientAuthType = "verify_client_cert_if_given"
+	RequireAndVerifyClientCert ClientAuthType = "require_and_verify_client_cert"
 )
 
 // ref:https://github.dev/temporalio/temporal/common/metrics/config.go:79
@@ -69,8 +80,13 @@ type Config struct {
 }
 
 type TLS struct {
-	Key  string `mapstructure:"key"`
-	Cert string `mapstructure:"cert"`
+	Key        string         `mapstructure:"key"`
+	Cert       string         `mapstructure:"cert"`
+	RootCA     string         `mapstructure:"root_ca"`
+	AuthType   ClientAuthType `mapstructure:"client_auth_type"`
+	ServerName string         `mapstructure:"server_name"`
+	// auth type
+	auth tls.ClientAuthType
 }
 
 func (c *Config) InitDefault() error {
@@ -131,6 +147,32 @@ func (c *Config) InitDefault() error {
 			}
 
 			return errors.E(op, err)
+		}
+
+		// RootCA is optional, but if provided - check it
+		if c.TLS.RootCA != "" {
+			if _, err := os.Stat(c.TLS.RootCA); err != nil {
+				if os.IsNotExist(err) {
+					return errors.E(op, errors.Errorf("root ca path provided, but key file '%s' does not exists", c.TLS.RootCA))
+				}
+				return errors.E(op, err)
+			}
+
+			// auth type used only for the CA
+			switch c.TLS.AuthType {
+			case NoClientCert:
+				c.TLS.auth = tls.NoClientCert
+			case RequestClientCert:
+				c.TLS.auth = tls.RequestClientCert
+			case RequireAnyClientCert:
+				c.TLS.auth = tls.RequireAnyClientCert
+			case VerifyClientCertIfGiven:
+				c.TLS.auth = tls.VerifyClientCertIfGiven
+			case RequireAndVerifyClientCert:
+				c.TLS.auth = tls.RequireAndVerifyClientCert
+			default:
+				c.TLS.auth = tls.NoClientCert
+			}
 		}
 	}
 
