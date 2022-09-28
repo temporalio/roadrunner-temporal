@@ -188,13 +188,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		})
 
 	case *internal.UpsertWorkflowSearchAttributes:
-		searchAttributes := make(map[string]any)
-		err := wp.env.GetDataConverter().FromPayloads(msg.Payloads, &searchAttributes)
-		if err != nil {
-			return errors.E(op, err)
-		}
-
-		err = wp.env.UpsertSearchAttributes(searchAttributes)
+		err := wp.env.UpsertSearchAttributes(command.SearchAttributes)
 		if err != nil {
 			return errors.E(op, err)
 		}
