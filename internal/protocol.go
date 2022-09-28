@@ -233,7 +233,7 @@ type ContinueAsNew struct {
 
 // UpsertWorkflowSearchAttributes allows to upsert search attributes
 type UpsertWorkflowSearchAttributes struct {
-	SearchAttributes map[string]interface{} `json:"searchAttributes"`
+	SearchAttributes map[string]any `json:"searchAttributes"`
 }
 
 // SignalExternalWorkflow sends signal to external workflow.
