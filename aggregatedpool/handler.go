@@ -187,6 +187,12 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 			WorkflowTaskTimeout:      command.Options.WorkflowTaskTimeout,
 		})
 
+	case *internal.UpsertWorkflowSearchAttributes:
+		err := wp.env.UpsertSearchAttributes(command.SearchAttributes)
+		if err != nil {
+			return errors.E(op, err)
+		}
+
 	case *internal.SignalExternalWorkflow:
 		wp.env.SignalExternalWorkflow(
 			command.Namespace,
