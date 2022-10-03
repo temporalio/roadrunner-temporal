@@ -79,7 +79,7 @@ func (ctx Context) IsEmpty() bool {
 }
 
 // IsCommand returns true if message carries request.
-func (msg Message) IsCommand() bool {
+func (msg *Message) IsCommand() bool {
 	return msg.Command != nil
 }
 
@@ -224,10 +224,9 @@ type ContinueAsNew struct {
 
 	// Options for continued as new workflow.
 	Options struct {
-		TaskQueueName            string
-		WorkflowExecutionTimeout time.Duration
-		WorkflowRunTimeout       time.Duration
-		WorkflowTaskTimeout      time.Duration
+		TaskQueueName       string
+		WorkflowRunTimeout  time.Duration
+		WorkflowTaskTimeout time.Duration
 	} `json:"options"`
 }
 

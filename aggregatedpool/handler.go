@@ -178,13 +178,12 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		wp.mq.PushResponse(msg.ID, result)
 
 		wp.env.Complete(nil, &workflow.ContinueAsNewError{
-			WorkflowType:             &bindings.WorkflowType{Name: command.Name},
-			Input:                    msg.Payloads,
-			Header:                   msg.Header,
-			TaskQueueName:            command.Options.TaskQueueName,
-			WorkflowExecutionTimeout: command.Options.WorkflowExecutionTimeout,
-			WorkflowRunTimeout:       command.Options.WorkflowRunTimeout,
-			WorkflowTaskTimeout:      command.Options.WorkflowTaskTimeout,
+			WorkflowType:        &bindings.WorkflowType{Name: command.Name},
+			Input:               msg.Payloads,
+			Header:              msg.Header,
+			TaskQueueName:       command.Options.TaskQueueName,
+			WorkflowRunTimeout:  command.Options.WorkflowRunTimeout,
+			WorkflowTaskTimeout: command.Options.WorkflowTaskTimeout,
 		})
 
 	case *internal.UpsertWorkflowSearchAttributes:
