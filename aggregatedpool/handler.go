@@ -1,14 +1,14 @@
 package aggregatedpool
 
 import (
+	"context"
 	"strconv"
 	"sync/atomic"
 	"time"
 
-	"github.com/roadrunner-server/api/v2/payload"
-	"github.com/roadrunner-server/api/v2/pool"
 	"github.com/roadrunner-server/errors"
-	"github.com/temporalio/roadrunner-temporal/internal"
+	"github.com/roadrunner-server/sdk/v3/payload"
+	"github.com/temporalio/roadrunner-temporal/v2/internal"
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
@@ -318,8 +318,8 @@ func (wp *Workflow) flushQueue() error {
 	}
 
 	if wp.mh != nil {
-		wp.mh.Gauge(RrWorkflowsMetricName).Update(float64(wp.pool.(pool.Queuer).QueueSize()))
-		defer wp.mh.Gauge(RrWorkflowsMetricName).Update(float64(wp.pool.(pool.Queuer).QueueSize()))
+		wp.mh.Gauge(RrWorkflowsMetricName).Update(float64(wp.pool.QueueSize()))
+		defer wp.mh.Gauge(RrWorkflowsMetricName).Update(float64(wp.pool.QueueSize()))
 	}
 
 	// todo(rustatian) to sync.Pool
@@ -329,7 +329,7 @@ func (wp *Workflow) flushQueue() error {
 		return err
 	}
 
-	resp, err := wp.pool.Exec(pld)
+	resp, err := wp.pool.Exec(context.Background(), pld)
 	if err != nil {
 		return err
 	}
@@ -356,8 +356,8 @@ func (wp *Workflow) runCommand(cmd any, payloads *commonpb.Payloads, header *com
 	msg := wp.mq.AllocateMessage(cmd, payloads, header)
 
 	if wp.mh != nil {
-		wp.mh.Gauge(RrMetricName).Update(float64(wp.pool.(pool.Queuer).QueueSize()))
-		defer wp.mh.Gauge(RrMetricName).Update(float64(wp.pool.(pool.Queuer).QueueSize()))
+		wp.mh.Gauge(RrMetricName).Update(float64(wp.pool.QueueSize()))
+		defer wp.mh.Gauge(RrMetricName).Update(float64(wp.pool.QueueSize()))
 	}
 
 	pld := &payload.Payload{}
@@ -366,7 +366,8 @@ func (wp *Workflow) runCommand(cmd any, payloads *commonpb.Payloads, header *com
 		return nil, err
 	}
 
-	resp, err := wp.pool.Exec(pld)
+	// todo(rustatian): do we need a timeout here??
+	resp, err := wp.pool.Exec(context.Background(), pld)
 	if err != nil {
 		return nil, err
 	}

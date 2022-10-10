@@ -1,14 +1,15 @@
 package aggregatedpool
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/roadrunner-server/api/v2/payload"
-	"github.com/roadrunner-server/api/v2/pool"
 	"github.com/roadrunner-server/errors"
-	"github.com/temporalio/roadrunner-temporal/internal"
+	"github.com/roadrunner-server/sdk/v3/payload"
+	"github.com/temporalio/roadrunner-temporal/v2/common"
+	"github.com/temporalio/roadrunner-temporal/v2/internal"
 	tActivity "go.temporal.io/sdk/activity"
 	temporalClient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
@@ -16,7 +17,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func GetWorkerInfo(c Codec, p pool.Pool, rrVersion string, wi *[]*internal.WorkerInfo) error {
+func GetWorkerInfo(c common.Codec, p common.Pool, rrVersion string, wi *[]*internal.WorkerInfo) error {
 	const op = errors.Op("workflow_definition_init")
 
 	// todo(rustatian): to sync.Pool
@@ -26,7 +27,9 @@ func GetWorkerInfo(c Codec, p pool.Pool, rrVersion string, wi *[]*internal.Worke
 		return errors.E(op, err)
 	}
 
-	resp, err := p.Exec(pld)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	resp, err := p.Exec(ctx, pld)
 	if err != nil {
 		return errors.E(op, err)
 	}

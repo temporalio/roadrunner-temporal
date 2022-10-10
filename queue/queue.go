@@ -1,7 +1,7 @@
 package queue
 
 import (
-	"github.com/temporalio/roadrunner-temporal/internal"
+	"github.com/temporalio/roadrunner-temporal/v2/internal"
 	"go.temporal.io/api/common/v1"
 	"go.temporal.io/api/failure/v1"
 )

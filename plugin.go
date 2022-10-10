@@ -13,21 +13,17 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/roadrunner-server/api/v2/event_bus"
-	"github.com/roadrunner-server/api/v2/plugins/config"
-	"github.com/roadrunner-server/api/v2/plugins/server"
-	rrPool "github.com/roadrunner-server/api/v2/pool"
-	"github.com/roadrunner-server/api/v2/state/process"
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/sdk/v2/events"
-	"github.com/roadrunner-server/sdk/v2/metrics"
-	poolImpl "github.com/roadrunner-server/sdk/v2/pool"
-	processImpl "github.com/roadrunner-server/sdk/v2/state/process"
-	"github.com/temporalio/roadrunner-temporal/aggregatedpool"
-	"github.com/temporalio/roadrunner-temporal/data_converter"
-	"github.com/temporalio/roadrunner-temporal/internal"
-	"github.com/temporalio/roadrunner-temporal/internal/codec/proto"
-	"github.com/temporalio/roadrunner-temporal/internal/logger"
+	"github.com/roadrunner-server/sdk/v3/events"
+	"github.com/roadrunner-server/sdk/v3/metrics"
+	"github.com/roadrunner-server/sdk/v3/pool"
+	"github.com/roadrunner-server/sdk/v3/state/process"
+	"github.com/temporalio/roadrunner-temporal/v2/aggregatedpool"
+	"github.com/temporalio/roadrunner-temporal/v2/common"
+	"github.com/temporalio/roadrunner-temporal/v2/data_converter"
+	"github.com/temporalio/roadrunner-temporal/v2/internal"
+	"github.com/temporalio/roadrunner-temporal/v2/internal/codec/proto"
+	"github.com/temporalio/roadrunner-temporal/v2/internal/logger"
 	"github.com/uber-go/tally/v4/prometheus"
 	temporalClient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/contrib/tally"
@@ -62,7 +58,7 @@ const (
 type Plugin struct {
 	mu sync.RWMutex
 
-	server        server.Server
+	server        common.Server
 	log           *zap.Logger
 	config        *Config
 	tallyCloser   io.Closer
@@ -71,8 +67,8 @@ type Plugin struct {
 	client        temporalClient.Client
 	dataConverter converter.DataConverter
 
-	actP  rrPool.Pool
-	wfP   rrPool.Pool
+	actP  common.Pool
+	wfP   common.Pool
 	wwPID int
 
 	rrVersion     string
@@ -82,9 +78,9 @@ type Plugin struct {
 	activities    map[string]*internal.ActivityInfo
 	codec         *proto.Codec
 
-	eventBus event_bus.EventBus
+	eventBus events.EventBus
 	id       string
-	events   chan event_bus.Event
+	events   chan events.Event
 	stopCh   chan struct{}
 
 	seqID        uint64
@@ -92,7 +88,7 @@ type Plugin struct {
 	graceTimeout time.Duration
 }
 
-func (p *Plugin) Init(cfg config.Configurer, log *zap.Logger, server server.Server) error {
+func (p *Plugin) Init(cfg common.Configurer, log *zap.Logger, server common.Server) error {
 	const op = errors.Op("temporal_plugin_init")
 
 	if !cfg.Has(PluginName) {
@@ -142,8 +138,8 @@ func (p *Plugin) Init(cfg config.Configurer, log *zap.Logger, server server.Serv
 	p.rrVersion = cfg.RRVersion()
 
 	// events
-	p.events = make(chan event_bus.Event, 1)
-	p.eventBus, p.id = events.Bus()
+	p.events = make(chan events.Event, 1)
+	p.eventBus, p.id = events.NewEventBus()
 	p.stopCh = make(chan struct{}, 1)
 	p.statsExporter = newStatsExporter(p)
 
@@ -354,7 +350,7 @@ func (p *Plugin) Workers() []*process.State {
 	states := make([]*process.State, 0, len(wfPw)+len(actPw))
 
 	for i := 0; i < len(wfPw); i++ {
-		st, err := processImpl.WorkerProcessState(wfPw[i])
+		st, err := process.WorkerProcessState(wfPw[i])
 		if err != nil {
 			// log error and continue
 			p.log.Error("worker process state error", zap.Error(err))
@@ -365,7 +361,7 @@ func (p *Plugin) Workers() []*process.State {
 	}
 
 	for i := 0; i < len(actPw); i++ {
-		st, err := processImpl.WorkerProcessState(actPw[i])
+		st, err := process.WorkerProcessState(actPw[i])
 		if err != nil {
 			// log error and continue
 			p.log.Error("worker process state error", zap.Error(err))
@@ -486,7 +482,7 @@ func rewriteNameAndVersion(ctx context.Context, method string, req, reply interf
 
 func (p *Plugin) initPool() error {
 	var err error
-	ap, err := p.server.NewWorkerPool(context.Background(), p.config.Activities, map[string]string{RrMode: PluginName, RrCodec: RrCodecVal}, p.log)
+	ap, err := p.server.NewPool(context.Background(), p.config.Activities, map[string]string{RrMode: PluginName, RrCodec: RrCodecVal}, p.log)
 	if err != nil {
 		return err
 	}
@@ -494,9 +490,9 @@ func (p *Plugin) initPool() error {
 	p.rrActivityDef = aggregatedpool.NewActivityDefinition(p.codec, ap, p.log, p.dataConverter, p.client, p.graceTimeout)
 
 	// ---------- WORKFLOW POOL -------------
-	wp, err := p.server.NewWorkerPool(
+	wp, err := p.server.NewPool(
 		context.Background(),
-		&poolImpl.Config{
+		&pool.Config{
 			NumWorkers:      1,
 			Command:         p.config.Activities.Command,
 			AllocateTimeout: time.Hour * 240,
