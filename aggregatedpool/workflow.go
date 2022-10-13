@@ -2,17 +2,18 @@ package aggregatedpool
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/roadrunner-server/api/v2/payload"
-	"github.com/roadrunner-server/api/v2/pool"
 	"github.com/roadrunner-server/errors"
-	"github.com/temporalio/roadrunner-temporal/aggregatedpool/canceller"
-	"github.com/temporalio/roadrunner-temporal/aggregatedpool/queue"
-	"github.com/temporalio/roadrunner-temporal/aggregatedpool/registry"
-	"github.com/temporalio/roadrunner-temporal/internal"
+	"github.com/roadrunner-server/sdk/v3/payload"
+	"github.com/temporalio/roadrunner-temporal/v2/canceller"
+	"github.com/temporalio/roadrunner-temporal/v2/common"
+	"github.com/temporalio/roadrunner-temporal/v2/internal"
+	"github.com/temporalio/roadrunner-temporal/v2/queue"
+	"github.com/temporalio/roadrunner-temporal/v2/registry"
 	commonpb "go.temporal.io/api/common/v1"
 	tActivity "go.temporal.io/sdk/activity"
 	temporalClient "go.temporal.io/sdk/client"
@@ -36,9 +37,11 @@ import (
 type Callback func() error
 
 type Workflow struct {
-	codec  Codec
-	pool   pool.Pool
+	codec  common.Codec
+	pool   common.Pool
 	client temporalClient.Client
+
+	pldPool *sync.Pool
 
 	env       bindings.WorkflowEnvironment
 	header    *commonpb.Header
@@ -59,7 +62,7 @@ type Workflow struct {
 	mh           temporalClient.MetricsHandler
 }
 
-func NewWorkflowDefinition(codec Codec, dc converter.DataConverter, pool pool.Pool, log *zap.Logger, seqID func() uint64, client temporalClient.Client, gt time.Duration) *Workflow {
+func NewWorkflowDefinition(codec common.Codec, dc converter.DataConverter, pool common.Pool, log *zap.Logger, seqID func() uint64, client temporalClient.Client, gt time.Duration) *Workflow {
 	return &Workflow{
 		client:       client,
 		log:          log,
@@ -68,6 +71,11 @@ func NewWorkflowDefinition(codec Codec, dc converter.DataConverter, pool pool.Po
 		graceTimeout: gt,
 		dc:           dc,
 		pool:         pool,
+		pldPool: &sync.Pool{
+			New: func() any {
+				return new(payload.Payload)
+			},
+		},
 	}
 }
 
@@ -75,10 +83,11 @@ func NewWorkflowDefinition(codec Codec, dc converter.DataConverter, pool pool.Po
 // DO NOT USE THIS FUNCTION DIRECTLY!!!!
 func (wp *Workflow) NewWorkflowDefinition() bindings.WorkflowDefinition {
 	return &Workflow{
-		pool:  wp.pool,
-		codec: wp.codec,
-		log:   wp.log,
-		sID:   wp.sID,
+		pool:    wp.pool,
+		codec:   wp.codec,
+		log:     wp.log,
+		sID:     wp.sID,
+		pldPool: wp.pldPool,
 	}
 }
 
@@ -209,8 +218,8 @@ func (wp *Workflow) execute(ctx context.Context, args *commonpb.Payloads) (*comm
 	mh := tActivity.GetMetricsHandler(ctx)
 	// if the mh is not nil, record the RR metric
 	if mh != nil {
-		mh.Gauge(RrMetricName).Update(float64(wp.pool.(pool.Queuer).QueueSize()))
-		defer mh.Gauge(RrMetricName).Update(float64(wp.pool.(pool.Queuer).QueueSize()))
+		mh.Gauge(RrMetricName).Update(float64(wp.pool.QueueSize()))
+		defer mh.Gauge(RrMetricName).Update(float64(wp.pool.QueueSize()))
 	}
 
 	var msg = &internal.Message{
@@ -222,13 +231,15 @@ func (wp *Workflow) execute(ctx context.Context, args *commonpb.Payloads) (*comm
 		Payloads: args,
 	}
 
-	pld := &payload.Payload{}
+	pld := wp.getPld()
+	defer wp.putPld(pld)
+
 	err := wp.codec.Encode(&internal.Context{TaskQueue: info.TaskQueue}, pld, msg)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := wp.pool.Exec(pld)
+	result, err := wp.pool.Exec(ctx, pld)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
@@ -253,4 +264,15 @@ func (wp *Workflow) execute(ctx context.Context, args *commonpb.Payloads) (*comm
 	}
 
 	return retPld.Payloads, nil
+}
+
+func (wp *Workflow) getPld() *payload.Payload {
+	return wp.pldPool.Get().(*payload.Payload)
+}
+
+func (wp *Workflow) putPld(pld *payload.Payload) {
+	pld.Codec = 0
+	pld.Context = nil
+	pld.Body = nil
+	wp.pldPool.Put(pld)
 }

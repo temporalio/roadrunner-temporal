@@ -6,8 +6,8 @@ import (
 
 	"github.com/cactus/go-statsd-client/statsd"
 	prom "github.com/prometheus/client_golang/prometheus"
-	"github.com/roadrunner-server/api/v2/plugins/informer"
-	"github.com/roadrunner-server/sdk/v2/metrics"
+	"github.com/roadrunner-server/sdk/v3/metrics"
+	"github.com/temporalio/roadrunner-temporal/v2/common"
 	"github.com/uber-go/tally/v4"
 	"github.com/uber-go/tally/v4/prometheus"
 	statsdreporter "go.temporal.io/server/common/metrics/tally/statsd"
@@ -24,7 +24,7 @@ const (
 	namespace = "rr_temporal"
 )
 
-func newStatsExporter(stats informer.Informer) *metrics.StatsExporter {
+func newStatsExporter(stats common.Informer) *metrics.StatsExporter {
 	return &metrics.StatsExporter{
 		TotalMemoryDesc:  prom.NewDesc(prom.BuildFQName(namespace, "", "workers_memory_bytes"), "Memory usage by workers", nil, nil),
 		StateDesc:        prom.NewDesc(prom.BuildFQName(namespace, "", "worker_state"), "Worker current state", []string{"state", "pid"}, nil),
