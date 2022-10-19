@@ -14,7 +14,7 @@ require (
 	go.temporal.io/api v1.12.0
 	go.temporal.io/sdk v1.17.0
 	go.temporal.io/sdk/contrib/tally v0.2.0
-	go.temporal.io/server v1.18.1
+	go.temporal.io/server v1.18.2
 	go.uber.org/zap v1.23.0
 	google.golang.org/protobuf v1.28.1
 )
