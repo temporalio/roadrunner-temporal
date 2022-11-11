@@ -11,6 +11,7 @@ import (
 	"github.com/temporalio/roadrunner-temporal/v2/internal"
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 	"go.uber.org/zap"
 )
@@ -64,7 +65,7 @@ func (wp *Workflow) handleQuery(queryType string, queryArgs *commonpb.Payloads, 
 	}
 
 	if result.Failure != nil {
-		return nil, errors.E(op, bindings.ConvertFailureToError(result.Failure, wp.env.GetDataConverter()))
+		return nil, errors.E(op, temporal.GetDefaultFailureConverter().FailureToError(result.Failure))
 	}
 
 	return result.Payloads, nil
@@ -171,7 +172,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 			return nil
 		}
 
-		wp.env.Complete(nil, bindings.ConvertFailureToError(msg.Failure, wp.env.GetDataConverter()))
+		wp.env.Complete(nil, temporal.GetDefaultFailureConverter().FailureToError(msg.Failure))
 
 	case *internal.ContinueAsNew:
 		result, _ := wp.env.GetDataConverter().ToPayloads(completed)
@@ -224,7 +225,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 
 	case *internal.Panic:
 		// do not wrap error to pass it directly to Temporal
-		return bindings.ConvertFailureToError(msg.Failure, wp.env.GetDataConverter())
+		return temporal.GetDefaultFailureConverter().FailureToError(msg.Failure)
 
 	default:
 		return errors.E(op, errors.Str("undefined command"))
@@ -239,7 +240,7 @@ func (wp *Workflow) createLocalActivityCallback(id uint64) bindings.LocalActivit
 
 		if lar.Err != nil {
 			wp.log.Error("local activity", zap.Error(lar.Err), zap.Int32("attempt", lar.Attempt), zap.Duration("backoff", lar.Backoff))
-			wp.mq.PushError(id, bindings.ConvertErrorToFailure(lar.Err, wp.env.GetDataConverter()))
+			wp.mq.PushError(id, temporal.GetDefaultFailureConverter().ErrorToFailure(lar.Err))
 			return
 		}
 
@@ -265,7 +266,7 @@ func (wp *Workflow) createCallback(id uint64) bindings.ResultHandler {
 		wp.canceller.Discard(id)
 
 		if err != nil {
-			wp.mq.PushError(id, bindings.ConvertErrorToFailure(err, wp.env.GetDataConverter()))
+			wp.mq.PushError(id, temporal.GetDefaultFailureConverter().ErrorToFailure(err))
 			return
 		}
 
@@ -293,7 +294,7 @@ func (wp *Workflow) createContinuableCallback(id uint64) bindings.ResultHandler 
 		wp.canceller.Discard(id)
 
 		if err != nil {
-			wp.mq.PushError(id, bindings.ConvertErrorToFailure(err, wp.env.GetDataConverter()))
+			wp.mq.PushError(id, temporal.GetDefaultFailureConverter().ErrorToFailure(err))
 			return
 		}
 
