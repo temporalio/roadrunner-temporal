@@ -15,7 +15,7 @@ import (
 	tActivity "go.temporal.io/sdk/activity"
 	temporalClient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
-	"go.temporal.io/sdk/internalbindings"
+	"go.temporal.io/sdk/temporal"
 	"go.uber.org/zap"
 )
 
@@ -131,7 +131,7 @@ func (a *Activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 			return nil, tActivity.ErrResultPending
 		}
 
-		return nil, internalbindings.ConvertFailureToError(retPld.Failure, a.dc)
+		return nil, temporal.GetDefaultFailureConverter().FailureToError(retPld.Failure)
 	}
 
 	return retPld.Payloads, nil

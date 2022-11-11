@@ -64,12 +64,12 @@ func (r *DataConverter) FromPayload(payload *commonpb.Payload, valuePtr any) err
 	return r.dc.FromPayload(payload, valuePtr)
 }
 
-// ToString converts payload object into human readable string.
+// ToString converts payload object into human-readable string.
 func (r *DataConverter) ToString(input *commonpb.Payload) string {
 	return r.dc.ToString(input)
 }
 
-// ToStrings converts payloads object into human readable strings.
+// ToStrings converts payloads object into human-readable strings.
 func (r *DataConverter) ToStrings(input *commonpb.Payloads) []string {
 	return r.dc.ToStrings(input)
 }

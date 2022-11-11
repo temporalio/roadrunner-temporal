@@ -19,6 +19,7 @@ import (
 	temporalClient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	bindings "go.temporal.io/sdk/internalbindings"
+	"go.temporal.io/sdk/temporal"
 	"go.uber.org/zap"
 )
 
@@ -260,7 +261,7 @@ func (wp *Workflow) execute(ctx context.Context, args *commonpb.Payloads) (*comm
 			return nil, tActivity.ErrResultPending
 		}
 
-		return nil, bindings.ConvertFailureToError(retPld.Failure, wp.dc)
+		return nil, temporal.GetDefaultFailureConverter().FailureToError(retPld.Failure)
 	}
 
 	return retPld.Payloads, nil
