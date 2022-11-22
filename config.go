@@ -92,9 +92,11 @@ type TLS struct {
 func (c *Config) InitDefault() error {
 	const op = errors.Op("init_defaults_temporal")
 
-	if c.Activities != nil {
-		c.Activities.InitDefaults()
+	if c.Activities == nil {
+		c.Activities = &pool.Config{}
 	}
+
+	c.Activities.InitDefaults()
 
 	if c.CacheSize == 0 {
 		c.CacheSize = 10000
