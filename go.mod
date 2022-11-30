@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/cactus/go-statsd-client/statsd v0.0.0-20200423205355-cb0885a1018c
-	github.com/goccy/go-json v0.9.11
+	github.com/goccy/go-json v0.10.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
 	github.com/roadrunner-server/errors v1.2.0
