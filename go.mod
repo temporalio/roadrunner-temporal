@@ -11,10 +11,10 @@ require (
 	github.com/roadrunner-server/sdk/v3 v3.0.0
 	github.com/stretchr/testify v1.8.1
 	github.com/uber-go/tally/v4 v4.1.3
-	go.temporal.io/api v1.13.0
+	go.temporal.io/api v1.13.1-0.20221110200459-6a3cb21a3415
 	go.temporal.io/sdk v1.18.1
 	go.temporal.io/sdk/contrib/tally v0.2.0
-	go.temporal.io/server v1.18.5
+	go.temporal.io/server v1.19.0
 	go.uber.org/zap v1.24.0
 	google.golang.org/protobuf v1.28.1
 )
