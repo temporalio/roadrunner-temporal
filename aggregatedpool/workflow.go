@@ -230,6 +230,7 @@ func (wp *Workflow) execute(ctx context.Context, args *commonpb.Payloads) (*comm
 			Info: info,
 		},
 		Payloads: args,
+		Header:   wp.header,
 	}
 
 	pld := wp.getPld()

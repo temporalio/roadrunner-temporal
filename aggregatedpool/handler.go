@@ -77,7 +77,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 
 	switch command := msg.Command.(type) {
 	case *internal.ExecuteActivity:
-		params := command.ActivityParams(wp.env, msg.Payloads)
+		params := command.ActivityParams(wp.env, msg.Payloads, wp.header)
 		activityID := wp.env.ExecuteActivity(params, wp.createCallback(msg.ID))
 
 		wp.canceller.Register(msg.ID, func() error {
@@ -86,7 +86,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		})
 
 	case *internal.ExecuteLocalActivity:
-		params := command.LocalActivityParams(wp.env, wp.execute, msg.Payloads)
+		params := command.LocalActivityParams(wp.env, wp.execute, msg.Payloads, wp.header)
 		activityID := wp.env.ExecuteLocalActivity(params, wp.createLocalActivityCallback(msg.ID))
 		wp.canceller.Register(msg.ID, func() error {
 			wp.env.RequestCancelLocalActivity(activityID)
@@ -94,7 +94,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		})
 
 	case *internal.ExecuteChildWorkflow:
-		params := command.WorkflowParams(wp.env, msg.Payloads)
+		params := command.WorkflowParams(wp.env, msg.Payloads, wp.header)
 
 		// always use deterministic id
 		if params.WorkflowID == "" {
