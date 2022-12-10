@@ -58,20 +58,18 @@ type Workflow struct {
 
 	dc converter.DataConverter
 
-	log          *zap.Logger
-	graceTimeout time.Duration
-	mh           temporalClient.MetricsHandler
+	log *zap.Logger
+	mh  temporalClient.MetricsHandler
 }
 
-func NewWorkflowDefinition(codec common.Codec, dc converter.DataConverter, pool common.Pool, log *zap.Logger, seqID func() uint64, client temporalClient.Client, gt time.Duration) *Workflow {
+func NewWorkflowDefinition(codec common.Codec, dc converter.DataConverter, pool common.Pool, log *zap.Logger, seqID func() uint64, client temporalClient.Client) *Workflow {
 	return &Workflow{
-		client:       client,
-		log:          log,
-		sID:          seqID,
-		codec:        codec,
-		graceTimeout: gt,
-		dc:           dc,
-		pool:         pool,
+		client: client,
+		log:    log,
+		sID:    seqID,
+		codec:  codec,
+		dc:     dc,
+		pool:   pool,
 		pldPool: &sync.Pool{
 			New: func() any {
 				return new(payload.Payload)
@@ -149,8 +147,8 @@ func (wp *Workflow) OnWorkflowTaskStarted(t time.Duration) {
 
 	var err error
 	// do not copy
-	for k := range wp.callbacks {
-		err = wp.callbacks[k]()
+	for i := 0; i < len(wp.callbacks); i++ {
+		err = wp.callbacks[i]()
 		if err != nil {
 			panic(err)
 		}

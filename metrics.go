@@ -7,24 +7,23 @@ import (
 	"github.com/cactus/go-statsd-client/statsd"
 	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/roadrunner-server/sdk/v3/metrics"
-	"github.com/temporalio/roadrunner-temporal/v2/common"
+	"github.com/roadrunner-server/sdk/v3/state/process"
 	"github.com/uber-go/tally/v4"
 	"github.com/uber-go/tally/v4/prometheus"
 	statsdreporter "go.temporal.io/server/common/metrics/tally/statsd"
 	"go.uber.org/zap"
 )
 
-func (p *Plugin) MetricsCollector() []prom.Collector {
-	// p - implements Exporter interface (workers)
-	// other - request duration and count
-	return []prom.Collector{p.statsExporter}
-}
-
 const (
 	namespace = "rr_temporal"
 )
 
-func newStatsExporter(stats common.Informer) *metrics.StatsExporter {
+// Informer used to get workers from particular plugin or set of plugins
+type Informer interface {
+	Workers() []*process.State
+}
+
+func newStatsExporter(stats Informer) *metrics.StatsExporter {
 	return &metrics.StatsExporter{
 		TotalMemoryDesc:  prom.NewDesc(prom.BuildFQName(namespace, "", "workers_memory_bytes"), "Memory usage by workers", nil, nil),
 		StateDesc:        prom.NewDesc(prom.BuildFQName(namespace, "", "worker_state"), "Worker current state", []string{"state", "pid"}, nil),

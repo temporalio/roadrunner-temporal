@@ -168,6 +168,7 @@ func (c *Codec) parseMessage(frame *protocolV1.Message) (*internal.Message, erro
 		ID:       frame.Id,
 		Payloads: frame.Payloads,
 		Failure:  frame.Failure,
+		Header:   frame.Header,
 	}
 
 	if frame.Command != "" {

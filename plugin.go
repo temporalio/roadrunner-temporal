@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/sdk/v3/events"
 	"github.com/roadrunner-server/sdk/v3/metrics"
@@ -61,9 +62,11 @@ type Plugin struct {
 	server        common.Server
 	log           *zap.Logger
 	config        *Config
-	tallyCloser   io.Closer
 	statsExporter *metrics.StatsExporter
 
+	mh            temporalClient.MetricsHandler
+	tallyCloser   io.Closer
+	tlsCfg        *tls.Config
 	client        temporalClient.Client
 	dataConverter converter.DataConverter
 
@@ -83,9 +86,8 @@ type Plugin struct {
 	events   chan events.Event
 	stopCh   chan struct{}
 
-	seqID        uint64
-	workers      []worker.Worker
-	graceTimeout time.Duration
+	seqID   uint64
+	workers []worker.Worker
 }
 
 func (p *Plugin) Init(cfg common.Configurer, log *zap.Logger, server common.Server) error {
@@ -129,12 +131,13 @@ func (p *Plugin) Init(cfg common.Configurer, log *zap.Logger, server common.Serv
 		return errors.E(op, err)
 	}
 
+	// CONFIG INIT END -----
+
 	p.dataConverter = data_converter.NewDataConverter(converter.GetDefaultDataConverter())
 	p.log = &zap.Logger{}
 	*p.log = *log
 
 	p.server = server
-	p.graceTimeout = cfg.GracefulTimeout()
 	p.rrVersion = cfg.RRVersion()
 
 	// events
@@ -142,6 +145,85 @@ func (p *Plugin) Init(cfg common.Configurer, log *zap.Logger, server common.Serv
 	p.eventBus, p.id = events.NewEventBus()
 	p.stopCh = make(chan struct{}, 1)
 	p.statsExporter = newStatsExporter(p)
+
+	// simple TLS based on the cert and key
+	if p.config.TLS != nil {
+		var cert tls.Certificate
+		var certPool *x509.CertPool
+		var rca []byte
+
+		// if client CA is not empty we combine it with Cert and Key
+		if p.config.TLS.RootCA != "" {
+			cert, err = tls.LoadX509KeyPair(p.config.TLS.Cert, p.config.TLS.Key)
+			if err != nil {
+				return err
+			}
+
+			certPool, err = x509.SystemCertPool()
+			if err != nil {
+				return err
+			}
+			if certPool == nil {
+				certPool = x509.NewCertPool()
+			}
+
+			// we already checked this file in the config.go
+			rca, err = os.ReadFile(p.config.TLS.RootCA)
+			if err != nil {
+				return err
+			}
+
+			if ok := certPool.AppendCertsFromPEM(rca); !ok {
+				return err
+			}
+
+			p.tlsCfg = &tls.Config{
+				MinVersion:   tls.VersionTLS12,
+				ClientAuth:   p.config.TLS.auth,
+				Certificates: []tls.Certificate{cert},
+				ClientCAs:    certPool,
+				RootCAs:      certPool,
+				ServerName:   p.config.TLS.ServerName,
+			}
+		} else {
+			cert, err = tls.LoadX509KeyPair(p.config.TLS.Cert, p.config.TLS.Key)
+			if err != nil {
+				return err
+			}
+
+			p.tlsCfg = &tls.Config{
+				ServerName:   p.config.TLS.ServerName,
+				MinVersion:   tls.VersionTLS12,
+				Certificates: []tls.Certificate{cert},
+			}
+		}
+	}
+
+	// here we need to check
+	if p.config.Metrics != nil {
+		switch p.config.Metrics.Driver {
+		case driverPrometheus:
+			ms, cl, err := newPrometheusScope(prometheus.Configuration{
+				ListenAddress: p.config.Metrics.Prometheus.Address,
+				TimerType:     p.config.Metrics.Prometheus.Type,
+			}, p.config.Metrics.Prometheus.Prefix, p.log)
+			if err != nil {
+				return err
+			}
+
+			p.mh = tally.NewMetricsHandler(ms)
+			p.tallyCloser = cl
+		case driverStatsd:
+			ms, cl, err := newStatsdScope(p.config.Metrics.Statsd)
+			if err != nil {
+				return err
+			}
+			p.mh = tally.NewMetricsHandler(ms)
+			p.tallyCloser = cl
+		default:
+			return errors.E(op, errors.Errorf("unknown driver provided: %s", p.config.Metrics.Driver))
+		}
+	}
 
 	return nil
 }
@@ -156,106 +238,17 @@ func (p *Plugin) Serve() chan error {
 	worker.SetStickyWorkflowCacheSize(p.config.CacheSize)
 
 	opts := temporalClient.Options{
-		HostPort:      p.config.Address,
-		Namespace:     p.config.Namespace,
-		Logger:        logger.NewZapAdapter(p.log),
-		DataConverter: p.dataConverter,
+		HostPort:       p.config.Address,
+		MetricsHandler: p.mh,
+		Namespace:      p.config.Namespace,
+		Logger:         logger.NewZapAdapter(p.log),
+		DataConverter:  p.dataConverter,
 		ConnectionOptions: temporalClient.ConnectionOptions{
+			TLS: p.tlsCfg,
 			DialOptions: []grpc.DialOption{
 				grpc.WithUnaryInterceptor(rewriteNameAndVersion),
 			},
 		},
-	}
-
-	// simple TLS based on the cert and key
-	if p.config.TLS != nil {
-		var cert tls.Certificate
-		var certPool *x509.CertPool
-		var rca []byte
-		var err error
-
-		// if client CA is not empty we combine it with Cert and Key
-		if p.config.TLS.RootCA != "" {
-			cert, err = tls.LoadX509KeyPair(p.config.TLS.Cert, p.config.TLS.Key)
-			if err != nil {
-				errCh <- errors.E(op, err)
-				return errCh
-			}
-
-			certPool, err = x509.SystemCertPool()
-			if err != nil {
-				errCh <- errors.E(op, err)
-				return errCh
-			}
-			if certPool == nil {
-				certPool = x509.NewCertPool()
-			}
-
-			// we already checked this file in the config.go
-			rca, err = os.ReadFile(p.config.TLS.RootCA)
-			if err != nil {
-				errCh <- errors.E(op, err)
-				return errCh
-			}
-
-			if ok := certPool.AppendCertsFromPEM(rca); !ok {
-				errCh <- errors.E(op, errors.Str("could not append Certs from PEM"))
-				return errCh
-			}
-
-			opts.ConnectionOptions.TLS = &tls.Config{
-				MinVersion:   tls.VersionTLS12,
-				ClientAuth:   p.config.TLS.auth,
-				Certificates: []tls.Certificate{cert},
-				ClientCAs:    certPool,
-				RootCAs:      certPool,
-				ServerName:   p.config.TLS.ServerName,
-			}
-		} else {
-			cert, err = tls.LoadX509KeyPair(p.config.TLS.Cert, p.config.TLS.Key)
-			if err != nil {
-				errCh <- err
-				return errCh
-			}
-
-			opts.ConnectionOptions.TLS = &tls.Config{
-				ServerName:   p.config.TLS.ServerName,
-				MinVersion:   tls.VersionTLS12,
-				Certificates: []tls.Certificate{cert},
-			}
-		}
-	}
-
-	/*
-		TODO(rustatian): simplify
-		set up metrics handler
-	*/
-	if p.config.Metrics != nil {
-		switch p.config.Metrics.Driver {
-		case driverPrometheus:
-			ms, cl, errPs := newPrometheusScope(prometheus.Configuration{
-				ListenAddress: p.config.Metrics.Prometheus.Address,
-				TimerType:     p.config.Metrics.Prometheus.Type,
-			}, p.config.Metrics.Prometheus.Prefix, p.log)
-			if errPs != nil {
-				errCh <- errors.E(op, errPs)
-				return errCh
-			}
-
-			opts.MetricsHandler = tally.NewMetricsHandler(ms)
-			p.tallyCloser = cl
-		case driverStatsd:
-			ms, cl, errSt := newStatsdScope(p.config.Metrics.Statsd)
-			if errSt != nil {
-				errCh <- errSt
-				return errCh
-			}
-			opts.MetricsHandler = tally.NewMetricsHandler(ms)
-			p.tallyCloser = cl
-		default:
-			errCh <- errors.E(op, errors.Errorf("unknown driver provided: %s", p.config.Metrics.Driver))
-			return errCh
-		}
 	}
 
 	var err error
@@ -327,6 +320,7 @@ func (p *Plugin) Stop() error {
 		p.workers[i].Stop()
 	}
 
+	// might be nil if the user didn't set the metrics
 	if p.tallyCloser != nil {
 		err := p.tallyCloser.Close()
 		if err != nil {
@@ -334,6 +328,7 @@ func (p *Plugin) Stop() error {
 		}
 	}
 
+	// in case if the Serve func was interrupted
 	if p.client != nil {
 		p.client.Close()
 	}
@@ -426,14 +421,13 @@ func (p *Plugin) Reset() error {
 	p.log.Info("activity pool restarted")
 
 	// get worker info
-	wi := make([]*internal.WorkerInfo, 0, 5)
-	err := aggregatedpool.GetWorkerInfo(p.codec, p.wfP, p.rrVersion, &wi)
+	wi, err := WorkerInfo(p.codec, p.wfP, p.rrVersion)
 	if err != nil {
 		return err
 	}
 
 	// based on the worker info -> initialize workers
-	p.workers, err = aggregatedpool.InitWorkers(p.rrWorkflowDef, p.rrActivityDef, wi, p.log, p.client, p.graceTimeout)
+	p.workers, err = aggregatedpool.TemporalWorkers(p.rrWorkflowDef, p.rrActivityDef, wi, p.log, p.client)
 	if err != nil {
 		return err
 	}
@@ -446,8 +440,8 @@ func (p *Plugin) Reset() error {
 		}
 	}
 
-	p.activities = aggregatedpool.GrabActivities(wi)
-	p.workflows = aggregatedpool.GrabWorkflows(wi)
+	p.activities = ActivitiesInfo(wi)
+	p.workflows = WorkflowsInfo(wi)
 
 	return nil
 }
@@ -464,6 +458,12 @@ func (p *Plugin) SedID() uint64 {
 	p.log.Debug("sequenceID", zap.Uint64("before", atomic.LoadUint64(&p.seqID)))
 	defer p.log.Debug("sequenceID", zap.Uint64("after", atomic.LoadUint64(&p.seqID)+1))
 	return atomic.AddUint64(&p.seqID, 1)
+}
+
+func (p *Plugin) MetricsCollector() []prom.Collector {
+	// p - implements Exporter interface (workers)
+	// other - request duration and count
+	return []prom.Collector{p.statsExporter}
 }
 
 func rewriteNameAndVersion(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
@@ -487,7 +487,7 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	p.rrActivityDef = aggregatedpool.NewActivityDefinition(p.codec, ap, p.log, p.dataConverter, p.client, p.graceTimeout)
+	p.rrActivityDef = aggregatedpool.NewActivityDefinition(p.codec, ap, p.log, p.dataConverter, p.client)
 
 	// ---------- WORKFLOW POOL -------------
 	wp, err := p.server.NewPool(
@@ -507,16 +507,15 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	p.rrWorkflowDef = aggregatedpool.NewWorkflowDefinition(p.codec, p.dataConverter, wp, p.log, p.SedID, p.client, p.graceTimeout)
+	p.rrWorkflowDef = aggregatedpool.NewWorkflowDefinition(p.codec, p.dataConverter, wp, p.log, p.SedID, p.client)
 
 	// get worker information
-	wi := make([]*internal.WorkerInfo, 0, 5)
-	err = aggregatedpool.GetWorkerInfo(p.codec, wp, p.rrVersion, &wi)
+	wi, err := WorkerInfo(p.codec, wp, p.rrVersion)
 	if err != nil {
 		return err
 	}
 
-	p.workers, err = aggregatedpool.InitWorkers(p.rrWorkflowDef, p.rrActivityDef, wi, p.log, p.client, p.graceTimeout)
+	p.workers, err = aggregatedpool.TemporalWorkers(p.rrWorkflowDef, p.rrActivityDef, wi, p.log, p.client)
 	if err != nil {
 		return err
 	}
@@ -528,8 +527,8 @@ func (p *Plugin) initPool() error {
 		}
 	}
 
-	p.activities = aggregatedpool.GrabActivities(wi)
-	p.workflows = aggregatedpool.GrabWorkflows(wi)
+	p.activities = ActivitiesInfo(wi)
+	p.workflows = WorkflowsInfo(wi)
 	p.actP = ap
 	p.wfP = wp
 

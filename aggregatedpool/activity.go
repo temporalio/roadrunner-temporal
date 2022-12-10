@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/sdk/v3/payload"
@@ -35,18 +34,15 @@ type Activity struct {
 	running sync.Map
 
 	pldPool *sync.Pool
-
-	graceTimout time.Duration
 }
 
-func NewActivityDefinition(ac common.Codec, p common.Pool, log *zap.Logger, dc converter.DataConverter, client temporalClient.Client, gt time.Duration) *Activity {
+func NewActivityDefinition(ac common.Codec, p common.Pool, log *zap.Logger, dc converter.DataConverter, client temporalClient.Client) *Activity {
 	return &Activity{
-		log:         log,
-		client:      client,
-		codec:       ac,
-		pool:        p,
-		dc:          dc,
-		graceTimout: gt,
+		log:    log,
+		client: client,
+		codec:  ac,
+		pool:   p,
+		dc:     dc,
 		pldPool: &sync.Pool{
 			New: func() any {
 				return new(payload.Payload)
@@ -93,6 +89,7 @@ func (a *Activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 			HeartbeatDetails: len(heartbeatDetails.Payloads),
 		},
 		Payloads: args,
+		Header:   common.ActivityHeadersFromCtx(ctx),
 	}
 
 	if len(heartbeatDetails.Payloads) != 0 {
