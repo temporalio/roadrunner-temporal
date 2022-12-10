@@ -6,7 +6,7 @@ The repository contains a number of plugins which enable workflow and activity p
 supervisor, load-balancer is based on [RoadRunner PHP Application Server](https://roadrunner.dev).
 
 ## Installation
-Temporal is official plugin of RoadRunner and available out of the box in [RoadRunner 2.0](https://github.com/spiral/roadrunner).
+Temporal is official plugin of RoadRunner and available out of the box in [RoadRunner 2.0](https://github.com/roadrunner-server/roadrunner).
 
 Read more about application server installation [here](https://roadrunner.dev/docs/intro-install).
 
@@ -14,17 +14,6 @@ To install PHP-SDK:
 
 ```bash
 $ composer require temporal/sdk
-```
-
-Read how to configure your worker and init workflows [here](https://github.com/temporalio/sdk-php).
-
-## Testing
-To test integration make sure to install Golang and PHP 7.4+ at the same host. [Composer](https://getcomposer.org/) is required to manage the extension.
-
-```bash
-$ make install-dependencies
-$ make start-docker-compose
-$ make test
 ```
 
 ## License
