@@ -26,6 +26,9 @@ func ActivityHeadersFromCtx(ctx context.Context) *commonpb.Header {
 	}
 
 	if val, ok := hdr.(map[string]*commonpb.Payload); ok {
+		if len(val) == 0 {
+			return nil
+		}
 		return &commonpb.Header{
 			Fields: val,
 		}
