@@ -46,7 +46,10 @@ func (mq *MessageQueue) PushCommand(cmd any, payloads *common.Payloads, header *
 }
 
 func (mq *MessageQueue) PushResponse(id uint64, payloads *common.Payloads) {
-	mq.queue = append(mq.queue, &internal.Message{ID: id, Payloads: payloads})
+	mq.queue = append(mq.queue, &internal.Message{
+		ID:       id,
+		Payloads: payloads,
+	})
 }
 
 func (mq *MessageQueue) PushError(id uint64, failure *failure.Failure) {

@@ -264,11 +264,12 @@ type Panic struct {
 }
 
 // ActivityParams maps activity command to activity params.
-func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment, payloads *commonpb.Payloads) bindings.ExecuteActivityParams {
+func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment, payloads *commonpb.Payloads, header *commonpb.Header) bindings.ExecuteActivityParams {
 	params := bindings.ExecuteActivityParams{
 		ExecuteActivityOptions: cmd.Options,
 		ActivityType:           bindings.ActivityType{Name: cmd.Name},
 		Input:                  payloads,
+		Header:                 header,
 	}
 
 	if params.TaskQueueName == "" {
@@ -279,7 +280,7 @@ func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment, payl
 }
 
 // LocalActivityParams maps activity command to activity params.
-func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnvironment, fn any, payloads *commonpb.Payloads) bindings.ExecuteLocalActivityParams {
+func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnvironment, fn any, payloads *commonpb.Payloads, header *commonpb.Header) bindings.ExecuteLocalActivityParams {
 	if cmd.Options.StartToCloseTimeout == 0 {
 		cmd.Options.StartToCloseTimeout = time.Minute
 	}
@@ -311,7 +312,7 @@ func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnviron
 		InputArgs:                   []any{payloads},
 		WorkflowInfo:                env.WorkflowInfo(),
 		ScheduledTime:               time.Now(),
-		Header:                      nil,
+		Header:                      header,
 	}
 
 	return params
@@ -325,11 +326,12 @@ func ifNotNil(val *time.Duration) time.Duration {
 }
 
 // WorkflowParams maps workflow command to workflow params.
-func (cmd ExecuteChildWorkflow) WorkflowParams(env bindings.WorkflowEnvironment, payloads *commonpb.Payloads) bindings.ExecuteWorkflowParams {
+func (cmd ExecuteChildWorkflow) WorkflowParams(env bindings.WorkflowEnvironment, payloads *commonpb.Payloads, header *commonpb.Header) bindings.ExecuteWorkflowParams {
 	params := bindings.ExecuteWorkflowParams{
 		WorkflowOptions: cmd.Options,
 		WorkflowType:    &bindings.WorkflowType{Name: cmd.Name},
 		Input:           payloads,
+		Header:          header,
 	}
 
 	if params.TaskQueueName == "" {

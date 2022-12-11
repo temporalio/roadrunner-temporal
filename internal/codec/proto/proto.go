@@ -142,6 +142,7 @@ func (c *Codec) packMessage(msg *internal.Message) (*protocolV1.Message, error) 
 		Id:       msg.ID,
 		Payloads: msg.Payloads,
 		Failure:  msg.Failure,
+		Header:   msg.Header,
 	}
 
 	if msg.Command != nil {
@@ -167,6 +168,7 @@ func (c *Codec) parseMessage(frame *protocolV1.Message) (*internal.Message, erro
 		ID:       frame.Id,
 		Payloads: frame.Payloads,
 		Failure:  frame.Failure,
+		Header:   frame.Header,
 	}
 
 	if frame.Command != "" {
