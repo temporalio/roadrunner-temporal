@@ -89,7 +89,7 @@ func (la *LocalActivityFn) execute(ctx context.Context, args *commonpb.Payloads)
 	return retPld.Payloads, nil
 }
 
-var pldP = sync.Pool{
+var pldP = sync.Pool{ //nolint:gochecknoglobals
 	New: func() any {
 		return &payload.Payload{}
 	},

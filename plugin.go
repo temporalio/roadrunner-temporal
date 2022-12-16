@@ -432,7 +432,7 @@ func (p *Plugin) Reset() error {
 		return err
 	}
 
-	//start workers
+	// start workers
 	for i := 0; i < len(p.workers); i++ {
 		err = p.workers[i].Start()
 		if err != nil {
