@@ -1,6 +1,8 @@
 package queue
 
 import (
+	"sync"
+
 	"github.com/temporalio/roadrunner-temporal/v2/internal"
 	"go.temporal.io/api/common/v1"
 	"go.temporal.io/api/failure/v1"
@@ -8,6 +10,7 @@ import (
 
 type MessageQueue struct {
 	SeqID func() uint64
+	mu    sync.Mutex
 	queue []*internal.Message
 }
 
@@ -19,7 +22,9 @@ func NewMessageQueue(sedID func() uint64) *MessageQueue {
 }
 
 func (mq *MessageQueue) Flush() {
+	mq.mu.Lock()
 	mq.queue = mq.queue[:0]
+	mq.mu.Unlock()
 }
 
 // AllocateMessage ..
@@ -37,6 +42,8 @@ func (mq *MessageQueue) AllocateMessage(cmd any, payloads *common.Payloads, head
 }
 
 func (mq *MessageQueue) PushCommand(cmd any, payloads *common.Payloads, header *common.Header) {
+	mq.mu.Lock()
+	defer mq.mu.Unlock()
 	mq.queue = append(mq.queue, &internal.Message{
 		ID:       mq.SeqID(),
 		Command:  cmd,
@@ -46,6 +53,8 @@ func (mq *MessageQueue) PushCommand(cmd any, payloads *common.Payloads, header *
 }
 
 func (mq *MessageQueue) PushResponse(id uint64, payloads *common.Payloads) {
+	mq.mu.Lock()
+	defer mq.mu.Unlock()
 	mq.queue = append(mq.queue, &internal.Message{
 		ID:       id,
 		Payloads: payloads,
@@ -53,9 +62,13 @@ func (mq *MessageQueue) PushResponse(id uint64, payloads *common.Payloads) {
 }
 
 func (mq *MessageQueue) PushError(id uint64, failure *failure.Failure) {
+	mq.mu.Lock()
+	defer mq.mu.Unlock()
 	mq.queue = append(mq.queue, &internal.Message{ID: id, Failure: failure})
 }
 
 func (mq *MessageQueue) Messages() []*internal.Message {
+	mq.mu.Lock()
+	defer mq.mu.Unlock()
 	return mq.queue
 }

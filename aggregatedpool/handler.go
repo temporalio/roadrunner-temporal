@@ -77,18 +77,22 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 
 	switch command := msg.Command.(type) {
 	case *internal.ExecuteActivity:
+		wp.log.Debug("executing activity", zap.Uint64("ID", msg.ID))
 		params := command.ActivityParams(wp.env, msg.Payloads, msg.Header)
-		activityID := wp.env.ExecuteActivity(params, wp.createCallback(msg.ID))
+		activityID := wp.env.ExecuteActivity(params, wp.createCallback(msg.ID, "activity"))
 
 		wp.canceller.Register(msg.ID, func() error {
+			wp.log.Debug("registering activity canceller", zap.String("activityID", activityID.String()))
 			wp.env.RequestCancelActivity(activityID)
 			return nil
 		})
 
 	case *internal.ExecuteLocalActivity:
-		params := command.LocalActivityParams(wp.env, wp.execute, msg.Payloads, msg.Header)
+		wp.log.Debug("executing local activity", zap.Uint64("ID", msg.ID))
+		params := command.LocalActivityParams(wp.env, NewLocalActivityFn(msg.Header, wp.codec, wp.pool, wp.sID).execute, msg.Payloads, msg.Header)
 		activityID := wp.env.ExecuteLocalActivity(params, wp.createLocalActivityCallback(msg.ID))
 		wp.canceller.Register(msg.ID, func() error {
+			wp.log.Debug("registering local activity canceller", zap.String("activityID", activityID.String()))
 			wp.env.RequestCancelLocalActivity(activityID)
 			return nil
 		})
@@ -102,7 +106,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 			params.WorkflowID = wp.env.WorkflowInfo().WorkflowExecution.RunID + "_" + strconv.Itoa(int(nextID))
 		}
 
-		wp.env.ExecuteChildWorkflow(params, wp.createCallback(msg.ID), func(r bindings.WorkflowExecution, e error) {
+		wp.env.ExecuteChildWorkflow(params, wp.createCallback(msg.ID, "ExecuteChildWorkflow"), func(r bindings.WorkflowExecution, e error) {
 			wp.ids.Push(msg.ID, r, e)
 		})
 
@@ -113,7 +117,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 
 	case *internal.GetChildWorkflowExecution:
 		wp.ids.Listen(command.ID, func(w bindings.WorkflowExecution, err error) {
-			cl := wp.createCallback(msg.ID)
+			cl := wp.createCallback(msg.ID, "GetChildWorkflow")
 
 			if err != nil {
 				cl(nil, err)
@@ -129,7 +133,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		})
 
 	case *internal.NewTimer:
-		timerID := wp.env.NewTimer(command.ToDuration(), wp.createCallback(msg.ID))
+		timerID := wp.env.NewTimer(command.ToDuration(), wp.createCallback(msg.ID, "NewTimer"))
 		wp.canceller.Register(msg.ID, func() error {
 			if timerID != nil {
 				wp.env.RequestCancelTimer(*timerID)
@@ -205,11 +209,11 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 			nil,
 			msg.Header,
 			command.ChildWorkflowOnly,
-			wp.createCallback(msg.ID),
+			wp.createCallback(msg.ID, "SignalExternalWorkflow"),
 		)
 
 	case *internal.CancelExternalWorkflow:
-		wp.env.RequestCancelExternalWorkflow(command.Namespace, command.WorkflowID, command.RunID, wp.createCallback(msg.ID))
+		wp.env.RequestCancelExternalWorkflow(command.Namespace, command.WorkflowID, command.RunID, wp.createCallback(msg.ID, "CancelExternalWorkflow"))
 
 	case *internal.Cancel:
 		err := wp.canceller.Cancel(command.CommandIDs...)
@@ -238,40 +242,47 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 
 func (wp *Workflow) createLocalActivityCallback(id uint64) bindings.LocalActivityResultHandler {
 	callback := func(lar *bindings.LocalActivityResultWrapper) {
+		wp.log.Debug("executing local activity callback", zap.Uint64("ID", id))
 		wp.canceller.Discard(id)
 
 		if lar.Err != nil {
-			wp.log.Error("local activity", zap.Error(lar.Err), zap.Int32("attempt", lar.Attempt), zap.Duration("backoff", lar.Backoff))
+			wp.log.Debug("error", zap.Error(lar.Err), zap.Int32("attempt", lar.Attempt), zap.Duration("backoff", lar.Backoff))
 			wp.mq.PushError(id, temporal.GetDefaultFailureConverter().ErrorToFailure(lar.Err))
 			return
 		}
 
+		wp.log.Debug("pushing local activity response", zap.Uint64("ID", id))
 		wp.mq.PushResponse(id, lar.Result)
 	}
 
 	return func(lar *bindings.LocalActivityResultWrapper) {
 		// timer cancel callback can happen inside the loop
 		if atomic.LoadUint32(&wp.inLoop) == 1 {
+			wp.log.Debug("calling local activity callback IN LOOP", zap.Uint64("ID", id))
 			callback(lar)
 			return
 		}
 
 		wp.callbacks = append(wp.callbacks, func() error {
+			wp.log.Debug("appending local activity callback", zap.Uint64("ID", id))
 			callback(lar)
 			return nil
 		})
 	}
 }
 
-func (wp *Workflow) createCallback(id uint64) bindings.ResultHandler {
+func (wp *Workflow) createCallback(id uint64, t string) bindings.ResultHandler {
 	callback := func(result *commonpb.Payloads, err error) {
+		wp.log.Debug("executing callback", zap.Uint64("ID", id), zap.String("type", t))
 		wp.canceller.Discard(id)
 
 		if err != nil {
+			wp.log.Debug("error", zap.Error(err), zap.String("type", t))
 			wp.mq.PushError(id, temporal.GetDefaultFailureConverter().ErrorToFailure(err))
 			return
 		}
 
+		wp.log.Debug("pushing response", zap.Uint64("ID", id), zap.String("type", t))
 		// fetch original payload
 		wp.mq.PushResponse(id, result)
 	}
@@ -279,11 +290,13 @@ func (wp *Workflow) createCallback(id uint64) bindings.ResultHandler {
 	return func(result *commonpb.Payloads, err error) {
 		// timer cancel callback can happen inside the loop
 		if atomic.LoadUint32(&wp.inLoop) == 1 {
+			wp.log.Debug("calling callback IN LOOP", zap.Uint64("ID", id))
 			callback(result, err)
 			return
 		}
 
 		wp.callbacks = append(wp.callbacks, func() error {
+			wp.log.Debug("appending callback", zap.Uint64("ID", id))
 			callback(result, err)
 			return nil
 		})

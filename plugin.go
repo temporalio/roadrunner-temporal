@@ -432,7 +432,7 @@ func (p *Plugin) Reset() error {
 		return err
 	}
 
-	// start workers
+	//start workers
 	for i := 0; i < len(p.workers); i++ {
 		err = p.workers[i].Start()
 		if err != nil {
@@ -507,7 +507,7 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	p.rrWorkflowDef = aggregatedpool.NewWorkflowDefinition(p.codec, p.dataConverter, wp, p.log, p.SedID, p.client)
+	p.rrWorkflowDef = aggregatedpool.NewWorkflowDefinition(p.codec, wp, p.log, p.SedID)
 
 	// get worker information
 	wi, err := WorkerInfo(p.codec, wp, p.rrVersion)

@@ -1,25 +1,17 @@
 package aggregatedpool
 
 import (
-	"context"
-	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/sdk/v3/payload"
 	"github.com/temporalio/roadrunner-temporal/v2/canceller"
 	"github.com/temporalio/roadrunner-temporal/v2/common"
 	"github.com/temporalio/roadrunner-temporal/v2/internal"
 	"github.com/temporalio/roadrunner-temporal/v2/queue"
 	"github.com/temporalio/roadrunner-temporal/v2/registry"
 	commonpb "go.temporal.io/api/common/v1"
-	tActivity "go.temporal.io/sdk/activity"
 	temporalClient "go.temporal.io/sdk/client"
-	"go.temporal.io/sdk/converter"
 	bindings "go.temporal.io/sdk/internalbindings"
-	"go.temporal.io/sdk/temporal"
 	"go.uber.org/zap"
 )
 
@@ -38,11 +30,8 @@ import (
 type Callback func() error
 
 type Workflow struct {
-	codec  common.Codec
-	pool   common.Pool
-	client temporalClient.Client
-
-	pldPool *sync.Pool
+	codec common.Codec
+	pool  common.Pool
 
 	env       bindings.WorkflowEnvironment
 	header    *commonpb.Header
@@ -56,25 +45,16 @@ type Workflow struct {
 	canceller *canceller.Canceller
 	inLoop    uint32
 
-	dc converter.DataConverter
-
 	log *zap.Logger
 	mh  temporalClient.MetricsHandler
 }
 
-func NewWorkflowDefinition(codec common.Codec, dc converter.DataConverter, pool common.Pool, log *zap.Logger, seqID func() uint64, client temporalClient.Client) *Workflow {
+func NewWorkflowDefinition(codec common.Codec, pool common.Pool, log *zap.Logger, seqID func() uint64) *Workflow {
 	return &Workflow{
-		client: client,
-		log:    log,
-		sID:    seqID,
-		codec:  codec,
-		dc:     dc,
-		pool:   pool,
-		pldPool: &sync.Pool{
-			New: func() any {
-				return new(payload.Payload)
-			},
-		},
+		log:   log,
+		sID:   seqID,
+		codec: codec,
+		pool:  pool,
 	}
 }
 
@@ -82,11 +62,10 @@ func NewWorkflowDefinition(codec common.Codec, dc converter.DataConverter, pool 
 // DO NOT USE THIS FUNCTION DIRECTLY!!!!
 func (wp *Workflow) NewWorkflowDefinition() bindings.WorkflowDefinition {
 	return &Workflow{
-		pool:    wp.pool,
-		codec:   wp.codec,
-		log:     wp.log,
-		sID:     wp.sID,
-		pldPool: wp.pldPool,
+		pool:  wp.pool,
+		codec: wp.codec,
+		log:   wp.log,
+		sID:   wp.sID,
 	}
 }
 
@@ -203,76 +182,9 @@ func (wp *Workflow) StackTrace() string {
 }
 
 func (wp *Workflow) Close() {
+	wp.log.Debug("close workflow", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID))
 	// send destroy command
 	_, _ = wp.runCommand(internal.DestroyWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID}, nil, wp.header)
 	// flush queue
 	wp.mq.Flush()
-}
-
-func (wp *Workflow) execute(ctx context.Context, args *commonpb.Payloads) (*commonpb.Payloads, error) {
-	const op = errors.Op("activity_pool_execute_activity")
-
-	var info = tActivity.GetInfo(ctx)
-	info.TaskToken = []byte(uuid.NewString())
-	mh := tActivity.GetMetricsHandler(ctx)
-	// if the mh is not nil, record the RR metric
-	if mh != nil {
-		mh.Gauge(RrMetricName).Update(float64(wp.pool.QueueSize()))
-		defer mh.Gauge(RrMetricName).Update(float64(wp.pool.QueueSize()))
-	}
-
-	var msg = &internal.Message{
-		ID: atomic.AddUint64(&wp.seqID, 1),
-		Command: internal.InvokeLocalActivity{
-			Name: info.ActivityType.Name,
-			Info: info,
-		},
-		Payloads: args,
-		Header:   wp.header,
-	}
-
-	pld := wp.getPld()
-	defer wp.putPld(pld)
-
-	err := wp.codec.Encode(&internal.Context{TaskQueue: info.TaskQueue}, pld, msg)
-	if err != nil {
-		return nil, err
-	}
-
-	result, err := wp.pool.Exec(ctx, pld)
-	if err != nil {
-		return nil, errors.E(op, err)
-	}
-
-	out := make([]*internal.Message, 0, 2)
-	err = wp.codec.Decode(result, &out)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(out) != 1 {
-		return nil, errors.E(op, errors.Str("invalid local activity worker response"))
-	}
-
-	retPld := out[0]
-	if retPld.Failure != nil {
-		if retPld.Failure.Message == doNotCompleteOnReturn {
-			return nil, tActivity.ErrResultPending
-		}
-
-		return nil, temporal.GetDefaultFailureConverter().FailureToError(retPld.Failure)
-	}
-
-	return retPld.Payloads, nil
-}
-
-func (wp *Workflow) getPld() *payload.Payload {
-	return wp.pldPool.Get().(*payload.Payload)
-}
-
-func (wp *Workflow) putPld(pld *payload.Payload) {
-	pld.Codec = 0
-	pld.Context = nil
-	pld.Body = nil
-	wp.pldPool.Put(pld)
 }
