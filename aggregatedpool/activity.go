@@ -12,8 +12,6 @@ import (
 	"github.com/temporalio/roadrunner-temporal/v2/internal"
 	commonpb "go.temporal.io/api/common/v1"
 	tActivity "go.temporal.io/sdk/activity"
-	temporalClient "go.temporal.io/sdk/client"
-	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/temporal"
 	"go.uber.org/zap"
 )
@@ -27,22 +25,18 @@ const (
 type Activity struct {
 	codec   common.Codec
 	pool    common.Pool
-	client  temporalClient.Client
 	log     *zap.Logger
-	dc      converter.DataConverter
 	seqID   uint64
 	running sync.Map
 
 	pldPool *sync.Pool
 }
 
-func NewActivityDefinition(ac common.Codec, p common.Pool, log *zap.Logger, dc converter.DataConverter, client temporalClient.Client) *Activity {
+func NewActivityDefinition(ac common.Codec, p common.Pool, log *zap.Logger) *Activity {
 	return &Activity{
-		log:    log,
-		client: client,
-		codec:  ac,
-		pool:   p,
-		dc:     dc,
+		log:   log,
+		codec: ac,
+		pool:  p,
 		pldPool: &sync.Pool{
 			New: func() any {
 				return new(payload.Payload)

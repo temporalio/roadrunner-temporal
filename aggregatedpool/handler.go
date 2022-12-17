@@ -77,7 +77,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 
 	switch command := msg.Command.(type) {
 	case *internal.ExecuteActivity:
-		wp.log.Debug("executing activity", zap.Uint64("ID", msg.ID))
+		wp.log.Debug("activity request", zap.Uint64("ID", msg.ID))
 		params := command.ActivityParams(wp.env, msg.Payloads, msg.Header)
 		activityID := wp.env.ExecuteActivity(params, wp.createCallback(msg.ID, "activity"))
 
@@ -88,8 +88,8 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		})
 
 	case *internal.ExecuteLocalActivity:
-		wp.log.Debug("executing local activity", zap.Uint64("ID", msg.ID))
-		params := command.LocalActivityParams(wp.env, NewLocalActivityFn(msg.Header, wp.codec, wp.pool, wp.sID).execute, msg.Payloads, msg.Header)
+		wp.log.Debug("local activity request", zap.Uint64("ID", msg.ID))
+		params := command.LocalActivityParams(wp.env, NewLocalActivityFn(msg.Header, wp.codec, wp.pool, wp.log).execute, msg.Payloads, msg.Header)
 		activityID := wp.env.ExecuteLocalActivity(params, wp.createLocalActivityCallback(msg.ID))
 		wp.canceller.Register(msg.ID, func() error {
 			wp.log.Debug("registering local activity canceller", zap.String("activityID", activityID.String()))
@@ -98,6 +98,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		})
 
 	case *internal.ExecuteChildWorkflow:
+		wp.log.Debug("execute child workflow request", zap.Uint64("ID", msg.ID))
 		params := command.WorkflowParams(wp.env, msg.Payloads, msg.Header)
 
 		// always use deterministic id
@@ -116,6 +117,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		})
 
 	case *internal.GetChildWorkflowExecution:
+		wp.log.Debug("get child workflow execution request", zap.Uint64("ID", msg.ID))
 		wp.ids.Listen(command.ID, func(w bindings.WorkflowExecution, err error) {
 			cl := wp.createCallback(msg.ID, "GetChildWorkflow")
 
@@ -133,15 +135,18 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		})
 
 	case *internal.NewTimer:
+		wp.log.Debug("timer request", zap.Uint64("ID", msg.ID))
 		timerID := wp.env.NewTimer(command.ToDuration(), wp.createCallback(msg.ID, "NewTimer"))
 		wp.canceller.Register(msg.ID, func() error {
 			if timerID != nil {
+				wp.log.Debug("cancel timer request", zap.String("timerID", timerID.String()))
 				wp.env.RequestCancelTimer(*timerID)
 			}
 			return nil
 		})
 
 	case *internal.GetVersion:
+		wp.log.Debug("get version request", zap.Uint64("ID", msg.ID))
 		version := wp.env.GetVersion(
 			command.ChangeID,
 			workflow.Version(command.MinSupported),
@@ -160,6 +165,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		}
 
 	case *internal.SideEffect:
+		wp.log.Debug("side-effect request", zap.Uint64("ID", msg.ID))
 		wp.env.SideEffect(
 			func() (*commonpb.Payloads, error) {
 				return msg.Payloads, nil
@@ -168,6 +174,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		)
 
 	case *internal.CompleteWorkflow:
+		wp.log.Debug("complete workflow request", zap.Uint64("ID", msg.ID))
 		result, _ := wp.env.GetDataConverter().ToPayloads(completed)
 		wp.mq.PushResponse(msg.ID, result)
 
@@ -179,6 +186,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		wp.env.Complete(nil, temporal.GetDefaultFailureConverter().FailureToError(msg.Failure))
 
 	case *internal.ContinueAsNew:
+		wp.log.Debug("continue-as-new request", zap.Uint64("ID", msg.ID), zap.String("name", command.Name))
 		result, _ := wp.env.GetDataConverter().ToPayloads(completed)
 		wp.mq.PushResponse(msg.ID, result)
 
@@ -194,12 +202,14 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		})
 
 	case *internal.UpsertWorkflowSearchAttributes:
+		wp.log.Debug("upsert search attributes request", zap.Uint64("ID", msg.ID))
 		err := wp.env.UpsertSearchAttributes(command.SearchAttributes)
 		if err != nil {
 			return errors.E(op, err)
 		}
 
 	case *internal.SignalExternalWorkflow:
+		wp.log.Debug("signal external workflow request", zap.Uint64("ID", msg.ID))
 		wp.env.SignalExternalWorkflow(
 			command.Namespace,
 			command.WorkflowID,
@@ -213,9 +223,11 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		)
 
 	case *internal.CancelExternalWorkflow:
+		wp.log.Debug("cancel external workflow request", zap.Uint64("ID", msg.ID))
 		wp.env.RequestCancelExternalWorkflow(command.Namespace, command.WorkflowID, command.RunID, wp.createCallback(msg.ID, "CancelExternalWorkflow"))
 
 	case *internal.Cancel:
+		wp.log.Debug("cancel request", zap.Uint64("ID", msg.ID))
 		err := wp.canceller.Cancel(command.CommandIDs...)
 		if err != nil {
 			return errors.E(op, err)
@@ -230,6 +242,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		}
 
 	case *internal.Panic:
+		wp.log.Debug("panic", zap.String("failure", msg.Failure.String()))
 		// do not wrap error to pass it directly to Temporal
 		return temporal.GetDefaultFailureConverter().FailureToError(msg.Failure)
 

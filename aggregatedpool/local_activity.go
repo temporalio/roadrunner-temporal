@@ -13,22 +13,23 @@ import (
 	commonpb "go.temporal.io/api/common/v1"
 	tActivity "go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/temporal"
+	"go.uber.org/zap"
 )
 
 type LocalActivityFn struct {
 	header *commonpb.Header
 	codec  common.Codec
 	pool   common.Pool
+	log    *zap.Logger
 	seqID  uint64
-	sID    func() uint64
 }
 
-func NewLocalActivityFn(header *commonpb.Header, codec common.Codec, pool common.Pool, seqID func() uint64) *LocalActivityFn {
+func NewLocalActivityFn(header *commonpb.Header, codec common.Codec, pool common.Pool, log *zap.Logger) *LocalActivityFn {
 	return &LocalActivityFn{
 		header: header,
 		codec:  codec,
 		pool:   pool,
-		sID:    seqID,
+		log:    log,
 	}
 }
 
@@ -53,6 +54,8 @@ func (la *LocalActivityFn) execute(ctx context.Context, args *commonpb.Payloads)
 		Payloads: args,
 		Header:   la.header,
 	}
+
+	la.log.Debug("executing local activity fn", zap.Uint64("ID", msg.ID), zap.String("task-queue", info.TaskQueue), zap.String("la ID", info.ActivityID))
 
 	pld := getPld()
 	defer putPld(pld)
