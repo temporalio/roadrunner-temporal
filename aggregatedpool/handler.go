@@ -170,7 +170,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 			func() (*commonpb.Payloads, error) {
 				return msg.Payloads, nil
 			},
-			wp.createContinuableCallback(msg.ID),
+			wp.createContinuableCallback(msg.ID, "SideEffect"),
 		)
 
 	case *internal.CompleteWorkflow:
@@ -303,13 +303,13 @@ func (wp *Workflow) createCallback(id uint64, t string) bindings.ResultHandler {
 	return func(result *commonpb.Payloads, err error) {
 		// timer cancel callback can happen inside the loop
 		if atomic.LoadUint32(&wp.inLoop) == 1 {
-			wp.log.Debug("calling callback IN LOOP", zap.Uint64("ID", id))
+			wp.log.Debug("calling callback IN LOOP", zap.Uint64("ID", id), zap.String("type", t))
 			callback(result, err)
 			return
 		}
 
 		wp.callbacks = append(wp.callbacks, func() error {
-			wp.log.Debug("appending callback", zap.Uint64("ID", id))
+			wp.log.Debug("appending callback", zap.Uint64("ID", id), zap.String("type", t))
 			callback(result, err)
 			return nil
 		})
@@ -317,8 +317,9 @@ func (wp *Workflow) createCallback(id uint64, t string) bindings.ResultHandler {
 }
 
 // callback to be called inside the queue processing, adds new messages at the end of the queue
-func (wp *Workflow) createContinuableCallback(id uint64) bindings.ResultHandler {
+func (wp *Workflow) createContinuableCallback(id uint64, t string) bindings.ResultHandler {
 	callback := func(result *commonpb.Payloads, err error) {
+		wp.log.Debug("executing continuable callback", zap.Uint64("ID", id), zap.String("type", t))
 		wp.canceller.Discard(id)
 
 		if err != nil {

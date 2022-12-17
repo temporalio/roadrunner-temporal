@@ -29,6 +29,13 @@ import (
 
 type Callback func() error
 
+// seqID is global sequence ID
+var seqID uint64 //nolint:gochecknoglobals
+
+func seq() uint64 {
+	return atomic.AddUint64(&seqID, 1)
+}
+
 type Workflow struct {
 	codec common.Codec
 	pool  common.Pool
@@ -38,7 +45,6 @@ type Workflow struct {
 	mq        *queue.MessageQueue
 	ids       *registry.IDRegistry
 	seqID     uint64
-	sID       func() uint64
 	runID     string
 	pipeline  []*internal.Message
 	callbacks []Callback
@@ -49,10 +55,9 @@ type Workflow struct {
 	mh  temporalClient.MetricsHandler
 }
 
-func NewWorkflowDefinition(codec common.Codec, pool common.Pool, log *zap.Logger, seqID func() uint64) *Workflow {
+func NewWorkflowDefinition(codec common.Codec, pool common.Pool, log *zap.Logger) *Workflow {
 	return &Workflow{
 		log:   log,
-		sID:   seqID,
 		codec: codec,
 		pool:  pool,
 	}
@@ -65,7 +70,6 @@ func (wp *Workflow) NewWorkflowDefinition() bindings.WorkflowDefinition {
 		pool:  wp.pool,
 		codec: wp.codec,
 		log:   wp.log,
-		sID:   wp.sID,
 	}
 }
 
@@ -81,7 +85,7 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 	wp.canceller = new(canceller.Canceller)
 
 	// sequenceID shared for all pool workflows
-	wp.mq = queue.NewMessageQueue(wp.sID)
+	wp.mq = queue.NewMessageQueue(seq)
 	wp.ids = new(registry.IDRegistry)
 
 	env.RegisterCancelHandler(wp.handleCancel)

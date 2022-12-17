@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	prom "github.com/prometheus/client_golang/prometheus"
@@ -85,7 +84,6 @@ type Plugin struct {
 	events   chan events.Event
 	stopCh   chan struct{}
 
-	seqID   uint64
 	workers []worker.Worker
 }
 
@@ -454,12 +452,6 @@ func (p *Plugin) RPC() any {
 	return &rpc{srv: p, client: p.client}
 }
 
-func (p *Plugin) SedID() uint64 {
-	p.log.Debug("sequenceID", zap.Uint64("before", atomic.LoadUint64(&p.seqID)))
-	defer p.log.Debug("sequenceID", zap.Uint64("after", atomic.LoadUint64(&p.seqID)+1))
-	return atomic.AddUint64(&p.seqID, 1)
-}
-
 func (p *Plugin) MetricsCollector() []prom.Collector {
 	// p - implements Exporter interface (workers)
 	// other - request duration and count
@@ -507,7 +499,7 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	p.rrWorkflowDef = aggregatedpool.NewWorkflowDefinition(p.codec, wp, p.log, p.SedID)
+	p.rrWorkflowDef = aggregatedpool.NewWorkflowDefinition(p.codec, wp, p.log)
 
 	// get worker information
 	wi, err := WorkerInfo(p.codec, wp, p.rrVersion)
