@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	prom "github.com/prometheus/client_golang/prometheus"
@@ -64,11 +63,10 @@ type Plugin struct {
 	config        *Config
 	statsExporter *metrics.StatsExporter
 
-	mh            temporalClient.MetricsHandler
-	tallyCloser   io.Closer
-	tlsCfg        *tls.Config
-	client        temporalClient.Client
-	dataConverter converter.DataConverter
+	mh          temporalClient.MetricsHandler
+	tallyCloser io.Closer
+	tlsCfg      *tls.Config
+	client      temporalClient.Client
 
 	actP  common.Pool
 	wfP   common.Pool
@@ -86,7 +84,6 @@ type Plugin struct {
 	events   chan events.Event
 	stopCh   chan struct{}
 
-	seqID   uint64
 	workers []worker.Worker
 }
 
@@ -133,7 +130,6 @@ func (p *Plugin) Init(cfg common.Configurer, log *zap.Logger, server common.Serv
 
 	// CONFIG INIT END -----
 
-	p.dataConverter = data_converter.NewDataConverter(converter.GetDefaultDataConverter())
 	p.log = &zap.Logger{}
 	*p.log = *log
 
@@ -237,12 +233,14 @@ func (p *Plugin) Serve() chan error {
 
 	worker.SetStickyWorkflowCacheSize(p.config.CacheSize)
 
+	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
+
 	opts := temporalClient.Options{
 		HostPort:       p.config.Address,
 		MetricsHandler: p.mh,
 		Namespace:      p.config.Namespace,
 		Logger:         logger.NewZapAdapter(p.log),
-		DataConverter:  p.dataConverter,
+		DataConverter:  dc,
 		ConnectionOptions: temporalClient.ConnectionOptions{
 			TLS: p.tlsCfg,
 			DialOptions: []grpc.DialOption{
@@ -259,7 +257,7 @@ func (p *Plugin) Serve() chan error {
 	}
 
 	p.log.Info("connected to temporal server", zap.String("address", p.config.Address))
-	p.codec = proto.NewCodec(p.log, p.dataConverter)
+	p.codec = proto.NewCodec(p.log, dc)
 
 	err = p.initPool()
 	if err != nil {
@@ -454,12 +452,6 @@ func (p *Plugin) RPC() any {
 	return &rpc{srv: p, client: p.client}
 }
 
-func (p *Plugin) SedID() uint64 {
-	p.log.Debug("sequenceID", zap.Uint64("before", atomic.LoadUint64(&p.seqID)))
-	defer p.log.Debug("sequenceID", zap.Uint64("after", atomic.LoadUint64(&p.seqID)+1))
-	return atomic.AddUint64(&p.seqID, 1)
-}
-
 func (p *Plugin) MetricsCollector() []prom.Collector {
 	// p - implements Exporter interface (workers)
 	// other - request duration and count
@@ -487,7 +479,7 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	p.rrActivityDef = aggregatedpool.NewActivityDefinition(p.codec, ap, p.log, p.dataConverter, p.client)
+	p.rrActivityDef = aggregatedpool.NewActivityDefinition(p.codec, ap, p.log)
 
 	// ---------- WORKFLOW POOL -------------
 	wp, err := p.server.NewPool(
@@ -507,7 +499,7 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	p.rrWorkflowDef = aggregatedpool.NewWorkflowDefinition(p.codec, p.dataConverter, wp, p.log, p.SedID, p.client)
+	p.rrWorkflowDef = aggregatedpool.NewWorkflowDefinition(p.codec, wp, p.log)
 
 	// get worker information
 	wi, err := WorkerInfo(p.codec, wp, p.rrVersion)
