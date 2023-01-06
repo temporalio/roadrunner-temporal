@@ -55,6 +55,10 @@ const (
 	clientVersionHeaderValue = "2.0.0"
 )
 
+type Logger interface {
+	NamedLogger(name string) *zap.Logger
+}
+
 type Plugin struct {
 	mu sync.RWMutex
 
@@ -87,7 +91,7 @@ type Plugin struct {
 	workers []worker.Worker
 }
 
-func (p *Plugin) Init(cfg common.Configurer, log *zap.Logger, server common.Server) error {
+func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) error {
 	const op = errors.Op("temporal_plugin_init")
 
 	if !cfg.Has(PluginName) {
@@ -130,8 +134,7 @@ func (p *Plugin) Init(cfg common.Configurer, log *zap.Logger, server common.Serv
 
 	// CONFIG INIT END -----
 
-	p.log = &zap.Logger{}
-	*p.log = *log
+	p.log = log.NamedLogger(PluginName)
 
 	p.server = server
 	p.rrVersion = cfg.RRVersion()
@@ -305,7 +308,7 @@ func (p *Plugin) Serve() chan error {
 	return errCh
 }
 
-func (p *Plugin) Stop() error {
+func (p *Plugin) Stop(context.Context) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
