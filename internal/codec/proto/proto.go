@@ -5,9 +5,9 @@ import (
 
 	"github.com/goccy/go-json"
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/sdk/v3/payload"
-	"github.com/temporalio/roadrunner-temporal/v2/internal"
-	protocolV1 "github.com/temporalio/roadrunner-temporal/v2/proto/protocol/v1"
+	"github.com/roadrunner-server/sdk/v4/payload"
+	"github.com/temporalio/roadrunner-temporal/v4/internal"
+	protocolV1 "github.com/temporalio/roadrunner-temporal/v4/proto/protocol/v1"
 	"go.temporal.io/sdk/converter"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"

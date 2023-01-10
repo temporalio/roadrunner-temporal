@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/temporalio/roadrunner-temporal/v2/internal"
+	"github.com/temporalio/roadrunner-temporal/v4/internal"
 	tActivity "go.temporal.io/sdk/activity"
 	temporalClient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"

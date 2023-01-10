@@ -4,12 +4,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/roadrunner-server/sdk/v3/payload"
-	"github.com/roadrunner-server/sdk/v3/pool"
-	staticPool "github.com/roadrunner-server/sdk/v3/pool/static_pool"
-	"github.com/roadrunner-server/sdk/v3/state/process"
-	"github.com/roadrunner-server/sdk/v3/worker"
-	"github.com/temporalio/roadrunner-temporal/v2/internal"
+	"github.com/roadrunner-server/sdk/v4/payload"
+	"github.com/roadrunner-server/sdk/v4/pool"
+	staticPool "github.com/roadrunner-server/sdk/v4/pool/static_pool"
+	"github.com/roadrunner-server/sdk/v4/state/process"
+	"github.com/roadrunner-server/sdk/v4/worker"
+	"github.com/temporalio/roadrunner-temporal/v4/internal"
 	"go.uber.org/zap"
 )
 

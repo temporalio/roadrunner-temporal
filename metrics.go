@@ -6,8 +6,8 @@ import (
 
 	"github.com/cactus/go-statsd-client/statsd"
 	prom "github.com/prometheus/client_golang/prometheus"
-	"github.com/roadrunner-server/sdk/v3/metrics"
-	"github.com/roadrunner-server/sdk/v3/state/process"
+	"github.com/roadrunner-server/sdk/v4/metrics"
+	"github.com/roadrunner-server/sdk/v4/state/process"
 	"github.com/uber-go/tally/v4"
 	"github.com/uber-go/tally/v4/prometheus"
 	statsdreporter "go.temporal.io/server/common/metrics/tally/statsd"
