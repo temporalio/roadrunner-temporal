@@ -1,4 +1,4 @@
-module github.com/temporalio/roadrunner-temporal/v2
+module github.com/temporalio/roadrunner-temporal/v3
 
 go 1.19
 

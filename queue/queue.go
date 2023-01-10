@@ -3,7 +3,7 @@ package queue
 import (
 	"sync"
 
-	"github.com/temporalio/roadrunner-temporal/v2/internal"
+	"github.com/temporalio/roadrunner-temporal/v3/internal"
 	"go.temporal.io/api/common/v1"
 	"go.temporal.io/api/failure/v1"
 )

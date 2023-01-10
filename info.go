@@ -6,8 +6,8 @@ import (
 
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/sdk/v3/payload"
-	"github.com/temporalio/roadrunner-temporal/v2/common"
-	"github.com/temporalio/roadrunner-temporal/v2/internal"
+	"github.com/temporalio/roadrunner-temporal/v3/common"
+	"github.com/temporalio/roadrunner-temporal/v3/internal"
 )
 
 func WorkerInfo(c common.Codec, p common.Pool, rrVersion string) ([]*internal.WorkerInfo, error) {

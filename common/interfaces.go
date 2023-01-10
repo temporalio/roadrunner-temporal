@@ -9,7 +9,7 @@ import (
 	staticPool "github.com/roadrunner-server/sdk/v3/pool/static_pool"
 	"github.com/roadrunner-server/sdk/v3/state/process"
 	"github.com/roadrunner-server/sdk/v3/worker"
-	"github.com/temporalio/roadrunner-temporal/v2/internal"
+	"github.com/temporalio/roadrunner-temporal/v3/internal"
 	"go.uber.org/zap"
 )
 
