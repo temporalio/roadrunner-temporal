@@ -1,4 +1,4 @@
-module github.com/temporalio/roadrunner-temporal/v2
+module github.com/temporalio/roadrunner-temporal/v4
 
 go 1.19
 
@@ -8,10 +8,10 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
 	github.com/roadrunner-server/errors v1.2.0
-	github.com/roadrunner-server/sdk/v3 v3.1.0
+	github.com/roadrunner-server/sdk/v4 v4.0.0
 	github.com/stretchr/testify v1.8.1
 	github.com/uber-go/tally/v4 v4.1.4
-	go.temporal.io/api v1.13.1-0.20221110200459-6a3cb21a3415
+	go.temporal.io/api v1.14.0
 	go.temporal.io/sdk v1.19.0
 	go.temporal.io/sdk/contrib/tally v0.2.0
 	go.temporal.io/server v1.19.0
@@ -49,14 +49,13 @@ require (
 	github.com/twmb/murmur3 v1.1.6 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
-	go.uber.org/goleak v1.1.12 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/net v0.5.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.4.0 // indirect
 	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	google.golang.org/genproto v0.0.0-20230104163317-caabf589fcbf // indirect
+	google.golang.org/genproto v0.0.0-20230109162033-3c3c17ce83e6 // indirect
 	google.golang.org/grpc v1.51.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
