@@ -13,6 +13,7 @@ import (
 	"time"
 
 	prom "github.com/prometheus/client_golang/prometheus"
+	"github.com/roadrunner-server/endure/v2/dep"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/sdk/v4/events"
 	"github.com/roadrunner-server/sdk/v4/metrics"
@@ -28,6 +29,7 @@ import (
 	temporalClient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/contrib/tally"
 	"go.temporal.io/sdk/converter"
+
 	"go.temporal.io/sdk/worker"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -52,7 +54,7 @@ const (
 	clientNameHeaderName     = "client-name"
 	clientNameHeaderValue    = "roadrunner-temporal"
 	clientVersionHeaderName  = "client-version"
-	clientVersionHeaderValue = "2.0.0"
+	clientVersionHeaderValue = "4.0.0"
 )
 
 type Logger interface {
@@ -71,6 +73,7 @@ type Plugin struct {
 	tallyCloser io.Closer
 	tlsCfg      *tls.Config
 	client      temporalClient.Client
+	dc          converter.DataConverter
 
 	actP  common.Pool
 	wfP   common.Pool
@@ -236,14 +239,16 @@ func (p *Plugin) Serve() chan error {
 
 	worker.SetStickyWorkflowCacheSize(p.config.CacheSize)
 
-	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
+	if p.dc == nil {
+		p.dc = data_converter.NewDataConverter(converter.GetDefaultDataConverter())
+	}
 
 	opts := temporalClient.Options{
 		HostPort:       p.config.Address,
 		MetricsHandler: p.mh,
 		Namespace:      p.config.Namespace,
 		Logger:         logger.NewZapAdapter(p.log),
-		DataConverter:  dc,
+		DataConverter:  p.dc,
 		ConnectionOptions: temporalClient.ConnectionOptions{
 			TLS: p.tlsCfg,
 			DialOptions: []grpc.DialOption{
@@ -260,7 +265,7 @@ func (p *Plugin) Serve() chan error {
 	}
 
 	p.log.Info("connected to temporal server", zap.String("address", p.config.Address))
-	p.codec = proto.NewCodec(p.log, dc)
+	p.codec = proto.NewCodec(p.log, p.dc)
 
 	err = p.initPool()
 	if err != nil {
@@ -449,6 +454,14 @@ func (p *Plugin) Reset() error {
 
 func (p *Plugin) Name() string {
 	return PluginName
+}
+
+func (p *Plugin) Collects() []*dep.In {
+	return []*dep.In{
+		dep.Fits(func(pp any) {
+			p.dc = pp.(converter.DataConverter)
+		}, (*converter.DataConverter)(nil)),
+	}
 }
 
 func (p *Plugin) RPC() any {
