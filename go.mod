@@ -56,6 +56,6 @@ require (
 	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/genproto v0.0.0-20230124163310-31e0e69b6fc2 // indirect
-	google.golang.org/grpc v1.52.1
+	google.golang.org/grpc v1.52.3
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
