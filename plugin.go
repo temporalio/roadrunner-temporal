@@ -91,7 +91,7 @@ type Plugin struct {
 
 	workers []worker.Worker
 
-	intcp map[string]common.TemporalInterceptor
+	interceptors map[string]common.TemporalInterceptor
 }
 
 func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) error {
@@ -227,7 +227,7 @@ func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) e
 		}
 	}
 
-	p.intcp = make(map[string]common.TemporalInterceptor)
+	p.interceptors = make(map[string]common.TemporalInterceptor)
 
 	return nil
 }
@@ -433,7 +433,7 @@ func (p *Plugin) Reset() error {
 	}
 
 	// based on the worker info -> initialize workers
-	p.workers, err = aggregatedpool.TemporalWorkers(p.rrWorkflowDef, p.rrActivityDef, wi, p.log, p.client, p.intcp)
+	p.workers, err = aggregatedpool.TemporalWorkers(p.rrWorkflowDef, p.rrActivityDef, wi, p.log, p.client, p.interceptors)
 	if err != nil {
 		return err
 	}
@@ -515,7 +515,7 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	p.workers, err = aggregatedpool.TemporalWorkers(p.rrWorkflowDef, p.rrActivityDef, wi, p.log, p.client, p.intcp)
+	p.workers, err = aggregatedpool.TemporalWorkers(p.rrWorkflowDef, p.rrActivityDef, wi, p.log, p.client, p.interceptors)
 	if err != nil {
 		return err
 	}
@@ -549,7 +549,7 @@ func (p *Plugin) Collects() []*dep.In {
 			mdw := pp.(common.TemporalInterceptor)
 			// just to be safe
 			p.mu.Lock()
-			p.intcp[mdw.Name()] = mdw
+			p.interceptors[mdw.Name()] = mdw
 			p.mu.Unlock()
 		}, (*common.TemporalInterceptor)(nil)),
 	}
