@@ -15,7 +15,7 @@ import (
 )
 
 type TemporalInterceptor interface {
-	TemporalInterceptor() interceptor.Interceptor
+	TemporalInterceptor() interceptor.WorkerInterceptor
 	Name() string
 }
 
