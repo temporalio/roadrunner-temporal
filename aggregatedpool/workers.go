@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/temporalio/roadrunner-temporal/v4/common"
 	"github.com/temporalio/roadrunner-temporal/v4/internal"
 	tActivity "go.temporal.io/sdk/activity"
 	temporalClient "go.temporal.io/sdk/client"
@@ -15,7 +16,7 @@ import (
 
 const tq = "taskqueue"
 
-func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo, log *zap.Logger, tc temporalClient.Client) ([]worker.Worker, error) {
+func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo, log *zap.Logger, tc temporalClient.Client, interceptors map[string]common.TemporalInterceptor) ([]worker.Worker, error) {
 	workers := make([]worker.Worker, 0, 1)
 
 	for i := 0; i < len(wi); i++ {
@@ -37,6 +38,9 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 
 		// interceptor used here to  the headers
 		wi[i].Options.Interceptors = append(wi[i].Options.Interceptors, NewWorkerInterceptor())
+		for _, interceptor := range interceptors {
+			wi[i].Options.Interceptors = append(wi[i].Options.Interceptors, interceptor.TemporalInterceptor())
+		}
 
 		wrk := worker.New(tc, wi[i].TaskQueue, wi[i].Options)
 

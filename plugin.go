@@ -13,6 +13,7 @@ import (
 	"time"
 
 	prom "github.com/prometheus/client_golang/prometheus"
+	"github.com/roadrunner-server/endure/v2/dep"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/sdk/v4/events"
 	"github.com/roadrunner-server/sdk/v4/metrics"
@@ -89,6 +90,8 @@ type Plugin struct {
 	stopCh   chan struct{}
 
 	workers []worker.Worker
+
+	intcp map[string]common.TemporalInterceptor
 }
 
 func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) error {
@@ -223,6 +226,8 @@ func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) e
 			return errors.E(op, errors.Errorf("unknown driver provided: %s", p.config.Metrics.Driver))
 		}
 	}
+
+	p.intcp = make(map[string]common.TemporalInterceptor)
 
 	return nil
 }
@@ -428,7 +433,7 @@ func (p *Plugin) Reset() error {
 	}
 
 	// based on the worker info -> initialize workers
-	p.workers, err = aggregatedpool.TemporalWorkers(p.rrWorkflowDef, p.rrActivityDef, wi, p.log, p.client)
+	p.workers, err = aggregatedpool.TemporalWorkers(p.rrWorkflowDef, p.rrActivityDef, wi, p.log, p.client, p.intcp)
 	if err != nil {
 		return err
 	}
@@ -510,7 +515,7 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	p.workers, err = aggregatedpool.TemporalWorkers(p.rrWorkflowDef, p.rrActivityDef, wi, p.log, p.client)
+	p.workers, err = aggregatedpool.TemporalWorkers(p.rrWorkflowDef, p.rrActivityDef, wi, p.log, p.client, p.intcp)
 	if err != nil {
 		return err
 	}
@@ -535,4 +540,17 @@ func (p *Plugin) initPool() error {
 	p.wwPID = int(p.wfP.Workers()[0].Pid())
 
 	return nil
+}
+
+// Collects collecting grpc interceptors
+func (p *Plugin) Collects() []*dep.In {
+	return []*dep.In{
+		dep.Fits(func(pp any) {
+			mdw := pp.(common.TemporalInterceptor)
+			// just to be safe
+			p.mu.Lock()
+			p.intcp[mdw.Name()] = mdw
+			p.mu.Unlock()
+		}, (*common.TemporalInterceptor)(nil)),
+	}
 }
