@@ -12,8 +12,8 @@ require (
 	github.com/roadrunner-server/sdk/v4 v4.0.0
 	github.com/stretchr/testify v1.8.1
 	github.com/uber-go/tally/v4 v4.1.5
-	go.temporal.io/api v1.15.0
-	go.temporal.io/sdk v1.20.0
+	go.temporal.io/api v1.16.0
+	go.temporal.io/sdk v1.21.0
 	go.temporal.io/sdk/contrib/tally v0.2.0
 	go.temporal.io/server v1.19.1
 	go.uber.org/zap v1.24.0
@@ -56,7 +56,7 @@ require (
 	golang.org/x/sys v0.4.0 // indirect
 	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	google.golang.org/genproto v0.0.0-20230125152338-dcaf20b6aeaa // indirect
+	google.golang.org/genproto v0.0.0-20230202175211-008b39050e57 // indirect
 	google.golang.org/grpc v1.52.3
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
