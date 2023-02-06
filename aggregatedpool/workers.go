@@ -16,7 +16,7 @@ import (
 
 const tq = "taskqueue"
 
-func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo, log *zap.Logger, tc temporalClient.Client, interceptors map[string]common.TemporalInterceptor) ([]worker.Worker, error) {
+func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo, log *zap.Logger, tc temporalClient.Client, interceptors map[string]common.Interceptor) ([]worker.Worker, error) {
 	workers := make([]worker.Worker, 0, 1)
 
 	for i := 0; i < len(wi); i++ {

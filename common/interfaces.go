@@ -14,7 +14,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type TemporalInterceptor interface {
+type Interceptor interface {
 	WorkerInterceptor() interceptor.WorkerInterceptor
 	Name() string
 }

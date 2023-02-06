@@ -91,7 +91,7 @@ type Plugin struct {
 
 	workers []worker.Worker
 
-	interceptors map[string]common.TemporalInterceptor
+	interceptors map[string]common.Interceptor
 }
 
 func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) error {
@@ -227,7 +227,7 @@ func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) e
 		}
 	}
 
-	p.interceptors = make(map[string]common.TemporalInterceptor)
+	p.interceptors = make(map[string]common.Interceptor)
 
 	return nil
 }
@@ -546,11 +546,11 @@ func (p *Plugin) initPool() error {
 func (p *Plugin) Collects() []*dep.In {
 	return []*dep.In{
 		dep.Fits(func(pp any) {
-			mdw := pp.(common.TemporalInterceptor)
+			mdw := pp.(common.Interceptor)
 			// just to be safe
 			p.mu.Lock()
 			p.interceptors[mdw.Name()] = mdw
 			p.mu.Unlock()
-		}, (*common.TemporalInterceptor)(nil)),
+		}, (*common.Interceptor)(nil)),
 	}
 }
