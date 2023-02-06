@@ -10,8 +10,14 @@ import (
 	"github.com/roadrunner-server/sdk/v4/state/process"
 	"github.com/roadrunner-server/sdk/v4/worker"
 	"github.com/temporalio/roadrunner-temporal/v4/internal"
+	"go.temporal.io/sdk/interceptor"
 	"go.uber.org/zap"
 )
+
+type Interceptor interface {
+	WorkerInterceptor() interceptor.WorkerInterceptor
+	Name() string
+}
 
 type Pool interface {
 	// Workers returns worker list associated with the pool.
