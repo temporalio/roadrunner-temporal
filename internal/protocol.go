@@ -39,6 +39,8 @@ const (
 	signalExternalWorkflowCommand = "SignalExternalWorkflow"
 	cancelExternalWorkflowCommand = "CancelExternalWorkflow"
 
+	undefinedResponse = "UndefinedResponse"
+
 	cancelCommand = "Cancel"
 	panicCommand  = "Panic"
 )
@@ -59,16 +61,12 @@ type Context struct {
 type Message struct {
 	// ID contains ID of the command, response or error.
 	ID uint64 `json:"id"`
-
 	// Command of the message in unmarshalled form. Pointer.
 	Command any `json:"command,omitempty"`
-
 	// Failure associated with command id.
 	Failure *failure.Failure `json:"failure,omitempty"`
-
 	// Payloads contains message specific payloads in binary format.
 	Payloads *commonpb.Payloads `json:"payloads,omitempty"`
-
 	// Header
 	Header *commonpb.Header `json:"header,omitempty"`
 }
@@ -81,6 +79,14 @@ func (ctx Context) IsEmpty() bool {
 // IsCommand returns true if message carries request.
 func (msg *Message) IsCommand() bool {
 	return msg.Command != nil
+}
+
+func (msg *Message) UndefinedResponse() bool {
+	if _, ok := msg.Command.(*UndefinedResponse); ok {
+		return true
+	}
+
+	return false
 }
 
 func (msg *Message) Reset() {
@@ -249,6 +255,11 @@ type CancelExternalWorkflow struct {
 	Namespace  string `json:"namespace"`
 	WorkflowID string `json:"workflowID"`
 	RunID      string `json:"runID"`
+}
+
+// UndefinedResponse indicates that we should panic the workflow
+type UndefinedResponse struct {
+	Message string `json:"message"`
 }
 
 // Cancel one or multiple internal promises (activities, local activities, timers, child workflows).
@@ -471,7 +482,10 @@ func InitCommand(name string) (any, error) {
 	case panicCommand:
 		return &Panic{}, nil
 
+	case undefinedResponse:
+		return &UndefinedResponse{}, nil
+
 	default:
-		return nil, errors.E(op, errors.Errorf("undefined command name: %s", name))
+		return nil, errors.E(op, errors.Errorf("undefined command name: %s, possible outdated RoadRunner version", name))
 	}
 }
