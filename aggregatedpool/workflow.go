@@ -149,6 +149,10 @@ func (wp *Workflow) OnWorkflowTaskStarted(t time.Duration) {
 		wp.pipeline = wp.pipeline[1:]
 
 		if msg.IsCommand() {
+			if msg.UndefinedResponse() {
+				panic(msg.Command.(*internal.UndefinedState).Message)
+			}
+
 			err = wp.handleMessage(msg)
 		}
 
