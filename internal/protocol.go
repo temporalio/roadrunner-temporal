@@ -39,7 +39,7 @@ const (
 	signalExternalWorkflowCommand = "SignalExternalWorkflow"
 	cancelExternalWorkflowCommand = "CancelExternalWorkflow"
 
-	undefinedState = "UndefinedState"
+	undefinedResponse = "UndefinedResponse"
 
 	cancelCommand = "Cancel"
 	panicCommand  = "Panic"
@@ -82,7 +82,7 @@ func (msg *Message) IsCommand() bool {
 }
 
 func (msg *Message) UndefinedResponse() bool {
-	if _, ok := msg.Command.(*UndefinedState); ok {
+	if _, ok := msg.Command.(*UndefinedResponse); ok {
 		return true
 	}
 
@@ -257,8 +257,8 @@ type CancelExternalWorkflow struct {
 	RunID      string `json:"runID"`
 }
 
-// UndefinedState indicates that we should panic the workflow
-type UndefinedState struct {
+// UndefinedResponse indicates that we should panic the workflow
+type UndefinedResponse struct {
 	Message string `json:"message"`
 }
 
@@ -482,8 +482,8 @@ func InitCommand(name string) (any, error) {
 	case panicCommand:
 		return &Panic{}, nil
 
-	case undefinedState:
-		return &UndefinedState{}, nil
+	case undefinedResponse:
+		return &UndefinedResponse{}, nil
 
 	default:
 		return nil, errors.E(op, errors.Errorf("undefined command name: %s, possible outdated RoadRunner version", name))

@@ -1,6 +1,7 @@
 package aggregatedpool
 
 import (
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -150,7 +151,7 @@ func (wp *Workflow) OnWorkflowTaskStarted(t time.Duration) {
 
 		if msg.IsCommand() {
 			if msg.UndefinedResponse() {
-				panic(msg.Command.(*internal.UndefinedState).Message)
+				panic(fmt.Sprintf("undefined response: %s", msg.Command.(*internal.UndefinedResponse).Message))
 			}
 
 			err = wp.handleMessage(msg)
