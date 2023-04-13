@@ -9,16 +9,18 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/roadrunner-server/endure/v2 v2.2.0
 	github.com/roadrunner-server/errors v1.2.0
-	github.com/roadrunner-server/sdk/v4 v4.2.0
+	github.com/roadrunner-server/sdk/v4 v4.2.1
 	github.com/stretchr/testify v1.8.2
 	github.com/uber-go/tally/v4 v4.1.6
-	go.temporal.io/api v1.19.0
-	go.temporal.io/sdk v1.21.1
+	go.temporal.io/api v1.19.1-0.20230322213042-07fb271d475b
+	go.temporal.io/sdk v1.22.0
 	go.temporal.io/sdk/contrib/tally v0.2.0
 	go.temporal.io/server v1.20.1
 	go.uber.org/zap v1.24.0
 	google.golang.org/protobuf v1.30.0
 )
+
+exclude github.com/uber-go/tally/v4 v4.1.7
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -46,16 +48,16 @@ require (
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
-	github.com/twmb/murmur3 v1.1.6 // indirect
+	github.com/twmb/murmur3 v1.1.7 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
-	go.uber.org/multierr v1.10.0 // indirect
-	golang.org/x/net v0.8.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.6.0 // indirect
-	golang.org/x/text v0.8.0 // indirect
+	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	google.golang.org/genproto v0.0.0-20230323212658-478b75c54725 // indirect
+	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	google.golang.org/grpc v1.54.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
