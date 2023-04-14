@@ -541,7 +541,6 @@ github.com/cactus/go-statsd-client/statsd v0.0.0-20200423205355-cb0885a1018c/go.
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/census-instrumentation/opencensus-proto v0.3.0/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/census-instrumentation/opencensus-proto v0.4.1/go.mod h1:4T9NM4+4Vw91VeyqjLS6ao50K5bOcLKN6Q42XnYaRYw=
-github.com/cespare/xxhash v1.1.0 h1:a6HrQnmkObjyL+Gs60czilIUGqrzKutQD6XZog3p+ko=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
@@ -868,8 +867,6 @@ github.com/twmb/murmur3 v1.1.5/go.mod h1:Qq/R7NUyOfr65zD+6Q5IHKsJLwP7exErjN6lyyq
 github.com/twmb/murmur3 v1.1.7 h1:ULWBiM04n/XoN3YMSJ6Z2pHDFLf+MeIVQU71ZPrvbWg=
 github.com/twmb/murmur3 v1.1.7/go.mod h1:Qq/R7NUyOfr65zD+6Q5IHKsJLwP7exErjN6lyyq3OSQ=
 github.com/uber-go/tally/v4 v4.1.1/go.mod h1:aXeSTDMl4tNosyf6rdU8jlgScHyjEGGtfJ/uwCIf/vM=
-github.com/uber-go/tally/v4 v4.1.3 h1:dKhkrkVSSJK0AxZCv/MmK5JrWmH+MPG3dgZCbxWk2Yc=
-github.com/uber-go/tally/v4 v4.1.3/go.mod h1:aXeSTDMl4tNosyf6rdU8jlgScHyjEGGtfJ/uwCIf/vM=
 github.com/uber-go/tally/v4 v4.1.6 h1:k8NwZvdfj/w398Q0H1nqi6yq2W5bgxsqn76kNwZ/hfM=
 github.com/uber-go/tally/v4 v4.1.6/go.mod h1:aXeSTDMl4tNosyf6rdU8jlgScHyjEGGtfJ/uwCIf/vM=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
@@ -897,8 +894,8 @@ go.temporal.io/api v1.5.0/go.mod h1:BqKxEJJYdxb5dqf0ODfzfMxh8UEQ5L3zKS51FiIYYkA=
 go.temporal.io/api v1.19.1-0.20230322213042-07fb271d475b h1:6LMc1mbCTwQ1X8a28h9Npn3XBH40mY3YXeDGg/LVhE8=
 go.temporal.io/api v1.19.1-0.20230322213042-07fb271d475b/go.mod h1:PLQJqp1YZZikmtGm9jIbzWpP3p6zS39WQjhsO/Hiw30=
 go.temporal.io/sdk v1.12.0/go.mod h1:lSp3lH1lI0TyOsus0arnO3FYvjVXBZGi/G7DjnAnm6o=
-go.temporal.io/sdk v1.22.0 h1:ZcS/hqs9GDTD4WpKJDx+NqsTKLbOwkZUv0kai2a08b4=
-go.temporal.io/sdk v1.22.0/go.mod h1:LqYtPesETgMHktpH98Vk7WegNcikxErmmuaZPNWEnPw=
+go.temporal.io/sdk v1.22.1 h1:OawvkfZBy22H1W8A+9QQPhwlRLMFIGtmJQXpWaPHpeg=
+go.temporal.io/sdk v1.22.1/go.mod h1:LqYtPesETgMHktpH98Vk7WegNcikxErmmuaZPNWEnPw=
 go.temporal.io/sdk/contrib/tally v0.2.0 h1:XnTJIQcjOv+WuCJ1u8Ve2nq+s2H4i/fys34MnWDRrOo=
 go.temporal.io/sdk/contrib/tally v0.2.0/go.mod h1:1kpSuCms/tHeJQDPuuKkaBsMqfHnIIRnCtUYlPNXxuE=
 go.temporal.io/server v1.20.1 h1:vhI7XLQJP0TbYWIJTHzliCaYrekxY3XUhtg0MUSxaXs=
