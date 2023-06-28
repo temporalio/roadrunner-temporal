@@ -12,20 +12,18 @@ message Frame {
 
 // Single communication message.
 message Message {
+  // unique ID of the message (counter)
   uint64 id = 1;
-
   // command name (if any)
   string command = 2;
-
   // command options in json format.
   bytes options = 3;
-
   // error response.
   temporal.api.failure.v1.Failure failure = 4;
-
   // invocation or result payloads.
   temporal.api.common.v1.Payloads payloads = 5;
-
   // invocation or result payloads.
   temporal.api.common.v1.Header header = 6;
+  // workflow history length
+  int64 history_length = 7;
 }
