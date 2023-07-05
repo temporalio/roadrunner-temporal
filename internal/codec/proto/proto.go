@@ -45,12 +45,14 @@ func (c *Codec) Encode(ctx *internal.Context, p *payload.Payload, msg ...*intern
 	request.Messages = make([]*protocolV1.Message, len(msg))
 
 	for i := 0; i < len(msg); i++ {
-		frame, err := c.packMessage(msg[i])
+		pm := &protocolV1.Message{}
+		err := c.packMessage(msg[i], ctx, pm)
 		if err != nil {
 			return err
 		}
-		c.log.Debug("outgoing message", zap.Uint64("id", frame.Id), zap.ByteString("data", p.Body), zap.ByteString("context", p.Context))
-		request.Messages[i] = frame
+		request.Messages[i] = pm
+
+		c.log.Debug("outgoing message", zap.Uint64("id", pm.Id), zap.ByteString("data", p.Body), zap.ByteString("context", p.Context))
 	}
 
 	// context is always in json format
@@ -135,29 +137,28 @@ func (c *Codec) DecodeWorkerInfo(p *payload.Payload, wi *[]*internal.WorkerInfo)
 	return nil
 }
 
-func (c *Codec) packMessage(msg *internal.Message) (*protocolV1.Message, error) {
+func (c *Codec) packMessage(msg *internal.Message, ctx *internal.Context, protoMsg *protocolV1.Message) error {
 	var err error
 
-	frame := &protocolV1.Message{
-		Id:       msg.ID,
-		Payloads: msg.Payloads,
-		Failure:  msg.Failure,
-		Header:   msg.Header,
-	}
+	protoMsg.Id = msg.ID
+	protoMsg.Payloads = msg.Payloads
+	protoMsg.Failure = msg.Failure
+	protoMsg.Header = msg.Header
+	protoMsg.HistoryLength = int64(ctx.HistoryLen)
 
 	if msg.Command != nil {
-		frame.Command, err = internal.CommandName(msg.Command)
+		protoMsg.Command, err = internal.CommandName(msg.Command)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		frame.Options, err = json.Marshal(msg.Command)
+		protoMsg.Options, err = json.Marshal(msg.Command)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	return frame, nil
+	return nil
 }
 
 func (c *Codec) parseMessage(frame *protocolV1.Message) (*internal.Message, error) {

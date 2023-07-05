@@ -49,12 +49,12 @@ const (
 type Context struct {
 	// TaskQueue associates message batch with the specific task queue in underlying worker.
 	TaskQueue string `json:"taskQueue,omitempty"`
-
 	// TickTime associated current or historical time with message batch.
 	TickTime string `json:"tickTime,omitempty"`
-
 	// Replay indicates that current message batch is historical.
 	Replay bool `json:"replay,omitempty"`
+	// History
+	HistoryLen int `json:"history_length,omitempty"`
 }
 
 // Message used to exchange the send commands and receive responses from underlying workers.
