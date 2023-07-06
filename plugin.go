@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/roadrunner-server/endure/v2/dep"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/sdk/v4/events"
@@ -457,12 +456,6 @@ func (p *Plugin) Name() string {
 
 func (p *Plugin) RPC() any {
 	return &rpc{srv: p, client: p.client}
-}
-
-func (p *Plugin) MetricsCollector() []prom.Collector {
-	// p - implements Exporter interface (workers)
-	// other - request duration and count
-	return []prom.Collector{p.statsExporter}
 }
 
 func (p *Plugin) rewriteNameAndVersion(
