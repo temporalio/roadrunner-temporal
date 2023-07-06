@@ -50,6 +50,7 @@ const (
 	clientNameHeaderName    = "client-name"
 	clientNameHeaderValue   = "temporal-php"
 	clientVersionHeaderName = "client-version"
+	clientBaselineVersion   = "2.5.0"
 )
 
 type Logger interface {
@@ -224,34 +225,6 @@ func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) e
 	}
 
 	p.interceptors = make(map[string]common.Interceptor)
-
-	return nil
-}
-
-func (p *Plugin) initTemporalClient(phpSdkVersion string, dc converter.DataConverter) error {
-	worker.SetStickyWorkflowCacheSize(p.config.CacheSize)
-
-	opts := temporalClient.Options{
-		HostPort:       p.config.Address,
-		MetricsHandler: p.mh,
-		Namespace:      p.config.Namespace,
-		Logger:         logger.NewZapAdapter(p.log),
-		DataConverter:  dc,
-		ConnectionOptions: temporalClient.ConnectionOptions{
-			TLS: p.tlsCfg,
-			DialOptions: []grpc.DialOption{
-				grpc.WithUnaryInterceptor(rewriteNameAndVersion(phpSdkVersion)),
-			},
-		},
-	}
-
-	var err error
-	p.client, err = temporalClient.Dial(opts)
-	if err != nil {
-		return err
-	}
-
-	p.log.Info("connected to temporal server", zap.String("address", p.config.Address))
 
 	return nil
 }
@@ -456,6 +429,40 @@ func (p *Plugin) Name() string {
 
 func (p *Plugin) RPC() any {
 	return &rpc{srv: p, client: p.client}
+}
+
+/// INTERNAL
+
+func (p *Plugin) initTemporalClient(phpSdkVersion string, dc converter.DataConverter) error {
+	if phpSdkVersion == "" {
+		phpSdkVersion = clientBaselineVersion
+	}
+	p.log.Debug("PHP-SDK version: " + phpSdkVersion)
+	worker.SetStickyWorkflowCacheSize(p.config.CacheSize)
+
+	opts := temporalClient.Options{
+		HostPort:       p.config.Address,
+		MetricsHandler: p.mh,
+		Namespace:      p.config.Namespace,
+		Logger:         logger.NewZapAdapter(p.log),
+		DataConverter:  dc,
+		ConnectionOptions: temporalClient.ConnectionOptions{
+			TLS: p.tlsCfg,
+			DialOptions: []grpc.DialOption{
+				grpc.WithUnaryInterceptor(rewriteNameAndVersion(phpSdkVersion)),
+			},
+		},
+	}
+
+	var err error
+	p.client, err = temporalClient.Dial(opts)
+	if err != nil {
+		return err
+	}
+
+	p.log.Info("connected to temporal server", zap.String("address", p.config.Address))
+
+	return nil
 }
 
 func rewriteNameAndVersion(phpSdkVersion string) grpc.UnaryClientInterceptor {
