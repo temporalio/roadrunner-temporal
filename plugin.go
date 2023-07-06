@@ -48,7 +48,7 @@ const (
 
 	// temporal, sync with https://github.com/temporalio/sdk-go/blob/master/internal/internal_utils.go#L44
 	clientNameHeaderName    = "client-name"
-	clientNameHeaderValue   = "roadrunner-temporal"
+	clientNameHeaderValue   = "temporal-php"
 	clientVersionHeaderName = "client-version"
 )
 
@@ -228,13 +228,7 @@ func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) e
 	return nil
 }
 
-func (p *Plugin) Serve() chan error {
-	errCh := make(chan error, 1)
-	const op = errors.Op("temporal_plugin_serve")
-
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
+func (p *Plugin) initTemporalClien(phpSdkVersion string) error {
 	worker.SetStickyWorkflowCacheSize(p.config.CacheSize)
 
 	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
@@ -248,7 +242,7 @@ func (p *Plugin) Serve() chan error {
 		ConnectionOptions: temporalClient.ConnectionOptions{
 			TLS: p.tlsCfg,
 			DialOptions: []grpc.DialOption{
-				grpc.WithUnaryInterceptor(p.rewriteNameAndVersion),
+				grpc.WithUnaryInterceptor(rewriteNameAndVersion(phpSdkVersion)),
 			},
 		},
 	}
@@ -256,14 +250,23 @@ func (p *Plugin) Serve() chan error {
 	var err error
 	p.client, err = temporalClient.Dial(opts)
 	if err != nil {
-		errCh <- errors.E(op, err)
-		return errCh
+		return err
 	}
 
-	p.log.Info("connected to temporal server", zap.String("address", p.config.Address))
 	p.codec = proto.NewCodec(p.log, dc)
+	p.log.Info("connected to temporal server", zap.String("address", p.config.Address))
 
-	err = p.initPool()
+	return nil
+}
+
+func (p *Plugin) Serve() chan error {
+	errCh := make(chan error, 1)
+	const op = errors.Op("temporal_plugin_serve")
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	err := p.initPool()
 	if err != nil {
 		errCh <- errors.E(op, err)
 		return errCh
@@ -458,24 +461,20 @@ func (p *Plugin) RPC() any {
 	return &rpc{srv: p, client: p.client}
 }
 
-func (p *Plugin) rewriteNameAndVersion(
-	ctx context.Context,
-	method string,
-	req, reply interface{},
-	cc *grpc.ClientConn,
-	invoker grpc.UnaryInvoker,
-	opts ...grpc.CallOption) error {
-	md, _, _ := metadata.FromOutgoingContextRaw(ctx)
-	if md == nil {
+func rewriteNameAndVersion(phpSdkVersion string) grpc.UnaryClientInterceptor {
+	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		md, _, _ := metadata.FromOutgoingContextRaw(ctx)
+		if md == nil {
+			return invoker(ctx, method, req, reply, cc, opts...)
+		}
+
+		md.Set(clientNameHeaderName, clientNameHeaderValue)
+		md.Set(clientVersionHeaderName, phpSdkVersion)
+
+		ctx = metadata.NewOutgoingContext(ctx, md)
+
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
-
-	md.Set(clientNameHeaderName, clientNameHeaderValue)
-	md.Set(clientVersionHeaderName, p.rrVersion)
-
-	ctx = metadata.NewOutgoingContext(ctx, md)
-
-	return invoker(ctx, method, req, reply, cc, opts...)
 }
 
 func (p *Plugin) initPool() error {
@@ -509,6 +508,15 @@ func (p *Plugin) initPool() error {
 
 	// get worker information
 	wi, err := WorkerInfo(p.codec, wp, p.rrVersion)
+	if err != nil {
+		return err
+	}
+
+	if len(wi) == 0 {
+		return errors.Str("worker info should contain at least 1 worker")
+	}
+
+	err = p.initTemporalClien(wi[0].PhpSdkVersion)
 	if err != nil {
 		return err
 	}
