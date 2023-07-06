@@ -9,11 +9,11 @@ import (
 // WorkerInfo lists available task queues, workflows and activities.
 type WorkerInfo struct {
 	// TaskQueue assigned to the worker.
-	TaskQueue string `json:"taskQueue"`
+	TaskQueue string `json:"TaskQueue"`
 	// Options describe worker options.
 	Options worker.Options `json:"options,omitempty"`
 	// PhpSdkVersion is the underlying PHP-SDK version
-	PhpSdkVersion string `json:"php_sdk_version,omitempty"`
+	PhpSdkVersion string `json:"PhpSdkVersion,omitempty"`
 	// Workflows provided by the worker.
 	Workflows []WorkflowInfo
 	// Activities provided by the worker.

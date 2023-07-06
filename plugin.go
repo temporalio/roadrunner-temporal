@@ -48,7 +48,7 @@ const (
 
 	// temporal, sync with https://github.com/temporalio/sdk-go/blob/master/internal/internal_utils.go#L44
 	clientNameHeaderName    = "client-name"
-	clientNameHeaderValue   = "temporal-php"
+	clientNameHeaderValue   = "temporal-php-2"
 	clientVersionHeaderName = "client-version"
 	clientBaselineVersion   = "2.5.0"
 )
