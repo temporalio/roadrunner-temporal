@@ -47,13 +47,10 @@ type Informer interface {
 type Configurer interface {
 	// UnmarshalKey takes a single key and unmarshal it into a Struct.
 	UnmarshalKey(name string, out any) error
-
 	// Has checks if config section exists.
 	Has(name string) bool
-
 	// GracefulTimeout represents timeout for all servers registered in the endure
 	GracefulTimeout() time.Duration
-
 	// RRVersion returns running RR version
 	RRVersion() string
 }

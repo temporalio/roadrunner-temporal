@@ -353,8 +353,8 @@ func (wp *Workflow) flushQueue() error {
 		defer wp.mh.Gauge(RrWorkflowsMetricName).Update(float64(wp.pool.QueueSize()))
 	}
 
-	// todo(rustatian) to sync.Pool
-	pld := &payload.Payload{}
+	pld := wp.getPld()
+	defer wp.putPld(pld)
 	err := wp.codec.Encode(wp.getContext(), pld, wp.mq.Messages()...)
 	if err != nil {
 		return err
@@ -414,4 +414,15 @@ func (wp *Workflow) runCommand(cmd any, payloads *commonpb.Payloads, header *com
 	}
 
 	return msgs[0], nil
+}
+
+func (wp *Workflow) getPld() *payload.Payload {
+	return wp.pldPool.Get().(*payload.Payload)
+}
+
+func (wp *Workflow) putPld(pld *payload.Payload) {
+	pld.Codec = 0
+	pld.Context = nil
+	pld.Body = nil
+	wp.pldPool.Put(pld)
 }

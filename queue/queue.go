@@ -43,28 +43,28 @@ func (mq *MessageQueue) AllocateMessage(cmd any, payloads *common.Payloads, head
 
 func (mq *MessageQueue) PushCommand(cmd any, payloads *common.Payloads, header *common.Header) {
 	mq.mu.Lock()
-	defer mq.mu.Unlock()
 	mq.queue = append(mq.queue, &internal.Message{
 		ID:       mq.SeqID(),
 		Command:  cmd,
 		Payloads: payloads,
 		Header:   header,
 	})
+	mq.mu.Unlock()
 }
 
 func (mq *MessageQueue) PushResponse(id uint64, payloads *common.Payloads) {
 	mq.mu.Lock()
-	defer mq.mu.Unlock()
 	mq.queue = append(mq.queue, &internal.Message{
 		ID:       id,
 		Payloads: payloads,
 	})
+	mq.mu.Unlock()
 }
 
 func (mq *MessageQueue) PushError(id uint64, failure *failure.Failure) {
 	mq.mu.Lock()
-	defer mq.mu.Unlock()
 	mq.queue = append(mq.queue, &internal.Message{ID: id, Failure: failure})
+	mq.mu.Unlock()
 }
 
 func (mq *MessageQueue) Messages() []*internal.Message {

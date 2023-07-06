@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/roadrunner-server/endure/v2/dep"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/sdk/v4/events"
@@ -37,23 +36,20 @@ import (
 
 const (
 	// PluginName defines public service name.
-	PluginName string = "temporal"
+	pluginName string = "temporal"
 	metricsKey string = "temporal.metrics"
 
 	// RrMode env variable key
 	RrMode string = "RR_MODE"
-
 	// RrCodec env variable key
 	RrCodec string = "RR_CODEC"
-
 	// RrCodecVal - codec name, should be in sync with the PHP-SDK
 	RrCodecVal string = "protobuf"
 
 	// temporal, sync with https://github.com/temporalio/sdk-go/blob/master/internal/internal_utils.go#L44
-	clientNameHeaderName     = "client-name"
-	clientNameHeaderValue    = "roadrunner-temporal"
-	clientVersionHeaderName  = "client-version"
-	clientVersionHeaderValue = "2.0.0"
+	clientNameHeaderName    = "client-name"
+	clientNameHeaderValue   = "roadrunner-temporal"
+	clientVersionHeaderName = "client-version"
 )
 
 type Logger interface {
@@ -97,11 +93,11 @@ type Plugin struct {
 func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) error {
 	const op = errors.Op("temporal_plugin_init")
 
-	if !cfg.Has(PluginName) {
+	if !cfg.Has(pluginName) {
 		return errors.E(op, errors.Disabled)
 	}
 
-	err := cfg.UnmarshalKey(PluginName, &p.config)
+	err := cfg.UnmarshalKey(pluginName, &p.config)
 	if err != nil {
 		return errors.E(op, err)
 	}
@@ -137,7 +133,7 @@ func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) e
 
 	// CONFIG INIT END -----
 
-	p.log = log.NamedLogger(PluginName)
+	p.log = log.NamedLogger(pluginName)
 
 	p.server = server
 	p.rrVersion = cfg.RRVersion()
@@ -252,7 +248,7 @@ func (p *Plugin) Serve() chan error {
 		ConnectionOptions: temporalClient.ConnectionOptions{
 			TLS: p.tlsCfg,
 			DialOptions: []grpc.DialOption{
-				grpc.WithUnaryInterceptor(rewriteNameAndVersion),
+				grpc.WithUnaryInterceptor(p.rewriteNameAndVersion),
 			},
 		},
 	}
@@ -344,9 +340,10 @@ func (p *Plugin) Stop(context.Context) error {
 
 func (p *Plugin) Workers() []*process.State {
 	p.mu.RLock()
+	defer p.mu.RUnlock()
+
 	wfPw := p.wfP.Workers()
 	actPw := p.actP.Workers()
-	p.mu.RUnlock()
 
 	states := make([]*process.State, 0, len(wfPw)+len(actPw))
 
@@ -397,6 +394,7 @@ func (p *Plugin) ResetAP() error {
 
 func (p *Plugin) Reset() error {
 	const op = errors.Op("temporal_reset")
+
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -453,27 +451,27 @@ func (p *Plugin) Reset() error {
 }
 
 func (p *Plugin) Name() string {
-	return PluginName
+	return pluginName
 }
 
 func (p *Plugin) RPC() any {
 	return &rpc{srv: p, client: p.client}
 }
 
-func (p *Plugin) MetricsCollector() []prom.Collector {
-	// p - implements Exporter interface (workers)
-	// other - request duration and count
-	return []prom.Collector{p.statsExporter}
-}
-
-func rewriteNameAndVersion(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+func (p *Plugin) rewriteNameAndVersion(
+	ctx context.Context,
+	method string,
+	req, reply interface{},
+	cc *grpc.ClientConn,
+	invoker grpc.UnaryInvoker,
+	opts ...grpc.CallOption) error {
 	md, _, _ := metadata.FromOutgoingContextRaw(ctx)
 	if md == nil {
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
 
 	md.Set(clientNameHeaderName, clientNameHeaderValue)
-	md.Set(clientVersionHeaderName, clientVersionHeaderValue)
+	md.Set(clientVersionHeaderName, p.rrVersion)
 
 	ctx = metadata.NewOutgoingContext(ctx, md)
 
@@ -482,7 +480,7 @@ func rewriteNameAndVersion(ctx context.Context, method string, req, reply interf
 
 func (p *Plugin) initPool() error {
 	var err error
-	ap, err := p.server.NewPool(context.Background(), p.config.Activities, map[string]string{RrMode: PluginName, RrCodec: RrCodecVal}, p.log)
+	ap, err := p.server.NewPool(context.Background(), p.config.Activities, map[string]string{RrMode: pluginName, RrCodec: RrCodecVal}, p.log)
 	if err != nil {
 		return err
 	}
@@ -500,7 +498,7 @@ func (p *Plugin) initPool() error {
 			// no supervisor for the workflow worker
 			Supervisor: nil,
 		},
-		map[string]string{RrMode: PluginName, RrCodec: RrCodecVal},
+		map[string]string{RrMode: pluginName, RrCodec: RrCodecVal},
 		nil,
 	)
 	if err != nil {

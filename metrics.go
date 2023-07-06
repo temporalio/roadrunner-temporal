@@ -18,6 +18,12 @@ const (
 	namespace = "rr_temporal"
 )
 
+func (p *Plugin) MetricsCollector() []prom.Collector {
+	// p - implements Exporter interface (workers)
+	// other - request duration and count
+	return []prom.Collector{p.statsExporter}
+}
+
 // Informer used to get workers from particular plugin or set of plugins
 type Informer interface {
 	Workers() []*process.State

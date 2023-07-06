@@ -2,9 +2,11 @@ package aggregatedpool
 
 import (
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/roadrunner-server/sdk/v4/payload"
 	"github.com/temporalio/roadrunner-temporal/v4/canceller"
 	"github.com/temporalio/roadrunner-temporal/v4/common"
 	"github.com/temporalio/roadrunner-temporal/v4/internal"
@@ -54,13 +56,22 @@ type Workflow struct {
 
 	log *zap.Logger
 	mh  temporalClient.MetricsHandler
+
+	// objects pool
+	pldPool *sync.Pool
 }
 
+// RoadRunner function
 func NewWorkflowDefinition(codec common.Codec, pool common.Pool, log *zap.Logger) *Workflow {
 	return &Workflow{
 		log:   log,
 		codec: codec,
 		pool:  pool,
+		pldPool: &sync.Pool{
+			New: func() any {
+				return new(payload.Payload)
+			},
+		},
 	}
 }
 
@@ -71,6 +82,11 @@ func (wp *Workflow) NewWorkflowDefinition() bindings.WorkflowDefinition {
 		pool:  wp.pool,
 		codec: wp.codec,
 		log:   wp.log,
+		pldPool: &sync.Pool{
+			New: func() any {
+				return new(payload.Payload)
+			},
+		},
 	}
 }
 
