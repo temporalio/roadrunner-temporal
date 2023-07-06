@@ -228,10 +228,8 @@ func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) e
 	return nil
 }
 
-func (p *Plugin) initTemporalClien(phpSdkVersion string) error {
+func (p *Plugin) initTemporalClient(phpSdkVersion string, dc converter.DataConverter) error {
 	worker.SetStickyWorkflowCacheSize(p.config.CacheSize)
-
-	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
 
 	opts := temporalClient.Options{
 		HostPort:       p.config.Address,
@@ -253,7 +251,6 @@ func (p *Plugin) initTemporalClien(phpSdkVersion string) error {
 		return err
 	}
 
-	p.codec = proto.NewCodec(p.log, dc)
 	p.log.Info("connected to temporal server", zap.String("address", p.config.Address))
 
 	return nil
@@ -484,6 +481,9 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
+	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
+	p.codec = proto.NewCodec(p.log, dc)
+
 	p.rrActivityDef = aggregatedpool.NewActivityDefinition(p.codec, ap, p.log)
 
 	// ---------- WORKFLOW POOL -------------
@@ -516,7 +516,7 @@ func (p *Plugin) initPool() error {
 		return errors.Str("worker info should contain at least 1 worker")
 	}
 
-	err = p.initTemporalClien(wi[0].PhpSdkVersion)
+	err = p.initTemporalClient(wi[0].PhpSdkVersion, dc)
 	if err != nil {
 		return err
 	}
