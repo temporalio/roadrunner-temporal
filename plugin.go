@@ -423,6 +423,19 @@ func (p *Plugin) Reset() error {
 	return nil
 }
 
+// Collects collecting grpc interceptors
+func (p *Plugin) Collects() []*dep.In {
+	return []*dep.In{
+		dep.Fits(func(pp any) {
+			mdw := pp.(common.Interceptor)
+			// just to be safe
+			p.mu.Lock()
+			p.interceptors[mdw.Name()] = mdw
+			p.mu.Unlock()
+		}, (*common.Interceptor)(nil)),
+	}
+}
+
 func (p *Plugin) Name() string {
 	return pluginName
 }
@@ -553,17 +566,4 @@ func (p *Plugin) initPool() error {
 	p.wwPID = int(p.wfP.Workers()[0].Pid())
 
 	return nil
-}
-
-// Collects collecting grpc interceptors
-func (p *Plugin) Collects() []*dep.In {
-	return []*dep.In{
-		dep.Fits(func(pp any) {
-			mdw := pp.(common.Interceptor)
-			// just to be safe
-			p.mu.Lock()
-			p.interceptors[mdw.Name()] = mdw
-			p.mu.Unlock()
-		}, (*common.Interceptor)(nil)),
-	}
 }
