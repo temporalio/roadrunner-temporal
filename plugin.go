@@ -441,7 +441,7 @@ func (p *Plugin) Name() string {
 }
 
 func (p *Plugin) RPC() any {
-	return &rpc{srv: p, client: p.client}
+	return &rpc{plugin: p, client: p.client}
 }
 
 /// INTERNAL

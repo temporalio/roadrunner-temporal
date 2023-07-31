@@ -4,10 +4,10 @@ import (
 	"sync"
 
 	"github.com/goccy/go-json"
+	protocolV1 "github.com/roadrunner-server/api/v4/build/temporal/v1"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/sdk/v4/payload"
 	"github.com/temporalio/roadrunner-temporal/v4/internal"
-	protocolV1 "github.com/temporalio/roadrunner-temporal/v4/proto/protocol/v1"
 	"go.temporal.io/sdk/converter"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -145,6 +145,7 @@ func (c *Codec) packMessage(msg *internal.Message, ctx *internal.Context, protoM
 	protoMsg.Failure = msg.Failure
 	protoMsg.Header = msg.Header
 	protoMsg.HistoryLength = int64(ctx.HistoryLen)
+	protoMsg.RunId = ctx.RrID
 
 	if msg.Command != nil {
 		protoMsg.Command, err = internal.CommandName(msg.Command)
