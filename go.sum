@@ -1129,8 +1129,6 @@ go.temporal.io/api v1.23.1-0.20230721162852-f326b9afc8e1 h1:IMMihad9mxEsZHEnw6uH
 go.temporal.io/api v1.23.1-0.20230721162852-f326b9afc8e1/go.mod h1:Ezq+jBRcsvaZTbJaYzFhsl7r3c24YSI35lm0Af5rJG4=
 go.temporal.io/sdk/contrib/tally v0.2.0 h1:XnTJIQcjOv+WuCJ1u8Ve2nq+s2H4i/fys34MnWDRrOo=
 go.temporal.io/sdk/contrib/tally v0.2.0/go.mod h1:1kpSuCms/tHeJQDPuuKkaBsMqfHnIIRnCtUYlPNXxuE=
-go.temporal.io/server v1.21.3 h1:vtGGCJJ6pG31JC64mRcjkdNYUxIdapMaPWPY1qMEuVA=
-go.temporal.io/server v1.21.3/go.mod h1:o3azXry/6fuvSuXSpPmeCmkUmZ0RuFYgULJu67qwRZY=
 go.temporal.io/server v1.21.4 h1:lW32GaqHEWWveeEYKWFzqpfQTws5OXSVUvB3hEofCYc=
 go.temporal.io/server v1.21.4/go.mod h1:o3azXry/6fuvSuXSpPmeCmkUmZ0RuFYgULJu67qwRZY=
 go.uber.org/atomic v1.7.0/go.mod h1:fEN4uk6kAWBTFdckzkM89CLk9XfWZrxpCo0nPH17wJc=
