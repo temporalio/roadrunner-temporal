@@ -65,13 +65,30 @@ func (la *LocalActivityFn) execute(ctx context.Context, args *commonpb.Payloads)
 		return nil, err
 	}
 
-	result, err := la.pool.Exec(ctx, pld)
+	result, err := la.pool.Exec(ctx, pld, nil)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
 
+	var r *payload.Payload
+	select {
+	case pld := <-result:
+		if pld.Error() != nil {
+			return nil, errors.E(op, pld.Error())
+		}
+		// streaming is not supported
+		if pld.Payload().IsStream {
+			return nil, errors.E(op, errors.Str("streaming is not supported"))
+		}
+
+		// assign the payload
+		r = pld.Payload()
+	default:
+		return nil, errors.E(op, errors.Str("worker empty response"))
+	}
+
 	out := make([]*internal.Message, 0, 2)
-	err = la.codec.Decode(result, &out)
+	err = la.codec.Decode(r, &out)
 	if err != nil {
 		return nil, err
 	}
