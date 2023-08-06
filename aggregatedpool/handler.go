@@ -391,13 +391,30 @@ func (wp *Workflow) flushQueue() error {
 		return err
 	}
 
-	resp, err := wp.pool.Exec(context.Background(), pld)
+	result, err := wp.pool.Exec(context.Background(), pld, nil)
 	if err != nil {
 		return err
 	}
 
+	var r *payload.Payload
+	select {
+	case pld := <-result:
+		if pld.Error() != nil {
+			return errors.E(op, pld.Error())
+		}
+		// streaming is not supported
+		if pld.Payload().IsStream {
+			return errors.E(op, errors.Str("streaming is not supported"))
+		}
+
+		// assign the payload
+		r = pld.Payload()
+	default:
+		return errors.E(op, errors.Str("worker empty response"))
+	}
+
 	msgs := make([]*internal.Message, 0, 2)
-	err = wp.codec.Decode(resp, &msgs)
+	err = wp.codec.Decode(r, &msgs)
 	if err != nil {
 		return err
 	}
@@ -431,14 +448,29 @@ func (wp *Workflow) runCommand(cmd any, payloads *commonpb.Payloads, header *com
 	}
 
 	// todo(rustatian): do we need a timeout here??
-	resp, err := wp.pool.Exec(context.Background(), pld)
+	result, err := wp.pool.Exec(context.Background(), pld, nil)
 	if err != nil {
 		wp.putPld(pld)
 		return nil, err
 	}
 
+	var r *payload.Payload
+	for p := range result {
+		if p.Error() != nil {
+			wp.putPld(pld)
+			return nil, errors.E(op, p.Error())
+		}
+		// streaming is not supported
+		if p.Payload().IsStream {
+			wp.putPld(pld)
+			return nil, errors.E(op, errors.Str("streaming is not supported"))
+		}
+		// save the payload
+		r = p.Payload()
+	}
+
 	msgs := make([]*internal.Message, 0, 2)
-	err = wp.codec.Decode(resp, &msgs)
+	err = wp.codec.Decode(r, &msgs)
 	if err != nil {
 		wp.putPld(pld)
 		return nil, err

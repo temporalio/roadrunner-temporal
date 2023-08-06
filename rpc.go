@@ -117,11 +117,6 @@ func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 		return nil
 	}
 
-	r.plugin.log.Debug("replay workflow request",
-		zap.String("run_id", in.GetWorkflowExecution().GetRunId()),
-		zap.String("workflow_id", in.GetWorkflowExecution().GetWorkflowId()),
-		zap.String("workflow_name", in.GetWorkflowType().GetName()))
-
 	if in.GetWorkflowExecution().GetRunId() == "" || in.GetWorkflowExecution().GetWorkflowId() == "" || in.GetWorkflowType().GetName() == "" {
 		out.Status = &common.Status{
 			Code:    int32(codes.FailedPrecondition),
@@ -182,6 +177,8 @@ func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 		Code: int32(codes.OK),
 	}
 
+	r.plugin.log.Debug("replay workflow request finished successfully")
+
 	return nil
 }
 
@@ -199,11 +196,6 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 
 		return nil
 	}
-
-	r.plugin.log.Debug("replay workflow request",
-		zap.String("run_id", in.GetWorkflowExecution().GetRunId()),
-		zap.String("workflow_id", in.GetWorkflowExecution().GetWorkflowId()),
-		zap.String("save_path", in.GetSavePath()))
 
 	if in.GetWorkflowExecution().GetRunId() == "" || in.GetWorkflowExecution().GetWorkflowId() == "" || in.GetWorkflowType().GetName() == "" {
 		out.Status = &common.Status{
@@ -269,6 +261,7 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 	out.Status = &common.Status{
 		Code: int32(codes.OK),
 	}
+
 	r.plugin.log.Debug("history saved", zap.String("location", in.GetSavePath()))
 
 	return nil
@@ -277,7 +270,9 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 func (r *rpc) ReplayFromJSON(in *protoApi.ReplayRequest, out *protoApi.ReplayResponse) error {
 	r.plugin.log.Debug("replay from JSON request",
 		zap.String("workflow_name", in.GetWorkflowType().GetName()),
-		zap.String("save_path", in.GetSavePath()))
+		zap.String("save_path", in.GetSavePath()),
+		zap.Int64("last_event_id", in.GetLastEventId()),
+	)
 
 	if in.GetWorkflowType() == nil || in.GetSavePath() == "" {
 		out.Status = &common.Status{
@@ -288,10 +283,6 @@ func (r *rpc) ReplayFromJSON(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 		r.plugin.log.Error("replay from JSON request", zap.String("error", "workflow_name and save_path should not be empty"))
 		return nil
 	}
-
-	r.plugin.log.Debug("replay from JSON request",
-		zap.String("workflow_name", in.GetWorkflowType().GetName()),
-		zap.String("save_path", in.GetSavePath()))
 
 	if in.GetWorkflowType().GetName() == "" {
 		out.Status = &common.Status{
@@ -331,7 +322,7 @@ func (r *rpc) ReplayFromJSON(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 				Message: err.Error(),
 			}
 
-			r.plugin.log.Error("replay from JSON request (partial workflow history)", zap.Error(err))
+			r.plugin.log.Error("replay from JSON request (partial workflow history)", zap.Int64("id", in.GetLastEventId()), zap.Error(err))
 			return nil
 		}
 	}
@@ -339,6 +330,8 @@ func (r *rpc) ReplayFromJSON(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 	out.Status = &common.Status{
 		Code: int32(codes.OK),
 	}
+
+	r.plugin.log.Debug("replay from JSON request finished successfully")
 
 	return nil
 }

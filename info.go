@@ -21,13 +21,30 @@ func WorkerInfo(c common.Codec, p common.Pool, rrVersion string) ([]*internal.Wo
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	resp, err := p.Exec(ctx, pld)
+	resp, err := p.Exec(ctx, pld, make(chan struct{}, 1))
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
 
+	var r *payload.Payload
+	select {
+	case pld := <-resp:
+		if pld.Error() != nil {
+			return nil, errors.E(op, pld.Error())
+		}
+		// streaming is not supported
+		if pld.Payload().IsStream {
+			return nil, errors.E(op, errors.Str("streaming is not supported"))
+		}
+
+		// assign the payload
+		r = pld.Payload()
+	default:
+		return nil, errors.E(op, errors.Str("worker empty response"))
+	}
+
 	wi := make([]*internal.WorkerInfo, 0, 2)
-	err = c.DecodeWorkerInfo(resp, &wi)
+	err = c.DecodeWorkerInfo(r, &wi)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
