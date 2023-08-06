@@ -27,7 +27,7 @@ type Pool interface {
 	// Reset kill all workers inside the watcher and replaces with new
 	Reset(ctx context.Context) error
 	// Exec payload
-	Exec(ctx context.Context, p *payload.Payload) (*payload.Payload, error)
+	Exec(ctx context.Context, p *payload.Payload, stopCh chan struct{}) (chan *staticPool.PExec, error)
 }
 
 type Codec interface {

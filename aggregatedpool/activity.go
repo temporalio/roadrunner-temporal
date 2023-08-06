@@ -98,7 +98,7 @@ func (a *Activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 		return nil, err
 	}
 
-	result, err := a.pool.Exec(ctx, pld)
+	result, err := a.pool.Exec(ctx, pld, nil)
 	if err != nil {
 		a.running.Delete(utils.AsString(info.TaskToken))
 		return nil, errors.E(op, err)
@@ -106,8 +106,26 @@ func (a *Activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 
 	a.running.Delete(utils.AsString(info.TaskToken))
 
+	var r *payload.Payload
+
+	select {
+	case pld := <-result:
+		if pld.Error() != nil {
+			return nil, errors.E(op, pld.Error())
+		}
+		// streaming is not supported
+		if pld.Payload().IsStream {
+			return nil, errors.E(op, errors.Str("streaming is not supported"))
+		}
+
+		// assign the payload
+		r = pld.Payload()
+	default:
+		return nil, errors.E(op, errors.Str("activity worker empty response"))
+	}
+
 	out := make([]*internal.Message, 0, 2)
-	err = a.codec.Decode(result, &out)
+	err = a.codec.Decode(r, &out)
 	if err != nil {
 		return nil, err
 	}
