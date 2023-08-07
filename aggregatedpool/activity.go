@@ -123,24 +123,6 @@ func (a *Activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 		return nil, errors.E(op, errors.Str("activity worker empty response"))
 	}
 
-	var r *payload.Payload
-
-	select {
-	case pld := <-result:
-		if pld.Error() != nil {
-			return nil, errors.E(op, pld.Error())
-		}
-		// streaming is not supported
-		if pld.Payload().IsStream {
-			return nil, errors.E(op, errors.Str("streaming is not supported"))
-		}
-
-		// assign the payload
-		r = pld.Payload()
-	default:
-		return nil, errors.E(op, errors.Str("activity worker empty response"))
-	}
-
 	out := make([]*internal.Message, 0, 2)
 	err = a.codec.Decode(r, &out)
 	if err != nil {
