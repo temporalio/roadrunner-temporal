@@ -21,7 +21,7 @@ func WorkerInfo(c common.Codec, p common.Pool, rrVersion string) ([]*internal.Wo
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	resp, err := p.Exec(ctx, pld, make(chan struct{}, 1))
+	resp, err := p.Exec(ctx, pld, nil)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
