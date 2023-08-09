@@ -1,15 +1,17 @@
 module github.com/temporalio/roadrunner-temporal/v4
 
-go 1.20
+go 1.21
+
+toolchain go1.21.0
 
 require (
 	github.com/cactus/go-statsd-client/statsd v0.0.0-20200423205355-cb0885a1018c
 	github.com/goccy/go-json v0.10.2
 	github.com/google/uuid v1.3.0
-	github.com/roadrunner-server/api/v4 v4.6.1
+	github.com/roadrunner-server/api/v4 v4.6.2
 	github.com/roadrunner-server/endure/v2 v2.3.1
 	github.com/roadrunner-server/errors v1.2.0
-	github.com/roadrunner-server/sdk/v4 v4.4.0-beta.4
+	github.com/roadrunner-server/sdk/v4 v4.4.0-beta.5
 	github.com/stretchr/testify v1.8.4
 	github.com/uber-go/tally/v4 v4.1.6
 	go.temporal.io/api v1.23.0
@@ -48,8 +50,8 @@ require (
 	github.com/roadrunner-server/tcplisten v1.3.0 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
-	github.com/stretchr/objx v0.5.0 // indirect
-	github.com/tklauser/go-sysconf v0.3.11 // indirect
+	github.com/stretchr/objx v0.5.1 // indirect
+	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
@@ -60,7 +62,7 @@ require (
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230803162519-f966b187b2e5 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230807174057-1744710a1577 // indirect
 	google.golang.org/grpc v1.57.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
