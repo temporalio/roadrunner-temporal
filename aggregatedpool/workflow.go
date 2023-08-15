@@ -109,7 +109,6 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 	env.RegisterCancelHandler(wp.handleCancel)
 	env.RegisterSignalHandler(wp.handleSignal)
 	env.RegisterQueryHandler(wp.handleQuery)
-	env.RegisterUpdateHandler(wp.handleUpdate)
 
 	var lastCompletion = bindings.GetLastCompletionResult(env)
 	var lastCompletionOffset = 0

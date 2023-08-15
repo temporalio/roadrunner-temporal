@@ -16,13 +16,8 @@ import (
 	"go.uber.org/zap"
 )
 
-type res string
-
 const (
 	completed string = "completed"
-
-	Complete res = "Complete"
-	Reject   res = "Reject"
 )
 
 // execution context.
@@ -57,31 +52,6 @@ func (wp *Workflow) handleSignal(name string, input *commonpb.Payloads, header *
 	)
 
 	return nil
-}
-
-func (wp *Workflow) handleUpdate(updateName string, id string, pld *commonpb.Payloads, hdr *commonpb.Header, callbacks bindings.UpdateCallbacks) {
-	result, err := wp.runCommand(internal.InvokeUpdate{
-		RunID:    wp.env.WorkflowInfo().WorkflowExecution.RunID,
-		Name:     updateName,
-		UpdateID: id,
-	}, pld, hdr)
-	if result == nil {
-		if err != nil {
-			callbacks.Reject(err)
-			return
-		}
-		callbacks.Reject(errors.Str("no command provided"))
-		return
-	}
-	switch result.Command {
-	case Complete:
-		callbacks.Accept()
-		callbacks.Complete(result.Payloads, err)
-	case Reject:
-		callbacks.Reject(err)
-	default:
-		callbacks.Reject(errors.Str("no command provided"))
-	}
 }
 
 // Handle query in blocking mode.
