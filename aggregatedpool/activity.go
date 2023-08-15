@@ -105,7 +105,6 @@ func (a *Activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 	}
 
 	a.running.Delete(utils.AsString(info.TaskToken))
-
 	var r *payload.Payload
 
 	select {

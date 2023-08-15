@@ -19,6 +19,3 @@ test_coverage:
 	go test -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./coverage-ci/temporal.out -covermode=atomic ./...
 	echo 'mode: atomic' > ./coverage-ci/summary.txt
 	tail -q -n +2 ./coverage-ci/*.out >> ./coverage-ci/summary.txt
-
-generate-proto:
-	protoc -I./proto/api  -I./proto  --go_out=proto/protocol/v1 ./proto/protocol/v1/protocol.proto

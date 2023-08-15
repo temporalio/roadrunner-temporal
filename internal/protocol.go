@@ -55,6 +55,8 @@ type Context struct {
 	Replay bool `json:"replay,omitempty"`
 	// History
 	HistoryLen int `json:"history_length,omitempty"`
+	// RoadRunner run ID
+	RrID string `json:"rr_id"`
 }
 
 // Message used to exchange the send commands and receive responses from underlying workers.
@@ -143,6 +145,15 @@ type InvokeSignal struct {
 
 // InvokeQuery invokes query with a set of arguments.
 type InvokeQuery struct {
+	// RunID workflow run id.
+	RunID string `json:"runId"`
+	// Name of the query.
+	Name string `json:"name"`
+}
+
+type InvokeUpdate struct {
+	// UpdateID is Workflow update ID
+	UpdateID string `json:"updateId"`
 	// RunID workflow run id.
 	RunID string `json:"runId"`
 	// Name of the query.

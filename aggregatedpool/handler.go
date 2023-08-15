@@ -27,6 +27,7 @@ func (wp *Workflow) getContext() *internal.Context {
 		TickTime:   wp.env.Now().Format(time.RFC3339),
 		Replay:     wp.env.IsReplaying(),
 		HistoryLen: wp.env.WorkflowInfo().GetCurrentHistoryLength(),
+		RrID:       wp.rrID,
 	}
 }
 
@@ -57,7 +58,7 @@ func (wp *Workflow) handleSignal(name string, input *commonpb.Payloads, header *
 func (wp *Workflow) handleQuery(queryType string, queryArgs *commonpb.Payloads, header *commonpb.Header) (*commonpb.Payloads, error) {
 	const op = errors.Op("workflow_process_handle_query")
 	result, err := wp.runCommand(internal.InvokeQuery{
-		RunID: wp.runID,
+		RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
 		Name:  queryType,
 	}, queryArgs, header)
 
@@ -401,22 +402,25 @@ func (wp *Workflow) flushQueue() error {
 // Run single command and return single result.
 func (wp *Workflow) runCommand(cmd any, payloads *commonpb.Payloads, header *commonpb.Header) (*internal.Message, error) {
 	const op = errors.Op("workflow_process_runcommand")
-	msg := wp.mq.AllocateMessage(cmd, payloads, header)
+	msg := &internal.Message{}
+	wp.mq.AllocateMessage(cmd, payloads, header, msg)
 
 	if wp.mh != nil {
 		wp.mh.Gauge(RrMetricName).Update(float64(wp.pool.QueueSize()))
 		defer wp.mh.Gauge(RrMetricName).Update(float64(wp.pool.QueueSize()))
 	}
 
-	pld := &payload.Payload{}
+	pld := wp.getPld()
 	err := wp.codec.Encode(wp.getContext(), pld, msg)
 	if err != nil {
+		wp.putPld(pld)
 		return nil, err
 	}
 
 	// todo(rustatian): do we need a timeout here??
 	result, err := wp.pool.Exec(context.Background(), pld, nil)
 	if err != nil {
+		wp.putPld(pld)
 		return nil, err
 	}
 
@@ -438,13 +442,16 @@ func (wp *Workflow) runCommand(cmd any, payloads *commonpb.Payloads, header *com
 	msgs := make([]*internal.Message, 0, 2)
 	err = wp.codec.Decode(r, &msgs)
 	if err != nil {
+		wp.putPld(pld)
 		return nil, err
 	}
 
 	if len(msgs) != 1 {
+		wp.putPld(pld)
 		return nil, errors.E(op, errors.Str("unexpected pool response"))
 	}
 
+	wp.putPld(pld)
 	return msgs[0], nil
 }
 

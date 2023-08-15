@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/roadrunner-server/sdk/v4/payload"
 	"github.com/temporalio/roadrunner-temporal/v4/canceller"
 	"github.com/temporalio/roadrunner-temporal/v4/common"
@@ -42,13 +43,13 @@ func seq() uint64 {
 type Workflow struct {
 	codec common.Codec
 	pool  common.Pool
+	rrID  string
 
 	env       bindings.WorkflowEnvironment
 	header    *commonpb.Header
 	mq        *queue.MessageQueue
 	ids       *registry.IDRegistry
 	seqID     uint64
-	runID     string
 	pipeline  []*internal.Message
 	callbacks []Callback
 	canceller *canceller.Canceller
@@ -61,9 +62,9 @@ type Workflow struct {
 	pldPool *sync.Pool
 }
 
-// RoadRunner function
 func NewWorkflowDefinition(codec common.Codec, pool common.Pool, log *zap.Logger) *Workflow {
 	return &Workflow{
+		rrID:  uuid.NewString(),
 		log:   log,
 		codec: codec,
 		pool:  pool,
@@ -79,6 +80,7 @@ func NewWorkflowDefinition(codec common.Codec, pool common.Pool, log *zap.Logger
 // DO NOT USE THIS FUNCTION DIRECTLY!!!!
 func (wp *Workflow) NewWorkflowDefinition() bindings.WorkflowDefinition {
 	return &Workflow{
+		rrID:  uuid.NewString(),
 		pool:  wp.pool,
 		codec: wp.codec,
 		log:   wp.log,
@@ -98,7 +100,6 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 	wp.env = env
 	wp.header = header
 	wp.seqID = 0
-	wp.runID = env.WorkflowInfo().WorkflowExecution.RunID
 	wp.canceller = new(canceller.Canceller)
 
 	// sequenceID shared for all pool workflows
@@ -167,6 +168,7 @@ func (wp *Workflow) OnWorkflowTaskStarted(t time.Duration) {
 
 		if msg.IsCommand() {
 			if msg.UndefinedResponse() {
+				wp.pipeline = nil
 				panic(fmt.Sprintf("undefined response: %s", msg.Command.(*internal.UndefinedResponse).Message))
 			}
 
@@ -174,6 +176,7 @@ func (wp *Workflow) OnWorkflowTaskStarted(t time.Duration) {
 		}
 
 		if err != nil {
+			wp.pipeline = nil
 			panic(err)
 		}
 	}
