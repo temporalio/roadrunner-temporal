@@ -14,12 +14,18 @@ require (
 	github.com/roadrunner-server/sdk/v4 v4.4.0-beta.6
 	github.com/stretchr/testify v1.8.4
 	github.com/uber-go/tally/v4 v4.1.6
-	go.temporal.io/api v1.23.0
+	go.temporal.io/api v1.24.0
 	go.temporal.io/sdk v1.24.0
 	go.temporal.io/sdk/contrib/tally v0.2.0
 	go.temporal.io/server v1.21.4
 	go.uber.org/zap v1.25.0
 	google.golang.org/protobuf v1.31.0
+)
+
+require (
+	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
+	google.golang.org/genproto v0.0.0-20230815205213-6bfd019c3878 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20230815205213-6bfd019c3878 // indirect
 )
 
 exclude github.com/uber-go/tally/v4 v4.1.7
