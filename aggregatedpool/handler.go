@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/roadrunner-server/errors"
+	"github.com/roadrunner-server/goridge/v3/pkg/frame"
 	"github.com/roadrunner-server/sdk/v4/payload"
 	"github.com/temporalio/roadrunner-temporal/v4/internal"
 	commonpb "go.temporal.io/api/common/v1"
@@ -373,7 +374,7 @@ func (wp *Workflow) flushQueue() error {
 			return errors.E(op, pld.Error())
 		}
 		// streaming is not supported
-		if pld.Payload().IsStream {
+		if pld.Payload().Flags&frame.STREAM != 0 {
 			return errors.E(op, errors.Str("streaming is not supported"))
 		}
 
@@ -431,7 +432,7 @@ func (wp *Workflow) runCommand(cmd any, payloads *commonpb.Payloads, header *com
 			return nil, errors.E(op, p.Error())
 		}
 		// streaming is not supported
-		if p.Payload().IsStream {
+		if p.Payload().Flags&frame.STREAM != 0 {
 			wp.putPld(pld)
 			return nil, errors.E(op, errors.Str("streaming is not supported"))
 		}

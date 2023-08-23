@@ -4,10 +4,11 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
+	"unsafe"
 
 	"github.com/roadrunner-server/errors"
+	"github.com/roadrunner-server/goridge/v3/pkg/frame"
 	"github.com/roadrunner-server/sdk/v4/payload"
-	"github.com/roadrunner-server/sdk/v4/utils"
 	"github.com/temporalio/roadrunner-temporal/v4/common"
 	"github.com/temporalio/roadrunner-temporal/v4/internal"
 	commonpb "go.temporal.io/api/common/v1"
@@ -47,7 +48,7 @@ func NewActivityDefinition(ac common.Codec, p common.Pool, log *zap.Logger) *Act
 
 func (a *Activity) GetActivityContext(taskToken []byte) (context.Context, error) {
 	const op = errors.Op("activity_pool_get_activity_context")
-	c, ok := a.running.Load(utils.AsString(taskToken))
+	c, ok := a.running.Load(bytesToStr(taskToken))
 	if !ok {
 		return nil, errors.E(op, errors.Str("heartbeat on non running activity"))
 	}
@@ -67,7 +68,7 @@ func (a *Activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 	}
 
 	var info = tActivity.GetInfo(ctx)
-	a.running.Store(utils.AsString(info.TaskToken), ctx)
+	a.running.Store(bytesToStr(info.TaskToken), ctx)
 	mh := tActivity.GetMetricsHandler(ctx)
 	// if the mh is not nil, record the RR metric
 	if mh != nil {
@@ -100,11 +101,11 @@ func (a *Activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 
 	result, err := a.pool.Exec(ctx, pld, nil)
 	if err != nil {
-		a.running.Delete(utils.AsString(info.TaskToken))
+		a.running.Delete(bytesToStr(info.TaskToken))
 		return nil, errors.E(op, err)
 	}
 
-	a.running.Delete(utils.AsString(info.TaskToken))
+	a.running.Delete(bytesToStr(info.TaskToken))
 	var r *payload.Payload
 
 	select {
@@ -113,7 +114,7 @@ func (a *Activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 			return nil, errors.E(op, pld.Error())
 		}
 		// streaming is not supported
-		if pld.Payload().IsStream {
+		if pld.Payload().Flags&frame.STREAM != 0 {
 			return nil, errors.E(op, errors.Str("streaming is not supported"))
 		}
 
@@ -154,4 +155,12 @@ func (a *Activity) putPld(pld *payload.Payload) {
 	pld.Context = nil
 	pld.Body = nil
 	a.pldPool.Put(pld)
+}
+
+func bytesToStr(data []byte) string {
+	if len(data) == 0 {
+		return ""
+	}
+
+	return unsafe.String(unsafe.SliceData(data), len(data))
 }
