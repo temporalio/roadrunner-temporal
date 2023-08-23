@@ -7,11 +7,11 @@ toolchain go1.21.0
 require (
 	github.com/cactus/go-statsd-client/statsd v0.0.0-20200423205355-cb0885a1018c
 	github.com/goccy/go-json v0.10.2
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.3.1
 	github.com/roadrunner-server/api/v4 v4.6.2
 	github.com/roadrunner-server/endure/v2 v2.4.2
 	github.com/roadrunner-server/errors v1.3.0
-	github.com/roadrunner-server/sdk/v4 v4.4.0-beta.6
+	github.com/roadrunner-server/sdk/v4 v4.4.0-beta.7
 	github.com/stretchr/testify v1.8.4
 	github.com/uber-go/tally/v4 v4.1.6
 	go.temporal.io/api v1.23.0
@@ -44,7 +44,7 @@ require (
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.11.1 // indirect
-	github.com/roadrunner-server/goridge/v3 v3.7.0 // indirect
+	github.com/roadrunner-server/goridge/v3 v3.8.0 // indirect
 	github.com/roadrunner-server/tcplisten v1.4.0 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
