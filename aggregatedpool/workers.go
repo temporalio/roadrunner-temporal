@@ -28,6 +28,10 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 			wi[i].TaskQueue = temporalClient.DefaultNamespace
 		}
 
+		if wi[i].Options.BuildID != "" {
+			wi[i].Options.UseBuildIDForVersioning = true
+		}
+
 		if wi[i].Options.Identity == "" {
 			wi[i].Options.Identity = fmt.Sprintf(
 				"%s:%s",
