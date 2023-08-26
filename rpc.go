@@ -6,10 +6,11 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
+	v1Proto "github.com/golang/protobuf/proto" //nolint:staticcheck
 	"github.com/roadrunner-server/api/v4/build/common/v1"
-	commonpb "github.com/roadrunner-server/api/v4/build/temporal/api/common/v1"
 	protoApi "github.com/roadrunner-server/api/v4/build/temporal/v1"
 	"github.com/temporalio/roadrunner-temporal/v4/internal/logger"
+	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
 	"go.temporal.io/sdk/activity"
@@ -55,7 +56,7 @@ func (r *rpc) RecordActivityHeartbeat(in RecordHeartbeatRequest, out *RecordHear
 	details := &commonpb.Payloads{}
 
 	if len(in.Details) != 0 {
-		if err := proto.Unmarshal(in.Details, details); err != nil {
+		if err := proto.Unmarshal(in.Details, v1Proto.MessageV2(details)); err != nil {
 			return err
 		}
 	}
