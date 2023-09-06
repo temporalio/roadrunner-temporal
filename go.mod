@@ -17,12 +17,13 @@ require (
 	go.temporal.io/api v1.24.0
 	go.temporal.io/sdk v1.24.0
 	go.temporal.io/sdk/contrib/tally v0.2.0
-	go.temporal.io/server v1.21.5
+	go.temporal.io/server v1.22.0
 	go.uber.org/zap v1.25.0
 	google.golang.org/protobuf v1.31.0
 )
 
 require (
+	github.com/cactus/go-statsd-client/v5 v5.0.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	google.golang.org/genproto v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230822172742-b8732ec3820d // indirect
