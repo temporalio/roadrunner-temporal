@@ -4,7 +4,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/cactus/go-statsd-client/statsd"
+	"github.com/cactus/go-statsd-client/v5/statsd"
 	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/roadrunner-server/sdk/v4/metrics"
 	"github.com/roadrunner-server/sdk/v4/state/process"
