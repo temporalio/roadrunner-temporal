@@ -1,4 +1,4 @@
-package roadrunner_temporal //nolint:revive,stylecheck
+package rrtemporal
 
 import (
 	"io"
@@ -6,10 +6,13 @@ import (
 
 	"github.com/cactus/go-statsd-client/v5/statsd"
 	prom "github.com/prometheus/client_golang/prometheus"
+	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/sdk/v4/metrics"
 	"github.com/roadrunner-server/sdk/v4/state/process"
 	"github.com/uber-go/tally/v4"
 	"github.com/uber-go/tally/v4/prometheus"
+	tclient "go.temporal.io/sdk/client"
+	ttally "go.temporal.io/sdk/contrib/tally" // temporal tally hanlders
 	statsdreporter "go.temporal.io/server/common/metrics/tally/statsd"
 	"go.uber.org/zap"
 )
@@ -116,4 +119,28 @@ func newStatsdScope(statsdConfig *Statsd) (tally.Scope, io.Closer, error) {
 	scope, closer := tally.NewRootScope(scopeOpts, time.Second)
 
 	return scope, closer, nil
+}
+
+// init RR metrics
+func initMetrics(cfg *Config, log *zap.Logger) (tclient.MetricsHandler, io.Closer, error) {
+	switch cfg.Metrics.Driver {
+	case driverPrometheus:
+		ms, cl, err := newPrometheusScope(prometheus.Configuration{
+			ListenAddress: cfg.Metrics.Prometheus.Address,
+			TimerType:     cfg.Metrics.Prometheus.Type,
+		}, cfg.Metrics.Prometheus.Prefix, log)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return ttally.NewMetricsHandler(ms), cl, nil
+	case driverStatsd:
+		ms, cl, err := newStatsdScope(cfg.Metrics.Statsd)
+		if err != nil {
+			return nil, nil, err
+		}
+		return ttally.NewMetricsHandler(ms), cl, nil
+	default:
+		return nil, nil, errors.Errorf("unknown driver provided: %s", cfg.Metrics.Driver)
+	}
 }

@@ -1,4 +1,4 @@
-package roadrunner_temporal //nolint:revive,stylecheck
+package rrtemporal
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	v1Proto "github.com/golang/protobuf/proto" //nolint:staticcheck
 	"github.com/roadrunner-server/api/v4/build/common/v1"
 	protoApi "github.com/roadrunner-server/api/v4/build/temporal/v1"
+	"github.com/roadrunner-server/errors"
 	"github.com/temporalio/roadrunner-temporal/v4/internal/logger"
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/api/enums/v1"
@@ -61,9 +62,13 @@ func (r *rpc) RecordActivityHeartbeat(in RecordHeartbeatRequest, out *RecordHear
 		}
 	}
 
+	if r.plugin.getActDef() == nil {
+		return errors.Str("no activity definition registered")
+	}
+
 	// find running activity
 	r.plugin.mu.RLock()
-	ctx, err := r.plugin.rrActivityDef.GetActivityContext(in.TaskToken)
+	ctx, err := r.plugin.temporal.rrActivityDef.GetActivityContext(in.TaskToken)
 	if err != nil {
 		r.plugin.mu.RUnlock()
 		return err
@@ -85,7 +90,7 @@ func (r *rpc) RecordActivityHeartbeat(in RecordHeartbeatRequest, out *RecordHear
 func (r *rpc) GetActivityNames(_ bool, out *[]string) error {
 	r.plugin.mu.RLock()
 	defer r.plugin.mu.RUnlock()
-	for k := range r.plugin.activities {
+	for k := range r.plugin.temporal.activities {
 		*out = append(*out, k)
 	}
 	return nil
@@ -95,7 +100,7 @@ func (r *rpc) GetWorkflowNames(_ bool, out *[]string) error {
 	r.plugin.mu.RLock()
 	defer r.plugin.mu.RUnlock()
 
-	for k := range r.plugin.workflows {
+	for k := range r.plugin.temporal.workflows {
 		*out = append(*out, k)
 	}
 
@@ -128,19 +133,9 @@ func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 		return nil
 	}
 
-	if r.plugin.rrWorkflowDef == nil {
-		out.Status = &common.Status{
-			Code:    int32(codes.InvalidArgument),
-			Message: "workflow definition is not initialized",
-		}
-
-		r.plugin.log.Error("replay workflow request", zap.String("error", "workflow definition is not initialized"))
-		return nil
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	iter := r.plugin.client.GetWorkflowHistory(ctx, in.GetWorkflowExecution().GetWorkflowId(), in.GetWorkflowExecution().GetRunId(), false, enums.HISTORY_EVENT_FILTER_TYPE_ALL_EVENT)
+	iter := r.plugin.temporal.client.GetWorkflowHistory(ctx, in.GetWorkflowExecution().GetWorkflowId(), in.GetWorkflowExecution().GetRunId(), false, enums.HISTORY_EVENT_FILTER_TYPE_ALL_EVENT)
 
 	var hist history.History
 	for iter.HasNext() {
@@ -157,8 +152,17 @@ func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 		hist.Events = append(hist.Events, event)
 	}
 
+	if r.plugin.getWfDef() == nil {
+		out.Status = &common.Status{
+			Code:    int32(codes.FailedPrecondition),
+			Message: "workflow definition is not initialized, retry in a second",
+		}
+
+		return nil
+	}
+
 	replayer := worker.NewWorkflowReplayer()
-	replayer.RegisterWorkflowWithOptions(r.plugin.rrWorkflowDef, workflow.RegisterOptions{
+	replayer.RegisterWorkflowWithOptions(r.plugin.getWfDef(), workflow.RegisterOptions{
 		Name:                          in.GetWorkflowType().GetName(),
 		DisableAlreadyRegisteredCheck: false,
 	})
@@ -228,7 +232,7 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	iter := r.plugin.client.GetWorkflowHistory(ctx, in.GetWorkflowExecution().GetWorkflowId(), in.GetWorkflowExecution().GetRunId(), false, enums.HISTORY_EVENT_FILTER_TYPE_ALL_EVENT)
+	iter := r.plugin.temporal.client.GetWorkflowHistory(ctx, in.GetWorkflowExecution().GetWorkflowId(), in.GetWorkflowExecution().GetRunId(), false, enums.HISTORY_EVENT_FILTER_TYPE_ALL_EVENT)
 
 	var hist history.History
 
@@ -295,8 +299,17 @@ func (r *rpc) ReplayFromJSON(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 		return nil
 	}
 
+	if r.plugin.getWfDef() == nil {
+		out.Status = &common.Status{
+			Code:    int32(codes.FailedPrecondition),
+			Message: "workflow definition is not initialized, retry in a second",
+		}
+
+		return nil
+	}
+
 	replayer := worker.NewWorkflowReplayer()
-	replayer.RegisterWorkflowWithOptions(r.plugin.rrWorkflowDef, workflow.RegisterOptions{
+	replayer.RegisterWorkflowWithOptions(r.plugin.getWfDef(), workflow.RegisterOptions{
 		Name:                          in.GetWorkflowType().GetName(),
 		DisableAlreadyRegisteredCheck: false,
 	})
@@ -352,8 +365,17 @@ func (r *rpc) ReplayWorkflowHistory(in *protoApi.History, out *protoApi.ReplayRe
 		return nil
 	}
 
+	if r.plugin.getWfDef() == nil {
+		out.Status = &common.Status{
+			Code:    int32(codes.FailedPrecondition),
+			Message: "workflow definition is not initialized, retry in a second",
+		}
+
+		return nil
+	}
+
 	replayer := worker.NewWorkflowReplayer()
-	replayer.RegisterWorkflowWithOptions(r.plugin.rrWorkflowDef, workflow.RegisterOptions{
+	replayer.RegisterWorkflowWithOptions(r.plugin.getWfDef(), workflow.RegisterOptions{
 		Name:                          in.GetWorkflowType().GetName(),
 		DisableAlreadyRegisteredCheck: false,
 	})
