@@ -1,4 +1,4 @@
-package roadrunner_temporal //nolint:revive,stylecheck
+package rrtemporal
 
 import (
 	"crypto/tls"

@@ -1,12 +1,10 @@
-package roadrunner_temporal //nolint:revive,stylecheck
+package rrtemporal
 
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,22 +14,15 @@ import (
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/sdk/v4/events"
 	"github.com/roadrunner-server/sdk/v4/metrics"
-	"github.com/roadrunner-server/sdk/v4/pool"
+	"github.com/roadrunner-server/sdk/v4/pool/static_pool"
 	"github.com/roadrunner-server/sdk/v4/state/process"
 	"github.com/temporalio/roadrunner-temporal/v4/aggregatedpool"
 	"github.com/temporalio/roadrunner-temporal/v4/common"
-	"github.com/temporalio/roadrunner-temporal/v4/data_converter"
 	"github.com/temporalio/roadrunner-temporal/v4/internal"
 	"github.com/temporalio/roadrunner-temporal/v4/internal/codec/proto"
-	"github.com/temporalio/roadrunner-temporal/v4/internal/logger"
-	"github.com/uber-go/tally/v4/prometheus"
-	temporalClient "go.temporal.io/sdk/client"
-	"go.temporal.io/sdk/contrib/tally"
-	"go.temporal.io/sdk/converter"
+	tclient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 )
 
 const (
@@ -57,6 +48,21 @@ type Logger interface {
 	NamedLogger(name string) *zap.Logger
 }
 
+// temporal structure contains temporal specific structures
+type temporal struct {
+	rrActivityDef *aggregatedpool.Activity
+	rrWorkflowDef *aggregatedpool.Workflow
+	workflows     map[string]*internal.WorkflowInfo
+	activities    map[string]*internal.ActivityInfo
+	mh            tclient.MetricsHandler
+	tallyCloser   io.Closer
+	tlsCfg        *tls.Config
+	client        tclient.Client
+	workers       []worker.Worker
+
+	interceptors map[string]common.Interceptor
+}
+
 type Plugin struct {
 	mu sync.RWMutex
 
@@ -64,31 +70,18 @@ type Plugin struct {
 	log           *zap.Logger
 	config        *Config
 	statsExporter *metrics.StatsExporter
-
-	mh          temporalClient.MetricsHandler
-	tallyCloser io.Closer
-	tlsCfg      *tls.Config
-	client      temporalClient.Client
-
-	actP  common.Pool
-	wfP   common.Pool
-	wwPID int
-
-	rrVersion     string
-	rrActivityDef *aggregatedpool.Activity
-	rrWorkflowDef *aggregatedpool.Workflow
-	workflows     map[string]*internal.WorkflowInfo
-	activities    map[string]*internal.ActivityInfo
 	codec         *proto.Codec
+	actP          *static_pool.Pool
+	wfP           *static_pool.Pool
+
+	id        string
+	wwPID     int
+	rrVersion string
+	temporal  *temporal
 
 	eventBus events.EventBus
-	id       string
 	events   chan events.Event
 	stopCh   chan struct{}
-
-	workers []worker.Worker
-
-	interceptors map[string]common.Interceptor
 }
 
 func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) error {
@@ -131,7 +124,8 @@ func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) e
 	if err != nil {
 		return errors.E(op, err)
 	}
-
+	// init temporal section
+	p.temporal = &temporal{}
 	// CONFIG INIT END -----
 
 	p.log = log.NamedLogger(pluginName)
@@ -145,86 +139,24 @@ func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) e
 	p.stopCh = make(chan struct{}, 1)
 	p.statsExporter = newStatsExporter(p)
 
-	// simple TLS based on the cert and key
+	// initialize TLS
 	if p.config.TLS != nil {
-		var cert tls.Certificate
-		var certPool *x509.CertPool
-		var rca []byte
-
-		// if client CA is not empty we combine it with Cert and Key
-		if p.config.TLS.RootCA != "" {
-			cert, err = tls.LoadX509KeyPair(p.config.TLS.Cert, p.config.TLS.Key)
-			if err != nil {
-				return err
-			}
-
-			certPool, err = x509.SystemCertPool()
-			if err != nil {
-				return err
-			}
-			if certPool == nil {
-				certPool = x509.NewCertPool()
-			}
-
-			// we already checked this file in the config.go
-			rca, err = os.ReadFile(p.config.TLS.RootCA)
-			if err != nil {
-				return err
-			}
-
-			if ok := certPool.AppendCertsFromPEM(rca); !ok {
-				return err
-			}
-
-			p.tlsCfg = &tls.Config{
-				MinVersion:   tls.VersionTLS12,
-				ClientAuth:   p.config.TLS.auth,
-				Certificates: []tls.Certificate{cert},
-				ClientCAs:    certPool,
-				RootCAs:      certPool,
-				ServerName:   p.config.TLS.ServerName,
-			}
-		} else {
-			cert, err = tls.LoadX509KeyPair(p.config.TLS.Cert, p.config.TLS.Key)
-			if err != nil {
-				return err
-			}
-
-			p.tlsCfg = &tls.Config{
-				ServerName:   p.config.TLS.ServerName,
-				MinVersion:   tls.VersionTLS12,
-				Certificates: []tls.Certificate{cert},
-			}
+		p.temporal.tlsCfg, err = initTLS(p.config)
+		if err != nil {
+			return errors.E(op, err)
 		}
 	}
 
 	// here we need to check
 	if p.config.Metrics != nil {
-		switch p.config.Metrics.Driver {
-		case driverPrometheus:
-			ms, cl, err := newPrometheusScope(prometheus.Configuration{
-				ListenAddress: p.config.Metrics.Prometheus.Address,
-				TimerType:     p.config.Metrics.Prometheus.Type,
-			}, p.config.Metrics.Prometheus.Prefix, p.log)
-			if err != nil {
-				return err
-			}
-
-			p.mh = tally.NewMetricsHandler(ms)
-			p.tallyCloser = cl
-		case driverStatsd:
-			ms, cl, err := newStatsdScope(p.config.Metrics.Statsd)
-			if err != nil {
-				return err
-			}
-			p.mh = tally.NewMetricsHandler(ms)
-			p.tallyCloser = cl
-		default:
-			return errors.E(op, errors.Errorf("unknown driver provided: %s", p.config.Metrics.Driver))
+		p.temporal.mh, p.temporal.tallyCloser, err = initMetrics(p.config, p.log)
+		if err != nil {
+			return errors.E(op, err)
 		}
 	}
 
-	p.interceptors = make(map[string]common.Interceptor)
+	// initialize interceptors
+	p.temporal.interceptors = make(map[string]common.Interceptor)
 
 	return nil
 }
@@ -291,21 +223,21 @@ func (p *Plugin) Stop(context.Context) error {
 	p.stopCh <- struct{}{}
 	p.eventBus = nil
 
-	for i := 0; i < len(p.workers); i++ {
-		p.workers[i].Stop()
+	for i := 0; i < len(p.temporal.workers); i++ {
+		p.temporal.workers[i].Stop()
 	}
 
 	// might be nil if the user didn't set the metrics
-	if p.tallyCloser != nil {
-		err := p.tallyCloser.Close()
+	if p.temporal.tallyCloser != nil {
+		err := p.temporal.tallyCloser.Close()
 		if err != nil {
 			return err
 		}
 	}
 
 	// in case if the Serve func was interrupted
-	if p.client != nil {
-		p.client.Close()
+	if p.temporal.client != nil {
+		p.temporal.client.Close()
 	}
 
 	return nil
@@ -374,11 +306,11 @@ func (p *Plugin) Reset() error {
 	p.log.Info("reset signal received, resetting activity and workflow worker pools")
 
 	// stop temporal workers
-	for i := 0; i < len(p.workers); i++ {
-		p.workers[i].Stop()
+	for i := 0; i < len(p.temporal.workers); i++ {
+		p.temporal.workers[i].Stop()
 	}
 
-	p.workers = nil
+	p.temporal.workers = nil
 	worker.PurgeStickyWorkflowCache()
 
 	ctxW, cancelW := context.WithTimeout(context.Background(), time.Second*30)
@@ -404,21 +336,29 @@ func (p *Plugin) Reset() error {
 	}
 
 	// based on the worker info -> initialize workers
-	p.workers, err = aggregatedpool.TemporalWorkers(p.rrWorkflowDef, p.rrActivityDef, wi, p.log, p.client, p.interceptors)
+	workers, err := aggregatedpool.TemporalWorkers(
+		p.temporal.rrWorkflowDef,
+		p.temporal.rrActivityDef,
+		wi,
+		p.log,
+		p.temporal.client,
+		p.temporal.interceptors,
+	)
 	if err != nil {
 		return err
 	}
 
 	// start workers
-	for i := 0; i < len(p.workers); i++ {
-		err = p.workers[i].Start()
+	for i := 0; i < len(workers); i++ {
+		err = workers[i].Start()
 		if err != nil {
 			return err
 		}
 	}
 
-	p.activities = ActivitiesInfo(wi)
-	p.workflows = WorkflowsInfo(wi)
+	p.temporal.activities = ActivitiesInfo(wi)
+	p.temporal.workflows = WorkflowsInfo(wi)
+	p.temporal.workers = workers
 
 	return nil
 }
@@ -430,7 +370,7 @@ func (p *Plugin) Collects() []*dep.In {
 			mdw := pp.(common.Interceptor)
 			// just to be safe
 			p.mu.Lock()
-			p.interceptors[mdw.Name()] = mdw
+			p.temporal.interceptors[mdw.Name()] = mdw
 			p.mu.Unlock()
 		}, (*common.Interceptor)(nil)),
 	}
@@ -441,129 +381,5 @@ func (p *Plugin) Name() string {
 }
 
 func (p *Plugin) RPC() any {
-	return &rpc{plugin: p, client: p.client}
-}
-
-/// INTERNAL
-
-func (p *Plugin) initTemporalClient(phpSdkVersion string, dc converter.DataConverter) error {
-	if phpSdkVersion == "" {
-		phpSdkVersion = clientBaselineVersion
-	}
-	p.log.Debug("PHP-SDK version: " + phpSdkVersion)
-	worker.SetStickyWorkflowCacheSize(p.config.CacheSize)
-
-	opts := temporalClient.Options{
-		HostPort:       p.config.Address,
-		MetricsHandler: p.mh,
-		Namespace:      p.config.Namespace,
-		Logger:         logger.NewZapAdapter(p.log),
-		DataConverter:  dc,
-		ConnectionOptions: temporalClient.ConnectionOptions{
-			TLS: p.tlsCfg,
-			DialOptions: []grpc.DialOption{
-				grpc.WithUnaryInterceptor(rewriteNameAndVersion(phpSdkVersion)),
-			},
-		},
-	}
-
-	var err error
-	p.client, err = temporalClient.Dial(opts)
-	if err != nil {
-		return err
-	}
-
-	p.log.Info("connected to temporal server", zap.String("address", p.config.Address))
-
-	return nil
-}
-
-func rewriteNameAndVersion(phpSdkVersion string) grpc.UnaryClientInterceptor {
-	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-		md, _, _ := metadata.FromOutgoingContextRaw(ctx)
-		if md == nil {
-			return invoker(ctx, method, req, reply, cc, opts...)
-		}
-
-		md.Set(clientNameHeaderName, clientNameHeaderValue)
-		md.Set(clientVersionHeaderName, phpSdkVersion)
-
-		ctx = metadata.NewOutgoingContext(ctx, md)
-
-		return invoker(ctx, method, req, reply, cc, opts...)
-	}
-}
-
-func (p *Plugin) initPool() error {
-	var err error
-	ap, err := p.server.NewPool(context.Background(), p.config.Activities, map[string]string{RrMode: pluginName, RrCodec: RrCodecVal}, p.log)
-	if err != nil {
-		return err
-	}
-
-	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
-	p.codec = proto.NewCodec(p.log, dc)
-
-	p.rrActivityDef = aggregatedpool.NewActivityDefinition(p.codec, ap, p.log)
-
-	// ---------- WORKFLOW POOL -------------
-	wp, err := p.server.NewPool(
-		context.Background(),
-		&pool.Config{
-			NumWorkers:      1,
-			Command:         p.config.Activities.Command,
-			AllocateTimeout: time.Hour * 240,
-			DestroyTimeout:  time.Second * 30,
-			// no supervisor for the workflow worker
-			Supervisor: nil,
-		},
-		map[string]string{RrMode: pluginName, RrCodec: RrCodecVal},
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
-	p.rrWorkflowDef = aggregatedpool.NewWorkflowDefinition(p.codec, wp, p.log)
-
-	// get worker information
-	wi, err := WorkerInfo(p.codec, wp, p.rrVersion)
-	if err != nil {
-		return err
-	}
-
-	if len(wi) == 0 {
-		return errors.Str("worker info should contain at least 1 worker")
-	}
-
-	err = p.initTemporalClient(wi[0].PhpSdkVersion, dc)
-	if err != nil {
-		return err
-	}
-
-	p.workers, err = aggregatedpool.TemporalWorkers(p.rrWorkflowDef, p.rrActivityDef, wi, p.log, p.client, p.interceptors)
-	if err != nil {
-		return err
-	}
-
-	for i := 0; i < len(p.workers); i++ {
-		err = p.workers[i].Start()
-		if err != nil {
-			return err
-		}
-	}
-
-	p.activities = ActivitiesInfo(wi)
-	p.workflows = WorkflowsInfo(wi)
-	p.actP = ap
-	p.wfP = wp
-
-	if len(p.wfP.Workers()) < 1 {
-		return errors.E(errors.Str("failed to allocate a workflow worker"))
-	}
-
-	// we have only 1 worker for the workflow pool
-	p.wwPID = int(p.wfP.Workers()[0].Pid())
-
-	return nil
+	return &rpc{plugin: p, client: p.temporal.client}
 }
