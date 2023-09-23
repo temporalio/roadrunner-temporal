@@ -22,6 +22,10 @@ type Interceptor interface {
 type Pool interface {
 	// Workers returns worker list associated with the pool.
 	Workers() (workers []*worker.Process)
+	// RemoveWorker removes worker from the pool.
+	RemoveWorker(ctx context.Context) error
+	// AddWorker adds worker to the pool.
+	AddWorker() error
 	// QueueSize can be implemented on the pool to provide the requests queue information
 	QueueSize() uint64
 	// Reset kill all workers inside the watcher and replaces with new
