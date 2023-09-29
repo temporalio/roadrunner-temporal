@@ -22,5 +22,5 @@ temporal:
     server_name: "tls-sample"
 
 logs:
-  mode: production
-  level: error
+  mode: development
+  level: debug

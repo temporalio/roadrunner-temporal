@@ -25,5 +25,5 @@ temporal:
     destroy_timeout: 1s
 
 logs:
-  mode: production
-  level: error
+  mode: development
+  level: debug
