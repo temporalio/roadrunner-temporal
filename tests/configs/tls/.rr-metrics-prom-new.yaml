@@ -1,0 +1,30 @@
+version: '3'
+
+rpc:
+  listen: tcp://127.0.0.1:6001
+
+server:
+  command: "php ../php_test_files/worker.php"
+
+temporal:
+  address: "127.0.0.1:7233"
+  metrics:
+    driver: prometheus
+    address: "127.0.0.1:9095"
+    prefix: "samples"
+    type: "summary"
+
+  tls:
+    key: ../env/temporal_tls/certs/client.key
+    cert: ../env/temporal_tls/certs/client.pem
+    root_ca: ../env/temporal_tls/certs/ca.cert
+    client_auth_type: require_and_verify_client_cert
+    server_name: "tls-sample"
+
+  activities:
+    num_workers: 4
+    destroy_timeout: 1s
+
+logs:
+  mode: production
+  level: error
