@@ -7,7 +7,7 @@
     "nyholm/psr7": "^1.5",
     "spiral/roadrunner-http": "^3.0",
     "spiral/roadrunner-worker": "^3.0",
-    "temporal/sdk": "^2.6",
+    "temporal/sdk": "2.5.3",
     "spiral/tokenizer": ">=2.7",
     "spiral/roadrunner-metrics": "^3.0",
     "spiral/roadrunner-grpc": "^3.0",
