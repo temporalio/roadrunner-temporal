@@ -325,6 +325,7 @@ func Test_CancelSignaledChildWorkflowProto(t *testing.T) {
 	s.AssertContainsEvent(s.Client, t, w, func(event *history.HistoryEvent) bool {
 		return event.EventType == enums.EVENT_TYPE_REQUEST_CANCEL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED
 	})
+
 	stopCh <- struct{}{}
 	wg.Wait()
 }
