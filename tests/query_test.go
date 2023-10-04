@@ -30,16 +30,19 @@ func Test_ListQueriesProto(t *testing.T) {
 	assert.NoError(t, err)
 
 	time.Sleep(time.Millisecond * 500)
-
-	v, err := s.Client.QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "error", -1)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	v, err := s.Client.QueryWorkflow(ctx, w.GetID(), w.GetRunID(), "error", -1)
 	assert.Nil(t, v)
 	assert.Error(t, err)
+	cancel()
 
 	assert.Contains(t, err.Error(), "KnownQueryTypes=[get]")
 
 	var r int
-	assert.NoError(t, w.Get(context.Background(), &r))
+	ctx, cancel = context.WithTimeout(context.Background(), time.Minute)
+	assert.NoError(t, w.Get(ctx, &r))
 	assert.Equal(t, 0, r)
+	cancel()
 
 	worker.PurgeStickyWorkflowCache()
 
@@ -56,14 +59,18 @@ func Test_ListQueriesProto(t *testing.T) {
 	worker.PurgeStickyWorkflowCache()
 	time.Sleep(time.Second)
 
-	v, err = s.Client.QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "error", -1)
+	ctx, cancel = context.WithTimeout(context.Background(), time.Minute)
+	v, err = s.Client.QueryWorkflow(ctx, w.GetID(), w.GetRunID(), "error", -1)
 	assert.Nil(t, v)
 	assert.Error(t, err)
+	cancel()
 
 	assert.Contains(t, err.Error(), "KnownQueryTypes=[get]")
 
-	assert.NoError(t, w.Get(context.Background(), &r))
+	ctx, cancel = context.WithTimeout(context.Background(), time.Minute)
+	assert.NoError(t, w.Get(ctx, &r))
 	assert.Equal(t, 0, r)
+	cancel()
 
 	stopCh <- struct{}{}
 	wg.Wait()
