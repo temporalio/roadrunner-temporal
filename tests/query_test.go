@@ -29,7 +29,7 @@ func Test_ListQueriesProto(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	time.Sleep(time.Millisecond * 500)
+	time.Sleep(time.Second * 2)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	v, err := s.Client.QueryWorkflow(ctx, w.GetID(), w.GetRunID(), "error", -1)
 	assert.Nil(t, v)
