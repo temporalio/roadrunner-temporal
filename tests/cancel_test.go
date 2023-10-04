@@ -69,6 +69,7 @@ func Test_CancellableWorkflowScopeProto(t *testing.T) {
 	s.AssertNotContainsEvent(s.Client, t, w, func(event *history.HistoryEvent) bool {
 		return event.EventType == enums.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
 	})
+
 	stopCh <- struct{}{}
 	wg.Wait()
 }
