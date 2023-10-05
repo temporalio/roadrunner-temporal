@@ -39,7 +39,7 @@ const (
 type Configurer interface {
 	// UnmarshalKey takes a single key and unmarshal it into a Struct.
 	UnmarshalKey(name string, out any) error
-	// Has checks if config section exists.
+	// Has checks if a config section exists.
 	Has(name string) bool
 }
 
@@ -75,7 +75,7 @@ func (l *log) Error(msg string, keyvals ...any) {
 }
 
 func (l *log) fields(keyvals []any) []zap.Field {
-	// we should have even number of keys and values
+	// we should have an even number of keys and values
 	if len(keyvals)%2 != 0 {
 		return []zap.Field{zap.Error(fmt.Errorf("odd number of keyvals pairs: %v", keyvals))}
 	}
