@@ -31,7 +31,7 @@ func Test_ListQueriesProto(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	time.Sleep(time.Millisecond * 500)
+	time.Sleep(time.Second)
 
 	v, err := s.Client.QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "error", -1)
 	assert.Nil(t, v)
@@ -122,7 +122,7 @@ func Test_ListQueriesLAProto(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	time.Sleep(time.Millisecond * 500)
+	time.Sleep(time.Second)
 
 	v, err := s.Client.QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "error", -1)
 	assert.Nil(t, v)
