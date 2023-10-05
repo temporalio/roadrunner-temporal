@@ -271,7 +271,7 @@ func NewTestServerTLS(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, co
 	}
 	cfg.Path = "../configs/tls/" + configName
 	cfg.Prefix = rrPrefix
-	cfg.Version = "2.11.3"
+	cfg.Version = rrVersion
 
 	err := container.RegisterAll(
 		cfg,
