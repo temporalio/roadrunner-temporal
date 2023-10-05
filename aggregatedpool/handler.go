@@ -355,14 +355,15 @@ func (wp *Workflow) flushQueue() error {
 		defer wp.mh.Gauge(RrWorkflowsMetricName).Update(float64(wp.pool.QueueSize()))
 	}
 
-	pld := wp.getPld()
-	defer wp.putPld(pld)
-	err := wp.codec.Encode(wp.getContext(), pld, wp.mq.Messages()...)
+	pl := wp.getPld()
+	defer wp.putPld(pl)
+	err := wp.codec.Encode(wp.getContext(), pl, wp.mq.Messages()...)
 	if err != nil {
 		return err
 	}
 
-	result, err := wp.pool.Exec(context.Background(), pld, nil)
+	ch := make(chan struct{}, 1)
+	result, err := wp.pool.Exec(context.Background(), pl, ch)
 	if err != nil {
 		return err
 	}
@@ -375,6 +376,7 @@ func (wp *Workflow) flushQueue() error {
 		}
 		// streaming is not supported
 		if pld.Payload().Flags&frame.STREAM != 0 {
+			ch <- struct{}{}
 			return errors.E(op, errors.Str("streaming is not supported"))
 		}
 
@@ -411,48 +413,52 @@ func (wp *Workflow) runCommand(cmd any, payloads *commonpb.Payloads, header *com
 		defer wp.mh.Gauge(RrMetricName).Update(float64(wp.pool.QueueSize()))
 	}
 
-	pld := wp.getPld()
-	err := wp.codec.Encode(wp.getContext(), pld, msg)
+	pl := wp.getPld()
+	err := wp.codec.Encode(wp.getContext(), pl, msg)
 	if err != nil {
-		wp.putPld(pld)
+		wp.putPld(pl)
 		return nil, err
 	}
 
 	// todo(rustatian): do we need a timeout here??
-	result, err := wp.pool.Exec(context.Background(), pld, nil)
+	ch := make(chan struct{}, 1)
+	result, err := wp.pool.Exec(context.Background(), pl, ch)
 	if err != nil {
-		wp.putPld(pld)
+		wp.putPld(pl)
 		return nil, err
 	}
 
 	var r *payload.Payload
-	for p := range result {
-		if p.Error() != nil {
-			wp.putPld(pld)
-			return nil, errors.E(op, p.Error())
+	select {
+	case pld := <-result:
+		if pld.Error() != nil {
+			return nil, errors.E(op, pld.Error())
 		}
 		// streaming is not supported
-		if p.Payload().Flags&frame.STREAM != 0 {
-			wp.putPld(pld)
+		if pld.Payload().Flags&frame.STREAM != 0 {
+			ch <- struct{}{}
 			return nil, errors.E(op, errors.Str("streaming is not supported"))
 		}
-		// save the payload
-		r = p.Payload()
+
+		// assign the payload
+		r = pld.Payload()
+	default:
+		return nil, errors.E(op, errors.Str("worker empty response"))
 	}
 
 	msgs := make([]*internal.Message, 0, 2)
 	err = wp.codec.Decode(r, &msgs)
 	if err != nil {
-		wp.putPld(pld)
+		wp.putPld(pl)
 		return nil, err
 	}
 
 	if len(msgs) != 1 {
-		wp.putPld(pld)
+		wp.putPld(pl)
 		return nil, errors.E(op, errors.Str("unexpected pool response"))
 	}
 
-	wp.putPld(pld)
+	wp.putPld(pl)
 	return msgs[0], nil
 }
 

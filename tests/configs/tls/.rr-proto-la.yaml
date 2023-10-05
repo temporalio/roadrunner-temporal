@@ -1,0 +1,26 @@
+version: '3'
+
+rpc:
+  listen: tcp://127.0.0.1:6001
+
+server:
+  command: "php ../php_test_files/worker-la.php"
+
+
+temporal:
+  address: "127.0.0.1:7233"
+  cache_size: 100000
+  activities:
+    num_workers: 4
+    destroy_timeout: 1s
+
+  tls:
+    key: ../env/temporal_tls/certs/client.key
+    cert: ../env/temporal_tls/certs/client.pem
+    root_ca: ../env/temporal_tls/certs/ca.cert
+    client_auth_type: require_and_verify_client_cert
+    server_name: "tls-sample"
+
+logs:
+  mode: development
+  level: debug

@@ -58,15 +58,16 @@ func (la *LocalActivityFn) execute(ctx context.Context, args *commonpb.Payloads)
 
 	la.log.Debug("executing local activity fn", zap.Uint64("ID", msg.ID), zap.String("task-queue", info.TaskQueue), zap.String("la ID", info.ActivityID))
 
-	pld := getPld()
-	defer putPld(pld)
+	pl := getPld()
+	defer putPld(pl)
 
-	err := la.codec.Encode(&internal.Context{TaskQueue: info.TaskQueue}, pld, msg)
+	err := la.codec.Encode(&internal.Context{TaskQueue: info.TaskQueue}, pl, msg)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := la.pool.Exec(ctx, pld, nil)
+	ch := make(chan struct{}, 1)
+	result, err := la.pool.Exec(ctx, pl, ch)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
@@ -79,6 +80,7 @@ func (la *LocalActivityFn) execute(ctx context.Context, args *commonpb.Payloads)
 		}
 		// streaming is not supported
 		if pld.Payload().Flags&frame.STREAM != 0 {
+			ch <- struct{}{}
 			return nil, errors.E(op, errors.Str("streaming is not supported"))
 		}
 

@@ -91,15 +91,16 @@ func (a *Activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 		msg.Payloads.Payloads = append(msg.Payloads.Payloads, heartbeatDetails.Payloads...)
 	}
 
-	pld := a.getPld()
-	defer a.putPld(pld)
+	pl := a.getPld()
+	defer a.putPld(pl)
 
-	err := a.codec.Encode(&internal.Context{TaskQueue: info.TaskQueue}, pld, msg)
+	err := a.codec.Encode(&internal.Context{TaskQueue: info.TaskQueue}, pl, msg)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := a.pool.Exec(ctx, pld, nil)
+	ch := make(chan struct{}, 1)
+	result, err := a.pool.Exec(ctx, pl, ch)
 	if err != nil {
 		a.running.Delete(bytesToStr(info.TaskToken))
 		return nil, errors.E(op, err)
@@ -115,6 +116,7 @@ func (a *Activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 		}
 		// streaming is not supported
 		if pld.Payload().Flags&frame.STREAM != 0 {
+			ch <- struct{}{}
 			return nil, errors.E(op, errors.Str("streaming is not supported"))
 		}
 

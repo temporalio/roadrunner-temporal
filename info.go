@@ -14,15 +14,16 @@ import (
 func WorkerInfo(c common.Codec, p common.Pool, rrVersion string) ([]*internal.WorkerInfo, error) {
 	const op = errors.Op("workflow_definition_init")
 
-	pld := &payload.Payload{}
-	err := c.Encode(&internal.Context{}, pld, &internal.Message{ID: 0, Command: internal.GetWorkerInfo{RRVersion: rrVersion}})
+	pl := &payload.Payload{}
+	err := c.Encode(&internal.Context{}, pl, &internal.Message{ID: 0, Command: internal.GetWorkerInfo{RRVersion: rrVersion}})
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	resp, err := p.Exec(ctx, pld, nil)
+	ch := make(chan struct{}, 1)
+	resp, err := p.Exec(ctx, pl, ch)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
@@ -35,6 +36,7 @@ func WorkerInfo(c common.Codec, p common.Pool, rrVersion string) ([]*internal.Wo
 		}
 		// streaming is not supported
 		if pld.Payload().Flags&frame.STREAM != 0 {
+			ch <- struct{}{}
 			return nil, errors.E(op, errors.Str("streaming is not supported"))
 		}
 
