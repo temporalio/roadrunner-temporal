@@ -84,7 +84,7 @@ jobs:
           path: ./tests/coverage-ci
 
   rrtemporal_tls_test:
-    name: RR Temporal plugin (Go ${{ matrix.go }}, PHP ${{ matrix.php }}, OS ${{matrix.os}})
+    name: RR Temporal TLS plugin (Go ${{ matrix.go }}, PHP ${{ matrix.php }}, OS ${{matrix.os}})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
