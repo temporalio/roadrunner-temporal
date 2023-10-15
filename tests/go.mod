@@ -10,7 +10,7 @@ require (
 	github.com/roadrunner-server/config/v4 v4.4.7
 	github.com/roadrunner-server/endure/v2 v2.4.3
 	github.com/roadrunner-server/goridge/v3 v3.8.1
-	github.com/roadrunner-server/informer/v4 v4.3.3
+	github.com/roadrunner-server/informer/v4 v4.3.4
 	github.com/roadrunner-server/logger/v4 v4.2.5
 	github.com/roadrunner-server/otel/v4 v4.3.3
 	github.com/roadrunner-server/resetter/v4 v4.0.12
@@ -18,9 +18,9 @@ require (
 	github.com/roadrunner-server/sdk/v4 v4.5.2
 	github.com/roadrunner-server/server/v4 v4.4.3
 	github.com/stretchr/testify v1.8.4
-	github.com/temporalio/roadrunner-temporal/v4 v4.5.1
+	github.com/temporalio/roadrunner-temporal/v4 v4.5.2
 	go.temporal.io/api v1.24.0
-	go.temporal.io/sdk v1.25.0
+	go.temporal.io/sdk v1.25.1
 	go.uber.org/zap v1.26.0
 )
 
@@ -107,9 +107,9 @@ require (
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	google.golang.org/genproto v0.0.0-20231009173412-8bfb1ae86b6c // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20231009173412-8bfb1ae86b6c // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20231009173412-8bfb1ae86b6c // indirect
+	google.golang.org/genproto v0.0.0-20231012201019-e917dd12ba7a // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20231012201019-e917dd12ba7a // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20231012201019-e917dd12ba7a // indirect
 	google.golang.org/grpc v1.58.3 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
