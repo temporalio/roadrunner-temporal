@@ -24,6 +24,7 @@ require (
 require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
+	go.uber.org/goleak v1.3.0 // indirect
 )
 
 require (
