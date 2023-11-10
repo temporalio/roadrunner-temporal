@@ -57,6 +57,8 @@ type Configurer interface {
 	GracefulTimeout() time.Duration
 	// RRVersion returns running RR version
 	RRVersion() string
+	// Experimental returns true if the plugin is experimental
+	Experimental() bool
 }
 
 // Server creates workers for the application.

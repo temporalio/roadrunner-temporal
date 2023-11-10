@@ -70,6 +70,7 @@ type Plugin struct {
 	log           *zap.Logger
 	config        *Config
 	statsExporter *metrics.StatsExporter
+	experimental  bool
 	codec         *proto.Codec
 	actP          *static_pool.Pool
 	wfP           *static_pool.Pool
@@ -138,6 +139,7 @@ func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) e
 	p.eventBus, p.id = events.NewEventBus()
 	p.stopCh = make(chan struct{}, 1)
 	p.statsExporter = newStatsExporter(p)
+	p.experimental = cfg.Experimental()
 
 	// initialize TLS
 	if p.config.TLS != nil {
@@ -241,8 +243,14 @@ func (p *Plugin) Stop(ctx context.Context) error {
 	}
 
 	// let the pool continue to work
-	p.mu.Unlock()
+	if !p.experimental {
+		p.mu.Unlock()
+		return nil
+	}
+
+	// experimental mode
 	// we need this loop to let the instances finish their work
+	p.mu.Unlock()
 	for {
 		select {
 		case <-ctx.Done():
