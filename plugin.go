@@ -214,9 +214,8 @@ func (p *Plugin) Serve() chan error {
 	return errCh
 }
 
-func (p *Plugin) Stop(context.Context) error {
+func (p *Plugin) Stop(ctx context.Context) error {
 	p.mu.Lock()
-	defer p.mu.Unlock()
 
 	// stop events
 	p.eventBus.Unsubscribe(p.id)
@@ -231,6 +230,7 @@ func (p *Plugin) Stop(context.Context) error {
 	if p.temporal.tallyCloser != nil {
 		err := p.temporal.tallyCloser.Close()
 		if err != nil {
+			p.mu.Unlock()
 			return err
 		}
 	}
@@ -240,7 +240,23 @@ func (p *Plugin) Stop(context.Context) error {
 		p.temporal.client.Close()
 	}
 
-	return nil
+	// let the pool continue to work
+	p.mu.Unlock()
+	// we need this loop to let the instances finish their work
+	for {
+		select {
+		case <-ctx.Done():
+			return errors.Errorf("temporal server: timeout exceeded: %v", ctx.Err())
+		default:
+			p.mu.RLock()
+			if p.wfP.QueueSize() == 0 && p.actP.QueueSize() == 0 {
+				p.mu.RUnlock()
+				return nil
+			}
+			p.mu.RUnlock()
+			time.Sleep(time.Second)
+		}
+	}
 }
 
 func (p *Plugin) Workers() []*process.State {
