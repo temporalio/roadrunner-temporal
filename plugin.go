@@ -231,6 +231,7 @@ func (p *Plugin) Stop(context.Context) error {
 	if p.temporal.tallyCloser != nil {
 		err := p.temporal.tallyCloser.Close()
 		if err != nil {
+			p.mu.Unlock()
 			return err
 		}
 	}
