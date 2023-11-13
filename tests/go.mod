@@ -16,7 +16,7 @@ require (
 	github.com/roadrunner-server/resetter/v4 v4.0.15
 	github.com/roadrunner-server/rpc/v4 v4.2.9
 	github.com/roadrunner-server/sdk/v4 v4.5.3
-	github.com/roadrunner-server/server/v4 v4.5.0
+	github.com/roadrunner-server/server/v4 v4.5.1
 	github.com/stretchr/testify v1.8.4
 	github.com/temporalio/roadrunner-temporal/v4 v4.5.4
 	go.temporal.io/api v1.25.0

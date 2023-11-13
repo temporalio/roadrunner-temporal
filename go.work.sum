@@ -1894,6 +1894,8 @@ github.com/roadrunner-server/redis/v4 v4.2.3 h1:bZjl1lPVtWwn9UaWCP5+fihHjHFeo+wQ
 github.com/roadrunner-server/redis/v4 v4.2.3/go.mod h1:TvBT3X62/A9KO77RBVguJZpUsYheZimtxRrtRD3dORM=
 github.com/roadrunner-server/send/v4 v4.2.4 h1:oj9ZlDbAP9WKPt/zqHqEK6E7hBtN97Zyz1G5DNfBicQ=
 github.com/roadrunner-server/send/v4 v4.2.4/go.mod h1:VEUtrIFpZu7EvXSt1iRnWRKqUBpgfh0zukzHXhraA7k=
+github.com/roadrunner-server/server/v4 v4.5.1 h1:vsBS0jxYZkbs0qdqLlARwqg04DkqR9BzsFHwWiD5zpQ=
+github.com/roadrunner-server/server/v4 v4.5.1/go.mod h1:PokZRBKZFFno2NVJwQG6Ant1JkvQNnxEHY4QVNwI2Kk=
 github.com/roadrunner-server/service/v4 v4.4.2 h1:aaSDs1/Thmp7rKXJFbCOHJ37W5KPbOEtIaOZdA3V84c=
 github.com/roadrunner-server/service/v4 v4.4.2/go.mod h1:wRyxltXOhrwfK+pWaVQu/qLiy1SJw0dc8jMNyeGlqO0=
 github.com/roadrunner-server/sqs/v4 v4.5.2 h1:+13QlvDVKbsLScn11heP17fSfZXkKFGQHKPtuK4VSfE=

@@ -315,8 +315,8 @@ github.com/roadrunner-server/rpc/v4 v4.2.9 h1:+B3nnXuZT03PP1oywkpwlff5HQkDfhJEam
 github.com/roadrunner-server/rpc/v4 v4.2.9/go.mod h1:Hz7lwX77eTxDSEHeefwUMd0BiUhQ3jeDOi6ITcXZIzY=
 github.com/roadrunner-server/sdk/v4 v4.5.3 h1:H+4FCJ69aa3x+FpwZM/sK2SeSt7B79hcw4jRz0Dgsoo=
 github.com/roadrunner-server/sdk/v4 v4.5.3/go.mod h1:5a6cxpWcqyJYgDUbj49CjJTnn0V911SrDodrCvoS83o=
-github.com/roadrunner-server/server/v4 v4.5.0 h1:iefWGPABnREASo5z75pv3Dx1Oew9LDIj6bGh+ggI538=
-github.com/roadrunner-server/server/v4 v4.5.0/go.mod h1:gyc0bMM30NY2E1vm1RTZXLDjscnRIdXzEewjdJTC14g=
+github.com/roadrunner-server/server/v4 v4.5.1 h1:vsBS0jxYZkbs0qdqLlARwqg04DkqR9BzsFHwWiD5zpQ=
+github.com/roadrunner-server/server/v4 v4.5.1/go.mod h1:PokZRBKZFFno2NVJwQG6Ant1JkvQNnxEHY4QVNwI2Kk=
 github.com/roadrunner-server/tcplisten v1.4.0 h1:yWo09zktv/CSV6VywLfw4pwNcUchgTiIrW4uIICtO5M=
 github.com/roadrunner-server/tcplisten v1.4.0/go.mod h1:A6+VSnW2ETGnN/e/CMdP63ZXqQDaC0UDMU6QmyuB0yM=
 github.com/robfig/cron v1.2.0 h1:ZjScXvvxeQ63Dbyxy76Fj3AT3Ut0aKsyd2/tl3DTMuQ=
