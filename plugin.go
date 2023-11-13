@@ -70,7 +70,6 @@ type Plugin struct {
 	log           *zap.Logger
 	config        *Config
 	statsExporter *metrics.StatsExporter
-	experimental  bool
 	codec         *proto.Codec
 	actP          *static_pool.Pool
 	wfP           *static_pool.Pool
@@ -139,7 +138,6 @@ func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) e
 	p.eventBus, p.id = events.NewEventBus()
 	p.stopCh = make(chan struct{}, 1)
 	p.statsExporter = newStatsExporter(p)
-	p.experimental = cfg.Experimental()
 
 	// initialize TLS
 	if p.config.TLS != nil {
@@ -216,8 +214,9 @@ func (p *Plugin) Serve() chan error {
 	return errCh
 }
 
-func (p *Plugin) Stop(ctx context.Context) error {
+func (p *Plugin) Stop(context.Context) error {
 	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	// stop events
 	p.eventBus.Unsubscribe(p.id)
@@ -242,29 +241,7 @@ func (p *Plugin) Stop(ctx context.Context) error {
 		p.temporal.client.Close()
 	}
 
-	// let the pool continue to work
-	if !p.experimental {
-		p.mu.Unlock()
-		return nil
-	}
-
-	// experimental mode
-	// we need this loop to let the instances finish their work
-	p.mu.Unlock()
-	for {
-		select {
-		case <-ctx.Done():
-			return errors.Errorf("temporal server: timeout exceeded: %v", ctx.Err())
-		default:
-			p.mu.RLock()
-			if p.wfP.QueueSize() == 0 && p.actP.QueueSize() == 0 {
-				p.mu.RUnlock()
-				return nil
-			}
-			p.mu.RUnlock()
-			time.Sleep(time.Second)
-		}
-	}
+	return nil
 }
 
 func (p *Plugin) Workers() []*process.State {

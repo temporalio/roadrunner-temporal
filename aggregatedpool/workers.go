@@ -2,7 +2,6 @@ package aggregatedpool
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/temporalio/roadrunner-temporal/v4/common"
@@ -49,7 +48,8 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 			zap.Bool("use_buildID_for_versioning", wi[i].Options.UseBuildIDForVersioning),
 		)
 
-		wi[i].Options.WorkerStopTimeout = time.Minute
+		// just to be sure
+		wi[i].Options.WorkerStopTimeout = 0
 
 		if wi[i].TaskQueue == "" {
 			wi[i].TaskQueue = temporalClient.DefaultNamespace
