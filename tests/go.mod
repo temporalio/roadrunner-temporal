@@ -7,19 +7,19 @@ toolchain go1.21.1
 require (
 	github.com/fatih/color v1.16.0
 	github.com/pborman/uuid v1.2.1
-	github.com/roadrunner-server/config/v4 v4.6.1
+	github.com/roadrunner-server/config/v4 v4.6.2
 	github.com/roadrunner-server/endure/v2 v2.4.3
 	github.com/roadrunner-server/goridge/v3 v3.8.1
-	github.com/roadrunner-server/informer/v4 v4.3.8
-	github.com/roadrunner-server/logger/v4 v4.2.8
-	github.com/roadrunner-server/otel/v4 v4.3.6
-	github.com/roadrunner-server/resetter/v4 v4.0.15
-	github.com/roadrunner-server/rpc/v4 v4.2.9
+	github.com/roadrunner-server/informer/v4 v4.3.9
+	github.com/roadrunner-server/logger/v4 v4.2.9
+	github.com/roadrunner-server/otel/v4 v4.3.7
+	github.com/roadrunner-server/resetter/v4 v4.0.16
+	github.com/roadrunner-server/rpc/v4 v4.2.10
 	github.com/roadrunner-server/sdk/v4 v4.5.3
-	github.com/roadrunner-server/server/v4 v4.5.1
+	github.com/roadrunner-server/server/v4 v4.5.2
 	github.com/stretchr/testify v1.8.4
-	github.com/temporalio/roadrunner-temporal/v4 v4.5.4
-	go.temporal.io/api v1.25.0
+	github.com/temporalio/roadrunner-temporal/v4 v4.5.5
+	go.temporal.io/api v1.26.0
 	go.temporal.io/sdk v1.25.1
 	go.uber.org/zap v1.26.0
 )
@@ -49,6 +49,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -83,7 +84,6 @@ require (
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
-	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.46.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.46.0 // indirect
 	go.opentelemetry.io/contrib/propagators/jaeger v1.21.0 // indirect
 	go.opentelemetry.io/otel v1.20.0 // indirect

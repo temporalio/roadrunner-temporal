@@ -21,6 +21,8 @@ require (
 	google.golang.org/protobuf v1.31.0
 )
 
+require github.com/rogpeppe/go-internal v1.11.0 // indirect
+
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cactus/go-statsd-client/v5 v5.1.0
