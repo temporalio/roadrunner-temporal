@@ -17,5 +17,4 @@
 **/vendor/
 vendor/
 .idea
-
-**/vendor
+.DS_Store
