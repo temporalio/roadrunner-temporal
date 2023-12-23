@@ -18,7 +18,7 @@ require (
 	go.temporal.io/sdk/contrib/tally v0.2.0
 	go.temporal.io/server v1.22.3
 	go.uber.org/zap v1.26.0
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.32.0
 )
 
 require github.com/rogpeppe/go-internal v1.11.0 // indirect
