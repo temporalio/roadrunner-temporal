@@ -1,0 +1,64 @@
+version: "3.5"
+services:
+  cockroach:
+    cap_drop:
+      - ALL
+    command:
+      - start-single-node
+      - --insecure
+    container_name: temporal-cockroach
+    hostname: cockroach
+    image: cockroachdb/cockroach
+    networks:
+      - temporal-network
+    restart: on-failure:5
+    security_opt:
+      - no-new-privileges
+    tty: false
+  temporal:
+    container_name: temporal
+    depends_on:
+      - cockroach
+    environment:
+      - DB=postgresql
+      - DB_PORT=26257
+      - POSTGRES_USER=root
+      - POSTGRES_PWD=
+      - POSTGRES_SEEDS=postgres
+    image: temporalio/auto-setup:1
+    links:
+      - cockroach:postgres
+    networks:
+      - temporal-network
+    ports:
+      - 7233:7233
+    labels:
+      kompose.volume.type: configMap
+  temporal-admin-tools:
+    container_name: temporal-admin-tools
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    image: temporalio/admin-tools:1
+    networks:
+      - temporal-network
+    stdin_open: true
+    tty: true
+  temporal-ui:
+    container_name: temporal-ui
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    image: temporalio/ui:latest
+    networks:
+      - temporal-network
+    ports:
+      - 8080:8080
+networks:
+  temporal-network:
+    driver: bridge
+    name: temporal-network
