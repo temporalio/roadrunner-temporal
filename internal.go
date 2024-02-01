@@ -144,8 +144,8 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, dc converter.DataConve
 
 func rewriteNameAndVersion(phpSdkVersion string) grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-		md, _, _ := metadata.FromOutgoingContextRaw(ctx)
-		if md == nil {
+		md, ok := metadata.FromOutgoingContext(ctx)
+		if md == nil || !ok {
 			return invoker(ctx, method, req, reply, cc, opts...)
 		}
 
