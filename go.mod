@@ -20,10 +20,9 @@ require (
 	google.golang.org/protobuf v1.32.0
 )
 
-require (
-	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
-	go.temporal.io/api v1.26.0
-)
+require github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1 // indirect
+
+require go.temporal.io/api v1.27.0
 
 exclude go.temporal.io/api v1.26.1
 
