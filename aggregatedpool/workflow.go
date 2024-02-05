@@ -223,11 +223,11 @@ func (wp *Workflow) StackTrace() string {
 
 func (wp *Workflow) Close() {
 	wp.log.Debug("close workflow", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID))
+	if wp.env.DrainUnhandledUpdates() {
+		wp.log.Info("drained unhandled updates")
+	}
 	// send destroy command
 	_, _ = wp.runCommand(internal.DestroyWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID}, nil, wp.header)
 	// flush queue
 	wp.mq.Flush()
-	if wp.env.DrainUnhandledUpdates() {
-		wp.log.Info("drained unhandled updates")
-	}
 }
