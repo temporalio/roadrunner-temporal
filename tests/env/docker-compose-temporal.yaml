@@ -4,7 +4,7 @@ services:
   prometheus:
     image: prom/prometheus
     ports:
-      - "9090:9090"
+      - "9091:9090"
 
   statsd:
     image: statsd/statsd
@@ -35,6 +35,8 @@ services:
   temporal:
     container_name: temporal
     image: temporalio/auto-setup:1
+    volumes:
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
     depends_on:
       - postgresql
     environment:
