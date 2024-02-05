@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        php: [ "8.2" ]
+        php: [ "8.3" ]
         go: [ stable ]
         os: [ "ubuntu-latest" ]
     steps:
@@ -42,7 +42,7 @@ jobs:
           echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
       - name: Init Composer Cache # Docs: <https://git.io/JfAKn#php---composer>
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('**/composer.json') }}
@@ -52,7 +52,7 @@ jobs:
         run: cd tests/php_test_files && composer update --prefer-dist --no-progress --ansi
 
       - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -89,7 +89,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        php: [ "8.2" ]
+        php: [ "8.3" ]
         go: [ stable ]
         os: [ "ubuntu-latest" ]
     steps:
@@ -114,7 +114,7 @@ jobs:
           echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
       - name: Init Composer Cache # Docs: <https://git.io/JfAKn#php---composer>
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('**/composer.json') }}
@@ -124,7 +124,7 @@ jobs:
         run: cd tests/php_test_files && composer update --prefer-dist --no-progress --ansi
 
       - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -174,7 +174,7 @@ jobs:
           sed -i '2,${/roadrunner/!d}' summary.txt
 
       - name: upload to codecov
-        uses: codecov/codecov-action@v3 # Docs: <https://github.com/codecov/codecov-action>
+        uses: codecov/codecov-action@v4 # Docs: <https://github.com/codecov/codecov-action>
         with:
           file: ./coverage/summary.txt
           fail_ci_if_error: false
