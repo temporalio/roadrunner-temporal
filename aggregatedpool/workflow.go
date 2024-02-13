@@ -160,6 +160,11 @@ func (wp *Workflow) OnWorkflowTaskStarted(t time.Duration) {
 
 	wp.callbacks = nil
 
+	err = wp.flushQueue()
+	if err != nil {
+		panic(err)
+	}
+
 	// handle updates
 	if len(wp.updatesQueue) > 0 {
 		for i := 0; i < len(wp.updatesQueue); i++ {
@@ -168,11 +173,6 @@ func (wp *Workflow) OnWorkflowTaskStarted(t time.Duration) {
 	}
 	// clean
 	wp.updatesQueue = make([]string, 0, 1)
-
-	err = wp.flushQueue()
-	if err != nil {
-		panic(err)
-	}
 
 	for len(wp.pipeline) > 0 {
 		msg := wp.pipeline[0]
