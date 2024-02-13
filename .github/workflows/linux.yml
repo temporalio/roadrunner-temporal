@@ -67,14 +67,15 @@ jobs:
 
       - name: Run Temporal root module tests
         run: |
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat ./tests/pkgs.txt) -coverprofile=./tests/coverage-ci/rrt_root.out -covermode=atomic ./...
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat ./tests/pkgs.txt) -coverprofile=./tests/coverage-ci/rrt_root.out -covermode=atomic canceller/canceller_test.go data_converter/converter_test.go queue/queue_test.go
 
       - name: Run Temporal tests with coverage
         run: |
           cd tests
           docker-compose -f env/docker-compose-temporal.yaml up -d --remove-orphans
 
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/rrt.out -covermode=atomic ./
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/rrt.out -covermode=atomic cancel_test.go child_test.go disaster_test.go general_test.go helpers.go hp_test.go interceptor_test.go metrics_test.go otlp_test.go query_test.go signal_test.go temporal_interceptor_plugin.go
+
           docker-compose -f env/docker-compose-temporal.yaml up -d --remove-orphans
 
       - name: Archive code coverage results
@@ -147,7 +148,8 @@ jobs:
           docker-compose -f env/temporal_tls/docker-compose.yml up -d --remove-orphans
           sleep 60
           
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/rrt_tls.out -covermode=atomic ./tls/
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/rrt_tls.out -covermode=atomic ./tls/cancel_tls_test.go ./tls/child_tls_test.go ./tls/disaster_tls_test.go ./tls/hp_tls_test.go ./tls/metrics_tls_test.go ./tls/query_tls_test.go ./tls/signal_tls_test.go
+
           docker-compose -f env/temporal_tls/docker-compose.yml down
 
       - name: Archive code coverage results
