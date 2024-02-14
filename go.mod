@@ -12,7 +12,7 @@ require (
 	github.com/roadrunner-server/errors v1.4.0
 	github.com/roadrunner-server/sdk/v4 v4.6.0
 	github.com/stretchr/testify v1.8.4
-	github.com/uber-go/tally/v4 v4.1.11
+	github.com/uber-go/tally/v4 v4.1.10
 	go.temporal.io/api v1.27.0
 	go.temporal.io/sdk v1.26.0-rc.2
 	go.temporal.io/sdk/contrib/tally v0.2.0
@@ -21,11 +21,7 @@ require (
 	google.golang.org/protobuf v1.32.0
 )
 
-require (
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1 // indirect
-	github.com/rogpeppe/go-internal v1.12.0 // indirect
-	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a // indirect
-)
+exclude github.com/uber-go/tally/v4 v4.1.11 // indirect
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -38,6 +34,7 @@ require (
 	github.com/golang/mock v1.7.0-rc.1 // indirect
 	github.com/golang/protobuf v1.5.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1 // indirect
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
@@ -47,6 +44,7 @@ require (
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/roadrunner-server/goridge/v3 v3.8.1
 	github.com/robfig/cron v1.2.0 // indirect
+	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/stretchr/objx v0.5.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.13 // indirect
@@ -56,6 +54,7 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/goleak v1.3.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
+	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a // indirect
 	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/sys v0.17.0 // indirect
@@ -64,6 +63,6 @@ require (
 	google.golang.org/genproto v0.0.0-20240213162025-012b6fc9bca9 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240213162025-012b6fc9bca9 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240213162025-012b6fc9bca9 // indirect
-	google.golang.org/grpc v1.61.0
+	google.golang.org/grpc v1.61.1
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
