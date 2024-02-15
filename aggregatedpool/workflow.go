@@ -160,6 +160,7 @@ func (wp *Workflow) OnWorkflowTaskStarted(t time.Duration) {
 
 	wp.callbacks = nil
 
+	// at first, we should flush our queue with command, e.g.: startWorkflow
 	err = wp.flushQueue()
 	if err != nil {
 		panic(err)
@@ -223,6 +224,7 @@ func (wp *Workflow) StackTrace() string {
 
 func (wp *Workflow) Close() {
 	wp.log.Debug("close workflow", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID))
+	// when closing workflow, we should drain(execute) unhandled updates
 	if wp.env.DrainUnhandledUpdates() {
 		wp.log.Info("drained unhandled updates")
 	}

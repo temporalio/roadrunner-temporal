@@ -41,6 +41,7 @@ func (wp *Workflow) handleUpdate(name string, id string, input *commonpb.Payload
 	wp.updatesQueue = append(wp.updatesQueue, name)
 	rid := wp.env.WorkflowInfo().WorkflowExecution.RunID
 
+	// this callback executed in the OnTick function
 	callback := func() {
 		// we don't execute update validation during replay
 		if !wp.env.IsReplaying() {
