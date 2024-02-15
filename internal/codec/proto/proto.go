@@ -90,11 +90,11 @@ func (c *Codec) Decode(pld *payload.Payload, result *[]*internal.Message) error 
 
 	for _, f := range response.Messages {
 		msg, errM := c.parseMessage(f)
-
-		c.log.Debug("received message", zap.Any("command", msg.Command), zap.Uint64("id", msg.ID), zap.ByteString("data", pld.Body))
 		if errM != nil {
 			return errM
 		}
+
+		c.log.Debug("received message", zap.Any("command", msg.Command), zap.Uint64("id", msg.ID), zap.ByteString("data", pld.Body))
 
 		*result = append(*result, msg)
 	}
@@ -167,10 +167,10 @@ func (c *Codec) parseMessage(frame *protocolV1.Message) (*internal.Message, erro
 	var err error
 
 	msg := &internal.Message{
-		ID:       frame.Id,
-		Payloads: frame.Payloads,
-		Failure:  frame.Failure,
-		Header:   frame.Header,
+		ID:       frame.GetId(),
+		Payloads: frame.GetPayloads(),
+		Failure:  frame.GetFailure(),
+		Header:   frame.GetHeader(),
 	}
 
 	if frame.Command != "" {

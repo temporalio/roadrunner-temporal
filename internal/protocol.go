@@ -10,6 +10,7 @@ import (
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 const (
@@ -20,6 +21,7 @@ const (
 	startWorkflowCommand       = "StartWorkflow"
 	invokeSignalCommand        = "InvokeSignal"
 	invokeQueryCommand         = "InvokeQuery"
+	invokeUpdateCommand        = "InvokeUpdate"
 	destroyWorkflowCommand     = "DestroyWorkflow"
 	cancelWorkflowCommand      = "CancelWorkflow"
 	getStackTraceCommand       = "StackTrace"
@@ -51,7 +53,7 @@ type Context struct {
 	TaskQueue string `json:"taskQueue,omitempty"`
 	// TickTime associated current or historical time with message batch.
 	TickTime string `json:"tickTime,omitempty"`
-	// Replay indicates that current message batch is historical.
+	// Replay indicates that the current message batch is historical.
 	Replay bool `json:"replay,omitempty"`
 	// History
 	HistoryLen int `json:"history_length,omitempty"`
@@ -67,7 +69,7 @@ type Message struct {
 	Command any `json:"command,omitempty"`
 	// Failure associated with command id.
 	Failure *failure.Failure `json:"failure,omitempty"`
-	// Payloads contains message specific payloads in binary format.
+	// Payloads contain message-specific payloads in binary format.
 	Payloads *commonpb.Payloads `json:"payloads,omitempty"`
 	// Header
 	Header *commonpb.Header `json:"header,omitempty"`
@@ -158,6 +160,8 @@ type InvokeUpdate struct {
 	RunID string `json:"runId"`
 	// Name of the query.
 	Name string `json:"name"`
+	// Type of the update request.
+	Type string `json:"type"`
 }
 
 // CancelWorkflow asks worker to gracefully stop workflow, if possible (signal).
@@ -186,7 +190,7 @@ type ExecuteActivity struct {
 	Options bindings.ExecuteActivityOptions `json:"options,omitempty"`
 }
 
-// ExecuteLocalActivityOptions .. since we use proto everywhere we need to convert Activity options (proto) to non-proto LA options
+// ExecuteLocalActivityOptions Since we use proto everywhere we need to convert Activity options (proto) to non-proto LA options
 type ExecuteLocalActivityOptions struct {
 	ScheduleToCloseTimeout time.Duration
 	StartToCloseTimeout    time.Duration
@@ -279,9 +283,9 @@ type Cancel struct {
 	CommandIDs []uint64 `json:"ids"`
 }
 
-// Panic triggers panic in workflow process.
+// Panic triggers panic in a workflow process.
 type Panic struct {
-	// Message to include into the error.
+	// Message to include in the error.
 	Message string `json:"message"`
 }
 
@@ -340,9 +344,9 @@ func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnviron
 	return params
 }
 
-func ifNotNil(val *time.Duration) time.Duration {
+func ifNotNil(val *durationpb.Duration) time.Duration {
 	if val != nil {
-		return *val
+		return val.AsDuration()
 	}
 	return 0
 }
@@ -418,6 +422,8 @@ func CommandName(cmd any) (string, error) {
 		return cancelCommand, nil
 	case Panic, *Panic:
 		return panicCommand, nil
+	case InvokeUpdate, *InvokeUpdate:
+		return invokeUpdateCommand, nil
 	default:
 		return "", errors.E(op, errors.Errorf("undefined command type: %s", cmd))
 	}
@@ -495,6 +501,9 @@ func InitCommand(name string) (any, error) {
 
 	case undefinedResponse:
 		return &UndefinedResponse{}, nil
+
+	case invokeUpdateCommand:
+		return &InvokeUpdate{}, nil
 
 	default:
 		return nil, errors.E(op, errors.Errorf("undefined command name: %s, possible outdated RoadRunner version", name))

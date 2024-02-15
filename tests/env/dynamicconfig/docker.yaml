@@ -1,0 +1,3 @@
+frontend.enableUpdateWorkflowExecution:
+  - value: true
+    constraints: {}

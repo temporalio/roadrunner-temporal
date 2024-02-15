@@ -45,15 +45,16 @@ type Workflow struct {
 	pool  common.Pool
 	rrID  string
 
-	env       bindings.WorkflowEnvironment
-	header    *commonpb.Header
-	mq        *queue.MessageQueue
-	ids       *registry.IDRegistry
-	seqID     uint64
-	pipeline  []*internal.Message
-	callbacks []Callback
-	canceller *canceller.Canceller
-	inLoop    uint32
+	env          bindings.WorkflowEnvironment
+	header       *commonpb.Header
+	mq           *queue.MessageQueue
+	ids          *registry.IDRegistry
+	seqID        uint64
+	pipeline     []*internal.Message
+	updatesQueue []string
+	callbacks    []Callback
+	canceller    *canceller.Canceller
+	inLoop       uint32
 
 	log *zap.Logger
 	mh  temporalClient.MetricsHandler
@@ -100,6 +101,7 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 	wp.env = env
 	wp.header = header
 	wp.seqID = 0
+	wp.updatesQueue = make([]string, 0, 1)
 	wp.canceller = new(canceller.Canceller)
 
 	// sequenceID shared for all pool workflows
@@ -109,6 +111,7 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 	env.RegisterCancelHandler(wp.handleCancel)
 	env.RegisterSignalHandler(wp.handleSignal)
 	env.RegisterQueryHandler(wp.handleQuery)
+	env.RegisterUpdateHandler(wp.handleUpdate)
 
 	var lastCompletion = bindings.GetLastCompletionResult(env)
 	var lastCompletionOffset = 0
@@ -157,10 +160,20 @@ func (wp *Workflow) OnWorkflowTaskStarted(t time.Duration) {
 
 	wp.callbacks = nil
 
+	// at first, we should flush our queue with command, e.g.: startWorkflow
 	err = wp.flushQueue()
 	if err != nil {
 		panic(err)
 	}
+
+	// handle updates
+	if len(wp.updatesQueue) > 0 {
+		for i := 0; i < len(wp.updatesQueue); i++ {
+			wp.env.HandleQueuedUpdates(wp.updatesQueue[i])
+		}
+	}
+	// clean
+	wp.updatesQueue = make([]string, 0, 1)
 
 	for len(wp.pipeline) > 0 {
 		msg := wp.pipeline[0]
@@ -211,6 +224,10 @@ func (wp *Workflow) StackTrace() string {
 
 func (wp *Workflow) Close() {
 	wp.log.Debug("close workflow", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID))
+	// when closing workflow, we should drain(execute) unhandled updates
+	if wp.env.DrainUnhandledUpdates() {
+		wp.log.Info("drained unhandled updates")
+	}
 	// send destroy command
 	_, _ = wp.runCommand(internal.DestroyWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID}, nil, wp.header)
 	// flush queue

@@ -20,13 +20,13 @@ type Interceptor interface {
 }
 
 type Pool interface {
-	// Workers returns worker list associated with the pool.
+	// Workers return a worker list associated with the pool.
 	Workers() (workers []*worker.Process)
 	// RemoveWorker removes worker from the pool.
 	RemoveWorker(ctx context.Context) error
 	// AddWorker adds worker to the pool.
 	AddWorker() error
-	// QueueSize can be implemented on the pool to provide the requests queue information
+	// QueueSize can be implemented on the pool to provide the request queue information
 	QueueSize() uint64
 	// Reset kill all workers inside the watcher and replaces with new
 	Reset(ctx context.Context) error
@@ -43,7 +43,7 @@ type Codec interface {
 	DecodeWorkerInfo(p *payload.Payload, wi *[]*internal.WorkerInfo) error
 }
 
-// Informer used to get workers from particular plugin or set of plugins
+// Informer used to get workers from a particular plugin or set of plugins
 type Informer interface {
 	Workers() []*process.State
 }
@@ -51,7 +51,7 @@ type Informer interface {
 type Configurer interface {
 	// UnmarshalKey takes a single key and unmarshal it into a Struct.
 	UnmarshalKey(name string, out any) error
-	// Has checks if config section exists.
+	// Has checks if a config section exists.
 	Has(name string) bool
 	// GracefulTimeout represents timeout for all servers registered in the endure
 	GracefulTimeout() time.Duration
