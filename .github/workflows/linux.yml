@@ -178,7 +178,11 @@ jobs:
       - name: Download code coverage results
         uses: actions/download-artifact@v4
       - run: |
-          cd coverage
+          cd coverage_1
+          echo 'mode: atomic' > summary.txt
+          tail -q -n +2 *.out >> summary.txt
+          sed -i '2,${/roadrunner/!d}' summary.txt
+          cd coverage_2
           echo 'mode: atomic' > summary.txt
           tail -q -n +2 *.out >> summary.txt
           sed -i '2,${/roadrunner/!d}' summary.txt
@@ -186,5 +190,5 @@ jobs:
       - name: upload to codecov
         uses: codecov/codecov-action@v4 # Docs: <https://github.com/codecov/codecov-action>
         with:
-          file: ./coverage/summary.txt
+          files: ./coverage_1/summary.txt,./coverage_2/summary.txt
           fail_ci_if_error: false
