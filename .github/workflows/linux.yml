@@ -82,7 +82,7 @@ jobs:
           cd tests
           docker-compose -f env/docker-compose-temporal.yaml up -d --remove-orphans
 
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/rrt.out -covermode=atomic cancel_test.go child_test.go disaster_test.go general_test.go helpers.go hp_test.go interceptor_test.go metrics_test.go otlp_test.go query_test.go signal_test.go temporal_interceptor_plugin.go
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/rrt.out -covermode=atomic cancel_test.go child_test.go disaster_test.go general_test.go helpers.go hp_test.go interceptor_test.go metrics_test.go otlp_test.go query_test.go signal_test.go temporal_interceptor_plugin.go rpc_test.go
 
           docker-compose -f env/docker-compose-temporal.yaml up -d --remove-orphans
 
