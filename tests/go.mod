@@ -1,24 +1,22 @@
 module tests
 
-go 1.21
-
-toolchain go1.21.6
+go 1.22.0
 
 require (
 	github.com/fatih/color v1.16.0
 	github.com/pborman/uuid v1.2.1
-	github.com/roadrunner-server/config/v4 v4.6.7
+	github.com/roadrunner-server/config/v4 v4.6.8
 	github.com/roadrunner-server/endure/v2 v2.4.3
 	github.com/roadrunner-server/goridge/v3 v3.8.1
-	github.com/roadrunner-server/informer/v4 v4.3.14
-	github.com/roadrunner-server/logger/v4 v4.2.14
-	github.com/roadrunner-server/otel/v4 v4.3.12
-	github.com/roadrunner-server/resetter/v4 v4.0.21
-	github.com/roadrunner-server/rpc/v4 v4.2.15
+	github.com/roadrunner-server/informer/v4 v4.3.15
+	github.com/roadrunner-server/logger/v4 v4.2.15
+	github.com/roadrunner-server/otel/v4 v4.3.14
+	github.com/roadrunner-server/resetter/v4 v4.1.1
+	github.com/roadrunner-server/rpc/v4 v4.2.16
 	github.com/roadrunner-server/sdk/v4 v4.6.0
-	github.com/roadrunner-server/server/v4 v4.5.7
+	github.com/roadrunner-server/server/v4 v4.5.8
 	github.com/stretchr/testify v1.8.4
-	github.com/temporalio/roadrunner-temporal/v4 v4.5.9
+	github.com/temporalio/roadrunner-temporal/v4 v4.6.0
 	go.temporal.io/api v1.27.0
 	go.temporal.io/sdk v1.26.0-rc.2
 	go.uber.org/zap v1.26.0
@@ -59,7 +57,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.18.0 // indirect
 	github.com/prometheus/client_model v0.5.0 // indirect
-	github.com/prometheus/common v0.46.0 // indirect
+	github.com/prometheus/common v0.47.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/roadrunner-server/api/v4 v4.10.0 // indirect
 	github.com/roadrunner-server/errors v1.4.0 // indirect

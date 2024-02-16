@@ -5,8 +5,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/gogo/protobuf/jsonpb"
-	v1Proto "github.com/golang/protobuf/proto" //nolint:staticcheck
 	"github.com/roadrunner-server/api/v4/build/common/v1"
 	protoApi "github.com/roadrunner-server/api/v4/build/temporal/v1"
 	"github.com/roadrunner-server/errors"
@@ -20,6 +18,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -57,7 +56,7 @@ func (r *rpc) RecordActivityHeartbeat(in RecordHeartbeatRequest, out *RecordHear
 	details := &commonpb.Payloads{}
 
 	if len(in.Details) != 0 {
-		if err := proto.Unmarshal(in.Details, v1Proto.MessageV2(details)); err != nil {
+		if err := proto.Unmarshal(in.Details, details); err != nil {
 			return err
 		}
 	}
@@ -251,8 +250,18 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 		hist.Events = append(hist.Events, event)
 	}
 
-	marshaler := jsonpb.Marshaler{}
-	err = marshaler.Marshal(file, &hist)
+	data, err := protojson.Marshal(&hist)
+	if err != nil {
+		out.Status = &common.Status{
+			Code:    int32(codes.Internal),
+			Message: err.Error(),
+		}
+
+		r.plugin.log.Error("history marshal error", zap.Error(err))
+		return nil
+	}
+
+	_, err = file.Write(data)
 	if err != nil {
 		out.Status = &common.Status{
 			Code:    int32(codes.Internal),
