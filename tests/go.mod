@@ -5,6 +5,7 @@ go 1.22.0
 require (
 	github.com/fatih/color v1.16.0
 	github.com/pborman/uuid v1.2.1
+	github.com/roadrunner-server/api/v4 v4.11.0
 	github.com/roadrunner-server/config/v4 v4.6.8
 	github.com/roadrunner-server/endure/v2 v2.4.3
 	github.com/roadrunner-server/goridge/v3 v3.8.1
@@ -15,6 +16,7 @@ require (
 	github.com/roadrunner-server/rpc/v4 v4.2.16
 	github.com/roadrunner-server/sdk/v4 v4.6.0
 	github.com/roadrunner-server/server/v4 v4.5.8
+	github.com/roadrunner-server/status/v4 v4.4.14
 	github.com/stretchr/testify v1.8.4
 	github.com/temporalio/roadrunner-temporal/v4 v4.6.0
 	go.temporal.io/api v1.27.0
@@ -59,7 +61,6 @@ require (
 	github.com/prometheus/client_model v0.5.0 // indirect
 	github.com/prometheus/common v0.47.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
-	github.com/roadrunner-server/api/v4 v4.10.0 // indirect
 	github.com/roadrunner-server/errors v1.4.0 // indirect
 	github.com/roadrunner-server/tcplisten v1.4.0 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
