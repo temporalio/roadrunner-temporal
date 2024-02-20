@@ -12,7 +12,7 @@ func (p *Plugin) Status() (*status.Status, error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	workers := p.wfP.Workers()
+	workers := p.actP.Workers()
 
 	for i := 0; i < len(workers); i++ {
 		if workers[i].State().IsActive() {
@@ -32,7 +32,7 @@ func (p *Plugin) Ready() (*status.Status, error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	workers := p.wfP.Workers()
+	workers := p.actP.Workers()
 
 	for i := 0; i < len(workers); i++ {
 		// If state of the worker is ready (at least 1)
