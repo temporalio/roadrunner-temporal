@@ -238,10 +238,36 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		)
 
 	case *internal.UpdateCompleted:
+		wp.log.Debug("complete update request", zap.String("update id", command.ID))
+
+		if command.ID == "" {
+			wp.log.Error("update id is empty, can't complete update", zap.String("workflow id", wp.env.WorkflowInfo().WorkflowExecution.ID), zap.String("run id", wp.env.WorkflowInfo().WorkflowExecution.RunID))
+			return errors.Str("update id is empty, can't complete update")
+		}
+
+		if _, ok := wp.updateCompleteCb[command.ID]; !ok {
+			wp.log.Warn("no such update ID, can't complete update", zap.String("requested id", command.ID))
+			// TODO(rustatian): error here?
+			return nil
+		}
+
 		wp.updateCompleteCb[command.ID](msg)
 		delete(wp.updateCompleteCb, command.ID)
 
 	case *internal.UpdateValidated:
+		wp.log.Debug("validate update request", zap.String("update id", command.ID))
+
+		if command.ID == "" {
+			wp.log.Error("update id is empty, can't validate update", zap.String("workflow id", wp.env.WorkflowInfo().WorkflowExecution.ID), zap.String("run id", wp.env.WorkflowInfo().WorkflowExecution.RunID))
+			return errors.Str("update id is empty, can't validate update")
+		}
+
+		if _, ok := wp.updateCompleteCb[command.ID]; !ok {
+			wp.log.Warn("no such update ID, can't validate update", zap.String("requested id", command.ID))
+			// TODO(rustatian): error here?
+			return nil
+		}
+
 		wp.updateValidateCb[command.ID](msg)
 		delete(wp.updateValidateCb, command.ID)
 
