@@ -35,6 +35,8 @@ const (
 	sideEffectCommand                     = "SideEffect"
 	getVersionCommand                     = "GetVersion"
 	completeWorkflowCommand               = "CompleteWorkflow"
+	completeUpdateCommand                 = "UpdateCompleted"
+	validateUpdateCommand                 = "UpdateValidated"
 	continueAsNewCommand                  = "ContinueAsNew"
 	upsertWorkflowSearchAttributesCommand = "UpsertWorkflowSearchAttributes"
 
@@ -238,6 +240,16 @@ type GetVersion struct {
 // CompleteWorkflow sent by worker to complete workflow. Might include additional error as part of the payload.
 type CompleteWorkflow struct{}
 
+// CompleteUpdate sent by worker to complete update
+type UpdateCompleted struct {
+	ID string `json:"id"`
+}
+
+// UpdateValidated sent by worker to validate update
+type UpdateValidated struct {
+	ID string `json:"id"`
+}
+
 // ContinueAsNew restarts workflow with new running instance.
 type ContinueAsNew struct {
 	// Result defines workflow execution result.
@@ -410,6 +422,10 @@ func CommandName(cmd any) (string, error) {
 		return sideEffectCommand, nil
 	case CompleteWorkflow, *CompleteWorkflow:
 		return completeWorkflowCommand, nil
+	case UpdateCompleted, *UpdateCompleted:
+		return completeWorkflowCommand, nil
+	case UpdateValidated, *UpdateValidated:
+		return validateUpdateCommand, nil
 	case ContinueAsNew, *ContinueAsNew:
 		return continueAsNewCommand, nil
 	case UpsertWorkflowSearchAttributes, *UpsertWorkflowSearchAttributes:
@@ -480,6 +496,12 @@ func InitCommand(name string) (any, error) {
 
 	case completeWorkflowCommand:
 		return &CompleteWorkflow{}, nil
+
+	case completeUpdateCommand:
+		return &UpdateCompleted{}, nil
+
+	case validateUpdateCommand:
+		return &UpdateValidated{}, nil
 
 	case continueAsNewCommand:
 		return &ContinueAsNew{}, nil
