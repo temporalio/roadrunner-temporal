@@ -17,7 +17,7 @@ func Test_SimpleWorkflowCancelProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -46,7 +46,7 @@ func Test_CancellableWorkflowScopeProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -78,7 +78,7 @@ func Test_CanceledWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -105,7 +105,7 @@ func Test_CanceledWithCompensationWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -154,7 +154,7 @@ func Test_CanceledNestedWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -201,7 +201,7 @@ func Test_CanceledNSingleScopeWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -245,7 +245,7 @@ func Test_CanceledMidflightWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -290,7 +290,7 @@ func Test_CancelSignaledChildWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -336,7 +336,7 @@ func Test_SimpleWorkflowCancelLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -365,7 +365,7 @@ func Test_CancellableWorkflowScopeLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -396,7 +396,7 @@ func Test_CanceledWorkflowLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -423,7 +423,7 @@ func Test_CanceledWithCompensationWorkflowLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -472,7 +472,7 @@ func Test_CanceledNestedWorkflowLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -519,7 +519,7 @@ func Test_CanceledNSingleScopeWorkflowLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -563,7 +563,7 @@ func Test_CanceledMidflightWorkflowLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -608,7 +608,7 @@ func Test_CancelSignaledChildWorkflowLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),

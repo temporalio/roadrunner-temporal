@@ -26,7 +26,7 @@ func Test_RPC_Methods(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),

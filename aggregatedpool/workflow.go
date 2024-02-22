@@ -57,8 +57,8 @@ type Workflow struct {
 	inLoop       uint32
 
 	// updates
-	updateValidateCb map[string]func(res *internal.Message)
 	updateCompleteCb map[string]func(res *internal.Message)
+	updateValidateCb map[string]func(res *internal.Message)
 
 	log *zap.Logger
 	mh  temporalClient.MetricsHandler
@@ -69,14 +69,10 @@ type Workflow struct {
 
 func NewWorkflowDefinition(codec common.Codec, pool common.Pool, log *zap.Logger) *Workflow {
 	return &Workflow{
-		rrID:             uuid.NewString(),
-		updateValidateCb: make(map[string]func(res *internal.Message)),
-		updateCompleteCb: make(map[string]func(res *internal.Message)),
-
-		updatesQueue: map[string]struct{}{},
-		log:          log,
-		codec:        codec,
-		pool:         pool,
+		rrID:  uuid.NewString(),
+		log:   log,
+		codec: codec,
+		pool:  pool,
 		pldPool: &sync.Pool{
 			New: func() any {
 				return new(payload.Payload)
@@ -91,8 +87,8 @@ func (wp *Workflow) NewWorkflowDefinition() bindings.WorkflowDefinition {
 	return &Workflow{
 		rrID: uuid.NewString(),
 		// updates logic
-		updateValidateCb: make(map[string]func(res *internal.Message)),
 		updateCompleteCb: make(map[string]func(res *internal.Message)),
+		updateValidateCb: make(map[string]func(res *internal.Message)),
 		updatesQueue:     map[string]struct{}{},
 		// -- updates
 		pool:  wp.pool,
@@ -246,6 +242,11 @@ func (wp *Workflow) Close() {
 	for k := range wp.updatesQueue {
 		delete(wp.updatesQueue, k)
 	}
+
+	for k := range wp.updateCompleteCb {
+		delete(wp.updateCompleteCb, k)
+	}
+
 	// send destroy command
 	_, _ = wp.runCommand(internal.DestroyWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID}, nil, wp.header)
 	// flush queue

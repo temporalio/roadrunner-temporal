@@ -17,7 +17,7 @@ func Test_SignalsWithoutSignalsProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -40,7 +40,7 @@ func Test_SendSignalDuringTimerProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	w, err := s.Client.SignalWithStartWorkflow(
 		context.Background(),
@@ -77,7 +77,7 @@ func Test_SendSignalBeforeCompletingWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -114,7 +114,7 @@ func Test_RuntimeSignalProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	w, err := s.Client.SignalWithStartWorkflow(
 		context.Background(),
@@ -148,7 +148,7 @@ func Test_SignalStepsProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -196,7 +196,7 @@ func Test_SignalsWithoutSignalsLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -219,7 +219,7 @@ func Test_SendSignalDuringTimerLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.SignalWithStartWorkflow(
 		context.Background(),
@@ -256,7 +256,7 @@ func Test_SendSignalBeforeCompletingWorkflowLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -293,7 +293,7 @@ func Test_RuntimeSignalLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.SignalWithStartWorkflow(
 		context.Background(),
@@ -327,7 +327,7 @@ func Test_SignalStepsLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),

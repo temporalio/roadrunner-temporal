@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	configImpl "github.com/roadrunner-server/config/v4"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/client"
 )
@@ -19,14 +18,7 @@ func Test_SimpleWorkflowMetrics(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
-	cfg := &configImpl.Plugin{
-		Timeout: time.Second * 30,
-	}
-	cfg.Path = "configs/.rr-metrics.yaml"
-	cfg.Prefix = "rr"
-	cfg.Version = "2.9.0"
-
-	s := NewTestServerWithMetrics(t, stopCh, cfg, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-metrics.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -79,14 +71,7 @@ func Test_SimpleWorkflowMetricsPrometheusNewDriver(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
-	cfg := &configImpl.Plugin{
-		Timeout: time.Second * 30,
-	}
-	cfg.Path = "configs/.rr-metrics-prom-new.yaml"
-	cfg.Prefix = "rr"
-	cfg.Version = "2.11.2"
-
-	s := NewTestServerWithMetrics(t, stopCh, cfg, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-metrics-prom-new.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -139,14 +124,7 @@ func Test_SimpleWorkflowMetricsStatsdNewDriver(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
-	cfg := &configImpl.Plugin{
-		Timeout: time.Second * 30,
-	}
-	cfg.Path = "configs/.rr-metrics-statsd.yaml"
-	cfg.Prefix = "rr"
-	cfg.Version = "2.11.2"
-
-	s := NewTestServerWithMetrics(t, stopCh, cfg, wg)
+	s := NewTestServer(t, stopCh, wg, "configs/.rr-metrics-statsd.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -184,7 +162,7 @@ func Test_SimpleWorkflowMetricsStatsdNewDriver(t *testing.T) {
 
 // get request and return body
 func get() (string, error) {
-	r, err := http.Get("http://127.0.0.1:9095/metrics")
+	r, err := http.Get("http://127.0.0.1:9095/metrics") //nolint:noctx
 	if err != nil {
 		return "", err
 	}
@@ -206,12 +184,12 @@ func get() (string, error) {
 func getStatsd() (string, error) {
 	conn, err := net.Dial("tcp4", "127.0.0.1:8126")
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	_, err = conn.Write([]byte("counters"))
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	_ = conn.SetReadDeadline(time.Now().Add(time.Second * 2))

@@ -20,8 +20,7 @@ import (
 const (
 	completed string = "completed"
 	// update types
-	validate string = "validate"
-	execute  string = "execute"
+	valExec string = "validate_execute"
 )
 
 // execution context.
@@ -44,7 +43,9 @@ func (wp *Workflow) handleUpdate(name string, id string, input *commonpb.Payload
 
 	// this callback executed in the OnTick function
 	updatesQueueCb := func() {
+		// validate callback
 		wp.updateValidateCb[id] = func(msg *internal.Message) {
+			wp.log.Debug("validate request callback", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID), zap.String("name", name), zap.String("id", id), zap.Any("result", msg))
 			if !wp.env.IsReplaying() {
 				// before accept we have only one option - reject
 				if msg.Failure != nil {
@@ -54,27 +55,17 @@ func (wp *Workflow) handleUpdate(name string, id string, input *commonpb.Payload
 
 				callbacks.Accept()
 			}
+		}
 
-			wp.mq.PushCommand(
-				&internal.InvokeUpdate{
-					RunID:    rid,
-					UpdateID: id,
-					Name:     name,
-					Type:     execute,
-				},
-				input,
-				header,
-			)
-
-			wp.updateCompleteCb[id] = func(res *internal.Message) {
-				wp.log.Debug("update request result", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID), zap.String("name", name), zap.String("id", id), zap.Any("result", res))
-				if res.Failure != nil {
-					callbacks.Complete(nil, temporal.GetDefaultFailureConverter().FailureToError(res.Failure))
-					return
-				}
-
-				callbacks.Complete(res.Payloads, nil)
+		// execute callback
+		wp.updateCompleteCb[id] = func(msg *internal.Message) {
+			wp.log.Debug("update request callback", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID), zap.String("name", name), zap.String("id", id), zap.Any("result", msg))
+			if msg.Failure != nil {
+				callbacks.Complete(nil, temporal.GetDefaultFailureConverter().FailureToError(msg.Failure))
+				return
 			}
+
+			callbacks.Complete(msg.Payloads, nil)
 		}
 
 		// push validate command
@@ -83,7 +74,7 @@ func (wp *Workflow) handleUpdate(name string, id string, input *commonpb.Payload
 				RunID:    rid,
 				UpdateID: id,
 				Name:     name,
-				Type:     validate,
+				Type:     valExec,
 			},
 			input,
 			header,
@@ -262,7 +253,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 			return errors.Str("update id is empty, can't validate update")
 		}
 
-		if _, ok := wp.updateCompleteCb[command.ID]; !ok {
+		if _, ok := wp.updateValidateCb[command.ID]; !ok {
 			wp.log.Warn("no such update ID, can't validate update", zap.String("requested id", command.ID))
 			// TODO(rustatian): error here?
 			return nil
@@ -270,6 +261,10 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 
 		wp.updateValidateCb[command.ID](msg)
 		delete(wp.updateValidateCb, command.ID)
+		// delete updateCompleteCb in case of error
+		if msg.Failure != nil {
+			delete(wp.updateCompleteCb, command.ID)
+		}
 
 	case *internal.CompleteWorkflow:
 		wp.log.Debug("complete workflow request", zap.Uint64("ID", msg.ID))

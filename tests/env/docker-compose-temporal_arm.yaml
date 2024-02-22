@@ -15,6 +15,7 @@ services:
     security_opt:
       - no-new-privileges
     tty: false
+
   temporal:
     container_name: temporal
     depends_on:
@@ -26,6 +27,8 @@ services:
       - POSTGRES_PWD=
       - POSTGRES_SEEDS=postgres
     image: temporalio/auto-setup:1
+    volumes:
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
     links:
       - cockroach:postgres
     networks:
@@ -34,6 +37,7 @@ services:
       - 7233:7233
     labels:
       kompose.volume.type: configMap
+
   temporal-admin-tools:
     container_name: temporal-admin-tools
     depends_on:
