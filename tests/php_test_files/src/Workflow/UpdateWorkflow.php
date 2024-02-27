@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace Temporal\Tests\Workflow;
 
+use Temporal\Activity\ActivityOptions;
 use Temporal\Promise;
 use Temporal\Tests\Activity\SimpleActivity;
 use Temporal\Workflow;
@@ -44,6 +45,14 @@ class UpdateWorkflow
         return $result;
     }
 
+    #[Workflow\UpdateValidatorMethod(forUpdate: 'addName')]
+    public function validateName(string $name): void
+    {
+        if (\preg_match('/\\d/', $name) === 1) {
+            throw new \InvalidArgumentException('Name must not contain digits');
+        }
+    }
+
     #[Workflow\UpdateMethod]
     public function randomizeName(int $count = 1): mixed
     {
@@ -64,17 +73,12 @@ class UpdateWorkflow
     #[Workflow\UpdateMethod]
     public function addNameViaActivity(string $name): mixed
     {
-        $name = yield Workflow::newActivityStub(SimpleActivity::class)->lower($name);
+        $name = yield Workflow::newActivityStub(
+            SimpleActivity::class,
+            ActivityOptions::new()->withStartToCloseTimeout('10 seconds'),
+        )->lower($name);
         $this->greetings[] = $result = \sprintf('Hello, %s!', $name);
         return $result;
-    }
-
-    #[Workflow\UpdateValidatorMethod(forUpdate: 'addName')]
-    public function validateName(string $name): void
-    {
-        if (\preg_match('/\\d/', $name) === 1) {
-            throw new \InvalidArgumentException('Name must not contain digits');
-        }
     }
 
     #[Workflow\UpdateMethod]
