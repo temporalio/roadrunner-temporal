@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e447427dc98b7e4ce25635a24c545650",
+    "content-hash": "31de7ebc3708e50f7104b10b2d1d9990",
     "packages": [
         {
             "name": "brick/math",
@@ -5107,12 +5107,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/temporalio/sdk-php.git",
-                "reference": "4cb2d601ffae0774e65977cc70671263883b53ce"
+                "reference": "53f72b43ed427162ac39a33b75130472acca02f6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/temporalio/sdk-php/zipball/4cb2d601ffae0774e65977cc70671263883b53ce",
-                "reference": "4cb2d601ffae0774e65977cc70671263883b53ce",
+                "url": "https://api.github.com/repos/temporalio/sdk-php/zipball/53f72b43ed427162ac39a33b75130472acca02f6",
+                "reference": "53f72b43ed427162ac39a33b75130472acca02f6",
                 "shasum": ""
             },
             "require": {
