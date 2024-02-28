@@ -241,7 +241,7 @@ func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.W
 	cfg := &configImpl.Plugin{
 		Timeout: time.Second * 30,
 	}
-	cfg.Path = "configs/.rr-proto.yaml"
+	cfg.Path = "../configs/.rr-proto.yaml"
 	cfg.Prefix = rrPrefix
 	cfg.Version = rrVersion
 
