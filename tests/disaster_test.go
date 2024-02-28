@@ -8,6 +8,7 @@ import (
 	"sync"
 	"syscall"
 	"testing"
+	"tests/helpers"
 	"time"
 
 	goridgeRpc "github.com/roadrunner-server/goridge/v3/pkg/rpc"
@@ -21,7 +22,7 @@ func Test_WorkerError_DisasterRecovery(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	workers := getWorkers(t)
 	require.Len(t, workers, 5)
@@ -55,7 +56,7 @@ func Test_ResetAll(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -96,7 +97,7 @@ func Test_ResetWFWorker(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -144,7 +145,7 @@ func Test_ActivityError_DisasterRecovery(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	defer func() {
 		// always restore script
@@ -192,7 +193,7 @@ func Test_WorkerError_DisasterRecoveryProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	workers := getWorkers(t)
 	require.Len(t, workers, 5)
@@ -226,7 +227,7 @@ func Test_WorkerError_DisasterRecovery_Heavy(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	defer func() {
 		// always restore script
@@ -280,7 +281,7 @@ func Test_ActivityError_DisasterRecoveryProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	defer func() {
 		// always restore script
@@ -329,7 +330,7 @@ func Test_WorkerError_DisasterRecovery_HeavyLA(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	defer func() {
 		// always restore script
@@ -383,7 +384,7 @@ func Test_WorkerErrorLA_DisasterRecovery(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	workers := getWorkers(t)
 	require.Len(t, workers, 5)
@@ -417,7 +418,7 @@ func Test_ResetLAAll(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -458,7 +459,7 @@ func Test_ActivityErrorLA_DisasterRecovery(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	defer func() {
 		// always restore script
@@ -506,7 +507,7 @@ func Test_WorkerErrorLA_DisasterRecoveryProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	workers := getWorkers(t)
 	require.Len(t, workers, 5)
@@ -540,7 +541,7 @@ func Test_ActivityErrorLA_DisasterRecoveryProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
 
 	defer func() {
 		// always restore script

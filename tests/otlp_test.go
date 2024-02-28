@@ -7,6 +7,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"tests/helpers"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -23,7 +24,7 @@ func Test_OtlpInterceptor(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
-	s := NewTestServerWithOtelInterceptor(t, stopCh, wg)
+	s := helpers.NewTestServerWithOtelInterceptor(t, stopCh, wg)
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),

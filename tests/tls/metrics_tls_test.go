@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"tests"
+	"tests/helpers"
 
 	configImpl "github.com/roadrunner-server/config/v4"
 	"github.com/stretchr/testify/assert"
@@ -28,7 +28,7 @@ func Test_SimpleWorkflowMetrics(t *testing.T) {
 	cfg.Prefix = "rr"
 	cfg.Version = "2.9.0"
 
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-metrics.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-metrics.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -88,7 +88,7 @@ func Test_SimpleWorkflowMetricsPrometheusNewDriver(t *testing.T) {
 	cfg.Prefix = "rr"
 	cfg.Version = "2.11.2"
 
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-metrics-prom-new.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-metrics-prom-new.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -148,7 +148,7 @@ func Test_SimpleWorkflowMetricsStatsdNewDriver(t *testing.T) {
 	cfg.Prefix = "rr"
 	cfg.Version = "2.11.2"
 
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-metrics-statsd.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-metrics-statsd.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -186,7 +186,13 @@ func Test_SimpleWorkflowMetricsStatsdNewDriver(t *testing.T) {
 
 // get request and return body
 func get() (string, error) {
-	r, err := http.Get("http://127.0.0.1:9095/metrics")
+	client := &http.Client{}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://127.0.0.1:9095/metrics", nil)
+	if err != nil {
+		return "", err
+	}
+
+	r, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}

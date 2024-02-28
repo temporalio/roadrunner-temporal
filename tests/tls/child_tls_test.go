@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"tests"
+	"tests/helpers"
 
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/client"
@@ -15,7 +15,7 @@ func Test_ExecuteChildWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -38,7 +38,7 @@ func Test_ExecuteChildStubWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -61,7 +61,7 @@ func Test_ExecuteChildStubWorkflow_02Proto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -84,7 +84,7 @@ func Test_SignalChildViaStubWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -108,7 +108,7 @@ func Test_ExecuteChildWorkflowLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -131,7 +131,7 @@ func Test_ExecuteChildStubWorkflowLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -154,7 +154,7 @@ func Test_ExecuteChildStubWorkflowLA_02Proto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -177,7 +177,7 @@ func Test_SignalChildViaStubWorkflowLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),

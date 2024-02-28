@@ -1,9 +1,10 @@
-package tests
+package updates
 
 import (
 	"context"
 	"sync"
 	"testing"
+	"tests/helpers"
 	"time"
 
 	"github.com/stretchr/testify/require"
@@ -16,7 +17,7 @@ func Test_UpdatesInit(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -57,7 +58,7 @@ func Test_UpdatesSideEffect(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),

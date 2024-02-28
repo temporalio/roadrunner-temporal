@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"tests"
+	"tests/helpers"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,7 +19,7 @@ func Test_SimpleWorkflowCancelTLSProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -48,7 +48,7 @@ func Test_CancellableWorkflowScopeTLSProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -79,7 +79,7 @@ func Test_CanceledWorkflowTLSProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -106,7 +106,7 @@ func Test_CanceledWithCompensationWorkflowTLSProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -155,7 +155,7 @@ func Test_CanceledNestedWorkflowTLSProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -202,7 +202,7 @@ func Test_CanceledNSingleScopeWorkflowTLSProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -246,7 +246,7 @@ func Test_CanceledMidflightWorkflowTLSProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -291,7 +291,7 @@ func Test_CancelSignaledChildWorkflowTLSProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -336,7 +336,7 @@ func Test_SimpleWorkflowCancelLATLSProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -365,7 +365,7 @@ func Test_CancellableWorkflowScopeLATLSProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -396,7 +396,7 @@ func Test_CanceledWorkflowLATLSProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -423,7 +423,7 @@ func Test_CanceledWithCompensationWorkflowLATLSProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -472,7 +472,7 @@ func Test_CanceledNestedWorkflowLATLSProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -519,7 +519,7 @@ func Test_CanceledNSingleScopeWorkflowLATLSProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -563,7 +563,7 @@ func Test_CanceledMidflightWorkflowLATLSProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -608,7 +608,7 @@ func Test_CancelSignaledChildWorkflowLATLSProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),

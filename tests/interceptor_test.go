@@ -5,6 +5,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"tests/helpers"
 
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/client"
@@ -14,7 +15,7 @@ func Test_CustomInterceptor(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerWithInterceptor(t, stopCh, wg)
+	s := helpers.NewTestServerWithInterceptor(t, stopCh, wg)
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
