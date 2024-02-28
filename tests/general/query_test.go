@@ -18,7 +18,7 @@ func Test_ListQueriesProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -64,6 +64,7 @@ func Test_ListQueriesProto(t *testing.T) {
 	v, err = s.Client.QueryWorkflow(ctx, w.GetID(), w.GetRunID(), "error", -1)
 	assert.Nil(t, v)
 	assert.Error(t, err)
+	time.Sleep(time.Second)
 	cancel()
 
 	assert.Contains(t, err.Error(), "KnownQueryTypes=[get]")
@@ -81,7 +82,7 @@ func Test_GetQueryProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -116,7 +117,7 @@ func Test_ListQueriesLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -147,7 +148,7 @@ func Test_GetQueryLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-proto-la.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),

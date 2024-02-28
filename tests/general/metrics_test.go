@@ -19,7 +19,7 @@ func Test_SimpleWorkflowMetrics(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
-	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-metrics.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-metrics.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -72,7 +72,7 @@ func Test_SimpleWorkflowMetricsPrometheusNewDriver(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
-	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-metrics-prom-new.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-metrics-prom-new.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -125,7 +125,7 @@ func Test_SimpleWorkflowMetricsStatsdNewDriver(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
-	s := helpers.NewTestServer(t, stopCh, wg, "configs/.rr-metrics-statsd.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-metrics-statsd.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),

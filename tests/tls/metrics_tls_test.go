@@ -11,7 +11,6 @@ import (
 
 	"tests/helpers"
 
-	configImpl "github.com/roadrunner-server/config/v4"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/client"
 )
@@ -20,13 +19,6 @@ func Test_SimpleWorkflowMetrics(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-
-	cfg := &configImpl.Plugin{
-		Timeout: time.Second * 30,
-	}
-	cfg.Path = "configs/.rr-metrics.yaml"
-	cfg.Prefix = "rr"
-	cfg.Version = "2.9.0"
 
 	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-metrics.yaml")
 
@@ -81,13 +73,6 @@ func Test_SimpleWorkflowMetricsPrometheusNewDriver(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
-	cfg := &configImpl.Plugin{
-		Timeout: time.Second * 30,
-	}
-	cfg.Path = "configs/.rr-metrics-prom-new.yaml"
-	cfg.Prefix = "rr"
-	cfg.Version = "2.11.2"
-
 	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-metrics-prom-new.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
@@ -140,13 +125,6 @@ func Test_SimpleWorkflowMetricsStatsdNewDriver(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-
-	cfg := &configImpl.Plugin{
-		Timeout: time.Second * 30,
-	}
-	cfg.Path = "configs/.rr-metrics-statsd.yaml"
-	cfg.Prefix = "rr"
-	cfg.Version = "2.11.2"
 
 	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-metrics-statsd.yaml")
 

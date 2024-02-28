@@ -1,13 +1,7 @@
 package tests
 
 import (
-	"github.com/roadrunner-server/config/v4"
-	"github.com/roadrunner-server/endure/v2"
-	"github.com/roadrunner-server/logger/v4"
-	"github.com/roadrunner-server/server/v4"
-	"github.com/roadrunner-server/status/v4"
-	"github.com/stretchr/testify/require"
-	rrtemporal "github.com/temporalio/roadrunner-temporal/v4"
+	"context"
 	"io"
 	"log/slog"
 	"net/http"
@@ -18,6 +12,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/roadrunner-server/config/v4"
+	"github.com/roadrunner-server/endure/v2"
+	"github.com/roadrunner-server/logger/v4"
+	"github.com/roadrunner-server/server/v4"
+	"github.com/roadrunner-server/status/v4"
+	"github.com/stretchr/testify/require"
+	rrtemporal "github.com/temporalio/roadrunner-temporal/v4"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,7 +28,7 @@ func TestTemporalCheckStatus(t *testing.T) {
 
 	cfg := &config.Plugin{
 		Version: "2023.3.0",
-		Path:    "configs/.rr-status.yaml",
+		Path:    "../configs/.rr-status.yaml",
 		Prefix:  "rr",
 	}
 
@@ -86,7 +88,7 @@ func TestTemporalCheckStatus(t *testing.T) {
 	client := &http.Client{
 		Timeout: time.Second * 10,
 	}
-	req, err := http.NewRequest("GET", "http://127.0.0.1:35544/health?plugin=temporal", nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://127.0.0.1:35544/health?plugin=temporal", nil)
 	require.NoError(t, err)
 
 	resp, err := client.Do(req)
@@ -98,7 +100,7 @@ func TestTemporalCheckStatus(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	_ = resp.Body.Close()
 
-	req, err = http.NewRequest("GET", "http://127.0.0.1:35544/ready?plugin=temporal", nil)
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodGet, "http://127.0.0.1:35544/ready?plugin=temporal", nil)
 	require.NoError(t, err)
 
 	resp, err = client.Do(req)

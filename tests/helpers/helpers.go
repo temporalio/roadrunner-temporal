@@ -157,10 +157,10 @@ func NewTestServerTLS(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, co
 
 	cfg := &configImpl.Plugin{
 		Timeout: time.Second * 30,
+		Path:    "../configs/tls/" + configName,
+		Prefix:  rrPrefix,
+		Version: rrVersion,
 	}
-	cfg.Path = "../configs/tls/" + configName
-	cfg.Prefix = rrPrefix
-	cfg.Version = rrVersion
 
 	err := container.RegisterAll(
 		cfg,
