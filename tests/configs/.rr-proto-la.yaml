@@ -4,12 +4,12 @@ rpc:
   listen: tcp://127.0.0.1:6001
 
 server:
-  command: "php php_test_files/worker-la.php"
+  command: "php ../php_test_files/worker-la.php"
 
 
 temporal:
-  address: "localhost:7233"
-  cache_size: 100000
+  address: "127.0.0.1:7233"
+  cache_size: 10
   activities:
     num_workers: 4
     destroy_timeout: 1s
