@@ -33,7 +33,7 @@ import (
 
 const (
 	rrPrefix  string = "rr"
-	rrVersion string = "2023.3.0"
+	rrVersion string = "2023.3.11"
 )
 
 type Configurer interface {
@@ -302,7 +302,7 @@ func NewTestServerWithOtelInterceptor(t *testing.T, stopCh chan struct{}, wg *sy
 	cfg := &configImpl.Plugin{
 		Timeout: time.Second * 30,
 	}
-	cfg.Path = "configs/.rr-otlp.yaml"
+	cfg.Path = "../configs/.rr-otlp.yaml"
 	cfg.Prefix = rrPrefix
 	cfg.Version = rrVersion
 
