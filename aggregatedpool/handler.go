@@ -45,16 +45,17 @@ func (wp *Workflow) handleUpdate(name string, id string, input *commonpb.Payload
 	updatesQueueCb := func() {
 		// validate callback
 		wp.updateValidateCb[id] = func(msg *internal.Message) {
-			wp.log.Debug("validate request callback", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID), zap.String("name", name), zap.String("id", id), zap.Any("result", msg))
+			wp.log.Debug("validate request callback", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID), zap.String("name", name), zap.String("id", id), zap.Bool("is_replaying", wp.env.IsReplaying()), zap.Any("result", msg))
 			if !wp.env.IsReplaying() {
 				// before accept we have only one option - reject
 				if msg.Failure != nil {
 					callbacks.Reject(temporal.GetDefaultFailureConverter().FailureToError(msg.Failure))
 					return
 				}
-
-				callbacks.Accept()
 			}
+
+			// update should be accepted on validate
+			callbacks.Accept()
 		}
 
 		// execute callback

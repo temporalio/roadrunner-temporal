@@ -96,10 +96,10 @@ func (l *log) fields(keyvals []any) []zap.Field {
 }
 
 func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, configPath string) *TestServer {
-	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Second*30))
+	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Second*10))
 
 	cfg := &configImpl.Plugin{
-		Timeout: time.Second * 30,
+		Timeout: time.Second * 10,
 		Path:    configPath,
 		Prefix:  rrPrefix,
 		Version: rrVersion,
@@ -127,10 +127,10 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, confi
 			select {
 			case er := <-errCh:
 				assert.Fail(t, fmt.Sprintf("got error from vertex: %s, error: %v", er.VertexID, er.Error))
-				assert.NoError(t, container.Stop())
+				require.NoError(t, container.Stop())
 				return
 			case <-stopCh:
-				assert.NoError(t, container.Stop())
+				require.NoError(t, container.Stop())
 				return
 			}
 		}

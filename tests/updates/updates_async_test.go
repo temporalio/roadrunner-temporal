@@ -9,9 +9,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.temporal.io/api/common/v1"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
 	updatepb "go.temporal.io/api/update/v1"
+	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
 )
 
@@ -77,12 +79,24 @@ func Test_Updates_9(t *testing.T) {
 
 	stopCh <- struct{}{}
 	wg.Wait()
+
+	t.Cleanup(func() {
+		_, errd := s.Client.WorkflowService().DeleteWorkflowExecution(context.Background(), &workflowservice.DeleteWorkflowExecutionRequest{
+			Namespace: "default",
+			WorkflowExecution: &common.WorkflowExecution{
+				WorkflowId: w.GetID(),
+				RunId:      w.GetRunID(),
+			},
+		})
+		require.NoError(t, errd)
+		s.Client.Close()
+	})
 }
 
 func Test_Updates_10(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
+	wg.Add(2)
 	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
@@ -95,7 +109,6 @@ func Test_Updates_10(t *testing.T) {
 	require.NoError(t, err)
 	time.Sleep(time.Second)
 
-	wg.Add(1)
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
@@ -148,7 +161,6 @@ func Test_Updates_10(t *testing.T) {
 	err = handle.Get(context.Background(), &resultaw)
 	require.NoError(t, err)
 	require.Equal(t, "resolved", resultaw)
-	wg.Done()
 
 	queryResult2, err := s.Client.QueryWorkflow(ctx, w.GetID(), w.GetRunID(), getValueQuery, "key")
 	require.NoError(t, err)
@@ -172,14 +184,25 @@ func Test_Updates_10(t *testing.T) {
 	})
 
 	stopCh <- struct{}{}
-
 	wg.Wait()
+
+	t.Cleanup(func() {
+		_, errd := s.Client.WorkflowService().DeleteWorkflowExecution(context.Background(), &workflowservice.DeleteWorkflowExecutionRequest{
+			Namespace: "default",
+			WorkflowExecution: &common.WorkflowExecution{
+				WorkflowId: w.GetID(),
+				RunId:      w.GetRunID(),
+			},
+		})
+		require.NoError(t, errd)
+		s.Client.Close()
+	})
 }
 
 func Test_Updates_11(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
+	wg.Add(11)
 	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
@@ -190,9 +213,7 @@ func Test_Updates_11(t *testing.T) {
 		awaitsUpdateGreetWF)
 
 	require.NoError(t, err)
-	time.Sleep(time.Second)
 
-	wg.Add(10)
 	for i := 0; i < 5; i++ {
 		go func(i int) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -216,8 +237,6 @@ func Test_Updates_11(t *testing.T) {
 			wg.Done()
 		}(i)
 	}
-
-	time.Sleep(time.Second * 3)
 
 	for i := 0; i < 5; i++ {
 		go func(i int) {
@@ -247,6 +266,7 @@ func Test_Updates_11(t *testing.T) {
 
 	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), exitSignal, nil)
 	require.NoError(t, err)
+
 	time.Sleep(time.Second)
 
 	var wfresult any
@@ -260,14 +280,27 @@ func Test_Updates_11(t *testing.T) {
 	})
 
 	stopCh <- struct{}{}
-
 	wg.Wait()
+
+	t.Cleanup(func() {
+		ctxCl, cancelCl := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancelCl()
+		_, errd := s.Client.WorkflowService().DeleteWorkflowExecution(ctxCl, &workflowservice.DeleteWorkflowExecutionRequest{
+			Namespace: "default",
+			WorkflowExecution: &common.WorkflowExecution{
+				WorkflowId: w.GetID(),
+				RunId:      w.GetRunID(),
+			},
+		})
+		require.NoError(t, errd)
+		s.Client.Close()
+	})
 }
 
 func Test_Updates_12(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
+	wg.Add(11)
 	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
@@ -280,7 +313,6 @@ func Test_Updates_12(t *testing.T) {
 	require.NoError(t, err)
 	time.Sleep(time.Second)
 
-	wg.Add(10)
 	for i := 0; i < 5; i++ {
 		go func(i int) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -350,4 +382,16 @@ func Test_Updates_12(t *testing.T) {
 	stopCh <- struct{}{}
 
 	wg.Wait()
+
+	t.Cleanup(func() {
+		_, errd := s.Client.WorkflowService().DeleteWorkflowExecution(context.Background(), &workflowservice.DeleteWorkflowExecutionRequest{
+			Namespace: "default",
+			WorkflowExecution: &common.WorkflowExecution{
+				WorkflowId: w.GetID(),
+				RunId:      w.GetRunID(),
+			},
+		})
+		require.NoError(t, errd)
+		s.Client.Close()
+	})
 }
