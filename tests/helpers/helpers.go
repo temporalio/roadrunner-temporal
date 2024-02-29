@@ -1,4 +1,4 @@
-package tests
+package helpers
 
 import (
 	"context"
@@ -33,7 +33,7 @@ import (
 
 const (
 	rrPrefix  string = "rr"
-	rrVersion string = "2023.3.0"
+	rrVersion string = "2023.3.11"
 )
 
 type Configurer interface {
@@ -95,15 +95,15 @@ func (l *log) fields(keyvals []any) []zap.Field {
 	return zf
 }
 
-func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *TestServer {
-	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Second*30))
+func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, configPath string) *TestServer {
+	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Second*10))
 
 	cfg := &configImpl.Plugin{
-		Timeout: time.Second * 30,
+		Timeout: time.Second * 10,
+		Path:    configPath,
+		Prefix:  rrPrefix,
+		Version: rrVersion,
 	}
-	cfg.Path = "configs/.rr-proto.yaml"
-	cfg.Prefix = rrPrefix
-	cfg.Version = rrVersion
 
 	err := container.RegisterAll(
 		cfg,
@@ -127,10 +127,10 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *Test
 			select {
 			case er := <-errCh:
 				assert.Fail(t, fmt.Sprintf("got error from vertex: %s, error: %v", er.VertexID, er.Error))
-				assert.NoError(t, container.Stop())
+				require.NoError(t, container.Stop())
 				return
 			case <-stopCh:
-				assert.NoError(t, container.Stop())
+				require.NoError(t, container.Stop())
 				return
 			}
 		}
@@ -144,119 +144,8 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *Test
 		Logger:        newZapAdapter(initLogger()),
 	})
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
-	require.NoError(t, err)
-
-	return &TestServer{
-		Client: client,
-	}
-}
-
-func NewTestServerLA(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *TestServer {
-	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Second*30))
-
-	cfg := &configImpl.Plugin{
-		Timeout: time.Second * 30,
-	}
-	cfg.Path = "configs/.rr-proto-la.yaml"
-	cfg.Prefix = rrPrefix
-	cfg.Version = "2.11.0"
-
-	err := container.RegisterAll(
-		cfg,
-		&roadrunnerTemporal.Plugin{},
-		&logger.Plugin{},
-		&resetter.Plugin{},
-		&informer.Plugin{},
-		&server.Plugin{},
-		&rpc.Plugin{},
-	)
-
-	assert.NoError(t, err)
-	assert.NoError(t, container.Init())
-
-	errCh, err := container.Serve()
-	if err != nil {
-		panic(err)
-	}
-
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case er := <-errCh:
-				assert.Fail(t, fmt.Sprintf("got error from vertex: %s, error: %v", er.VertexID, er.Error))
-				assert.NoError(t, container.Stop())
-				return
-			case <-stopCh:
-				assert.NoError(t, container.Stop())
-				return
-			}
-		}
-	}()
-
-	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
-	client, err := temporalClient.Dial(temporalClient.Options{
-		HostPort:      "127.0.0.1:7233",
-		Namespace:     "default",
-		DataConverter: dc,
-		Logger:        newZapAdapter(initLogger()),
-	})
-	if err != nil {
-		panic(err)
-	}
-	require.NoError(t, err)
-
-	return &TestServer{
-		Client: client,
-	}
-}
-
-func NewTestServerWithMetrics(t *testing.T, stopCh chan struct{}, cfg Configurer, wg *sync.WaitGroup) *TestServer {
-	container := endure.New(slog.LevelDebug)
-
-	err := container.RegisterAll(
-		cfg,
-		&roadrunnerTemporal.Plugin{},
-		&logger.Plugin{},
-		&resetter.Plugin{},
-		&informer.Plugin{},
-		&server.Plugin{},
-		&rpc.Plugin{},
-	)
-
-	assert.NoError(t, err)
-	assert.NoError(t, container.Init())
-
-	errCh, err := container.Serve()
-	if err != nil {
-		panic(err)
-	}
-
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case er := <-errCh:
-				assert.Fail(t, fmt.Sprintf("got error from vertex: %s, error: %v", er.VertexID, er.Error))
-				assert.NoError(t, container.Stop())
-				return
-			case <-stopCh:
-				assert.NoError(t, container.Stop())
-				return
-			}
-		}
-	}()
-
-	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
-	client, err := temporalClient.Dial(temporalClient.Options{
-		HostPort:      "127.0.0.1:7233",
-		Namespace:     "default",
-		Logger:        newZapAdapter(initLogger()),
-		DataConverter: dc,
-	})
-	require.NoError(t, err)
 
 	return &TestServer{
 		Client: client,
@@ -268,10 +157,10 @@ func NewTestServerTLS(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, co
 
 	cfg := &configImpl.Plugin{
 		Timeout: time.Second * 30,
+		Path:    "../configs/tls/" + configName,
+		Prefix:  rrPrefix,
+		Version: rrVersion,
 	}
-	cfg.Path = "../configs/tls/" + configName
-	cfg.Prefix = rrPrefix
-	cfg.Version = rrVersion
 
 	err := container.RegisterAll(
 		cfg,
@@ -351,10 +240,10 @@ func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.W
 
 	cfg := &configImpl.Plugin{
 		Timeout: time.Second * 30,
+		Path:    "../configs/.rr-proto.yaml",
+		Prefix:  rrPrefix,
+		Version: rrVersion,
 	}
-	cfg.Path = "configs/.rr-proto.yaml"
-	cfg.Prefix = rrPrefix
-	cfg.Version = rrVersion
 
 	err := container.RegisterAll(
 		cfg,
@@ -413,7 +302,7 @@ func NewTestServerWithOtelInterceptor(t *testing.T, stopCh chan struct{}, wg *sy
 	cfg := &configImpl.Plugin{
 		Timeout: time.Second * 30,
 	}
-	cfg.Path = "configs/.rr-otlp.yaml"
+	cfg.Path = "../configs/.rr-otlp.yaml"
 	cfg.Prefix = rrPrefix
 	cfg.Version = rrVersion
 
@@ -504,11 +393,7 @@ func (s *TestServer) AssertNotContainsEvent(client temporalClient.Client, t *tes
 		enums.HISTORY_EVENT_FILTER_TYPE_ALL_EVENT,
 	)
 
-	for {
-		if !i.HasNext() {
-			break
-		}
-
+	for i.HasNext() {
 		e, err := i.Next()
 		if err != nil {
 			t.Error("unable to read history event")

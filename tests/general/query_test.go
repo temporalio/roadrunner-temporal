@@ -5,19 +5,19 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"tests/helpers"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/client"
-	"go.temporal.io/sdk/worker"
 )
 
 func Test_ListQueriesProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -44,8 +44,6 @@ func Test_ListQueriesProto(t *testing.T) {
 	assert.Equal(t, 0, r)
 	cancel()
 
-	worker.PurgeStickyWorkflowCache()
-
 	time.Sleep(time.Millisecond * 500)
 
 	workers := getWorkers(t)
@@ -56,13 +54,13 @@ func Test_ListQueriesProto(t *testing.T) {
 		_ = proc.Kill()
 	}
 
-	worker.PurgeStickyWorkflowCache()
 	time.Sleep(time.Second)
 
 	ctx, cancel = context.WithTimeout(context.Background(), time.Minute)
 	v, err = s.Client.QueryWorkflow(ctx, w.GetID(), w.GetRunID(), "error", -1)
 	assert.Nil(t, v)
 	assert.Error(t, err)
+	time.Sleep(time.Second)
 	cancel()
 
 	assert.Contains(t, err.Error(), "KnownQueryTypes=[get]")
@@ -80,7 +78,7 @@ func Test_GetQueryProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -115,7 +113,7 @@ func Test_ListQueriesLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -146,7 +144,7 @@ func Test_GetQueryLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),

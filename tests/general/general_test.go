@@ -1,58 +1,51 @@
 package tests
 
 import (
-	"bytes"
 	"context"
-	"io"
-	"os"
 	"sync"
 	"testing"
+	"tests/helpers"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/client"
 )
 
-func Test_OtlpInterceptor(t *testing.T) {
-	rd, wr, err := os.Pipe()
-	assert.NoError(t, err)
-	os.Stderr = wr
-
+func Test_HistoryLen(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-
-	s := NewTestServerWithOtelInterceptor(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"SimpleWorkflow",
-		"test-input",
-	)
+		"HistoryLengthWorkflow")
 	assert.NoError(t, err)
 
-	var result string
-	assert.NoError(t, w.Get(context.Background(), &result))
-	assert.Equal(t, "TEST-INPUT", result)
+	time.Sleep(time.Second)
+	var result any
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	assert.NoError(t, w.Get(ctx, &result))
+
+	res := []float64{3, 8, 8, 15}
+	out := result.([]interface{})
+
+	for i := 0; i < len(res); i++ {
+		if res[i] != out[i].(float64) {
+			t.Fail()
+		}
+	}
 
 	we, err := s.Client.DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
 	assert.NoError(t, err)
 
 	assert.Equal(t, "Completed", we.WorkflowExecutionInfo.Status.String())
-
 	stopCh <- struct{}{}
 	wg.Wait()
-
 	time.Sleep(time.Second)
-	_ = wr.Close()
-	buf := new(bytes.Buffer)
-	_, err = io.Copy(buf, rd)
-	require.NoError(t, err)
-
-	// contains spans
-	require.Contains(t, buf.String(), `"Name": "RunActivity:SimpleActivity.echo",`)
 }

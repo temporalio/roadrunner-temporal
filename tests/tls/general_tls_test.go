@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"tests"
+	"tests/helpers"
 
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/client"
@@ -17,7 +17,7 @@ func Test_HistoryLen(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
 		client.StartWorkflowOptions{

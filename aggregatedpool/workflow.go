@@ -51,10 +51,14 @@ type Workflow struct {
 	ids          *registry.IDRegistry
 	seqID        uint64
 	pipeline     []*internal.Message
-	updatesQueue []string
+	updatesQueue map[string]struct{}
 	callbacks    []Callback
 	canceller    *canceller.Canceller
 	inLoop       uint32
+
+	// updates
+	updateCompleteCb map[string]func(res *internal.Message)
+	updateValidateCb map[string]func(res *internal.Message)
 
 	log *zap.Logger
 	mh  temporalClient.MetricsHandler
@@ -81,7 +85,12 @@ func NewWorkflowDefinition(codec common.Codec, pool common.Pool, log *zap.Logger
 // DO NOT USE THIS FUNCTION DIRECTLY!!!!
 func (wp *Workflow) NewWorkflowDefinition() bindings.WorkflowDefinition {
 	return &Workflow{
-		rrID:  uuid.NewString(),
+		rrID: uuid.NewString(),
+		// updates logic
+		updateCompleteCb: make(map[string]func(res *internal.Message)),
+		updateValidateCb: make(map[string]func(res *internal.Message)),
+		updatesQueue:     map[string]struct{}{},
+		// -- updates
 		pool:  wp.pool,
 		codec: wp.codec,
 		log:   wp.log,
@@ -101,7 +110,6 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 	wp.env = env
 	wp.header = header
 	wp.seqID = 0
-	wp.updatesQueue = make([]string, 0, 1)
 	wp.canceller = new(canceller.Canceller)
 
 	// sequenceID shared for all pool workflows
@@ -160,20 +168,21 @@ func (wp *Workflow) OnWorkflowTaskStarted(t time.Duration) {
 
 	wp.callbacks = nil
 
+	// handle updates
+	if len(wp.updatesQueue) > 0 {
+		for k := range wp.updatesQueue {
+			wp.env.HandleQueuedUpdates(k)
+			delete(wp.updatesQueue, k)
+		}
+	}
+	// clean
+	wp.updatesQueue = map[string]struct{}{}
+
 	// at first, we should flush our queue with command, e.g.: startWorkflow
 	err = wp.flushQueue()
 	if err != nil {
 		panic(err)
 	}
-
-	// handle updates
-	if len(wp.updatesQueue) > 0 {
-		for i := 0; i < len(wp.updatesQueue); i++ {
-			wp.env.HandleQueuedUpdates(wp.updatesQueue[i])
-		}
-	}
-	// clean
-	wp.updatesQueue = make([]string, 0, 1)
 
 	for len(wp.pipeline) > 0 {
 		msg := wp.pipeline[0]
@@ -228,6 +237,16 @@ func (wp *Workflow) Close() {
 	if wp.env.DrainUnhandledUpdates() {
 		wp.log.Info("drained unhandled updates")
 	}
+
+	// clean the map
+	for k := range wp.updatesQueue {
+		delete(wp.updatesQueue, k)
+	}
+
+	for k := range wp.updateCompleteCb {
+		delete(wp.updateCompleteCb, k)
+	}
+
 	// send destroy command
 	_, _ = wp.runCommand(internal.DestroyWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID}, nil, wp.header)
 	// flush queue

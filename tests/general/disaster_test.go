@@ -8,6 +8,7 @@ import (
 	"sync"
 	"syscall"
 	"testing"
+	"tests/helpers"
 	"time"
 
 	goridgeRpc "github.com/roadrunner-server/goridge/v3/pkg/rpc"
@@ -21,7 +22,7 @@ func Test_WorkerError_DisasterRecovery(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	workers := getWorkers(t)
 	require.Len(t, workers, 5)
@@ -55,7 +56,7 @@ func Test_ResetAll(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -96,7 +97,7 @@ func Test_ResetWFWorker(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -144,15 +145,15 @@ func Test_ActivityError_DisasterRecovery(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	defer func() {
 		// always restore script
-		_ = os.Rename("php_test_files/worker.bak", "php_test_files/worker.php")
+		_ = os.Rename("../php_test_files/worker.bak", "../php_test_files/worker.php")
 	}()
 
 	// Makes worker pool unable to recover for some time
-	_ = os.Rename("php_test_files/worker.php", "php_test_files/worker.bak")
+	_ = os.Rename("../php_test_files/worker.php", "../php_test_files/worker.bak")
 
 	// destroys all workers in activities
 
@@ -179,7 +180,7 @@ func Test_ActivityError_DisasterRecovery(t *testing.T) {
 	time.Sleep(time.Millisecond * 750)
 
 	// restore the script and recover activity pool
-	_ = os.Rename("php_test_files/worker.bak", "php_test_files/worker.php")
+	_ = os.Rename("../php_test_files/worker.bak", "../php_test_files/worker.php")
 
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
@@ -192,7 +193,7 @@ func Test_WorkerError_DisasterRecoveryProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	workers := getWorkers(t)
 	require.Len(t, workers, 5)
@@ -226,15 +227,15 @@ func Test_WorkerError_DisasterRecovery_Heavy(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	defer func() {
 		// always restore script
-		_ = os.Rename("php_test_files/worker.bak", "php_test_files/worker.php")
+		_ = os.Rename("../php_test_files/worker.bak", "../php_test_files/worker.php")
 	}()
 
 	// Makes worker pool unable to recover for some time
-	require.NoError(t, os.Rename("php_test_files/worker.php", "php_test_files/worker.bak"))
+	require.NoError(t, os.Rename("../php_test_files/worker.php", "../php_test_files/worker.bak"))
 
 	conn, err := net.Dial("tcp", "127.0.0.1:6001")
 	assert.NoError(t, err)
@@ -267,7 +268,7 @@ func Test_WorkerError_DisasterRecovery_Heavy(t *testing.T) {
 	time.Sleep(time.Second * 5)
 
 	// restore the script and recover activity pool
-	_ = os.Rename("php_test_files/worker.bak", "php_test_files/worker.php")
+	_ = os.Rename("../php_test_files/worker.bak", "../php_test_files/worker.php")
 
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
@@ -280,15 +281,15 @@ func Test_ActivityError_DisasterRecoveryProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	defer func() {
 		// always restore script
-		_ = os.Rename("php_test_files/worker.bak", "php_test_files/worker.php")
+		_ = os.Rename("../php_test_files/worker.bak", "../php_test_files/worker.php")
 	}()
 
 	// Makes worker pool unable to recover for some time
-	_ = os.Rename("php_test_files/worker.php", "php_test_files/worker.bak")
+	_ = os.Rename("../php_test_files/worker.php", "../php_test_files/worker.bak")
 
 	// destroys all workers in activities
 	workers := getWorkers(t)
@@ -314,7 +315,7 @@ func Test_ActivityError_DisasterRecoveryProto(t *testing.T) {
 	time.Sleep(time.Second)
 
 	// restore the script and recover activity pool
-	_ = os.Rename("php_test_files/worker.bak", "php_test_files/worker.php")
+	_ = os.Rename("../php_test_files/worker.bak", "../php_test_files/worker.php")
 
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
@@ -329,15 +330,15 @@ func Test_WorkerError_DisasterRecovery_HeavyLA(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	defer func() {
 		// always restore script
-		_ = os.Rename("php_test_files/worker-la.bak", "php_test_files/worker-la.php")
+		_ = os.Rename("../php_test_files/worker-la.bak", "../php_test_files/worker-la.php")
 	}()
 
 	// Makes worker pool unable to recover for some time
-	require.NoError(t, os.Rename("php_test_files/worker-la.php", "php_test_files/worker-la.bak"))
+	require.NoError(t, os.Rename("../php_test_files/worker-la.php", "../php_test_files/worker-la.bak"))
 
 	conn, err := net.Dial("tcp", "127.0.0.1:6001")
 	assert.NoError(t, err)
@@ -370,7 +371,7 @@ func Test_WorkerError_DisasterRecovery_HeavyLA(t *testing.T) {
 	time.Sleep(time.Second * 5)
 
 	// restore the script and recover activity pool
-	_ = os.Rename("php_test_files/worker-la.bak", "php_test_files/worker-la.php")
+	_ = os.Rename("../php_test_files/worker-la.bak", "../php_test_files/worker-la.php")
 
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
@@ -383,7 +384,7 @@ func Test_WorkerErrorLA_DisasterRecovery(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	workers := getWorkers(t)
 	require.Len(t, workers, 5)
@@ -417,7 +418,7 @@ func Test_ResetLAAll(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -458,15 +459,15 @@ func Test_ActivityErrorLA_DisasterRecovery(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	defer func() {
 		// always restore script
-		_ = os.Rename("php_test_files/worker-la.bak", "php_test_files/worker-la.php")
+		_ = os.Rename("../php_test_files/worker-la.bak", "../php_test_files/worker-la.php")
 	}()
 
 	// Makes worker pool unable to recover for some time
-	_ = os.Rename("php_test_files/worker-la.php", "php_test_files/worker-la.bak")
+	_ = os.Rename("../php_test_files/worker-la.php", "../php_test_files/worker-la.bak")
 
 	// destroys all workers in activities
 
@@ -493,7 +494,7 @@ func Test_ActivityErrorLA_DisasterRecovery(t *testing.T) {
 	time.Sleep(time.Second)
 
 	// restore the script and recover activity pool
-	_ = os.Rename("php_test_files/worker-la.bak", "php_test_files/worker-la.php")
+	_ = os.Rename("../php_test_files/worker-la.bak", "../php_test_files/worker-la.php")
 
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
@@ -506,7 +507,7 @@ func Test_WorkerErrorLA_DisasterRecoveryProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	workers := getWorkers(t)
 	require.Len(t, workers, 5)
@@ -540,15 +541,15 @@ func Test_ActivityErrorLA_DisasterRecoveryProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	defer func() {
 		// always restore script
-		_ = os.Rename("php_test_files/worker-la.bak", "php_test_files/worker-la.php")
+		_ = os.Rename("../php_test_files/worker-la.bak", "../php_test_files/worker-la.php")
 	}()
 
 	// Makes worker pool unable to recover for some time
-	_ = os.Rename("php_test_files/worker-la.php", "php_test_files/worker-la.bak")
+	_ = os.Rename("../php_test_files/worker-la.php", "../php_test_files/worker-la.bak")
 
 	// destroys all workers in activities
 	workers := getWorkers(t)
@@ -574,7 +575,7 @@ func Test_ActivityErrorLA_DisasterRecoveryProto(t *testing.T) {
 	time.Sleep(time.Millisecond * 750)
 
 	// restore the script and recover activity pool
-	_ = os.Rename("php_test_files/worker-la.bak", "php_test_files/worker-la.php")
+	_ = os.Rename("../php_test_files/worker-la.bak", "../php_test_files/worker-la.php")
 
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))

@@ -35,6 +35,8 @@ services:
   temporal:
     container_name: temporal
     image: temporalio/auto-setup:1
+    volumes:
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
     depends_on:
       - postgresql
     environment:

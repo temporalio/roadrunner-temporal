@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"tests"
+	"tests/helpers"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,7 +19,7 @@ func Test_ListQueriesProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -75,7 +75,7 @@ func Test_GetQueryProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -110,7 +110,7 @@ func Test_ListQueriesLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -141,7 +141,7 @@ func Test_GetQueryLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := tests.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
+	s := helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),

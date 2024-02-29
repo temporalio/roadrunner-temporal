@@ -1,4 +1,4 @@
-package tests
+package updates
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"path"
 	"sync"
 	"testing"
+	"tests/helpers"
 	"time"
 
 	protoApi "github.com/roadrunner-server/api/v4/build/temporal/v1"
@@ -14,6 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/api/common/v1"
+	"go.temporal.io/api/enums/v1"
+	"go.temporal.io/api/history/v1"
 	"go.temporal.io/sdk/client"
 )
 
@@ -22,35 +25,42 @@ const (
 	replay   string = "temporal.ReplayFromJSON"
 )
 
-func Test_RPC_Methods(t *testing.T) {
+func TestUpdatesReplay(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
 		},
-		"HistoryLengthWorkflow")
-	assert.NoError(t, err)
+		updateGreetWF)
 
+	require.NoError(t, err)
 	time.Sleep(time.Second)
-	var result any
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	assert.NoError(t, w.Get(ctx, &result))
 
-	res := []float64{3, 8, 8, 15}
-	out := result.([]interface{})
+	handle, err := s.Client.UpdateWorkflow(ctx, w.GetID(), w.GetRunID(), addNameM, "John Doe")
+	require.NoError(t, err)
 
-	for i := 0; i < len(res); i++ {
-		if res[i] != out[i].(float64) {
-			t.Fail()
-		}
-	}
+	var result any
+
+	err = handle.Get(context.Background(), &result)
+	require.NoError(t, err)
+	require.Equal(t, "Hello, John Doe!", result.(string))
+
+	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), exitSig, nil)
+	require.NoError(t, err)
+
+	time.Sleep(time.Second)
+
+	s.AssertContainsEvent(s.Client, t, w, func(event *history.HistoryEvent) bool {
+		return event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED
+	})
 
 	we, err := s.Client.DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
 	assert.NoError(t, err)
@@ -59,8 +69,8 @@ func Test_RPC_Methods(t *testing.T) {
 	time.Sleep(time.Second)
 	tmp := path.Join(t.TempDir(), "replay.json")
 
-	t.Run("downloadWFHistory", downloadWFHistory("127.0.0.1:6001", w.GetID(), w.GetRunID(), "HistoryLengthWorkflow", tmp))
-	t.Run("replayFromJSON", replayFromJSON("127.0.0.1:6001", tmp, "HistoryLengthWorkflow"))
+	t.Run("downloadWFHistory", downloadWFHistory("127.0.0.1:6001", w.GetID(), w.GetRunID(), updateGreetWF, tmp))
+	t.Run("replayFromJSON", replayFromJSON("127.0.0.1:6001", tmp, updateGreetWF))
 
 	stopCh <- struct{}{}
 	wg.Wait()

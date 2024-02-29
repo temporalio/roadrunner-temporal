@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"tests/helpers"
 	"time"
 
 	"github.com/pborman/uuid"
@@ -13,11 +14,16 @@ import (
 	"go.temporal.io/sdk/client"
 )
 
+const (
+	signalStr = "signaled-"
+	addStr    = "add"
+)
+
 func Test_SignalsWithoutSignalsProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -40,12 +46,12 @@ func Test_SendSignalDuringTimerProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	w, err := s.Client.SignalWithStartWorkflow(
 		context.Background(),
-		"signaled-"+uuid.New(),
-		"add",
+		signalStr+uuid.New(),
+		addStr,
 		10,
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
@@ -54,7 +60,7 @@ func Test_SendSignalDuringTimerProto(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), "add", -1)
+	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), addStr, -1)
 	assert.NoError(t, err)
 
 	var result int
@@ -64,7 +70,7 @@ func Test_SendSignalDuringTimerProto(t *testing.T) {
 	s.AssertContainsEvent(s.Client, t, w, func(event *history.HistoryEvent) bool {
 		if event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED {
 			attr := event.Attributes.(*history.HistoryEvent_WorkflowExecutionSignaledEventAttributes)
-			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == "add"
+			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == addStr
 		}
 
 		return false
@@ -77,7 +83,7 @@ func Test_SendSignalBeforeCompletingWorkflowProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -91,7 +97,7 @@ func Test_SendSignalBeforeCompletingWorkflowProto(t *testing.T) {
 	// should be around sleep(1) call
 	time.Sleep(time.Second + time.Millisecond*200)
 
-	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), "add", -1)
+	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), addStr, -1)
 	assert.NoError(t, err)
 
 	var result int
@@ -101,7 +107,7 @@ func Test_SendSignalBeforeCompletingWorkflowProto(t *testing.T) {
 	s.AssertContainsEvent(s.Client, t, w, func(event *history.HistoryEvent) bool {
 		if event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED {
 			attr := event.Attributes.(*history.HistoryEvent_WorkflowExecutionSignaledEventAttributes)
-			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == "add"
+			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == addStr
 		}
 
 		return false
@@ -114,12 +120,12 @@ func Test_RuntimeSignalProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	w, err := s.Client.SignalWithStartWorkflow(
 		context.Background(),
-		"signaled-"+uuid.New(),
-		"add",
+		signalStr+uuid.New(),
+		addStr,
 		-1,
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
@@ -135,7 +141,7 @@ func Test_RuntimeSignalProto(t *testing.T) {
 	s.AssertContainsEvent(s.Client, t, w, func(event *history.HistoryEvent) bool {
 		if event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED {
 			attr := event.Attributes.(*history.HistoryEvent_WorkflowExecutionSignaledEventAttributes)
-			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == "add"
+			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == addStr
 		}
 
 		return false
@@ -148,7 +154,7 @@ func Test_SignalStepsProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServer(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -196,7 +202,7 @@ func Test_SignalsWithoutSignalsLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -219,12 +225,12 @@ func Test_SendSignalDuringTimerLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.SignalWithStartWorkflow(
 		context.Background(),
-		"signaled-"+uuid.New(),
-		"add",
+		signalStr+uuid.New(),
+		addStr,
 		10,
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
@@ -233,7 +239,7 @@ func Test_SendSignalDuringTimerLAProto(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), "add", -1)
+	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), addStr, -1)
 	assert.NoError(t, err)
 
 	var result int
@@ -243,7 +249,7 @@ func Test_SendSignalDuringTimerLAProto(t *testing.T) {
 	s.AssertContainsEvent(s.Client, t, w, func(event *history.HistoryEvent) bool {
 		if event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED {
 			attr := event.Attributes.(*history.HistoryEvent_WorkflowExecutionSignaledEventAttributes)
-			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == "add"
+			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == addStr
 		}
 
 		return false
@@ -256,7 +262,7 @@ func Test_SendSignalBeforeCompletingWorkflowLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -270,7 +276,7 @@ func Test_SendSignalBeforeCompletingWorkflowLAProto(t *testing.T) {
 	// should be around sleep(1) call
 	time.Sleep(time.Second + time.Millisecond*200)
 
-	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), "add", -1)
+	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), addStr, -1)
 	assert.NoError(t, err)
 
 	var result int
@@ -280,7 +286,7 @@ func Test_SendSignalBeforeCompletingWorkflowLAProto(t *testing.T) {
 	s.AssertContainsEvent(s.Client, t, w, func(event *history.HistoryEvent) bool {
 		if event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED {
 			attr := event.Attributes.(*history.HistoryEvent_WorkflowExecutionSignaledEventAttributes)
-			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == "add"
+			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == addStr
 		}
 
 		return false
@@ -293,12 +299,12 @@ func Test_RuntimeSignalLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.SignalWithStartWorkflow(
 		context.Background(),
-		"signaled-"+uuid.New(),
-		"add",
+		signalStr+uuid.New(),
+		addStr,
 		-1,
 		client.StartWorkflowOptions{
 			TaskQueue: "default",
@@ -314,7 +320,7 @@ func Test_RuntimeSignalLAProto(t *testing.T) {
 	s.AssertContainsEvent(s.Client, t, w, func(event *history.HistoryEvent) bool {
 		if event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED {
 			attr := event.Attributes.(*history.HistoryEvent_WorkflowExecutionSignaledEventAttributes)
-			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == "add"
+			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == addStr
 		}
 
 		return false
@@ -327,7 +333,7 @@ func Test_SignalStepsLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := NewTestServerLA(t, stopCh, wg)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
