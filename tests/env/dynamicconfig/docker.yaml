@@ -1,3 +1,6 @@
 frontend.enableUpdateWorkflowExecution:
   - value: true
     constraints: {}
+frontend.enableUpdateWorkflowExecutionAsyncAccepted:
+  - value: true
+    constraints: {}
