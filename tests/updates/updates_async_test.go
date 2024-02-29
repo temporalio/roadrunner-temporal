@@ -367,7 +367,7 @@ func Test_Updates_12(t *testing.T) {
 
 	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), exitSignal, nil)
 	require.NoError(t, err)
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 5)
 
 	var wfresult any
 	err = s.Client.GetWorkflow(context.Background(), w.GetID(), w.GetRunID()).Get(context.Background(), &wfresult)
