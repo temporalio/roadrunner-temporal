@@ -238,6 +238,8 @@ func Test_Updates_11(t *testing.T) {
 		}(i)
 	}
 
+	time.Sleep(time.Second * 5)
+
 	for i := 0; i < 5; i++ {
 		go func(i int) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -337,7 +339,7 @@ func Test_Updates_12(t *testing.T) {
 		}(i)
 	}
 
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 5)
 
 	for i := 0; i < 5; i++ {
 		go func(i int) {
