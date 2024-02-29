@@ -241,6 +241,7 @@ jobs:
     needs:
       - rrtemporal_test
       - rrtemporal_tls_test
+      - rrtemporal_updates_test
 
     timeout-minutes: 60
     steps:
