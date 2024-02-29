@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/client"
-	"go.temporal.io/sdk/worker"
 )
 
 func Test_ListQueriesProto(t *testing.T) {
@@ -45,8 +44,6 @@ func Test_ListQueriesProto(t *testing.T) {
 	assert.Equal(t, 0, r)
 	cancel()
 
-	worker.PurgeStickyWorkflowCache()
-
 	time.Sleep(time.Millisecond * 500)
 
 	workers := getWorkers(t)
@@ -57,7 +54,6 @@ func Test_ListQueriesProto(t *testing.T) {
 		_ = proc.Kill()
 	}
 
-	worker.PurgeStickyWorkflowCache()
 	time.Sleep(time.Second)
 
 	ctx, cancel = context.WithTimeout(context.Background(), time.Minute)
