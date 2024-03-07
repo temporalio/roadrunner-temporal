@@ -423,7 +423,7 @@ func CommandName(cmd any) (string, error) {
 	case CompleteWorkflow, *CompleteWorkflow:
 		return completeWorkflowCommand, nil
 	case UpdateCompleted, *UpdateCompleted:
-		return completeWorkflowCommand, nil
+		return completeUpdateCommand, nil
 	case UpdateValidated, *UpdateValidated:
 		return validateUpdateCommand, nil
 	case ContinueAsNew, *ContinueAsNew:
