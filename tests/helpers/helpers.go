@@ -33,7 +33,7 @@ import (
 
 const (
 	rrPrefix  string = "rr"
-	rrVersion string = "2023.3.11"
+	rrVersion string = "2023.3.12"
 )
 
 type Configurer interface {
