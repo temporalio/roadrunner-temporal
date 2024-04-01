@@ -24,8 +24,6 @@ require (
 	go.uber.org/zap v1.27.0
 )
 
-replace go.temporal.io/server => go.temporal.io/server v1.22.7
-
 replace github.com/uber-go/tally/v4 => github.com/uber-go/tally/v4 v4.1.10
 
 replace github.com/temporalio/roadrunner-temporal/v4 => ../

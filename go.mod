@@ -19,8 +19,6 @@ require (
 	google.golang.org/protobuf v1.33.0
 )
 
-replace go.temporal.io/server => go.temporal.io/server v1.22.7
-
 replace github.com/uber-go/tally/v4 => github.com/uber-go/tally/v4 v4.1.10
 
 require (
