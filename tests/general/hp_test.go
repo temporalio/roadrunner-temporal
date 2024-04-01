@@ -827,11 +827,15 @@ func Test_UpsertSearchAttributesWorkflowProto(t *testing.T) {
 
 	// the result of the final workflow
 	var result string
-	assert.NoError(t, w.Get(context.Background(), &result))
+	ctx2, cancel2 := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel2()
+	assert.NoError(t, w.Get(ctx2, &result))
 	assert.Equal(t, "done", result)
 
 	// Check attributes in API
-	we, _ := s.Client.DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
+	ctx3, cancel3 := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel3()
+	we, _ := s.Client.DescribeWorkflowExecution(ctx3, w.GetID(), w.GetRunID())
 	searchAttributes := we.WorkflowExecutionInfo.GetSearchAttributes().GetIndexedFields()
 
 	assert.Equal(t, `"attr1-value"`, string(searchAttributes["attr1"].GetData()))
