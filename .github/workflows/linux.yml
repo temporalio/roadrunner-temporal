@@ -68,11 +68,11 @@ jobs:
       - name: Run Temporal tests with coverage
         run: |
           cd tests
-          docker-compose -f env/docker-compose-temporal-updates.yaml up -d --remove-orphans
+          docker compose -f env/docker-compose-temporal-updates.yaml up -d --remove-orphans
 
           go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/rrt_upd.out -covermode=atomic ./updates
 
-          docker-compose -f env/docker-compose-temporal-updates.yaml up -d --remove-orphans
+          docker compose -f env/docker-compose-temporal-updates.yaml up -d --remove-orphans
 
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
@@ -149,11 +149,11 @@ jobs:
       - name: Run Temporal tests with coverage
         run: |
           cd tests
-          docker-compose -f env/docker-compose-temporal.yaml up -d --remove-orphans
+          docker compose -f env/docker-compose-temporal.yaml up -d --remove-orphans
 
           go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/rrt.out -covermode=atomic ./general
 
-          docker-compose -f env/docker-compose-temporal.yaml up -d --remove-orphans
+          docker compose -f env/docker-compose-temporal.yaml up -d --remove-orphans
 
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
@@ -222,12 +222,12 @@ jobs:
           ./env/temporal_tls/generate-test-certs.sh
           export TEMPORAL_TLS_CERTS_DIR=/etc/temporal/config/certs
           export TEMPORAL_LOCAL_CERT_DIR=$(pwd)/env/temporal_tls/certs
-          docker-compose -f env/temporal_tls/docker-compose.yml up -d --remove-orphans
+          docker compose -f env/temporal_tls/docker-compose.yml up -d --remove-orphans
           sleep 60
           
           go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/rrt_tls.out -covermode=atomic ./tls
 
-          docker-compose -f env/temporal_tls/docker-compose.yml down
+          docker compose -f env/temporal_tls/docker-compose.yml down
 
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
