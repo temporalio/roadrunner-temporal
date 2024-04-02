@@ -813,8 +813,9 @@ func Test_UpsertSearchAttributesWorkflowProto(t *testing.T) {
 			"attr1": enums.INDEXED_VALUE_TYPE_KEYWORD,
 			"attr2": enums.INDEXED_VALUE_TYPE_BOOL,
 		},
+		Namespace: "default",
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -823,20 +824,24 @@ func Test_UpsertSearchAttributesWorkflowProto(t *testing.T) {
 		},
 		"UpsertSearchAttributesWorkflow",
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// the result of the final workflow
 	var result string
-	assert.NoError(t, w.Get(context.Background(), &result))
-	assert.Equal(t, "done", result)
+	ctx2, cancel2 := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel2()
+	require.NoError(t, w.Get(ctx2, &result))
+	require.Equal(t, "done", result)
 
 	// Check attributes in API
-	we, _ := s.Client.DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
+	ctx3, cancel3 := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel3()
+	we, _ := s.Client.DescribeWorkflowExecution(ctx3, w.GetID(), w.GetRunID())
 	searchAttributes := we.WorkflowExecutionInfo.GetSearchAttributes().GetIndexedFields()
 
-	assert.Equal(t, `"attr1-value"`, string(searchAttributes["attr1"].GetData()))
+	require.Equal(t, `"attr1-value"`, string(searchAttributes["attr1"].GetData()))
 	attr2, _ := strconv.ParseBool(string(searchAttributes["attr2"].GetData()))
-	assert.True(t, attr2)
+	require.True(t, attr2)
 
 	stopCh <- struct{}{}
 	wg.Wait()

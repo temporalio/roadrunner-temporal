@@ -14,7 +14,7 @@ services:
 
   postgresql:
     container_name: temporal-postgresql
-    image: postgres:15
+    image: postgres:latest
     environment:
       POSTGRES_PASSWORD: temporal
       POSTGRES_USER: temporal
@@ -34,12 +34,12 @@ services:
 
   temporal:
     container_name: temporal
-    image: temporalio/auto-setup:1
+    image: temporalio/auto-setup:latest
     depends_on:
       - postgresql
     environment:
       - LOG_LEVEL=debug
-      - DB=postgresql
+      - DB=postgres12
       - DB_PORT=5432
       - POSTGRES_USER=temporal
       - POSTGRES_PWD=temporal
