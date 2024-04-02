@@ -813,6 +813,7 @@ func Test_UpsertSearchAttributesWorkflowProto(t *testing.T) {
 			"attr1": enums.INDEXED_VALUE_TYPE_KEYWORD,
 			"attr2": enums.INDEXED_VALUE_TYPE_BOOL,
 		},
+		Namespace: "default",
 	})
 	require.NoError(t, err)
 
