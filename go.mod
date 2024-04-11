@@ -11,7 +11,7 @@ require (
 	github.com/roadrunner-server/sdk/v4 v4.6.0
 	github.com/stretchr/testify v1.9.0
 	github.com/uber-go/tally/v4 v4.1.16
-	go.temporal.io/api v1.31.0
+	go.temporal.io/api v1.32.0
 	go.temporal.io/sdk v1.26.0
 	go.temporal.io/sdk/contrib/tally v0.2.0
 	go.temporal.io/server v1.23.0
