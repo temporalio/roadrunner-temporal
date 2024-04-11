@@ -1,7 +1,6 @@
 module github.com/temporalio/roadrunner-temporal/v4
 
 go 1.22.1
-
 require (
 	github.com/goccy/go-json v0.10.2
 	github.com/google/uuid v1.6.0
@@ -39,7 +38,7 @@ require (
 	github.com/prometheus/client_model v0.6.0 // indirect
 	github.com/prometheus/common v0.51.1 // indirect
 	github.com/prometheus/procfs v0.13.0 // indirect
-	github.com/roadrunner-server/goridge/v3 v3.8.1
+	github.com/roadrunner-server/goridge/v3 v3.8.2
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
