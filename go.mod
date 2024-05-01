@@ -16,7 +16,7 @@ require (
 	go.temporal.io/sdk/contrib/tally v0.2.0
 	go.temporal.io/server v1.23.0
 	go.uber.org/zap v1.27.0
-	google.golang.org/protobuf v1.33.0
+	google.golang.org/protobuf v1.34.0
 )
 
 replace github.com/uber-go/tally/v4 => github.com/uber-go/tally/v4 v4.1.10
