@@ -26,11 +26,12 @@ const (
 // execution context.
 func (wp *Workflow) getContext() *internal.Context {
 	return &internal.Context{
-		TaskQueue:  wp.env.WorkflowInfo().TaskQueueName,
-		TickTime:   wp.env.Now().Format(time.RFC3339),
-		Replay:     wp.env.IsReplaying(),
-		HistoryLen: wp.env.WorkflowInfo().GetCurrentHistoryLength(),
-		RrID:       wp.rrID,
+		TaskQueue:              wp.env.WorkflowInfo().TaskQueueName,
+		TickTime:               wp.env.Now().Format(time.RFC3339),
+		Replay:                 wp.env.IsReplaying(),
+		HistoryLen:             wp.env.WorkflowInfo().GetCurrentHistoryLength(),
+		ContinueAsNewSuggested: wp.env.WorkflowInfo().GetContinueAsNewSuggested(),
+		RrID:                   wp.rrID,
 	}
 }
 
