@@ -61,6 +61,10 @@ type Context struct {
 	HistoryLen int `json:"history_length,omitempty"`
 	// RoadRunner run ID
 	RrID string `json:"rr_id"`
+	// GetContinueAsNewSuggested returns true if the server is configured to suggest continue as new
+	// and it is suggested.
+	// This value may change throughout the life of the workflow.
+	ContinueAsNewSuggested bool `json:"continue_as_new_suggested"`
 }
 
 // Message used to exchange the send commands and receive responses from underlying workers.
