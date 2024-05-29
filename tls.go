@@ -50,7 +50,7 @@ func initTLS(cfg *Config) (*tls.Config, error) {
 }
 
 // getClientCertificate is used for tls.Config struct field GetClientCertificate and enables re-fetching the client certificates when they expire
-func getClientCertificate(cfg *Config) func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+func getClientCertificate(cfg *Config) func(_ *tls.CertificateRequestInfo) (*tls.Certificate, error) {
 	return func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
 		cert, err := tls.LoadX509KeyPair(cfg.TLS.Cert, cfg.TLS.Key)
 		if err != nil {
