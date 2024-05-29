@@ -9,17 +9,11 @@ import (
 func initTLS(cfg *Config) (*tls.Config, error) {
 	// simple TLS based on the cert and key
 	var err error
-	var cert tls.Certificate
 	var certPool *x509.CertPool
 	var rca []byte
 
 	// if client CA is not empty we combine it with Cert and Key
 	if cfg.TLS.RootCA != "" {
-		cert, err = tls.LoadX509KeyPair(cfg.TLS.Cert, cfg.TLS.Key)
-		if err != nil {
-			return nil, err
-		}
-
 		certPool, err = x509.SystemCertPool()
 		if err != nil {
 			return nil, err
@@ -39,23 +33,30 @@ func initTLS(cfg *Config) (*tls.Config, error) {
 		}
 
 		return &tls.Config{
-			MinVersion:   tls.VersionTLS12,
-			ClientAuth:   cfg.TLS.auth,
-			Certificates: []tls.Certificate{cert},
-			ClientCAs:    certPool,
-			RootCAs:      certPool,
-			ServerName:   cfg.TLS.ServerName,
+			MinVersion:           tls.VersionTLS12,
+			ClientAuth:           cfg.TLS.auth,
+			GetClientCertificate: getClientCertificate(cfg),
+			ClientCAs:            certPool,
+			RootCAs:              certPool,
+			ServerName:           cfg.TLS.ServerName,
 		}, nil
 	}
 
-	cert, err = tls.LoadX509KeyPair(cfg.TLS.Cert, cfg.TLS.Key)
-	if err != nil {
-		return nil, err
-	}
-
 	return &tls.Config{
-		ServerName:   cfg.TLS.ServerName,
-		MinVersion:   tls.VersionTLS12,
-		Certificates: []tls.Certificate{cert},
+		ServerName:           cfg.TLS.ServerName,
+		MinVersion:           tls.VersionTLS12,
+		GetClientCertificate: getClientCertificate(cfg),
 	}, nil
+}
+
+// getClientCertificate is used for tls.Config struct field GetClientCertificate and enables re-fetching the client certificates when they expire
+func getClientCertificate(cfg *Config) func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+	return func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+		cert, err := tls.LoadX509KeyPair(cfg.TLS.Cert, cfg.TLS.Key)
+		if err != nil {
+			return nil, err
+		}
+
+		return &cert, nil
+	}
 }
