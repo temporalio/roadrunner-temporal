@@ -11,22 +11,18 @@ services:
     ports:
       - "8125:8125/udp"
       - "8126:8126"
-  cockroach:
-    cap_drop:
-      - ALL
-    command:
-      - start-single-node
-      - --insecure
-    container_name: temporal-cockroach
-    hostname: cockroach
-    image: cockroachdb/cockroach
-    restart: on-failure:5
-    security_opt:
-      - no-new-privileges
-    tty: false
+
+  postgresql:
+    container_name: temporal-postgresql
+    image: postgres:latest
+    environment:
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_USER: temporal
+    ports:
+      - "5432:5432"
 
   temporal:
-    image: temporalio/auto-setup:${SERVER_TAG:-latest}
+    image: temporalio/auto-setup:latest
     ports:
       - "7233:7233"
     volumes:
@@ -35,8 +31,8 @@ services:
     environment:
       - DB=postgres12
       - DB_PORT=26257
-      - POSTGRES_USER=root
-      - POSTGRES_PWD=
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=postgres
       - "TEMPORAL_ADDRESS=temporal:7233" # used by Temporal CLI
       - "TEMPORAL_CLI_ADDRESS=temporal:7233" # used by tctl. Will be deprecated
@@ -70,7 +66,7 @@ services:
       - cockroach:postgres
 
   temporal-ui:
-    image: temporalio/ui:${UI_TAG:-latest}
+    image: temporalio/ui:latest
     ports:
       - "8080:8080"
     volumes:
@@ -85,7 +81,7 @@ services:
     depends_on:
       - temporal
   temporal-admin-tools:
-    image: temporalio/admin-tools:${SERVER_TAG:-latest}
+    image: temporalio/admin-tools:latest
     stdin_open: true
     tty: true
     volumes:
