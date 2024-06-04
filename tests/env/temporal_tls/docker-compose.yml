@@ -33,7 +33,7 @@ services:
       - ./config/dynamicconfig:/etc/temporal/config/dynamicconfig
       - ${TEMPORAL_LOCAL_CERT_DIR}:${TEMPORAL_TLS_CERTS_DIR}
     environment:
-      - DB=postgresql
+      - DB=postgresql12
       - DB_PORT=26257
       - POSTGRES_USER=root
       - POSTGRES_PWD=

@@ -41,7 +41,7 @@ services:
       - postgresql
     environment:
       - LOG_LEVEL=debug
-      - DB=postgresql
+      - DB=postgresql12
       - DB_PORT=5432
       - POSTGRES_USER=temporal
       - POSTGRES_PWD=temporal
