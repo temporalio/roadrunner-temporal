@@ -11,33 +11,31 @@ services:
     ports:
       - "8125:8125/udp"
       - "8126:8126"
-  cockroach:
-    cap_drop:
-      - ALL
-    command:
-      - start-single-node
-      - --insecure
-    container_name: temporal-cockroach
-    hostname: cockroach
-    image: cockroachdb/cockroach
-    restart: on-failure:5
-    security_opt:
-      - no-new-privileges
-    tty: false
+
+  postgresql:
+    container_name: temporal-postgresql
+    image: postgres:latest
+    environment:
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_USER: temporal
+    ports:
+      - "5432:5432"
 
   temporal:
-    image: temporalio/auto-setup:${SERVER_TAG:-latest}
+    image: temporalio/auto-setup:latest
     ports:
       - "7233:7233"
     volumes:
       - ./config/dynamicconfig:/etc/temporal/config/dynamicconfig
       - ${TEMPORAL_LOCAL_CERT_DIR}:${TEMPORAL_TLS_CERTS_DIR}
     environment:
-      - DB=postgresql
-      - DB_PORT=26257
-      - POSTGRES_USER=root
-      - POSTGRES_PWD=
-      - POSTGRES_SEEDS=postgres
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgresql
+      - "TEMPORAL_ADDRESS=temporal:7233" # used by Temporal CLI
+      - "TEMPORAL_CLI_ADDRESS=temporal:7233" # used by tctl. Will be deprecated
       - "DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development.yaml"
       - "SKIP_DEFAULT_NAMESPACE_CREATION=false"
       - "TEMPORAL_TLS_SERVER_CA_CERT=${TEMPORAL_TLS_CERTS_DIR}/ca.cert"
@@ -52,25 +50,21 @@ services:
       - "TEMPORAL_TLS_FRONTEND_SERVER_NAME=tls-sample"
       - "TEMPORAL_TLS_FRONTEND_DISABLE_HOST_VERIFICATION=false"
       - "TEMPORAL_TLS_INTERNODE_DISABLE_HOST_VERIFICATION=false"
-      - "TEMPORAL_CLI_ADDRESS=temporal:7233" # used by tctl. Will be deprecated
       - "TEMPORAL_CLI_TLS_CA=${TEMPORAL_TLS_CERTS_DIR}/ca.cert"
       - "TEMPORAL_CLI_TLS_CERT=${TEMPORAL_TLS_CERTS_DIR}/cluster.pem"
       - "TEMPORAL_CLI_TLS_KEY=${TEMPORAL_TLS_CERTS_DIR}/cluster.key"
       - "TEMPORAL_CLI_TLS_ENABLE_HOST_VERIFICATION=true"
       - "TEMPORAL_CLI_TLS_SERVER_NAME=tls-sample"
-      - "TEMPORAL_ADDRESS=temporal:7233" # used by Temporal CLI
       - "TEMPORAL_TLS_CA=${TEMPORAL_TLS_CERTS_DIR}/ca.cert"
       - "TEMPORAL_TLS_CERT=${TEMPORAL_TLS_CERTS_DIR}/cluster.pem"
       - "TEMPORAL_TLS_KEY=${TEMPORAL_TLS_CERTS_DIR}/cluster.key"
       - "TEMPORAL_TLS_ENABLE_HOST_VERIFICATION=true"
       - "TEMPORAL_TLS_SERVER_NAME=tls-sample"
     depends_on:
-      - cockroach
-    links:
-      - cockroach:postgres
+      - postgresql
 
   temporal-ui:
-    image: temporalio/ui:${UI_TAG:-latest}
+    image: temporalio/ui:latest
     ports:
       - "8080:8080"
     volumes:
@@ -85,7 +79,7 @@ services:
     depends_on:
       - temporal
   temporal-admin-tools:
-    image: temporalio/admin-tools:${SERVER_TAG:-latest}
+    image: temporalio/admin-tools:latest
     stdin_open: true
     tty: true
     volumes:
