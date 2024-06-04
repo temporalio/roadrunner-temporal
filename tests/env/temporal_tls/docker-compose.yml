@@ -30,10 +30,10 @@ services:
       - ${TEMPORAL_LOCAL_CERT_DIR}:${TEMPORAL_TLS_CERTS_DIR}
     environment:
       - DB=postgres12
-      - DB_PORT=26257
+      - DB_PORT=5432
       - POSTGRES_USER=temporal
       - POSTGRES_PWD=temporal
-      - POSTGRES_SEEDS=postgres
+      - POSTGRES_SEEDS=postgresql
       - "TEMPORAL_ADDRESS=temporal:7233" # used by Temporal CLI
       - "TEMPORAL_CLI_ADDRESS=temporal:7233" # used by tctl. Will be deprecated
       - "DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development.yaml"
@@ -61,9 +61,7 @@ services:
       - "TEMPORAL_TLS_ENABLE_HOST_VERIFICATION=true"
       - "TEMPORAL_TLS_SERVER_NAME=tls-sample"
     depends_on:
-      - cockroach
-    links:
-      - cockroach:postgres
+      - postgresql
 
   temporal-ui:
     image: temporalio/ui:latest
