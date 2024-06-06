@@ -1,6 +1,6 @@
 module tests
 
-go 1.22.3
+go 1.22.4
 
 require (
 	github.com/fatih/color v1.17.0
@@ -14,7 +14,7 @@ require (
 	github.com/roadrunner-server/otel/v4 v4.5.2
 	github.com/roadrunner-server/resetter/v4 v4.3.2
 	github.com/roadrunner-server/rpc/v4 v4.4.2
-	github.com/roadrunner-server/sdk/v4 v4.7.2
+	github.com/roadrunner-server/sdk/v4 v4.7.3
 	github.com/roadrunner-server/server/v4 v4.8.2
 	github.com/roadrunner-server/status/v4 v4.6.2
 	github.com/stretchr/testify v1.9.0
@@ -63,7 +63,7 @@ require (
 	github.com/roadrunner-server/errors v1.4.0 // indirect
 	github.com/roadrunner-server/tcplisten v1.4.0 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
-	github.com/sagikazarmark/locafero v0.5.0 // indirect
+	github.com/sagikazarmark/locafero v0.6.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
@@ -94,17 +94,17 @@ require (
 	go.opentelemetry.io/proto/otlp v1.2.0 // indirect
 	go.temporal.io/sdk/contrib/opentelemetry v0.5.0 // indirect
 	go.temporal.io/sdk/contrib/tally v0.2.0 // indirect
-	go.temporal.io/server v1.24.0 // indirect
+	go.temporal.io/server v1.24.1 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/exp v0.0.0-20240531132922-fd00a4e0eefc // indirect
-	golang.org/x/net v0.25.0 // indirect
+	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8 // indirect
+	golang.org/x/net v0.26.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.21.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240528184218-531527333157 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240528184218-531527333157 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240604185151-ef581f913117 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240604185151-ef581f913117 // indirect
 	google.golang.org/grpc v1.64.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
