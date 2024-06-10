@@ -351,7 +351,7 @@ func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnviron
 		ExecuteLocalActivityOptions: truTemOptions,
 		ActivityFn:                  fn,
 		ActivityType:                cmd.Name,
-		InputArgs:                   []any{payloads},
+		InputArgs:                   []any{payloads, header},
 		WorkflowInfo:                env.WorkflowInfo(),
 		ScheduledTime:               time.Now(),
 		Header:                      header,
