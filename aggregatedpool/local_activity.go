@@ -18,23 +18,21 @@ import (
 )
 
 type LocalActivityFn struct {
-	header *commonpb.Header
-	codec  common.Codec
-	pool   common.Pool
-	log    *zap.Logger
-	seqID  uint64
+	codec common.Codec
+	pool  common.Pool
+	log   *zap.Logger
+	seqID uint64
 }
 
-func NewLocalActivityFn(header *commonpb.Header, codec common.Codec, pool common.Pool, log *zap.Logger) *LocalActivityFn {
+func NewLocalActivityFn(codec common.Codec, pool common.Pool, log *zap.Logger) *LocalActivityFn {
 	return &LocalActivityFn{
-		header: header,
-		codec:  codec,
-		pool:   pool,
-		log:    log,
+		codec: codec,
+		pool:  pool,
+		log:   log,
 	}
 }
 
-func (la *LocalActivityFn) execute(ctx context.Context, args *commonpb.Payloads) (*commonpb.Payloads, error) {
+func (la *LocalActivityFn) ExecuteLA(ctx context.Context, hdr *commonpb.Header, args *commonpb.Payloads) (*commonpb.Payloads, error) {
 	const op = errors.Op("activity_pool_execute_activity")
 
 	var info = tActivity.GetInfo(ctx)
@@ -53,7 +51,7 @@ func (la *LocalActivityFn) execute(ctx context.Context, args *commonpb.Payloads)
 			Info: info,
 		},
 		Payloads: args,
-		Header:   la.header,
+		Header:   hdr,
 	}
 
 	la.log.Debug("executing local activity fn", zap.Uint64("ID", msg.ID), zap.String("task-queue", info.TaskQueue), zap.String("la ID", info.ActivityID))

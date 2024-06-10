@@ -146,7 +146,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 
 	case *internal.ExecuteLocalActivity:
 		wp.log.Debug("local activity request", zap.Uint64("ID", msg.ID))
-		params := command.LocalActivityParams(wp.env, NewLocalActivityFn(msg.Header, wp.codec, wp.pool, wp.log).execute, msg.Payloads, msg.Header)
+		params := command.LocalActivityParams(wp.env, wp.la, msg.Payloads, msg.Header)
 		activityID := wp.env.ExecuteLocalActivity(params, wp.createLocalActivityCallback(msg.ID))
 		wp.canceller.Register(msg.ID, func() error {
 			wp.log.Debug("registering local activity canceller", zap.String("activityID", activityID.String()))
