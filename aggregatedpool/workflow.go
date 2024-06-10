@@ -90,7 +90,7 @@ func NewWorkflowDefinition(codec common.Codec, la LaFn, pool common.Pool, log *z
 
 // NewWorkflowDefinition ... Workflow should match the WorkflowDefinitionFactory interface (sdk-go/internal/internal_worker.go:463, RegisterWorkflowWithOptions func)
 // DO NOT USE THIS FUNCTION DIRECTLY!!!!
-// This function called after the constructor above, it is same to assign fields like that
+// This function called after the constructor above, it is safe to assign fields like that
 func (wp *Workflow) NewWorkflowDefinition() bindings.WorkflowDefinition {
 	return &Workflow{
 		rrID: uuid.NewString(),
@@ -153,7 +153,7 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 	)
 }
 
-// OnWorkflowTaskStarted is called for each non timed out startWorkflowTask event.
+// OnWorkflowTaskStarted is called for each non-timed out startWorkflowTask event.
 // Executed after all history events since the previous commands are applied to WorkflowDefinition
 // Application level code must be executed from this function only.
 // Execute call as well as callbacks called from WorkflowEnvironment functions can only schedule callbacks
