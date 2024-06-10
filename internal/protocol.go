@@ -347,11 +347,12 @@ func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnviron
 		truTemOptions.RetryPolicy = rp
 	}
 
+	// TODO: should be careful here: header + inputArgs header are pointers and might be changed independently which will cause race
 	params := bindings.ExecuteLocalActivityParams{
 		ExecuteLocalActivityOptions: truTemOptions,
 		ActivityFn:                  fn,
 		ActivityType:                cmd.Name,
-		InputArgs:                   []any{payloads, header},
+		InputArgs:                   []any{header, payloads},
 		WorkflowInfo:                env.WorkflowInfo(),
 		ScheduledTime:               time.Now(),
 		Header:                      header,
