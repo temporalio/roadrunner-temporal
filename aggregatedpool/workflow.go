@@ -1,6 +1,7 @@
 package aggregatedpool
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -32,6 +33,7 @@ import (
 */
 
 type Callback func() error
+type LaFn func(ctx context.Context, hdr *commonpb.Header, args *commonpb.Payloads) (*commonpb.Payloads, error)
 
 // seqID is global sequence ID
 var seqID uint64 //nolint:gochecknoglobals
@@ -44,6 +46,9 @@ type Workflow struct {
 	codec common.Codec
 	pool  common.Pool
 	rrID  string
+
+	// LocalActivityFn
+	la LaFn
 
 	env          bindings.WorkflowEnvironment
 	header       *commonpb.Header
@@ -67,10 +72,12 @@ type Workflow struct {
 	pldPool *sync.Pool
 }
 
-func NewWorkflowDefinition(codec common.Codec, pool common.Pool, log *zap.Logger) *Workflow {
+// NewWorkflowDefinition ... WorkflowDefinition Constructor
+func NewWorkflowDefinition(codec common.Codec, la LaFn, pool common.Pool, log *zap.Logger) *Workflow {
 	return &Workflow{
 		rrID:  uuid.NewString(),
 		log:   log,
+		la:    la,
 		codec: codec,
 		pool:  pool,
 		pldPool: &sync.Pool{
@@ -83,9 +90,12 @@ func NewWorkflowDefinition(codec common.Codec, pool common.Pool, log *zap.Logger
 
 // NewWorkflowDefinition ... Workflow should match the WorkflowDefinitionFactory interface (sdk-go/internal/internal_worker.go:463, RegisterWorkflowWithOptions func)
 // DO NOT USE THIS FUNCTION DIRECTLY!!!!
+// This function called after the constructor above, it is same to assign fields like that
 func (wp *Workflow) NewWorkflowDefinition() bindings.WorkflowDefinition {
 	return &Workflow{
 		rrID: uuid.NewString(),
+		// LocalActivity
+		la: wp.la,
 		// updates logic
 		updateCompleteCb: make(map[string]func(res *internal.Message)),
 		updateValidateCb: make(map[string]func(res *internal.Message)),

@@ -28,7 +28,10 @@ func (p *Plugin) initPool() error {
 	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
 	codec := proto.NewCodec(p.log, dc)
 
+	// LA + A definitions
 	actDef := aggregatedpool.NewActivityDefinition(codec, ap, p.log)
+	laDef := aggregatedpool.NewLocalActivityFn(codec, ap, p.log)
+	// ------------------
 
 	// ---------- WORKFLOW POOL -------------
 	wp, err := p.server.NewPool(
@@ -48,7 +51,7 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	wfDef := aggregatedpool.NewWorkflowDefinition(codec, wp, p.log)
+	wfDef := aggregatedpool.NewWorkflowDefinition(codec, laDef.ExecuteLA, wp, p.log)
 
 	// get worker information
 	wi, err := WorkerInfo(codec, wp, p.rrVersion)
