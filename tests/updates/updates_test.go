@@ -44,7 +44,13 @@ func Test_UpdatesInit(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	handle, err := s.Client.UpdateWorkflow(ctx, w.GetID(), w.GetRunID(), addNameM, "John Doe")
+	handle, err := s.Client.UpdateWorkflow(ctx, client.UpdateWorkflowOptions{
+		RunID:        w.GetRunID(),
+		WorkflowID:   w.GetID(),
+		UpdateName:   addNameM,
+		Args:         []any{"John Doe"},
+		WaitForStage: client.WorkflowUpdateStageAccepted,
+	})
 	require.NoError(t, err)
 
 	var result any
@@ -85,7 +91,13 @@ func Test_Updates_2(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	handle, err := s.Client.UpdateWorkflow(ctx, w.GetID(), w.GetRunID(), addNameWOValidationM, "John Doe 42")
+	handle, err := s.Client.UpdateWorkflow(ctx, client.UpdateWorkflowOptions{
+		RunID:        w.GetRunID(),
+		WorkflowID:   w.GetID(),
+		UpdateName:   addNameWOValidationM,
+		Args:         []any{"John Doe 42"},
+		WaitForStage: client.WorkflowUpdateStageAccepted,
+	})
 	require.NoError(t, err)
 
 	var result any
@@ -126,7 +138,13 @@ func Test_Updates_4(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	handle, err := s.Client.UpdateWorkflow(ctx, w.GetID(), w.GetRunID(), addNameM, "42")
+	handle, err := s.Client.UpdateWorkflow(ctx, client.UpdateWorkflowOptions{
+		RunID:        w.GetRunID(),
+		WorkflowID:   w.GetID(),
+		UpdateName:   addNameM,
+		Args:         []any{"42"},
+		WaitForStage: client.WorkflowUpdateStageAccepted,
+	})
 	require.NoError(t, err)
 
 	var result any
@@ -167,7 +185,13 @@ func Test_Updates_5(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	handle, err := s.Client.UpdateWorkflow(ctx, w.GetID(), w.GetRunID(), throwExcM, "John Doe")
+	handle, err := s.Client.UpdateWorkflow(ctx, client.UpdateWorkflowOptions{
+		RunID:        w.GetRunID(),
+		WorkflowID:   w.GetID(),
+		UpdateName:   throwExcM,
+		Args:         []any{"John Doe"},
+		WaitForStage: client.WorkflowUpdateStageAccepted,
+	})
 	require.NoError(t, err)
 
 	var result any
@@ -208,7 +232,13 @@ func Test_Updates_6(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	handle, err := s.Client.UpdateWorkflow(ctx, w.GetID(), w.GetRunID(), randomizeNameM, 1)
+	handle, err := s.Client.UpdateWorkflow(ctx, client.UpdateWorkflowOptions{
+		RunID:        w.GetRunID(),
+		WorkflowID:   w.GetID(),
+		UpdateName:   randomizeNameM,
+		Args:         []any{1},
+		WaitForStage: client.WorkflowUpdateStageAccepted,
+	})
 	require.NoError(t, err)
 
 	var result []any
@@ -249,7 +279,13 @@ func Test_Updates_7(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	handle, err := s.Client.UpdateWorkflow(ctx, w.GetID(), w.GetRunID(), randomizeNameM, 3)
+	handle, err := s.Client.UpdateWorkflow(ctx, client.UpdateWorkflowOptions{
+		RunID:        w.GetRunID(),
+		WorkflowID:   w.GetID(),
+		UpdateName:   randomizeNameM,
+		Args:         []any{3},
+		WaitForStage: client.WorkflowUpdateStageAccepted,
+	})
 	require.NoError(t, err)
 
 	var result []any
@@ -290,7 +326,13 @@ func Test_Updates_8(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	handle, err := s.Client.UpdateWorkflow(ctx, w.GetID(), w.GetRunID(), addNameViaActivityM, "John Doe")
+	handle, err := s.Client.UpdateWorkflow(ctx, client.UpdateWorkflowOptions{
+		RunID:        w.GetRunID(),
+		WorkflowID:   w.GetID(),
+		UpdateName:   addNameViaActivityM,
+		Args:         []any{"John Doe"},
+		WaitForStage: client.WorkflowUpdateStageAccepted,
+	})
 	require.NoError(t, err)
 
 	var result any
