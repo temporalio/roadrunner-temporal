@@ -12,7 +12,6 @@ import (
 	"go.temporal.io/api/common/v1"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
-	updatepb "go.temporal.io/api/update/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
 )
@@ -48,14 +47,12 @@ func Test_Updates_9(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	handle, err := s.Client.UpdateWorkflowWithOptions(ctx, &client.UpdateWorkflowWithOptionsRequest{
-		RunID:      w.GetRunID(),
-		WorkflowID: w.GetID(),
-		UpdateName: awaitWithTimeoutM,
-		Args:       []any{"key", 1, "fallback"},
-		WaitPolicy: &updatepb.WaitPolicy{
-			LifecycleStage: enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED,
-		},
+	handle, err := s.Client.UpdateWorkflow(ctx, client.UpdateWorkflowOptions{
+		RunID:        w.GetRunID(),
+		WorkflowID:   w.GetID(),
+		UpdateName:   awaitWithTimeoutM,
+		Args:         []any{"key", 1, "fallback"},
+		WaitForStage: client.WorkflowUpdateStageAccepted,
 	})
 	require.NoError(t, err)
 
@@ -113,14 +110,12 @@ func Test_Updates_10(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
 
-		handle, err2 := s.Client.UpdateWorkflowWithOptions(ctx, &client.UpdateWorkflowWithOptionsRequest{
-			RunID:      w.GetRunID(),
-			WorkflowID: w.GetID(),
-			UpdateName: awaitM,
-			Args:       []any{"key"},
-			WaitPolicy: &updatepb.WaitPolicy{
-				LifecycleStage: enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED,
-			},
+		handle, err2 := s.Client.UpdateWorkflow(ctx, client.UpdateWorkflowOptions{
+			RunID:        w.GetRunID(),
+			WorkflowID:   w.GetID(),
+			UpdateName:   awaitM,
+			Args:         []any{"key"},
+			WaitForStage: client.WorkflowUpdateStageAccepted,
 		})
 		require.NoError(t, err2)
 
@@ -146,14 +141,12 @@ func Test_Updates_10(t *testing.T) {
 	ctx3, cancel3 := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel3()
 
-	handle, err := s.Client.UpdateWorkflowWithOptions(ctx3, &client.UpdateWorkflowWithOptionsRequest{
-		RunID:      w.GetRunID(),
-		WorkflowID: w.GetID(),
-		UpdateName: resolveValueM,
-		Args:       []any{"key", "resolved"},
-		WaitPolicy: &updatepb.WaitPolicy{
-			LifecycleStage: enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED,
-		},
+	handle, err := s.Client.UpdateWorkflow(ctx3, client.UpdateWorkflowOptions{
+		RunID:        w.GetRunID(),
+		WorkflowID:   w.GetID(),
+		UpdateName:   resolveValueM,
+		Args:         []any{"key", "resolved"},
+		WaitForStage: client.WorkflowUpdateStageAccepted,
 	})
 	require.NoError(t, err)
 
@@ -219,14 +212,12 @@ func Test_Updates_11(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 			defer cancel()
 
-			handle, err2 := s.Client.UpdateWorkflowWithOptions(ctx, &client.UpdateWorkflowWithOptionsRequest{
-				RunID:      w.GetRunID(),
-				WorkflowID: w.GetID(),
-				UpdateName: awaitM,
-				Args:       []any{fmt.Sprintf("key-%d", i)},
-				WaitPolicy: &updatepb.WaitPolicy{
-					LifecycleStage: enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED,
-				},
+			handle, err2 := s.Client.UpdateWorkflow(ctx, client.UpdateWorkflowOptions{
+				RunID:        w.GetRunID(),
+				WorkflowID:   w.GetID(),
+				UpdateName:   awaitM,
+				Args:         []any{fmt.Sprintf("key-%d", i)},
+				WaitForStage: client.WorkflowUpdateStageAccepted,
 			})
 			require.NoError(t, err2)
 
@@ -245,14 +236,12 @@ func Test_Updates_11(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 			defer cancel()
 
-			handle, err2 := s.Client.UpdateWorkflowWithOptions(ctx, &client.UpdateWorkflowWithOptionsRequest{
-				RunID:      w.GetRunID(),
-				WorkflowID: w.GetID(),
-				UpdateName: resolveValueM,
-				Args:       []any{fmt.Sprintf("key-%d", i), "resolved"},
-				WaitPolicy: &updatepb.WaitPolicy{
-					LifecycleStage: enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED,
-				},
+			handle, err2 := s.Client.UpdateWorkflow(ctx, client.UpdateWorkflowOptions{
+				RunID:        w.GetRunID(),
+				WorkflowID:   w.GetID(),
+				UpdateName:   resolveValueM,
+				Args:         []any{fmt.Sprintf("key-%d", i), "resolved"},
+				WaitForStage: client.WorkflowUpdateStageAccepted,
 			})
 			require.NoError(t, err2)
 
@@ -320,14 +309,12 @@ func Test_Updates_12(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 			defer cancel()
 
-			handle, err2 := s.Client.UpdateWorkflowWithOptions(ctx, &client.UpdateWorkflowWithOptionsRequest{
-				RunID:      w.GetRunID(),
-				WorkflowID: w.GetID(),
-				UpdateName: awaitM,
-				Args:       []any{fmt.Sprintf("key-%d", i)},
-				WaitPolicy: &updatepb.WaitPolicy{
-					LifecycleStage: enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED,
-				},
+			handle, err2 := s.Client.UpdateWorkflow(ctx, client.UpdateWorkflowOptions{
+				RunID:        w.GetRunID(),
+				WorkflowID:   w.GetID(),
+				UpdateName:   awaitM,
+				Args:         []any{fmt.Sprintf("key-%d", i)},
+				WaitForStage: client.WorkflowUpdateStageAccepted,
 			})
 			require.NoError(t, err2)
 
@@ -346,14 +333,12 @@ func Test_Updates_12(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 			defer cancel()
 
-			handle, err2 := s.Client.UpdateWorkflowWithOptions(ctx, &client.UpdateWorkflowWithOptionsRequest{
-				RunID:      w.GetRunID(),
-				WorkflowID: w.GetID(),
-				UpdateName: resolveValueM,
-				Args:       []any{fmt.Sprintf("key-%d", i), fmt.Sprintf("resolved-%d", i)},
-				WaitPolicy: &updatepb.WaitPolicy{
-					LifecycleStage: enums.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED,
-				},
+			handle, err2 := s.Client.UpdateWorkflow(ctx, client.UpdateWorkflowOptions{
+				RunID:        w.GetRunID(),
+				WorkflowID:   w.GetID(),
+				UpdateName:   resolveValueM,
+				Args:         []any{fmt.Sprintf("key-%d", i), fmt.Sprintf("resolved-%d", i)},
+				WaitForStage: client.WorkflowUpdateStageAccepted,
 			})
 			require.NoError(t, err2)
 

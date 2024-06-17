@@ -44,7 +44,13 @@ func TestUpdatesReplay(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	handle, err := s.Client.UpdateWorkflow(ctx, w.GetID(), w.GetRunID(), addNameM, "John Doe")
+	handle, err := s.Client.UpdateWorkflow(ctx, client.UpdateWorkflowOptions{
+		RunID:        w.GetRunID(),
+		WorkflowID:   w.GetID(),
+		UpdateName:   addNameM,
+		Args:         []any{"John Doe"},
+		WaitForStage: client.WorkflowUpdateStageAccepted,
+	})
 	require.NoError(t, err)
 
 	var result any
