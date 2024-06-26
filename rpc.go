@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/roadrunner-server/api/v4/build/common/v1"
+	commonV1 "github.com/roadrunner-server/api/v4/build/common/v1"
 	protoApi "github.com/roadrunner-server/api/v4/build/temporal/v1"
 	"github.com/roadrunner-server/errors"
 	"github.com/temporalio/roadrunner-temporal/v4/internal/logger"
@@ -113,7 +113,7 @@ func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 		zap.String("workflow_name", in.GetWorkflowType().GetName()))
 
 	if in.GetWorkflowExecution() == nil || in.GetWorkflowType() == nil {
-		out.Status = &common.Status{
+		out.Status = &commonV1.Status{
 			Code:    int32(codes.InvalidArgument),
 			Message: "run_id, workflow_id or workflow_name should not be empty",
 		}
@@ -123,7 +123,7 @@ func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 	}
 
 	if in.GetWorkflowExecution().GetRunId() == "" || in.GetWorkflowExecution().GetWorkflowId() == "" || in.GetWorkflowType().GetName() == "" {
-		out.Status = &common.Status{
+		out.Status = &commonV1.Status{
 			Code:    int32(codes.InvalidArgument),
 			Message: "run_id, workflow_id or workflow_name should not be empty",
 		}
@@ -140,7 +140,7 @@ func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 	for iter.HasNext() {
 		event, err := iter.Next()
 		if err != nil {
-			out.Status = &common.Status{
+			out.Status = &commonV1.Status{
 				Code:    int32(codes.Internal),
 				Message: err.Error(),
 			}
@@ -152,7 +152,7 @@ func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 	}
 
 	if r.plugin.getWfDef() == nil {
-		out.Status = &common.Status{
+		out.Status = &commonV1.Status{
 			Code:    int32(codes.FailedPrecondition),
 			Message: "workflow definition is not initialized, retry in a second",
 		}
@@ -168,7 +168,7 @@ func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 
 	err := replayer.ReplayWorkflowHistory(logger.NewZapAdapter(r.plugin.log), &hist)
 	if err != nil {
-		out.Status = &common.Status{
+		out.Status = &commonV1.Status{
 			Code:    int32(codes.FailedPrecondition),
 			Message: err.Error(),
 		}
@@ -177,7 +177,7 @@ func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 		return nil
 	}
 
-	out.Status = &common.Status{
+	out.Status = &commonV1.Status{
 		Code: int32(codes.OK),
 	}
 
@@ -193,7 +193,7 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 		zap.String("save_path", in.GetSavePath()))
 
 	if in.GetWorkflowExecution() == nil || in.GetWorkflowType() == nil || in.GetSavePath() == "" {
-		out.Status = &common.Status{
+		out.Status = &commonV1.Status{
 			Code:    int32(codes.InvalidArgument),
 			Message: "run_id, workflow_id or save_path should not be empty",
 		}
@@ -202,7 +202,7 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 	}
 
 	if in.GetWorkflowExecution().GetRunId() == "" || in.GetWorkflowExecution().GetWorkflowId() == "" || in.GetWorkflowType().GetName() == "" {
-		out.Status = &common.Status{
+		out.Status = &commonV1.Status{
 			Code:    int32(codes.InvalidArgument),
 			Message: "run_id, workflow_id or save_path should not be empty",
 		}
@@ -213,7 +213,7 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 
 	file, err := os.Create(in.GetSavePath())
 	if err != nil {
-		out.Status = &common.Status{
+		out.Status = &commonV1.Status{
 			Code:    int32(codes.Internal),
 			Message: err.Error(),
 		}
@@ -238,7 +238,7 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 	for iter.HasNext() {
 		event, errn := iter.Next()
 		if errn != nil {
-			out.Status = &common.Status{
+			out.Status = &commonV1.Status{
 				Code:    int32(codes.Internal),
 				Message: errn.Error(),
 			}
@@ -252,7 +252,7 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 
 	data, err := protojson.Marshal(&hist)
 	if err != nil {
-		out.Status = &common.Status{
+		out.Status = &commonV1.Status{
 			Code:    int32(codes.Internal),
 			Message: err.Error(),
 		}
@@ -263,7 +263,7 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 
 	_, err = file.Write(data)
 	if err != nil {
-		out.Status = &common.Status{
+		out.Status = &commonV1.Status{
 			Code:    int32(codes.Internal),
 			Message: err.Error(),
 		}
@@ -272,7 +272,7 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 		return nil
 	}
 
-	out.Status = &common.Status{
+	out.Status = &commonV1.Status{
 		Code: int32(codes.OK),
 	}
 
@@ -289,7 +289,7 @@ func (r *rpc) ReplayFromJSON(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 	)
 
 	if in.GetWorkflowType() == nil || in.GetSavePath() == "" {
-		out.Status = &common.Status{
+		out.Status = &commonV1.Status{
 			Code:    int32(codes.InvalidArgument),
 			Message: "workflow_name and save_path should not be empty",
 		}
@@ -299,7 +299,7 @@ func (r *rpc) ReplayFromJSON(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 	}
 
 	if in.GetWorkflowType().GetName() == "" {
-		out.Status = &common.Status{
+		out.Status = &commonV1.Status{
 			Code:    int32(codes.InvalidArgument),
 			Message: "workflow_name should not be empty",
 		}
@@ -309,7 +309,7 @@ func (r *rpc) ReplayFromJSON(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 	}
 
 	if r.plugin.getWfDef() == nil {
-		out.Status = &common.Status{
+		out.Status = &commonV1.Status{
 			Code:    int32(codes.FailedPrecondition),
 			Message: "workflow definition is not initialized, retry in a second",
 		}
@@ -328,7 +328,7 @@ func (r *rpc) ReplayFromJSON(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 	case 0:
 		err := replayer.ReplayWorkflowHistoryFromJSONFile(logger.NewZapAdapter(r.plugin.log), in.GetSavePath())
 		if err != nil {
-			out.Status = &common.Status{
+			out.Status = &commonV1.Status{
 				Code:    int32(codes.FailedPrecondition),
 				Message: err.Error(),
 			}
@@ -340,7 +340,7 @@ func (r *rpc) ReplayFromJSON(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 		// we have last event ID
 		err := replayer.ReplayPartialWorkflowHistoryFromJSONFile(logger.NewZapAdapter(r.plugin.log), in.GetSavePath(), in.GetLastEventId())
 		if err != nil {
-			out.Status = &common.Status{
+			out.Status = &commonV1.Status{
 				Code:    int32(codes.FailedPrecondition),
 				Message: err.Error(),
 			}
@@ -350,7 +350,7 @@ func (r *rpc) ReplayFromJSON(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 		}
 	}
 
-	out.Status = &common.Status{
+	out.Status = &commonV1.Status{
 		Code: int32(codes.OK),
 	}
 
@@ -365,7 +365,7 @@ func (r *rpc) ReplayWorkflowHistory(in *protoApi.History, out *protoApi.ReplayRe
 	)
 
 	if in.GetHistory() == nil || in.GetWorkflowType().GetName() == "" {
-		out.Status = &common.Status{
+		out.Status = &commonV1.Status{
 			Code:    int32(codes.FailedPrecondition),
 			Message: "workflow_name and/or history should not be empty",
 		}
@@ -375,7 +375,7 @@ func (r *rpc) ReplayWorkflowHistory(in *protoApi.History, out *protoApi.ReplayRe
 	}
 
 	if r.plugin.getWfDef() == nil {
-		out.Status = &common.Status{
+		out.Status = &commonV1.Status{
 			Code:    int32(codes.FailedPrecondition),
 			Message: "workflow definition is not initialized, retry in a second",
 		}
@@ -391,7 +391,7 @@ func (r *rpc) ReplayWorkflowHistory(in *protoApi.History, out *protoApi.ReplayRe
 
 	err := replayer.ReplayWorkflowHistory(logger.NewZapAdapter(r.plugin.log), in.GetHistory())
 	if err != nil {
-		out.Status = &common.Status{
+		out.Status = &commonV1.Status{
 			Code:    int32(codes.FailedPrecondition),
 			Message: err.Error(),
 		}
@@ -400,7 +400,7 @@ func (r *rpc) ReplayWorkflowHistory(in *protoApi.History, out *protoApi.ReplayRe
 		return nil
 	}
 
-	out.Status = &common.Status{
+	out.Status = &commonV1.Status{
 		Code: int32(codes.OK),
 	}
 
