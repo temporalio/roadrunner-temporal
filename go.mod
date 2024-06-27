@@ -8,7 +8,7 @@ require (
 	github.com/roadrunner-server/api/v4 v4.14.0
 	github.com/roadrunner-server/endure/v2 v2.4.5
 	github.com/roadrunner-server/errors v1.4.0
-	github.com/roadrunner-server/sdk/v4 v4.7.3
+	github.com/roadrunner-server/sdk/v4 v4.8.0
 	github.com/stretchr/testify v1.9.0
 	github.com/uber-go/tally/v4 v4.1.17-0.20240412215630-22fe011f5ff0
 	go.temporal.io/api v1.34.0
@@ -18,6 +18,8 @@ require (
 	go.uber.org/zap v1.27.0
 	google.golang.org/protobuf v1.34.2
 )
+
+require github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 
 replace github.com/uber-go/tally/v4 => github.com/uber-go/tally/v4 v4.1.10
 
@@ -37,7 +39,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/client_model v0.6.1 // indirect
-	github.com/prometheus/common v0.54.0 // indirect
+	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/roadrunner-server/goridge/v3 v3.8.2
 	github.com/robfig/cron v1.2.0 // indirect
