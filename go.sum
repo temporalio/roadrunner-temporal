@@ -214,8 +214,8 @@ github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
 go.opentelemetry.io/proto/otlp v0.7.0/go.mod h1:PqfVotwruBrMGOCsRd/89rSnXhoiJIqeYNgFYFoEGnI=
 go.temporal.io/api v1.5.0/go.mod h1:BqKxEJJYdxb5dqf0ODfzfMxh8UEQ5L3zKS51FiIYYkA=
-go.temporal.io/api v1.34.0 h1:RBQtYF+jJa252uruscL0TULgdFNqUkhk5R7Bj8PT2ko=
-go.temporal.io/api v1.34.0/go.mod h1:YN5Ty/DSp7uAdJxLxup+Y3aQLM00q+7cZuOEGFJ2Ob8=
+go.temporal.io/api v1.35.0 h1:+1o2zyBncLjnpjJt4FedKZMtuUav/LUgTB+mhQxx0zs=
+go.temporal.io/api v1.35.0/go.mod h1:OYkuupuCw6s/5TkcKHMb9EcIrOI+vTsbf/CGaprbzb0=
 go.temporal.io/sdk v1.12.0/go.mod h1:lSp3lH1lI0TyOsus0arnO3FYvjVXBZGi/G7DjnAnm6o=
 go.temporal.io/sdk v1.27.0 h1:C5oOE/IRyLcZaFoB13kEHsjvSHEnGcwT6bNys0HFFHk=
 go.temporal.io/sdk v1.27.0/go.mod h1:PnOq5f3dWuU2NAbY+yczXkIeycsIIdBtoCO62ZE0aak=
