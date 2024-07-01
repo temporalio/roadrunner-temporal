@@ -5,13 +5,13 @@ go 1.22.4
 require (
 	github.com/goccy/go-json v0.10.3
 	github.com/google/uuid v1.6.0
-	github.com/roadrunner-server/api/v4 v4.14.0
+	github.com/roadrunner-server/api/v4 v4.15.0
 	github.com/roadrunner-server/endure/v2 v2.4.5
 	github.com/roadrunner-server/errors v1.4.0
 	github.com/roadrunner-server/sdk/v4 v4.7.3
 	github.com/stretchr/testify v1.9.0
 	github.com/uber-go/tally/v4 v4.1.17-0.20240412215630-22fe011f5ff0
-	go.temporal.io/api v1.34.0
+	go.temporal.io/api v1.35.0
 	go.temporal.io/sdk v1.27.0
 	go.temporal.io/sdk/contrib/tally v0.2.0
 	go.temporal.io/server v1.24.2

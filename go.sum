@@ -161,8 +161,8 @@ github.com/prometheus/procfs v0.1.3/go.mod h1:lV6e/gmhEcM9IjHGsFOCxxuZ+z1YqCvr4O
 github.com/prometheus/procfs v0.6.0/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1xBZuNvfVA=
 github.com/prometheus/procfs v0.15.1 h1:YagwOFzUgYfKKHX6Dr+sHT7km/hxC76UB0learggepc=
 github.com/prometheus/procfs v0.15.1/go.mod h1:fB45yRUv8NstnjriLhBQLuOUt+WW4BsoGhij/e3PBqk=
-github.com/roadrunner-server/api/v4 v4.14.0 h1:lcSirsQ78TuMI4Ww/N//g7IXFPwY6QLf5TPUPgjKc/M=
-github.com/roadrunner-server/api/v4 v4.14.0/go.mod h1:WR6p5pGvIYk8h2pcnW8QWMlwndYCACjsVmD680Xox/I=
+github.com/roadrunner-server/api/v4 v4.15.0 h1:/CUbaHb9AT2PSWQFhjUxnuSC5p0ypkACrFgiIvNHsoo=
+github.com/roadrunner-server/api/v4 v4.15.0/go.mod h1:fAiaKHRVkt49S302Jhj60jd+nUNfs8iyjKE5rIoQ+kE=
 github.com/roadrunner-server/endure/v2 v2.4.5 h1:GoZm/1HjKCKm8TpaP/Pm2KbN0X9gLyN840cA3Fn/TCE=
 github.com/roadrunner-server/endure/v2 v2.4.5/go.mod h1:83UvLdt+RNxELTSna+SZMWQiu+Thj6wOz6hmlp65XFI=
 github.com/roadrunner-server/errors v1.4.0 h1:Odjg3VZrj1q5Y8ILwoN+JgERyv0pkhrWPNOM4h68iQ8=
@@ -214,8 +214,8 @@ github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
 go.opentelemetry.io/proto/otlp v0.7.0/go.mod h1:PqfVotwruBrMGOCsRd/89rSnXhoiJIqeYNgFYFoEGnI=
 go.temporal.io/api v1.5.0/go.mod h1:BqKxEJJYdxb5dqf0ODfzfMxh8UEQ5L3zKS51FiIYYkA=
-go.temporal.io/api v1.34.0 h1:RBQtYF+jJa252uruscL0TULgdFNqUkhk5R7Bj8PT2ko=
-go.temporal.io/api v1.34.0/go.mod h1:YN5Ty/DSp7uAdJxLxup+Y3aQLM00q+7cZuOEGFJ2Ob8=
+go.temporal.io/api v1.35.0 h1:+1o2zyBncLjnpjJt4FedKZMtuUav/LUgTB+mhQxx0zs=
+go.temporal.io/api v1.35.0/go.mod h1:OYkuupuCw6s/5TkcKHMb9EcIrOI+vTsbf/CGaprbzb0=
 go.temporal.io/sdk v1.12.0/go.mod h1:lSp3lH1lI0TyOsus0arnO3FYvjVXBZGi/G7DjnAnm6o=
 go.temporal.io/sdk v1.27.0 h1:C5oOE/IRyLcZaFoB13kEHsjvSHEnGcwT6bNys0HFFHk=
 go.temporal.io/sdk v1.27.0/go.mod h1:PnOq5f3dWuU2NAbY+yczXkIeycsIIdBtoCO62ZE0aak=
