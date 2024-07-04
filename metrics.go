@@ -2,13 +2,14 @@ package rrtemporal
 
 import (
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/cactus/go-statsd-client/v5/statsd"
 	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/sdk/v4/metrics"
-	"github.com/roadrunner-server/sdk/v4/state/process"
+	"github.com/roadrunner-server/pool/fsm"
+	"github.com/roadrunner-server/pool/state/process"
 	"github.com/uber-go/tally/v4"
 	"github.com/uber-go/tally/v4/prometheus"
 	tclient "go.temporal.io/sdk/client"
@@ -27,13 +28,13 @@ func (p *Plugin) MetricsCollector() []prom.Collector {
 	return []prom.Collector{p.statsExporter}
 }
 
-// Informer used to get workers from particular plugin or set of plugins
+// Informer used to get workers from a particular plugin or set of plugins
 type Informer interface {
 	Workers() []*process.State
 }
 
-func newStatsExporter(stats Informer) *metrics.StatsExporter {
-	return &metrics.StatsExporter{
+func newStatsExporter(stats Informer) *StatsExporter {
+	return &StatsExporter{
 		TotalMemoryDesc:  prom.NewDesc(prom.BuildFQName(namespace, "", "workers_memory_bytes"), "Memory usage by workers", nil, nil),
 		StateDesc:        prom.NewDesc(prom.BuildFQName(namespace, "", "worker_state"), "Worker current state", []string{"state", "pid"}, nil),
 		WorkerMemoryDesc: prom.NewDesc(prom.BuildFQName(namespace, "", "worker_memory_bytes"), "Worker current memory usage", []string{"pid"}, nil),
@@ -59,8 +60,8 @@ func newPrometheusScope(c prometheus.Configuration, prefix string, log *zap.Logg
 	}
 
 	// tally sanitizer options that satisfy Prometheus restrictions.
-	// This will rename metrics at the tally emission level, so metrics name we
-	// use maybe different from what gets emitted. In the current implementation
+	// This will rename metrics at the tally emission level, so the metrics name we use is
+	//  maybe different from what gets emitted. In the current implementation
 	// it will replace - and . with _
 	sanitizeOptions := tally.SanitizeOptions{
 		NameCharacters: tally.ValidCharacters{
@@ -143,4 +144,67 @@ func initMetrics(cfg *Config, log *zap.Logger) (tclient.MetricsHandler, io.Close
 	default:
 		return nil, nil, errors.Errorf("unknown driver provided: %s", cfg.Metrics.Driver)
 	}
+}
+
+type StatsExporter struct {
+	TotalMemoryDesc  *prom.Desc
+	StateDesc        *prom.Desc
+	WorkerMemoryDesc *prom.Desc
+	TotalWorkersDesc *prom.Desc
+
+	WorkersReady   *prom.Desc
+	WorkersWorking *prom.Desc
+	WorkersInvalid *prom.Desc
+
+	Workers Informer
+}
+
+func (s *StatsExporter) Describe(d chan<- *prom.Desc) {
+	// send description
+	d <- s.TotalWorkersDesc
+	d <- s.TotalMemoryDesc
+	d <- s.StateDesc
+	d <- s.WorkerMemoryDesc
+
+	d <- s.WorkersReady
+	d <- s.WorkersWorking
+	d <- s.WorkersInvalid
+}
+
+func (s *StatsExporter) Collect(ch chan<- prom.Metric) {
+	// get the copy of the processes
+	workerStates := s.Workers.Workers()
+
+	// cumulative RSS memory in bytes
+	var cum float64
+
+	var ready float64
+	var working float64
+	var invalid float64
+
+	// collect the memory
+	for i := 0; i < len(workerStates); i++ {
+		cum += float64(workerStates[i].MemoryUsage)
+
+		ch <- prom.MustNewConstMetric(s.StateDesc, prom.GaugeValue, 0, workerStates[i].StatusStr, strconv.Itoa(int(workerStates[i].Pid)))
+		ch <- prom.MustNewConstMetric(s.WorkerMemoryDesc, prom.GaugeValue, float64(workerStates[i].MemoryUsage), strconv.Itoa(int(workerStates[i].Pid)))
+
+		// sync with sdk/worker/state.go
+		switch workerStates[i].Status {
+		case fsm.StateReady:
+			ready++
+		case fsm.StateWorking:
+			working++
+		default:
+			invalid++
+		}
+	}
+
+	ch <- prom.MustNewConstMetric(s.WorkersReady, prom.GaugeValue, ready)
+	ch <- prom.MustNewConstMetric(s.WorkersWorking, prom.GaugeValue, working)
+	ch <- prom.MustNewConstMetric(s.WorkersInvalid, prom.GaugeValue, invalid)
+
+	// send the values to the prometheus
+	ch <- prom.MustNewConstMetric(s.TotalWorkersDesc, prom.GaugeValue, float64(len(workerStates)))
+	ch <- prom.MustNewConstMetric(s.TotalMemoryDesc, prom.GaugeValue, cum)
 }

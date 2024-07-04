@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"sync"
 	"testing"
-	"tests/helpers"
 	"time"
+
+	"tests/helpers"
 
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/api/common/v1"

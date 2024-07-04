@@ -12,13 +12,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/roadrunner-server/config/v4"
+	"github.com/roadrunner-server/config/v5"
 	"github.com/roadrunner-server/endure/v2"
-	"github.com/roadrunner-server/logger/v4"
-	"github.com/roadrunner-server/server/v4"
-	"github.com/roadrunner-server/status/v4"
+	"github.com/roadrunner-server/logger/v5"
+	"github.com/roadrunner-server/server/v5"
+	"github.com/roadrunner-server/status/v5"
 	"github.com/stretchr/testify/require"
-	rrtemporal "github.com/temporalio/roadrunner-temporal/v4"
+	rrtemporal "github.com/temporalio/roadrunner-temporal/v5"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -29,7 +29,6 @@ func TestTemporalCheckStatus(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.3.0",
 		Path:    "../configs/.rr-status.yaml",
-		Prefix:  "rr",
 	}
 
 	err := cont.RegisterAll(

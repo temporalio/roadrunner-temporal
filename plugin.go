@@ -12,14 +12,13 @@ import (
 
 	"github.com/roadrunner-server/endure/v2/dep"
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/sdk/v4/events"
-	"github.com/roadrunner-server/sdk/v4/metrics"
-	"github.com/roadrunner-server/sdk/v4/pool/static_pool"
-	"github.com/roadrunner-server/sdk/v4/state/process"
-	"github.com/temporalio/roadrunner-temporal/v4/aggregatedpool"
-	"github.com/temporalio/roadrunner-temporal/v4/common"
-	"github.com/temporalio/roadrunner-temporal/v4/internal"
-	"github.com/temporalio/roadrunner-temporal/v4/internal/codec/proto"
+	"github.com/roadrunner-server/events"
+	"github.com/roadrunner-server/pool/pool/static_pool"
+	"github.com/roadrunner-server/pool/state/process"
+	"github.com/temporalio/roadrunner-temporal/v5/aggregatedpool"
+	"github.com/temporalio/roadrunner-temporal/v5/common"
+	"github.com/temporalio/roadrunner-temporal/v5/internal"
+	"github.com/temporalio/roadrunner-temporal/v5/internal/codec/proto"
 	tclient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 	"go.uber.org/zap"
@@ -34,7 +33,7 @@ const (
 	RrMode string = "RR_MODE"
 	// RrCodec env variable key
 	RrCodec string = "RR_CODEC"
-	// RrCodecVal - codec name, should be in sync with the PHP-SDK
+	// RrCodecVal - codec name should be in sync with the PHP-SDK
 	RrCodecVal string = "protobuf"
 
 	// temporal, sync with https://github.com/temporalio/sdk-go/blob/master/internal/internal_utils.go#L44
@@ -69,7 +68,7 @@ type Plugin struct {
 	server        common.Server
 	log           *zap.Logger
 	config        *Config
-	statsExporter *metrics.StatsExporter
+	statsExporter *StatsExporter
 	codec         *proto.Codec
 	actP          *static_pool.Pool
 	wfP           *static_pool.Pool

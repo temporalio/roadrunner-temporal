@@ -8,7 +8,7 @@ import (
 	commonV1 "github.com/roadrunner-server/api/v4/build/common/v1"
 	protoApi "github.com/roadrunner-server/api/v4/build/temporal/v1"
 	"github.com/roadrunner-server/errors"
-	"github.com/temporalio/roadrunner-temporal/v4/internal/logger"
+	"github.com/temporalio/roadrunner-temporal/v5/internal/logger"
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"

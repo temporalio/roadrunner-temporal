@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/temporalio/roadrunner-temporal/v4/common"
-	"github.com/temporalio/roadrunner-temporal/v4/internal"
+	"github.com/temporalio/roadrunner-temporal/v5/common"
+	"github.com/temporalio/roadrunner-temporal/v5/internal"
 	tActivity "go.temporal.io/sdk/activity"
 	temporalClient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"

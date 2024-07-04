@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/temporalio/roadrunner-temporal/v4/internal"
+	"github.com/temporalio/roadrunner-temporal/v5/internal"
 	"go.temporal.io/api/common/v1"
 	"go.temporal.io/api/failure/v1"
 )
