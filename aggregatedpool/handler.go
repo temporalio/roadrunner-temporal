@@ -30,6 +30,7 @@ func (wp *Workflow) getContext() *internal.Context {
 		TickTime:               wp.env.Now().Format(time.RFC3339),
 		Replay:                 wp.env.IsReplaying(),
 		HistoryLen:             wp.env.WorkflowInfo().GetCurrentHistoryLength(),
+		HistorySize:            wp.env.WorkflowInfo().GetCurrentHistorySize(),
 		ContinueAsNewSuggested: wp.env.WorkflowInfo().GetContinueAsNewSuggested(),
 		RrID:                   wp.rrID,
 	}

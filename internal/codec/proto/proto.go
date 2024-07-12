@@ -146,6 +146,12 @@ func (c *Codec) packMessage(msg *internal.Message, ctx *internal.Context, protoM
 	protoMsg.Header = msg.Header
 	protoMsg.HistoryLength = int64(ctx.HistoryLen)
 	protoMsg.RunId = ctx.RrID
+	// new fields
+	protoMsg.TaskQueue = ctx.TaskQueue
+	protoMsg.TickTime = ctx.TickTime
+	protoMsg.Replay = ctx.Replay
+	protoMsg.ContinueAsNewSuggested = ctx.ContinueAsNewSuggested
+	protoMsg.HistorySize = int64(ctx.HistorySize)
 
 	if msg.Command != nil {
 		protoMsg.Command, err = internal.CommandName(msg.Command)

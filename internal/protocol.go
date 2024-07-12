@@ -59,6 +59,9 @@ type Context struct {
 	Replay bool `json:"replay,omitempty"`
 	// History
 	HistoryLen int `json:"history_length,omitempty"`
+	// HistorySize returns the current byte size of history when called.
+	// This value may change throughout the life of the workflow.
+	HistorySize int `json:"history_size,omitempty"`
 	// RoadRunner run ID
 	RrID string `json:"rr_id"`
 	// GetContinueAsNewSuggested returns true if the server is configured to suggest continue as new
