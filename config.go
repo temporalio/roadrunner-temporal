@@ -135,20 +135,24 @@ func (c *Config) InitDefault() error {
 	}
 
 	if c.TLS != nil {
-		if _, err := os.Stat(c.TLS.Key); err != nil {
-			if os.IsNotExist(err) {
-				return errors.E(op, errors.Errorf("key file '%s' does not exists", c.TLS.Key))
-			}
+		if c.TLS.Key != "" {
+			if _, err := os.Stat(c.TLS.Key); err != nil {
+				if os.IsNotExist(err) {
+					return errors.E(op, errors.Errorf("key file '%s' does not exists", c.TLS.Key))
+				}
 
-			return errors.E(op, err)
+				return errors.E(op, err)
+			}
 		}
 
-		if _, err := os.Stat(c.TLS.Cert); err != nil {
-			if os.IsNotExist(err) {
-				return errors.E(op, errors.Errorf("cert file '%s' does not exists", c.TLS.Cert))
+		if c.TLS.Cert != "" {
+			if _, err := os.Stat(c.TLS.Cert); err != nil {
+				if os.IsNotExist(err) {
+					return errors.E(op, errors.Errorf("cert file '%s' does not exists", c.TLS.Cert))
+				}
+	
+				return errors.E(op, err)
 			}
-
-			return errors.E(op, err)
 		}
 
 		// RootCA is optional, but if provided - check it
