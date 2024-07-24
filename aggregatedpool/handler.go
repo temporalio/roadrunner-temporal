@@ -30,6 +30,7 @@ func (wp *Workflow) getContext() *internal.Context {
 		TickTime:               wp.env.Now().Format(time.RFC3339),
 		Replay:                 wp.env.IsReplaying(),
 		HistoryLen:             wp.env.WorkflowInfo().GetCurrentHistoryLength(),
+		HistorySize:            wp.env.WorkflowInfo().GetCurrentHistorySize(),
 		ContinueAsNewSuggested: wp.env.WorkflowInfo().GetContinueAsNewSuggested(),
 		RrID:                   wp.rrID,
 	}
@@ -48,14 +49,14 @@ func (wp *Workflow) handleUpdate(name string, id string, input *commonpb.Payload
 		wp.updateValidateCb[id] = func(msg *internal.Message) {
 			wp.log.Debug("validate request callback", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID), zap.String("name", name), zap.String("id", id), zap.Bool("is_replaying", wp.env.IsReplaying()), zap.Any("result", msg))
 			if !wp.env.IsReplaying() {
-				// before accept we have only one option - reject
+				// before acceptance, we have only one option - reject
 				if msg.Failure != nil {
 					callbacks.Reject(temporal.GetDefaultFailureConverter().FailureToError(msg.Failure))
 					return
 				}
 			}
 
-			// update should be accepted on validate
+			// update should be accepted on validating
 			callbacks.Accept()
 		}
 
@@ -489,7 +490,7 @@ func (wp *Workflow) flushQueue() error {
 	return nil
 }
 
-// Run single command and return single result.
+// Run single command and return a single result.
 func (wp *Workflow) runCommand(cmd any, payloads *commonpb.Payloads, header *commonpb.Header) (*internal.Message, error) {
 	const op = errors.Op("workflow_process_runcommand")
 	msg := &internal.Message{}

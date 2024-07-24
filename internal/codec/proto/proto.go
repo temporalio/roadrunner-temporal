@@ -55,7 +55,7 @@ func (c *Codec) Encode(ctx *internal.Context, p *payload.Payload, msg ...*intern
 		c.log.Debug("outgoing message", zap.Uint64("id", pm.Id), zap.ByteString("data", p.Body), zap.ByteString("context", p.Context))
 	}
 
-	// context is always in json format
+	// context is always in JSON format
 	if ctx.IsEmpty() {
 		p.Context = []byte("null")
 	}
@@ -115,6 +115,7 @@ func (c *Codec) DecodeWorkerInfo(p *payload.Payload, wi *[]*internal.WorkerInfo)
 	}
 
 	if len(info) != 1 {
+		c.log.Error("received not valid workflow info", zap.Any("data", info))
 		return errors.E(op, errors.Str("unable to read worker info"))
 	}
 
@@ -146,6 +147,12 @@ func (c *Codec) packMessage(msg *internal.Message, ctx *internal.Context, protoM
 	protoMsg.Header = msg.Header
 	protoMsg.HistoryLength = int64(ctx.HistoryLen)
 	protoMsg.RunId = ctx.RrID
+	// new fields
+	protoMsg.TaskQueue = ctx.TaskQueue
+	protoMsg.TickTime = ctx.TickTime
+	protoMsg.Replay = ctx.Replay
+	protoMsg.ContinueAsNewSuggested = ctx.ContinueAsNewSuggested
+	protoMsg.HistorySize = int64(ctx.HistorySize)
 
 	if msg.Command != nil {
 		protoMsg.Command, err = internal.CommandName(msg.Command)
