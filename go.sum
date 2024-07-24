@@ -171,8 +171,8 @@ github.com/roadrunner-server/errors v1.4.0 h1:Odjg3VZrj1q5Y8ILwoN+JgERyv0pkhrWPN
 github.com/roadrunner-server/errors v1.4.0/go.mod h1:78PvraAFj+Sxy5nDmo0S+h6rEMLFIDszWZxA3B0sPAs=
 github.com/roadrunner-server/events v1.0.0 h1:r+DM2mVJbcJSxj7AoESvolgUQQYNcEjzKPdgTXz3lPI=
 github.com/roadrunner-server/events v1.0.0/go.mod h1:KMcez/tib0yky9TR/0Ag8SZcgAn3kjzXWciZL/n2Hu8=
-github.com/roadrunner-server/goridge/v3 v3.8.2 h1:4TpIJAMylMIVTva/L/STB4ZvYNVoQ77+Syr6abxj95c=
-github.com/roadrunner-server/goridge/v3 v3.8.2/go.mod h1:7IIDW50j1saxnOxktFeUPpkSIfyvM/dYopTrbGWXboA=
+github.com/roadrunner-server/goridge/v3 v3.8.3 h1:XmjrOFnI6ZbQTPaP39DEk8KwLUNTgjluK3pcZaW6ixQ=
+github.com/roadrunner-server/goridge/v3 v3.8.3/go.mod h1:4TZU8zgkKIZCsH51qwGMpvyXCT59u/8z6q8sCe4ZGAQ=
 github.com/roadrunner-server/pool v1.0.0 h1:9iA67WLrJGRuigbN8qR6Rrs4OMy/TfkG7gSOS8sl0oU=
 github.com/roadrunner-server/pool v1.0.0/go.mod h1:fLWNBj17Bu/YAN61QoInLr3ieRifpg1qN/4LGJqPsKo=
 github.com/robfig/cron v1.2.0 h1:ZjScXvvxeQ63Dbyxy76Fj3AT3Ut0aKsyd2/tl3DTMuQ=
