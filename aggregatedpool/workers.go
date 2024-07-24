@@ -21,6 +21,7 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 	for i := 0; i < len(wi); i++ {
 		log.Debug("worker info",
 			zap.String(tq, wi[i].TaskQueue),
+			zap.Any("flags", wi[i].Flags),
 			zap.Int("num_workflows", len(wi[i].Workflows)),
 			zap.Int("num_activities", len(wi[i].Activities)),
 			zap.Int("max_concurrent_activity_execution_size", wi[i].Options.MaxConcurrentActivityExecutionSize),

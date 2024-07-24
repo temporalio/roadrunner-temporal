@@ -14,13 +14,15 @@ type WorkerInfo struct {
 	Options worker.Options `json:"options,omitempty"`
 	// PhpSdkVersion is the underlying PHP-SDK version
 	PhpSdkVersion string `json:"PhpSdkVersion,omitempty"`
+	// Flags are internal worker flags.
+	Flags map[string]string `json:"Flags,omitempty"`
 	// Workflows provided by the worker.
 	Workflows []WorkflowInfo
 	// Activities provided by the worker.
 	Activities []ActivityInfo
 }
 
-// WorkflowInfo describes single worker workflow.
+// WorkflowInfo describes a single worker workflow.
 type WorkflowInfo struct {
 	// Name of the workflow.
 	Name string `json:"name"`

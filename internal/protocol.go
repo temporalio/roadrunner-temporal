@@ -49,9 +49,9 @@ const (
 	panicCommand  = "Panic"
 )
 
-// Context provides worker information about currently. Context can be empty for server level commands.
+// Context provides worker information about currently. Context can be empty for server-level commands.
 type Context struct {
-	// TaskQueue associates message batch with the specific task queue in underlying worker.
+	// TaskQueue associates the message batch with the specific task queue in an underlying worker.
 	TaskQueue string `json:"taskQueue,omitempty"`
 	// TickTime associated current or historical time with message batch.
 	TickTime string `json:"tickTime,omitempty"`
@@ -64,7 +64,7 @@ type Context struct {
 	HistorySize int `json:"history_size,omitempty"`
 	// RoadRunner run ID
 	RrID string `json:"rr_id"`
-	// GetContinueAsNewSuggested returns true if the server is configured to suggest continue as new
+	// GetContinueAsNewSuggested returns true if the server is configured to suggest 'continue as new',
 	// and it is suggested.
 	// This value may change throughout the life of the workflow.
 	ContinueAsNewSuggested bool `json:"continue_as_new_suggested"`
