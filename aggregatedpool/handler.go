@@ -162,7 +162,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		// always use deterministic id
 		if params.WorkflowID == "" {
 			nextID := atomic.AddUint64(&wp.seqID, 1)
-			params.WorkflowID = wp.env.WorkflowInfo().WorkflowExecution.RunID + "_" + strconv.Itoa(int(nextID))
+			params.WorkflowID = wp.env.WorkflowInfo().WorkflowExecution.RunID + "_" + strconv.Itoa(int(nextID)) //nolint:gosec
 		}
 
 		wp.env.ExecuteChildWorkflow(params, wp.createCallback(msg.ID, "ExecuteChildWorkflow"), func(r bindings.WorkflowExecution, e error) {
