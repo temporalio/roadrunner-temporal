@@ -254,6 +254,8 @@ func (p *Plugin) Stop(ctx context.Context) error {
 		if p.temporal.client != nil {
 			p.temporal.client.Close()
 		}
+
+		doneCh <- struct{}{}
 	}()
 
 	select {
