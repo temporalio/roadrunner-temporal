@@ -12,7 +12,6 @@ temporal:
   cache_size: 100000
   activities:
     num_workers: 4
-    destroy_timeout: 1s
 
   tls:
     key: ../env/temporal_tls/certs/client.key
