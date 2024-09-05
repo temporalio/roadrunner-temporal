@@ -32,8 +32,7 @@ import (
 )
 
 const (
-	rrPrefix  string = "rr"
-	rrVersion string = "2023.3.12"
+	rrVersion string = "2024.2.0"
 )
 
 type Configurer interface {
@@ -96,12 +95,11 @@ func (l *log) fields(keyvals []any) []zap.Field {
 }
 
 func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, configPath string) *TestServer {
-	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Second*10))
+	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
 
 	cfg := &configImpl.Plugin{
-		Timeout: time.Second * 10,
+		Timeout: time.Minute,
 		Path:    configPath,
-		Prefix:  rrPrefix,
 		Version: rrVersion,
 	}
 
@@ -153,12 +151,11 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, confi
 }
 
 func NewTestServerTLS(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, configName string) *TestServer {
-	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Second*30))
+	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
 
 	cfg := &configImpl.Plugin{
-		Timeout: time.Second * 30,
+		Timeout: time.Minute,
 		Path:    "../configs/tls/" + configName,
-		Prefix:  rrPrefix,
 		Version: rrVersion,
 	}
 
@@ -236,12 +233,11 @@ func NewTestServerTLS(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, co
 }
 
 func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *TestServer {
-	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Second*30))
+	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
 
 	cfg := &configImpl.Plugin{
-		Timeout: time.Second * 30,
+		Timeout: time.Minute,
 		Path:    "../configs/.rr-proto.yaml",
-		Prefix:  rrPrefix,
 		Version: rrVersion,
 	}
 
@@ -297,13 +293,12 @@ func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.W
 }
 
 func NewTestServerWithOtelInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *TestServer {
-	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Second*30))
+	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
 
 	cfg := &configImpl.Plugin{
-		Timeout: time.Second * 30,
+		Timeout: time.Minute,
 	}
 	cfg.Path = "../configs/.rr-otlp.yaml"
-	cfg.Prefix = rrPrefix
 	cfg.Version = rrVersion
 
 	err := container.RegisterAll(

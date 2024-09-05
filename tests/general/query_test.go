@@ -5,8 +5,9 @@ import (
 	"os"
 	"sync"
 	"testing"
-	"tests/helpers"
 	"time"
+
+	"tests/helpers"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,7 +55,7 @@ func Test_ListQueriesProto(t *testing.T) {
 		_ = proc.Kill()
 	}
 
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 10)
 
 	ctx, cancel = context.WithTimeout(context.Background(), time.Minute)
 	v, err = s.Client.QueryWorkflow(ctx, w.GetID(), w.GetRunID(), "error", -1)
@@ -70,6 +71,7 @@ func Test_ListQueriesProto(t *testing.T) {
 	assert.Equal(t, 0, r)
 	cancel()
 
+	s.Client.Close()
 	stopCh <- struct{}{}
 	wg.Wait()
 }
