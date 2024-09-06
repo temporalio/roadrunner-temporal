@@ -194,7 +194,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 
 	case *internal.NewTimer:
 		wp.log.Debug("timer request", zap.Uint64("ID", msg.ID))
-		timerID := wp.env.NewTimer(command.ToDuration(), wp.createCallback(msg.ID, "NewTimer"))
+		timerID := wp.env.NewTimer(command.ToDuration(), workflow.TimerOptions{}, wp.createCallback(msg.ID, "NewTimer"))
 		wp.canceller.Register(msg.ID, func() error {
 			if timerID != nil {
 				wp.log.Debug("cancel timer request", zap.String("timerID", timerID.String()))
