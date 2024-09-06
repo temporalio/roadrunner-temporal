@@ -2,7 +2,7 @@ module tests
 
 go 1.23
 
-toolchain go1.23.0
+toolchain go1.23.1
 
 require (
 	github.com/fatih/color v1.17.0
@@ -22,7 +22,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/temporalio/roadrunner-temporal/v5 v5.0.0
 	go.temporal.io/api v1.39.0
-	go.temporal.io/sdk v1.28.1
+	go.temporal.io/sdk v1.29.0
 	go.uber.org/zap v1.27.0
 )
 
