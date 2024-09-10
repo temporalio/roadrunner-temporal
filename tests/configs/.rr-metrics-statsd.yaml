@@ -18,7 +18,6 @@ temporal:
 
   activities:
     num_workers: 4
-    destroy_timeout: 1s
 
 logs:
   mode: development

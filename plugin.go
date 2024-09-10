@@ -213,34 +213,57 @@ func (p *Plugin) Serve() chan error {
 	return errCh
 }
 
-func (p *Plugin) Stop(context.Context) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+func (p *Plugin) Stop(ctx context.Context) error {
+	doneCh := make(chan struct{}, 1)
 
-	// stop events
-	p.eventBus.Unsubscribe(p.id)
-	p.stopCh <- struct{}{}
-	p.eventBus = nil
+	go func() {
+		p.mu.Lock()
+		defer p.mu.Unlock()
 
-	for i := 0; i < len(p.temporal.workers); i++ {
-		p.temporal.workers[i].Stop()
-	}
+		// stop events
+		p.eventBus.Unsubscribe(p.id)
+		p.stopCh <- struct{}{}
+		p.eventBus = nil
 
-	// might be nil if the user didn't set the metrics
-	if p.temporal.tallyCloser != nil {
-		err := p.temporal.tallyCloser.Close()
-		if err != nil {
-			p.mu.Unlock()
-			return err
+		// destroy worker pools
+		// WP
+		if p.wfP != nil {
+			p.wfP.Destroy(ctx)
 		}
-	}
 
-	// in case if the Serve func was interrupted
-	if p.temporal.client != nil {
-		p.temporal.client.Close()
-	}
+		// ACT pool
+		if p.actP != nil {
+			p.actP.Destroy(ctx)
+		}
 
-	return nil
+		// stop receiving tasks
+		for i := 0; i < len(p.temporal.workers); i++ {
+			p.temporal.workers[i].Stop()
+		}
+
+		// might be nil if the user didn't set the metrics
+		if p.temporal.tallyCloser != nil {
+			// there might be a panic if the io.Closer is not nil, but the actual type is nil
+			err := p.temporal.tallyCloser.Close()
+			if err != nil {
+				p.mu.Unlock()
+			}
+		}
+
+		// in case if the Serve func was interrupted
+		if p.temporal.client != nil {
+			p.temporal.client.Close()
+		}
+
+		doneCh <- struct{}{}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-doneCh:
+		return nil
+	}
 }
 
 func (p *Plugin) Workers() []*process.State {

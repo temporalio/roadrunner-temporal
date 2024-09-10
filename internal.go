@@ -40,7 +40,8 @@ func (p *Plugin) initPool() error {
 			NumWorkers:      1,
 			Command:         p.config.Activities.Command,
 			AllocateTimeout: time.Hour * 240,
-			DestroyTimeout:  time.Second * 30,
+			// use the same timeout
+			DestroyTimeout: p.config.Activities.DestroyTimeout,
 			// no supervisor for the workflow worker
 			Supervisor: nil,
 		},

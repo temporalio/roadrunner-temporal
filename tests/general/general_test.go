@@ -4,8 +4,9 @@ import (
 	"context"
 	"sync"
 	"testing"
-	"tests/helpers"
 	"time"
+
+	"tests/helpers"
 
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/sdk/client"
