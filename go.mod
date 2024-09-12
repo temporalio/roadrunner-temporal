@@ -15,7 +15,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/uber-go/tally/v4 v4.1.17-0.20240412215630-22fe011f5ff0
 	go.temporal.io/api v1.39.0
-	go.temporal.io/sdk v1.29.0
+	go.temporal.io/sdk v1.29.1
 	go.temporal.io/sdk/contrib/tally v0.2.0
 	go.temporal.io/server v1.25.0
 	go.uber.org/zap v1.27.0
@@ -64,6 +64,6 @@ require (
 	golang.org/x/time v0.6.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
-	google.golang.org/grpc v1.66.1
+	google.golang.org/grpc v1.66.2
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
