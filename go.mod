@@ -17,7 +17,7 @@ require (
 	go.temporal.io/api v1.39.1-0.20240910163028-b13574e18f3c
 	go.temporal.io/sdk v1.29.1
 	go.temporal.io/sdk/contrib/tally v0.2.0
-	go.temporal.io/server v1.26.0
+	go.temporal.io/server v1.25.0
 	go.uber.org/zap v1.27.0
 	google.golang.org/protobuf v1.34.2
 )
@@ -35,13 +35,13 @@ require (
 	github.com/golang/mock v1.7.0-rc.1 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.22.0 // indirect
-	github.com/klauspost/compress v1.17.9 // indirect
+	github.com/klauspost/compress v1.17.10 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nexus-rpc/sdk-go v0.0.10 // indirect
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus/client_golang v1.20.3
+	github.com/prometheus/client_golang v1.20.4
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.59.1 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
@@ -62,8 +62,8 @@ require (
 	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
 	golang.org/x/time v0.6.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240903143218-8af14fe29dc1 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240924160255-9d4c2d233b61 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240924160255-9d4c2d233b61 // indirect
 	google.golang.org/grpc v1.67.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
