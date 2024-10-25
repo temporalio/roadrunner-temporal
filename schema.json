@@ -26,6 +26,7 @@
       "default": "default"
     },
     "metrics": {
+      "type": "object",
       "description": "Temporal metrics.",
       "required": [
         "driver"
