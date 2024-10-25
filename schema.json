@@ -1,0 +1,181 @@
+{
+  "$id": "https://raw.githubusercontent.com/temporalio/roadrunner-temporal/refs/heads/master/schema.json",
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "description": "All the valid configuration parameters for the Temporal plugin for RoadRunner.",
+  "type": "object",
+  "title": "roadrunner-temporal",
+  "additionalProperties": false,
+  "required": [
+    "address"
+  ],
+  "properties": {
+    "address": {
+      "description": "Address of the Temporal server.",
+      "type": "string",
+      "default": "127.0.0.1:7233",
+      "minLength": 1
+    },
+    "cache_size": {
+      "description": "Sticky cache size. Sticky workflow execution is the affinity between workflow tasks of a specific workflow execution to a specific worker. The benefit of sticky execution is that the workflow does not have to reconstruct state by replaying history from the beginning. The cache is shared between workers running within same process. This must be called before any worker is started. If not called, the default size of 10K (which may change) will be used.",
+      "type": "integer",
+      "default": 10000
+    },
+    "namespace": {
+      "description": "Namespace for this client to work with.",
+      "type": "string",
+      "default": "default"
+    },
+    "metrics": {
+      "description": "Temporal metrics.",
+      "required": [
+        "driver"
+      ],
+      "properties": {
+        "driver": {
+          "description": "Metrics driver to use.",
+          "type": "string",
+          "enum": [
+            "prometheus",
+            "statsd"
+          ],
+          "default": "prometheus"
+        }
+      },
+      "if": {
+        "properties": {
+          "driver": {
+            "const": "prometheus"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "prometheus": {
+            "$ref": "#/$defs/Prometheus"
+          }
+        }
+      },
+      "else": {
+        "if": {
+          "properties": {
+            "driver": {
+              "const": "statsd"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "statsd": {
+              "$ref": "#/$defs/Statsd"
+            }
+          }
+        },
+        "else": false
+      }
+    },
+    "activities": {
+      "$ref": "https://raw.githubusercontent.com/roadrunner-server/pool/refs/heads/master/schema.json"
+    },
+    "tls": {
+      "description": "Temporal TLS configuration.",
+      "type": "object",
+      "required": [
+        "key",
+        "cert"
+      ],
+      "properties": {
+        "key": {
+          "$ref": "https://raw.githubusercontent.com/roadrunner-server/http/refs/heads/master/schema.json#/$defs/SSL/properties/key"
+        },
+        "cert": {
+          "$ref": "https://raw.githubusercontent.com/roadrunner-server/http/refs/heads/master/schema.json#/$defs/SSL/properties/cert"
+        },
+        "root_ca": {
+          "$ref": "https://raw.githubusercontent.com/roadrunner-server/http/refs/heads/master/schema.json#/$defs/SSL/properties/root_ca"
+        },
+        "client_auth_type": {
+          "$ref": "https://raw.githubusercontent.com/roadrunner-server/http/refs/heads/master/schema.json#/$defs/ClientAuthType"
+        },
+        "server_name": {
+          "description": "ServerName is used to verify the hostname on the returned certificates unless InsecureSkipVerify is given. It is also included in the client's handshake to support virtual hosting unless it is an IP address.",
+          "type": "string"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "Statsd": {
+      "type": "object",
+      "description": "Properties for Temporal Statsd integration.",
+      "additionalProperties": false,
+      "properties": {
+        "host_port": {
+          "description": "The host and port of the statsd server.",
+          "type": "string",
+          "default": "127.0.0.1:8125",
+          "minLength": 1
+        },
+        "prefix": {
+          "description": "The prefix to use in reporting to statsd.",
+          "type": "string"
+        },
+        "flush_interval": {
+          "description": "The maximum interval between sending packets.",
+          "$ref": "https://raw.githubusercontent.com/roadrunner-server/roadrunner/refs/heads/master/schemas/config/3.0.schema.json#/definitions/Duration",
+          "default": "1s"
+        },
+        "flush_bytes": {
+          "description": "The maximum UDP packet size you wish to send. Defaults to 1432 bytes if zero or undefined, which is considered safe for local traffic.",
+          "type": "integer",
+          "default": 1432
+        },
+        "tags": {
+          "description": "A map of tags consisting of keys and values.",
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": false,
+          "patternProperties": {
+            "^[a-zA-Z0-9._-]+$": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "tag_prefix": {
+          "description": "Prefix for the tags.",
+          "type": "string"
+        },
+        "tag_separator": {
+          "description": "The tag separator allows tags to be appended with a separator. If not specified, tag keys and values are embedded in the stat name directly.",
+          "type": "string"
+        }
+      }
+    },
+    "Prometheus": {
+      "type": "object",
+      "description": "Properties for Temporal Prometheus integration.",
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "description": "Server metrics address.",
+          "type": "string",
+          "default": "127.0.0.1:9091",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "description": "Metrics type to use. Defaults to `summary`.",
+          "enum": [
+            "summary",
+            "histogram"
+          ],
+          "default": "summary"
+        },
+        "prefix": {
+          "description": "Temporal metrics prefix.",
+          "type": "string"
+        }
+      }
+    }
+  }
+}
