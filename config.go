@@ -130,6 +130,9 @@ func (c *Config) InitDefault() error {
 				if c.Metrics.Statsd.HostPort == "" {
 					c.Metrics.Statsd.HostPort = "127.0.0.1:8125"
 				}
+				if c.Metrics.Statsd.FlushBytes == 0 {
+					c.Metrics.Statsd.FlushBytes = 1432
+				}
 			}
 		}
 	}
@@ -137,7 +140,7 @@ func (c *Config) InitDefault() error {
 	if c.TLS != nil {
 		if _, err := os.Stat(c.TLS.Key); err != nil {
 			if os.IsNotExist(err) {
-				return errors.E(op, errors.Errorf("key file '%s' does not exists", c.TLS.Key))
+				return errors.E(op, errors.Errorf("private key file '%s' does not exist", c.TLS.Key))
 			}
 
 			return errors.E(op, err)
@@ -145,7 +148,7 @@ func (c *Config) InitDefault() error {
 
 		if _, err := os.Stat(c.TLS.Cert); err != nil {
 			if os.IsNotExist(err) {
-				return errors.E(op, errors.Errorf("cert file '%s' does not exists", c.TLS.Cert))
+				return errors.E(op, errors.Errorf("public certificate file '%s' does not exist", c.TLS.Cert))
 			}
 
 			return errors.E(op, err)
@@ -155,7 +158,7 @@ func (c *Config) InitDefault() error {
 		if c.TLS.RootCA != "" {
 			if _, err := os.Stat(c.TLS.RootCA); err != nil {
 				if os.IsNotExist(err) {
-					return errors.E(op, errors.Errorf("root ca path provided, but key file '%s' does not exists", c.TLS.RootCA))
+					return errors.E(op, errors.Errorf("root CA file '%s' does not exist", c.TLS.RootCA))
 				}
 				return errors.E(op, err)
 			}
