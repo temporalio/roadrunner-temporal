@@ -140,7 +140,7 @@ func (c *Config) InitDefault() error {
 	if c.TLS != nil {
 		if _, err := os.Stat(c.TLS.Key); err != nil {
 			if os.IsNotExist(err) {
-				return errors.E(op, errors.Errorf("Private key file '%s' does not exist.", c.TLS.Key))
+				return errors.E(op, errors.Errorf("private key file '%s' does not exist", c.TLS.Key))
 			}
 
 			return errors.E(op, err)
@@ -148,7 +148,7 @@ func (c *Config) InitDefault() error {
 
 		if _, err := os.Stat(c.TLS.Cert); err != nil {
 			if os.IsNotExist(err) {
-				return errors.E(op, errors.Errorf("Public certificate file '%s' does not exist.", c.TLS.Cert))
+				return errors.E(op, errors.Errorf("public certificate file '%s' does not exist", c.TLS.Cert))
 			}
 
 			return errors.E(op, err)
@@ -158,7 +158,7 @@ func (c *Config) InitDefault() error {
 		if c.TLS.RootCA != "" {
 			if _, err := os.Stat(c.TLS.RootCA); err != nil {
 				if os.IsNotExist(err) {
-					return errors.E(op, errors.Errorf("Root CA file '%s' does not exist.", c.TLS.RootCA))
+					return errors.E(op, errors.Errorf("root CA file '%s' does not exist", c.TLS.RootCA))
 				}
 				return errors.E(op, err)
 			}
