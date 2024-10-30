@@ -409,7 +409,7 @@ func (r *rpc) ReplayWorkflowHistory(in *protoApi.History, out *protoApi.ReplayRe
 	return nil
 }
 
-func (r *rpc) UpdateAPIToken(in *string, out *bool) error {
+func (r *rpc) UpdateAPIKey(in *string, out *bool) error {
 	r.plugin.mu.Lock()
 	defer r.plugin.mu.Unlock()
 
