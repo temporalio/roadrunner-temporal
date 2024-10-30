@@ -146,6 +146,9 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 		},
 
 		Credentials: tclient.NewAPIKeyDynamicCredentials(func(context.Context) (string, error) {
+			p.mu.RLock()
+			defer p.mu.RUnlock()
+
 			return p.apiKey, nil
 		}),
 	}
