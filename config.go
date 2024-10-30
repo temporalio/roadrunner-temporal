@@ -9,6 +9,17 @@ import (
 	"github.com/roadrunner-server/pool/pool"
 )
 
+// Config of the temporal client and dependent services.
+type Config struct {
+	Metrics    *Metrics     `mapstructure:"metrics"`
+	Activities *pool.Config `mapstructure:"activities"`
+	TLS        *TLS         `mapstructure:"tls, omitempty"`
+
+	Address   string `mapstructure:"address"`
+	Namespace string `mapstructure:"namespace"`
+	CacheSize int    `mapstructure:"cache_size"`
+}
+
 const (
 	MetricsTypeSummary string = "summary"
 
@@ -66,17 +77,6 @@ type Metrics struct {
 	Driver     string      `mapstructure:"driver"`
 	Prometheus *Prometheus `mapstructure:"prometheus"`
 	Statsd     *Statsd     `mapstructure:"statsd"`
-}
-
-// Config of the temporal client and dependent services.
-type Config struct {
-	Metrics    *Metrics     `mapstructure:"metrics"`
-	Activities *pool.Config `mapstructure:"activities"`
-	TLS        *TLS         `mapstructure:"tls, omitempty"`
-
-	Address   string `mapstructure:"address"`
-	Namespace string `mapstructure:"namespace"`
-	CacheSize int    `mapstructure:"cache_size"`
 }
 
 type TLS struct {

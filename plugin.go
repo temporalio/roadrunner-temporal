@@ -72,6 +72,8 @@ type Plugin struct {
 	codec         *proto.Codec
 	actP          *static_pool.Pool
 	wfP           *static_pool.Pool
+	// updated from the PHP SDK
+	apiKey string
 
 	id        string
 	wwPID     int
