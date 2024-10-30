@@ -123,8 +123,10 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 		phpSdkVersion = clientBaselineVersion
 	}
 
-	if flags[APIKey] != "" {
-		p.apiKey = flags[APIKey]
+	if val, ok := flags[APIKey]; ok {
+		if val != "" {
+			p.apiKey = val
+		}
 	}
 
 	p.log.Debug("PHP-SDK version: " + phpSdkVersion)
