@@ -125,7 +125,7 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 
 	if val, ok := flags[APIKey]; ok {
 		if val != "" {
-			p.apiKey = val
+			p.apiKey.Store(ptrTo(val))
 		}
 	}
 
@@ -146,10 +146,11 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 		},
 
 		Credentials: tclient.NewAPIKeyDynamicCredentials(func(context.Context) (string, error) {
-			p.mu.RLock()
-			defer p.mu.RUnlock()
+			if p.apiKey.Load() != nil {
+				return *p.apiKey.Load(), nil
+			}
 
-			return p.apiKey, nil
+			return "", nil
 		}),
 	}
 
