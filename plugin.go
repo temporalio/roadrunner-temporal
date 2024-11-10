@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/roadrunner-server/endure/v2/dep"
@@ -72,6 +73,8 @@ type Plugin struct {
 	codec         *proto.Codec
 	actP          *static_pool.Pool
 	wfP           *static_pool.Pool
+	// updated from the PHP SDK
+	apiKey atomic.Pointer[string]
 
 	id        string
 	wwPID     int
@@ -156,6 +159,8 @@ func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) e
 
 	// initialize interceptors
 	p.temporal.interceptors = make(map[string]common.Interceptor)
+	// empty
+	p.apiKey.Store(ptrTo(""))
 
 	return nil
 }
@@ -405,4 +410,8 @@ func (p *Plugin) Name() string {
 
 func (p *Plugin) RPC() any {
 	return &rpc{plugin: p, client: p.temporal.client}
+}
+
+func ptrTo[T any](v T) *T {
+	return &v
 }

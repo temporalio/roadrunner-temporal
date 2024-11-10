@@ -18,6 +18,10 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+const (
+	APIKey string = "ApiKey"
+)
+
 func (p *Plugin) initPool() error {
 	var err error
 	ap, err := p.server.NewPool(context.Background(), p.config.Activities, map[string]string{RrMode: pluginName, RrCodec: RrCodecVal}, p.log)
@@ -64,7 +68,7 @@ func (p *Plugin) initPool() error {
 		return errors.Str("worker info should contain at least 1 worker")
 	}
 
-	err = p.initTemporalClient(wi[0].PhpSdkVersion, dc)
+	err = p.initTemporalClient(wi[0].PhpSdkVersion, wi[0].Flags, dc)
 	if err != nil {
 		return err
 	}
@@ -114,10 +118,17 @@ func (p *Plugin) getActDef() *aggregatedpool.Activity {
 	return p.temporal.rrActivityDef
 }
 
-func (p *Plugin) initTemporalClient(phpSdkVersion string, dc converter.DataConverter) error {
+func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]string, dc converter.DataConverter) error {
 	if phpSdkVersion == "" {
 		phpSdkVersion = clientBaselineVersion
 	}
+
+	if val, ok := flags[APIKey]; ok {
+		if val != "" {
+			p.apiKey.Store(ptrTo(val))
+		}
+	}
+
 	p.log.Debug("PHP-SDK version: " + phpSdkVersion)
 	worker.SetStickyWorkflowCacheSize(p.config.CacheSize)
 
@@ -133,6 +144,14 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, dc converter.DataConve
 				grpc.WithUnaryInterceptor(rewriteNameAndVersion(phpSdkVersion)),
 			},
 		},
+
+		Credentials: tclient.NewAPIKeyDynamicCredentials(func(context.Context) (string, error) {
+			if p.apiKey.Load() != nil {
+				return *p.apiKey.Load(), nil
+			}
+
+			return "", nil
+		}),
 	}
 
 	var err error

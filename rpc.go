@@ -408,3 +408,14 @@ func (r *rpc) ReplayWorkflowHistory(in *protoApi.History, out *protoApi.ReplayRe
 
 	return nil
 }
+
+func (r *rpc) UpdateAPIKey(in *string, out *bool) error {
+	if in != nil && *in != "" {
+		r.plugin.apiKey.Store(in)
+		*out = true
+		return nil
+	}
+
+	*out = false
+	return nil
+}
