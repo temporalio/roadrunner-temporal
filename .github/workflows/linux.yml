@@ -134,6 +134,18 @@ jobs:
         run: |
           mkdir ./tests/coverage-ci
 
+      - name: Add custom CA certificate
+        run: |
+          cd tests
+          
+          ./env/temporal_tls/generate-test-certs.sh
+          export TEMPORAL_TLS_CERTS_DIR=/etc/temporal/config/certs
+          export TEMPORAL_LOCAL_CERT_DIR=$(pwd)/env/temporal_tls/certs
+
+          sudo cp $(pwd)/env/temporal_tls/certs/ca.cert /usr/local/share/ca-certificates/ca.crt
+
+          sudo update-ca-certificates
+
       - name: Run Temporal canceller module tests
         run: |
           go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat ./tests/pkgs.txt) -coverprofile=./tests/coverage-ci/rrt_c.out -covermode=atomic canceller/canceller.go canceller/canceller_test.go
