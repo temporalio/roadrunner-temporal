@@ -262,7 +262,7 @@ jobs:
           sed -i '2,${/roadrunner/!d}' summary.txt
 
       - name: upload to codecov
-        uses: codecov/codecov-action@v4 # Docs: <https://github.com/codecov/codecov-action>
+        uses: codecov/codecov-action@v5 # Docs: <https://github.com/codecov/codecov-action>
         with:
           files: ./coverage_1/summary.txt,./coverage_2/summary.txt,./coverage_3/summary.txt
 
