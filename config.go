@@ -85,6 +85,7 @@ type TLS struct {
 	RootCA     string         `mapstructure:"root_ca"`
 	AuthType   ClientAuthType `mapstructure:"client_auth_type"`
 	ServerName string         `mapstructure:"server_name"`
+	UseH2C     bool           `mapstructure:"use_h2c"`
 	// auth type
 	auth tls.ClientAuthType
 }
