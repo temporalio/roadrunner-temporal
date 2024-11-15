@@ -43,9 +43,8 @@ func initTLS(cfg *Config) (*tls.Config, error) {
 	}
 
 	return &tls.Config{
-		ServerName:           cfg.TLS.ServerName,
-		MinVersion:           tls.VersionTLS12,
-		GetClientCertificate: getClientCertificate(cfg),
+		ServerName: cfg.TLS.ServerName,
+		MinVersion: tls.VersionTLS12,
 	}, nil
 }
 
