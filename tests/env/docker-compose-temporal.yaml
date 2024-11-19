@@ -12,14 +12,22 @@ services:
       - "8125:8125/udp"
       - "8126:8126"
 
+  envoy:
+    image: bitnami/envoy:latest
+    ports:
+      - "4433:443"
+    volumes:
+      - ./h2c.yaml:/opt/bitnami/envoy/conf/envoy.yaml
+      - ./temporal_tls/certs/client.pem:/etc/envoy/client.pem
+      - ./temporal_tls/certs/client.key:/etc/envoy/client.key
+      - ./temporal_tls/certs/ca.cert:/etc/envoy/ca.cert
+
   postgresql:
     container_name: temporal-postgresql
     image: postgres:latest
     environment:
       POSTGRES_PASSWORD: temporal
       POSTGRES_USER: temporal
-    ports:
-      - "5432:5432"
 
   temporal-ui:
     container_name: temporal-ui

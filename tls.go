@@ -42,10 +42,17 @@ func initTLS(cfg *Config) (*tls.Config, error) {
 		}, nil
 	}
 
+	if cfg.TLS.UseH2C {
+		return &tls.Config{
+			ServerName: cfg.TLS.ServerName,
+			MinVersion: tls.VersionTLS12,
+		}, nil
+	}
+
 	return &tls.Config{
 		ServerName:           cfg.TLS.ServerName,
-		MinVersion:           tls.VersionTLS12,
 		GetClientCertificate: getClientCertificate(cfg),
+		MinVersion:           tls.VersionTLS12,
 	}, nil
 }
 

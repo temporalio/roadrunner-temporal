@@ -1,0 +1,63 @@
+static_resources:
+  listeners:
+    - name: listener_0
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: 443  # Public-facing TLS port
+      filter_chains:
+        - filter_chain_match: {}
+          filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: ingress_http
+                codec_type: AUTO
+                route_config:
+                  name: local_route
+                  virtual_hosts:
+                    - name: grpc_service
+                      domains:
+                        - "*"  # Allows all domains to access
+                      routes:
+                        - match:
+                            prefix: "/"
+                          route:
+                            cluster: grpc_backend
+                            timeout: 0s
+                http_filters:
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+                upgrade_configs:
+                  - upgrade_type: h2c  # Enables h2c upgrade for cleartext HTTP/2
+          transport_socket:  # Move this out to align with filter_chains
+            name: envoy.transport_sockets.tls
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+              common_tls_context:
+                alpn_protocols: "h2"
+                tls_certificates:
+                  - certificate_chain:
+                      filename: "/etc/envoy/client.pem"
+                    private_key:
+                      filename: "/etc/envoy/client.key"
+                validation_context:
+                  trusted_ca:
+                    filename: "/etc/envoy/ca.cert"
+
+  clusters:
+    - name: grpc_backend
+      connect_timeout: 5s
+      type: LOGICAL_DNS
+      lb_policy: ROUND_ROBIN
+      load_assignment:
+        cluster_name: grpc_backend
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: temporal  # Temporal service hostname
+                      port_value: 7233  # Temporal service port
+      http2_protocol_options: {}  # Enables HTTP/2 for cleartext h2c communication
