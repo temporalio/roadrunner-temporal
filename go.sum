@@ -179,8 +179,8 @@ github.com/roadrunner-server/events v1.0.1 h1:waCkKhxhzdK3VcI1xG22l+h+0J+Nfdpxjh
 github.com/roadrunner-server/events v1.0.1/go.mod h1:WZRqoEVaFm209t52EuoT7ISUtvX6BrCi6bI/7pjkVC0=
 github.com/roadrunner-server/goridge/v3 v3.8.3 h1:XmjrOFnI6ZbQTPaP39DEk8KwLUNTgjluK3pcZaW6ixQ=
 github.com/roadrunner-server/goridge/v3 v3.8.3/go.mod h1:4TZU8zgkKIZCsH51qwGMpvyXCT59u/8z6q8sCe4ZGAQ=
-github.com/roadrunner-server/pool v1.0.2 h1:wMg6w7msbzB3icUz4uviOSLPaCE+qK02sMz/0pVkeo0=
-github.com/roadrunner-server/pool v1.0.2/go.mod h1:cBFTlC5HfNs5v6Zo3jO6bUoByK8eJVnrxMP+qf9cfMQ=
+github.com/roadrunner-server/pool v1.0.3 h1:aARAk6w3b0XCPZ/va8V1sRgcPJRFDyY5ZOPvNrkINhs=
+github.com/roadrunner-server/pool v1.0.3/go.mod h1:EQNY0EHgG8aX3oeIjoQn6fZW1ttoZs/GL8pnkUhmN/Q=
 github.com/robfig/cron v1.2.0 h1:ZjScXvvxeQ63Dbyxy76Fj3AT3Ut0aKsyd2/tl3DTMuQ=
 github.com/robfig/cron v1.2.0/go.mod h1:JGuDeoQd7Z6yL4zQhZ3OPEVHB7fL6Ka6skscFHfmt2k=
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
