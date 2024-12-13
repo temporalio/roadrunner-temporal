@@ -64,6 +64,6 @@ require (
 	golang.org/x/time v0.8.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241202173237-19429a94021a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241202173237-19429a94021a // indirect
-	google.golang.org/grpc v1.68.1
+	google.golang.org/grpc v1.69.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
