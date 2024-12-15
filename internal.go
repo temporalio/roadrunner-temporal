@@ -24,6 +24,9 @@ const (
 
 func (p *Plugin) initPool() error {
 	var err error
+	if p.config.DisableActivityWorkers {
+		p.config.Activities.NumWorkers = 0
+	}
 	ap, err := p.server.NewPool(context.Background(), p.config.Activities, map[string]string{RrMode: pluginName, RrCodec: RrCodecVal}, p.log)
 	if err != nil {
 		return err
@@ -33,7 +36,7 @@ func (p *Plugin) initPool() error {
 	codec := proto.NewCodec(p.log, dc)
 
 	// LA + A definitions
-	actDef := aggregatedpool.NewActivityDefinition(codec, ap, p.log)
+	actDef := aggregatedpool.NewActivityDefinition(codec, ap, p.log, p.config.DisableActivityWorkers)
 	laDef := aggregatedpool.NewLocalActivityFn(codec, ap, p.log)
 	// ------------------
 

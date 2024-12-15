@@ -86,6 +86,10 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 		}
 
 		for j := 0; j < len(wi[i].Activities); j++ {
+			if actDef.disableActivityWorkers {
+				log.Debug("activity workers disabled", zap.String(tq, wi[i].TaskQueue))
+				continue
+			}
 			wrk.RegisterActivityWithOptions(actDef.execute, tActivity.RegisterOptions{
 				Name:                          wi[i].Activities[j].Name,
 				DisableAlreadyRegisteredCheck: false,
