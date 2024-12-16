@@ -85,11 +85,12 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 			log.Debug("workflow registered", zap.String(tq, wi[i].TaskQueue), zap.Any("workflow name", wi[i].Workflows[j].Name))
 		}
 
+		if actDef.disableActivityWorkers {
+			log.Debug("activity workers disabled", zap.String(tq, wi[i].TaskQueue))
+			goto RegisterWorkflows
+		}
+
 		for j := 0; j < len(wi[i].Activities); j++ {
-			if actDef.disableActivityWorkers {
-				log.Debug("activity workers disabled", zap.String(tq, wi[i].TaskQueue))
-				continue
-			}
 			wrk.RegisterActivityWithOptions(actDef.execute, tActivity.RegisterOptions{
 				Name:                          wi[i].Activities[j].Name,
 				DisableAlreadyRegisteredCheck: false,
@@ -97,6 +98,16 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 			})
 
 			log.Debug("activity registered", zap.String(tq, wi[i].TaskQueue), zap.Any("workflow name", wi[i].Activities[j].Name))
+		}
+
+	RegisterWorkflows:
+		for j := 0; j < len(wi[i].Workflows); j++ {
+			wrk.RegisterWorkflowWithOptions(wDef, workflow.RegisterOptions{
+				Name:                          wi[i].Workflows[j].Name,
+				DisableAlreadyRegisteredCheck: false,
+			})
+
+			log.Debug("workflow registered", zap.String(tq, wi[i].TaskQueue), zap.Any("workflow name", wi[i].Workflows[j].Name))
 		}
 
 		workers = append(workers, wrk)
