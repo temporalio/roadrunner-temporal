@@ -5,13 +5,13 @@ go 1.23
 toolchain go1.23.2
 
 require (
-	github.com/goccy/go-json v0.10.3
+	github.com/goccy/go-json v0.10.4
 	github.com/google/uuid v1.6.0
 	github.com/roadrunner-server/api/v4 v4.16.0
 	github.com/roadrunner-server/endure/v2 v2.6.1
 	github.com/roadrunner-server/errors v1.4.1
 	github.com/roadrunner-server/events v1.0.1
-	github.com/roadrunner-server/pool v1.1.1
+	github.com/roadrunner-server/pool v1.1.2
 	github.com/stretchr/testify v1.10.0
 	github.com/uber-go/tally/v4 v4.1.17-0.20240412215630-22fe011f5ff0
 	go.temporal.io/api v1.43.0
