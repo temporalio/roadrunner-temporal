@@ -30,10 +30,11 @@ type Activity struct {
 	seqID   uint64
 	running sync.Map
 
-	pldPool *sync.Pool
+	pldPool                *sync.Pool
+	disableActivityWorkers bool
 }
 
-func NewActivityDefinition(ac common.Codec, p common.Pool, log *zap.Logger) *Activity {
+func NewActivityDefinition(ac common.Codec, p common.Pool, log *zap.Logger, disableActivityWorkers bool) *Activity {
 	return &Activity{
 		log:   log,
 		codec: ac,
@@ -43,6 +44,7 @@ func NewActivityDefinition(ac common.Codec, p common.Pool, log *zap.Logger) *Act
 				return new(payload.Payload)
 			},
 		},
+		disableActivityWorkers: disableActivityWorkers,
 	}
 }
 

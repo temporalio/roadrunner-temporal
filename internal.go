@@ -16,6 +16,8 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+
+	staticPool "github.com/roadrunner-server/pool/pool/static_pool"
 )
 
 const (
@@ -24,7 +26,13 @@ const (
 
 func (p *Plugin) initPool() error {
 	var err error
-	ap, err := p.server.NewPool(context.Background(), p.config.Activities, map[string]string{RrMode: pluginName, RrCodec: RrCodecVal}, p.log)
+	var options []staticPool.Options
+
+	if p.config.DisableActivityWorkers {
+		options = append(options, staticPool.WithNumWorkers(0))
+	}
+
+	ap, err := p.server.NewPoolWithOptions(context.Background(), p.config.Activities, map[string]string{RrMode: pluginName, RrCodec: RrCodecVal}, p.log, options...)
 	if err != nil {
 		return err
 	}
@@ -33,7 +41,7 @@ func (p *Plugin) initPool() error {
 	codec := proto.NewCodec(p.log, dc)
 
 	// LA + A definitions
-	actDef := aggregatedpool.NewActivityDefinition(codec, ap, p.log)
+	actDef := aggregatedpool.NewActivityDefinition(codec, ap, p.log, p.config.DisableActivityWorkers)
 	laDef := aggregatedpool.NewLocalActivityFn(codec, ap, p.log)
 	// ------------------
 

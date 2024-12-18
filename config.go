@@ -11,9 +11,10 @@ import (
 
 // Config of the temporal client and dependent services.
 type Config struct {
-	Metrics    *Metrics     `mapstructure:"metrics"`
-	Activities *pool.Config `mapstructure:"activities"`
-	TLS        *TLS         `mapstructure:"tls, omitempty"`
+	Metrics                *Metrics     `mapstructure:"metrics"`
+	Activities             *pool.Config `mapstructure:"activities"`
+	TLS                    *TLS         `mapstructure:"tls, omitempty"`
+	DisableActivityWorkers bool         `mapstructure:"disable_activity_workers"`
 
 	Address   string `mapstructure:"address"`
 	Namespace string `mapstructure:"namespace"`
