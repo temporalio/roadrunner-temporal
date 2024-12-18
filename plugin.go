@@ -14,7 +14,6 @@ import (
 	"github.com/roadrunner-server/endure/v2/dep"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/events"
-	"github.com/roadrunner-server/pool/pool/static_pool"
 	"github.com/roadrunner-server/pool/state/process"
 	"github.com/temporalio/roadrunner-temporal/v5/aggregatedpool"
 	"github.com/temporalio/roadrunner-temporal/v5/common"
@@ -23,6 +22,8 @@ import (
 	tclient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 	"go.uber.org/zap"
+
+	"github.com/roadrunner-server/pool/pool/static_pool"
 )
 
 const (

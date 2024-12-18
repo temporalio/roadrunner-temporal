@@ -2,13 +2,14 @@ package tests
 
 import (
 	"context"
-	goridgeRpc "github.com/roadrunner-server/goridge/v3/pkg/rpc"
-	"github.com/roadrunner-server/pool/state/process"
 	"net"
 	"net/rpc"
 	"sync"
 	"testing"
 	"time"
+
+	goridgeRpc "github.com/roadrunner-server/goridge/v3/pkg/rpc"
+	"github.com/roadrunner-server/pool/state/process"
 
 	"tests/helpers"
 

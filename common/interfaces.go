@@ -6,12 +6,13 @@ import (
 
 	"github.com/roadrunner-server/pool/payload"
 	"github.com/roadrunner-server/pool/pool"
-	staticPool "github.com/roadrunner-server/pool/pool/static_pool"
 	"github.com/roadrunner-server/pool/state/process"
 	"github.com/roadrunner-server/pool/worker"
 	"github.com/temporalio/roadrunner-temporal/v5/internal"
 	"go.temporal.io/sdk/interceptor"
 	"go.uber.org/zap"
+
+	staticPool "github.com/roadrunner-server/pool/pool/static_pool"
 )
 
 type Interceptor interface {
