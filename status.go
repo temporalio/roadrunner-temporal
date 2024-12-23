@@ -12,6 +12,12 @@ func (p *Plugin) Status() (*status.Status, error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
+	if p.config.DisableActivityWorkers && p.wfP.Workers()[0].State().IsActive() {
+		return &status.Status{
+			Code: http.StatusOK,
+		}, nil
+	}
+
 	workers := p.actP.Workers()
 
 	for i := 0; i < len(workers); i++ {
@@ -31,6 +37,12 @@ func (p *Plugin) Status() (*status.Status, error) {
 func (p *Plugin) Ready() (*status.Status, error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
+
+	if p.config.DisableActivityWorkers && p.wfP.Workers()[0].State().Compare(fsm.StateReady) {
+		return &status.Status{
+			Code: http.StatusOK,
+		}, nil
+	}
 
 	workers := p.actP.Workers()
 
