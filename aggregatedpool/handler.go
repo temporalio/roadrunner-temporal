@@ -312,6 +312,10 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		for k, v := range command.SearchAttributes {
 			switch v.Type {
 			case internal.BoolType:
+				if v.Operation == internal.TypedSearchAttributeOperationUnset {
+					sau = append(sau, temporal.NewSearchAttributeKeyBool(k).ValueUnset())
+					continue
+				}
 				if v.Value == nil {
 					wp.log.Warn("field value is not set", zap.String("key", k))
 					continue
@@ -324,6 +328,11 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 				}
 
 			case internal.FloatType:
+				if v.Operation == internal.TypedSearchAttributeOperationUnset {
+					sau = append(sau, temporal.NewSearchAttributeKeyFloat64(k).ValueUnset())
+					continue
+				}
+
 				if v.Value == nil {
 					wp.log.Warn("field value is not set", zap.String("key", k))
 					continue
@@ -336,6 +345,11 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 				}
 
 			case internal.IntType:
+				if v.Operation == internal.TypedSearchAttributeOperationUnset {
+					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueUnset())
+					continue
+				}
+
 				if v.Value == nil {
 					wp.log.Warn("field value is not set", zap.String("key", k))
 					continue
@@ -347,6 +361,11 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 					wp.log.Warn("field value is not an int type", zap.String("key", k), zap.Any("value", v.Value))
 				}
 			case internal.KeywordType:
+				if v.Operation == internal.TypedSearchAttributeOperationUnset {
+					sau = append(sau, temporal.NewSearchAttributeKeyKeyword(k).ValueUnset())
+					continue
+				}
+
 				if v.Value == nil {
 					wp.log.Warn("field value is not set", zap.String("key", k))
 					continue
@@ -358,6 +377,11 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 					wp.log.Warn("field value is not a string type", zap.String("key", k), zap.Any("value", v.Value))
 				}
 			case internal.KeywordListType:
+				if v.Operation == internal.TypedSearchAttributeOperationUnset {
+					sau = append(sau, temporal.NewSearchAttributeKeyKeywordList(k).ValueUnset())
+					continue
+				}
+
 				if v.Value == nil {
 					wp.log.Warn("field value is not set", zap.String("key", k))
 					continue
@@ -369,6 +393,11 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 					wp.log.Warn("field value is not a []string (strings array) type", zap.String("key", k), zap.Any("value", v.Value))
 				}
 			case internal.StringType:
+				if v.Operation == internal.TypedSearchAttributeOperationUnset {
+					sau = append(sau, temporal.NewSearchAttributeKeyString(k).ValueUnset())
+					continue
+				}
+
 				if v.Value == nil {
 					wp.log.Warn("field value is not set", zap.String("key", k))
 					continue
@@ -380,6 +409,11 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 					wp.log.Warn("field value is not a string type", zap.String("key", k), zap.Any("value", v.Value))
 				}
 			case internal.DatetimeType:
+				if v.Operation == internal.TypedSearchAttributeOperationUnset {
+					sau = append(sau, temporal.NewSearchAttributeKeyTime(k).ValueUnset())
+					continue
+				}
+
 				if v.Value == nil {
 					wp.log.Warn("field value is not set", zap.String("key", k))
 					continue

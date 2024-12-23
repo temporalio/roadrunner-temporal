@@ -63,6 +63,13 @@ const (
 	DatetimeType    TypedSearchAttributeType = "datetime"
 )
 
+type TypedSearchAttributeOperation string
+
+const (
+	TypedSearchAttributeOperationSet   TypedSearchAttributeOperation = "set"
+	TypedSearchAttributeOperationUnset TypedSearchAttributeOperation = "unset"
+)
+
 // Context provides worker information about currently. Context can be empty for server-level commands.
 type Context struct {
 	// TaskQueue associates the message batch with the specific task queue in an underlying worker.
@@ -290,8 +297,9 @@ type UpsertWorkflowSearchAttributes struct {
 }
 
 type TypedSearchAttribute struct {
-	Type  TypedSearchAttributeType `json:"type"`
-	Value any                      `json:"value"`
+	Type      TypedSearchAttributeType      `json:"type"`
+	Operation TypedSearchAttributeOperation `json:"operation,omitempty"`
+	Value     any                           `json:"value"`
 }
 
 // UpsertWorkflowTypedSearchAttributes allows to upsert search attributes
