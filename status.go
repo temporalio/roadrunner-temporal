@@ -3,14 +3,21 @@ package rrtemporal
 import (
 	"net/http"
 
-	"github.com/roadrunner-server/api/v4/plugins/v1/status"
 	"github.com/roadrunner-server/pool/fsm"
+
+	"github.com/roadrunner-server/api/v4/plugins/v1/status"
 )
 
 // Status return status of the particular plugin
 func (p *Plugin) Status() (*status.Status, error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
+
+	if p.config.DisableActivityWorkers && len(p.wfP.Workers()) > 0 && p.wfP.Workers()[0].State().IsActive() {
+		return &status.Status{
+			Code: http.StatusOK,
+		}, nil
+	}
 
 	workers := p.actP.Workers()
 
@@ -31,6 +38,12 @@ func (p *Plugin) Status() (*status.Status, error) {
 func (p *Plugin) Ready() (*status.Status, error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
+
+	if p.config.DisableActivityWorkers && len(p.wfP.Workers()) > 0 && p.wfP.Workers()[0].State().Compare(fsm.StateReady) {
+		return &status.Status{
+			Code: http.StatusOK,
+		}, nil
+	}
 
 	workers := p.actP.Workers()
 

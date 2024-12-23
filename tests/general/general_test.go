@@ -2,11 +2,15 @@ package tests
 
 import (
 	"context"
+	"io"
 	"net"
+	"net/http"
 	"net/rpc"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	goridgeRpc "github.com/roadrunner-server/goridge/v3/pkg/rpc"
 	"github.com/roadrunner-server/pool/state/process"
@@ -63,6 +67,35 @@ func Test_DisabledActivityWorkers(t *testing.T) {
 	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-disable-activity-worker.yaml")
 
 	assertWorkers(t, 1)
+
+	time.Sleep(time.Second)
+
+	clientStatus := &http.Client{
+		Timeout: time.Second * 10,
+	}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://127.0.0.1:35544/health?plugin=temporal", nil)
+	require.NoError(t, err)
+
+	resp, err := clientStatus.Do(req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	body, _ := io.ReadAll(resp.Body)
+	assert.Equal(t, "[{\"plugin_name\":\"temporal\",\"error_message\":\"\",\"status_code\":200}]", string(body))
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	_ = resp.Body.Close()
+
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodGet, "http://127.0.0.1:35544/ready?plugin=temporal", nil)
+	require.NoError(t, err)
+
+	resp, err = clientStatus.Do(req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	body, _ = io.ReadAll(resp.Body)
+	assert.Equal(t, "[{\"plugin_name\":\"temporal\",\"error_message\":\"\",\"status_code\":200}]", string(body))
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	_ = resp.Body.Close()
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),

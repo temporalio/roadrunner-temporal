@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/roadrunner-server/status/v5"
+
 	configImpl "github.com/roadrunner-server/config/v5"
 	"github.com/roadrunner-server/endure/v2"
 	"github.com/roadrunner-server/informer/v5"
@@ -111,6 +113,7 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, confi
 		&informer.Plugin{},
 		&server.Plugin{},
 		&rpc.Plugin{},
+		&status.Plugin{},
 	)
 
 	assert.NoError(t, err)
