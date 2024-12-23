@@ -2,6 +2,7 @@ package aggregatedpool
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -300,6 +301,104 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 	case *internal.UpsertWorkflowSearchAttributes:
 		wp.log.Debug("upsert search attributes request", zap.Uint64("ID", msg.ID))
 		err := wp.env.UpsertSearchAttributes(command.SearchAttributes)
+		if err != nil {
+			return errors.E(op, err)
+		}
+
+	case *internal.UpsertWorkflowTypedSearchAttributes:
+		wp.log.Debug("upsert typed search attributes request", zap.Uint64("ID", msg.ID))
+		var sau []temporal.SearchAttributeUpdate
+
+		for k, v := range command.SearchAttributes {
+			switch v.Type {
+			case internal.BoolType:
+				if v.Value == nil {
+					wp.log.Warn("field value is not set", zap.String("key", k))
+					continue
+				}
+
+				if tt, ok := v.Value.(bool); ok {
+					sau = append(sau, temporal.NewSearchAttributeKeyBool(k).ValueSet(tt))
+				} else {
+					wp.log.Warn("field value is not a bool type", zap.String("key", k), zap.Any("value", v.Value))
+				}
+
+			case internal.FloatType:
+				if v.Value == nil {
+					wp.log.Warn("field value is not set", zap.String("key", k))
+					continue
+				}
+
+				if tt, ok := v.Value.(float64); ok {
+					sau = append(sau, temporal.NewSearchAttributeKeyFloat64(k).ValueSet(tt))
+				} else {
+					wp.log.Warn("field value is not a float64 type", zap.String("key", k), zap.Any("value", v.Value))
+				}
+
+			case internal.IntType:
+				if v.Value == nil {
+					wp.log.Warn("field value is not set", zap.String("key", k))
+					continue
+				}
+
+				if tt, ok := v.Value.(int); ok {
+					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueSet(int64(tt)))
+				} else {
+					wp.log.Warn("field value is not an int type", zap.String("key", k), zap.Any("value", v.Value))
+				}
+			case internal.KeywordType:
+				if v.Value == nil {
+					wp.log.Warn("field value is not set", zap.String("key", k))
+					continue
+				}
+
+				if tt, ok := v.Value.(string); ok {
+					sau = append(sau, temporal.NewSearchAttributeKeyKeyword(k).ValueSet(tt))
+				} else {
+					wp.log.Warn("field value is not a string type", zap.String("key", k), zap.Any("value", v.Value))
+				}
+			case internal.KeywordListType:
+				if v.Value == nil {
+					wp.log.Warn("field value is not set", zap.String("key", k))
+					continue
+				}
+
+				if tt, ok := v.Value.([]string); ok {
+					sau = append(sau, temporal.NewSearchAttributeKeyKeywordList(k).ValueSet(tt))
+				} else {
+					wp.log.Warn("field value is not a []string (strings array) type", zap.String("key", k), zap.Any("value", v.Value))
+				}
+			case internal.StringType:
+				if v.Value == nil {
+					wp.log.Warn("field value is not set", zap.String("key", k))
+					continue
+				}
+
+				if tt, ok := v.Value.(string); ok {
+					sau = append(sau, temporal.NewSearchAttributeKeyString(k).ValueSet(tt))
+				} else {
+					wp.log.Warn("field value is not a string type", zap.String("key", k), zap.Any("value", v.Value))
+				}
+			case internal.DatetimeType:
+				if v.Value == nil {
+					wp.log.Warn("field value is not set", zap.String("key", k))
+					continue
+				}
+
+				if tt, ok := v.Value.(string); ok {
+					tm, err := time.Parse(time.RFC3339, tt)
+					if err != nil {
+						return errors.E(op, fmt.Errorf("failed to parse time into RFC3339: %w", err))
+					}
+
+					sau = append(sau, temporal.NewSearchAttributeKeyTime(k).ValueSet(tm))
+				} else {
+					wp.log.Warn("bool field value is not a bool type", zap.String("key", k), zap.Any("value", v.Value))
+				}
+			}
+		}
+
+		err := wp.env.UpsertTypedSearchAttributes(temporal.NewSearchAttributes(sau...))
 		if err != nil {
 			return errors.E(op, err)
 		}
