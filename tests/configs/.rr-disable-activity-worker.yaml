@@ -16,4 +16,4 @@ logs:
   level: debug
 
 status:
-  address: "127.0.0.1:35544"
+  address: "127.0.0.1:35545"
