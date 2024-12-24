@@ -1,8 +1,7 @@
 module github.com/temporalio/roadrunner-temporal/v5
 
 go 1.23
-
-toolchain go1.23.2
+toolchain go1.23.4
 
 require (
 	github.com/goccy/go-json v0.10.4
@@ -17,7 +16,7 @@ require (
 	go.temporal.io/api v1.43.0
 	go.temporal.io/sdk v1.31.0
 	go.temporal.io/sdk/contrib/tally v0.2.0
-	go.temporal.io/server v1.25.2
+	go.temporal.io/server v1.26.2
 	go.uber.org/zap v1.27.0
 	google.golang.org/protobuf v1.36.0
 )
