@@ -432,6 +432,11 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 			}
 		}
 
+		if len(sau) == 0 {
+			wp.log.Warn("search attributes called, but no attributes were set")
+			return nil
+		}
+
 		err := wp.env.UpsertTypedSearchAttributes(temporal.NewSearchAttributes(sau...))
 		if err != nil {
 			return errors.E(op, err)
