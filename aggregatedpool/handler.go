@@ -306,7 +306,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		}
 
 	case *internal.UpsertWorkflowTypedSearchAttributes:
-		wp.log.Debug("upsert typed search attributes request", zap.Uint64("ID", msg.ID))
+		wp.log.Debug("upsert typed search attributes request", zap.Uint64("ID", msg.ID), zap.Any("search_attributes", command.SearchAttributes))
 		var sau []temporal.SearchAttributeUpdate
 
 		for k, v := range command.SearchAttributes {
