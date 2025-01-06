@@ -1,24 +1,24 @@
 module tests
 
-go 1.23
+go 1.23.2
 
-toolchain go1.23.2
+toolchain go1.23.4
 
 require (
 	github.com/fatih/color v1.18.0
 	github.com/pborman/uuid v1.2.1
 	github.com/roadrunner-server/api/v4 v4.17.0
-	github.com/roadrunner-server/config/v5 v5.1.0
+	github.com/roadrunner-server/config/v5 v5.1.1
 	github.com/roadrunner-server/endure/v2 v2.6.1
 	github.com/roadrunner-server/goridge/v3 v3.8.3
-	github.com/roadrunner-server/informer/v5 v5.1.0
-	github.com/roadrunner-server/logger/v5 v5.1.0
-	github.com/roadrunner-server/otel/v5 v5.1.0
+	github.com/roadrunner-server/informer/v5 v5.1.1
+	github.com/roadrunner-server/logger/v5 v5.1.1
+	github.com/roadrunner-server/otel/v5 v5.1.1
 	github.com/roadrunner-server/pool v1.1.2
-	github.com/roadrunner-server/resetter/v5 v5.1.0
-	github.com/roadrunner-server/rpc/v5 v5.1.0
-	github.com/roadrunner-server/server/v5 v5.2.1
-	github.com/roadrunner-server/status/v5 v5.1.0
+	github.com/roadrunner-server/resetter/v5 v5.1.1
+	github.com/roadrunner-server/rpc/v5 v5.1.1
+	github.com/roadrunner-server/server/v5 v5.2.2
+	github.com/roadrunner-server/status/v5 v5.1.1
 	github.com/stretchr/testify v1.10.0
 	github.com/temporalio/roadrunner-temporal/v5 v5.3.1
 	go.temporal.io/api v1.43.0
@@ -47,7 +47,7 @@ require (
 	github.com/golang/mock v1.7.0-rc.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.24.0 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.25.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
@@ -99,22 +99,22 @@ require (
 	go.opentelemetry.io/otel/metric v1.33.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.33.0 // indirect
 	go.opentelemetry.io/otel/trace v1.33.0 // indirect
-	go.opentelemetry.io/proto/otlp v1.4.0 // indirect
+	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
 	go.temporal.io/sdk/contrib/opentelemetry v0.6.0 // indirect
 	go.temporal.io/sdk/contrib/tally v0.2.0 // indirect
-	go.temporal.io/server v1.25.2 // indirect
+	go.temporal.io/server v1.26.2 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67 // indirect
-	golang.org/x/net v0.33.0 // indirect
+	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 // indirect
+	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
-	golang.org/x/time v0.8.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20241219192143-6b3ec007d9bb // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20241219192143-6b3ec007d9bb // indirect
+	golang.org/x/time v0.9.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250106144421-5f5ef82da422 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250106144421-5f5ef82da422 // indirect
 	google.golang.org/grpc v1.69.2 // indirect
-	google.golang.org/protobuf v1.36.0 // indirect
+	google.golang.org/protobuf v1.36.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
