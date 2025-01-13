@@ -99,6 +99,7 @@ func (wp *Workflow) handleCancel() {
 
 // schedule the signal processing
 func (wp *Workflow) handleSignal(name string, input *commonpb.Payloads, header *commonpb.Header) error {
+	wp.log.Debug("signal request", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID), zap.String("name", name))
 	wp.mq.PushCommand(
 		internal.InvokeSignal{
 			RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
@@ -114,6 +115,9 @@ func (wp *Workflow) handleSignal(name string, input *commonpb.Payloads, header *
 // Handle query in blocking mode.
 func (wp *Workflow) handleQuery(queryType string, queryArgs *commonpb.Payloads, header *commonpb.Header) (*commonpb.Payloads, error) {
 	const op = errors.Op("workflow_process_handle_query")
+
+	wp.log.Debug("query request", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID), zap.String("name", queryType))
+
 	result, err := wp.runCommand(internal.InvokeQuery{
 		RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
 		Name:  queryType,
