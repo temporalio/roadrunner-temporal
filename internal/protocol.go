@@ -161,9 +161,10 @@ type InvokeLocalActivity struct {
 type StartWorkflow struct {
 	// Info to define workflow context.
 	Info *workflow.Info `json:"info"`
-
 	// LastCompletion contains offset of last completion results.
 	LastCompletion int `json:"lastCompletion,omitempty"`
+	// Typed search attributes
+	SearchAttributes map[string]*TypedSearchAttribute `json:"search_attributes"`
 }
 
 // InvokeSignal invokes signal with a set of arguments.

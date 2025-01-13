@@ -15,6 +15,7 @@ import (
 	"github.com/temporalio/roadrunner-temporal/v5/queue"
 	"github.com/temporalio/roadrunner-temporal/v5/registry"
 	commonpb "go.temporal.io/api/common/v1"
+	enumspb "go.temporal.io/api/enums/v1"
 	temporalClient "go.temporal.io/sdk/client"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.uber.org/zap"
@@ -131,23 +132,123 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 	env.RegisterQueryHandler(wp.handleQuery)
 	env.RegisterUpdateHandler(wp.handleUpdate)
 
-	var lastCompletion = bindings.GetLastCompletionResult(env)
-	var lastCompletionOffset = 0
+	// check if we have some TSA
+	tsa := env.TypedSearchAttributes()
+	// start workflow command
+	stwfcmd := internal.StartWorkflow{
+		Info: env.WorkflowInfo(),
+	}
 
+	// search attributes types are:
+	/*
+		INDEXED_VALUE_TYPE_TEXT         IndexedValueType = 1
+		INDEXED_VALUE_TYPE_KEYWORD      IndexedValueType = 2
+		INDEXED_VALUE_TYPE_INT          IndexedValueType = 3
+		INDEXED_VALUE_TYPE_DOUBLE       IndexedValueType = 4
+		INDEXED_VALUE_TYPE_BOOL         IndexedValueType = 5
+		INDEXED_VALUE_TYPE_DATETIME     IndexedValueType = 6
+		INDEXED_VALUE_TYPE_KEYWORD_LIST IndexedValueType = 7
+
+	*/
+	// only process if there're values, obviously
+	if tsa.Size() > 0 {
+		untuped := tsa.GetUntypedValues()
+		tsaParsed := make(map[string]*internal.TypedSearchAttribute, tsa.Size())
+		for k, v := range untuped {
+			vt := k.GetValueType()
+			switch vt {
+			// just for the linters, should be never reached
+			case enumspb.INDEXED_VALUE_TYPE_UNSPECIFIED:
+				continue
+			case enumspb.INDEXED_VALUE_TYPE_TEXT:
+				str, ok := v.(string)
+				if !ok {
+					wp.log.Warn("typed search attribute found, but it is not a string", zap.String("key", k.GetName()))
+					continue
+				}
+				tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
+					Type:  internal.StringType,
+					Value: str,
+				}
+			case enumspb.INDEXED_VALUE_TYPE_KEYWORD:
+				str, ok := v.(string)
+				if !ok {
+					wp.log.Warn("typed search attribute found, but it is not a string[keyword]", zap.String("key", k.GetName()))
+					continue
+				}
+				tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
+					Type:  internal.KeywordType,
+					Value: str,
+				}
+			case enumspb.INDEXED_VALUE_TYPE_INT:
+				str, ok := v.(int)
+				if !ok {
+					wp.log.Warn("typed search attribute found, but it is not an int", zap.String("key", k.GetName()))
+					continue
+				}
+				tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
+					Type:  internal.IntType,
+					Value: str,
+				}
+			case enumspb.INDEXED_VALUE_TYPE_DOUBLE:
+				str, ok := v.(float64)
+				if !ok {
+					wp.log.Warn("typed search attribute found, but it is not a float64", zap.String("key", k.GetName()))
+					continue
+				}
+				tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
+					Type:  internal.FloatType,
+					Value: str,
+				}
+			case enumspb.INDEXED_VALUE_TYPE_BOOL:
+				str, ok := v.(bool)
+				if !ok {
+					wp.log.Warn("typed search attribute found, but it is not a bool", zap.String("key", k.GetName()))
+					continue
+				}
+				tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
+					Type:  internal.BoolType,
+					Value: str,
+				}
+			case enumspb.INDEXED_VALUE_TYPE_DATETIME:
+				str, ok := v.(time.Time)
+				if !ok {
+					wp.log.Warn("typed search attribute found, but it is not a datetime", zap.String("key", k.GetName()))
+					continue
+				}
+				tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
+					Type:  internal.DatetimeType,
+					Value: str.Format(time.RFC3339),
+				}
+			case enumspb.INDEXED_VALUE_TYPE_KEYWORD_LIST:
+				str, ok := v.([]string)
+				if !ok {
+					wp.log.Warn("typed search attribute found, but it is not a []string", zap.String("key", k.GetName()))
+					continue
+				}
+				tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
+					Type:  internal.KeywordListType,
+					Value: str,
+				}
+			}
+		}
+
+		// set typed search attributes
+		stwfcmd.SearchAttributes = tsaParsed
+	}
+
+	var lastCompletion = bindings.GetLastCompletionResult(env)
 	if lastCompletion != nil && len(lastCompletion.Payloads) != 0 {
 		if input == nil {
 			input = &commonpb.Payloads{Payloads: []*commonpb.Payload{}}
 		}
 
 		input.Payloads = append(input.Payloads, lastCompletion.Payloads...)
-		lastCompletionOffset = len(lastCompletion.Payloads)
+		stwfcmd.LastCompletion = len(lastCompletion.Payloads)
 	}
 
 	wp.mq.PushCommand(
-		internal.StartWorkflow{
-			Info:           env.WorkflowInfo(),
-			LastCompletion: lastCompletionOffset,
-		},
+		stwfcmd,
 		input,
 		wp.header,
 	)
