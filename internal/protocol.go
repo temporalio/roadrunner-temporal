@@ -31,14 +31,15 @@ const (
 	executeChildWorkflowCommand      = "ExecuteChildWorkflow"
 	getChildWorkflowExecutionCommand = "GetChildWorkflowExecution"
 
-	newTimerCommand                       = "NewTimer"
-	sideEffectCommand                     = "SideEffect"
-	getVersionCommand                     = "GetVersion"
-	completeWorkflowCommand               = "CompleteWorkflow"
-	completeUpdateCommand                 = "UpdateCompleted"
-	validateUpdateCommand                 = "UpdateValidated"
-	continueAsNewCommand                  = "ContinueAsNew"
-	upsertWorkflowSearchAttributesCommand = "UpsertWorkflowSearchAttributes"
+	newTimerCommand                            = "NewTimer"
+	sideEffectCommand                          = "SideEffect"
+	getVersionCommand                          = "GetVersion"
+	completeWorkflowCommand                    = "CompleteWorkflow"
+	completeUpdateCommand                      = "UpdateCompleted"
+	validateUpdateCommand                      = "UpdateValidated"
+	continueAsNewCommand                       = "ContinueAsNew"
+	upsertWorkflowSearchAttributesCommand      = "UpsertWorkflowSearchAttributes"
+	upsertWorkflowTypedSearchAttributesCommand = "UpsertWorkflowTypedSearchAttributes"
 
 	signalExternalWorkflowCommand = "SignalExternalWorkflow"
 	cancelExternalWorkflowCommand = "CancelExternalWorkflow"
@@ -47,6 +48,26 @@ const (
 
 	cancelCommand = "Cancel"
 	panicCommand  = "Panic"
+)
+
+// TypedSearchAttributeTypes
+type TypedSearchAttributeType string
+
+const (
+	BoolType        TypedSearchAttributeType = "bool"
+	FloatType       TypedSearchAttributeType = "float64"
+	IntType         TypedSearchAttributeType = "int64"
+	KeywordType     TypedSearchAttributeType = "keyword"
+	KeywordListType TypedSearchAttributeType = "keyword_list"
+	StringType      TypedSearchAttributeType = "string"
+	DatetimeType    TypedSearchAttributeType = "datetime"
+)
+
+type TypedSearchAttributeOperation string
+
+const (
+	TypedSearchAttributeOperationSet   TypedSearchAttributeOperation = "set"
+	TypedSearchAttributeOperationUnset TypedSearchAttributeOperation = "unset"
 )
 
 // Context provides worker information about currently. Context can be empty for server-level commands.
@@ -275,6 +296,17 @@ type UpsertWorkflowSearchAttributes struct {
 	SearchAttributes map[string]any `json:"searchAttributes"`
 }
 
+type TypedSearchAttribute struct {
+	Type      TypedSearchAttributeType      `json:"type"`
+	Operation TypedSearchAttributeOperation `json:"operation,omitempty"`
+	Value     any                           `json:"value"`
+}
+
+// UpsertWorkflowTypedSearchAttributes allows to upsert search attributes
+type UpsertWorkflowTypedSearchAttributes struct {
+	SearchAttributes map[string]*TypedSearchAttribute `json:"search_attributes"`
+}
+
 // SignalExternalWorkflow sends signal to external workflow.
 type SignalExternalWorkflow struct {
 	Namespace         string `json:"namespace"`
@@ -438,6 +470,8 @@ func CommandName(cmd any) (string, error) {
 		return continueAsNewCommand, nil
 	case UpsertWorkflowSearchAttributes, *UpsertWorkflowSearchAttributes:
 		return upsertWorkflowSearchAttributesCommand, nil
+	case UpsertWorkflowTypedSearchAttributes, *UpsertWorkflowTypedSearchAttributes:
+		return upsertWorkflowTypedSearchAttributesCommand, nil
 	case SignalExternalWorkflow, *SignalExternalWorkflow:
 		return signalExternalWorkflowCommand, nil
 	case CancelExternalWorkflow, *CancelExternalWorkflow:
@@ -516,6 +550,9 @@ func InitCommand(name string) (any, error) {
 
 	case upsertWorkflowSearchAttributesCommand:
 		return &UpsertWorkflowSearchAttributes{}, nil
+
+	case upsertWorkflowTypedSearchAttributesCommand:
+		return &UpsertWorkflowTypedSearchAttributes{}, nil
 
 	case signalExternalWorkflowCommand:
 		return &SignalExternalWorkflow{}, nil
