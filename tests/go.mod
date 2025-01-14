@@ -7,7 +7,7 @@ toolchain go1.23.4
 require (
 	github.com/fatih/color v1.18.0
 	github.com/pborman/uuid v1.2.1
-	github.com/roadrunner-server/api/v4 v4.17.0
+	github.com/roadrunner-server/api/v4 v4.18.1
 	github.com/roadrunner-server/config/v5 v5.1.1
 	github.com/roadrunner-server/endure/v2 v2.6.1
 	github.com/roadrunner-server/goridge/v3 v3.8.3
@@ -22,7 +22,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/temporalio/roadrunner-temporal/v5 v5.3.1
 	go.temporal.io/api v1.43.1
-	go.temporal.io/sdk v1.31.0
+	go.temporal.io/sdk v1.32.0
 	go.uber.org/zap v1.27.0
 )
 
