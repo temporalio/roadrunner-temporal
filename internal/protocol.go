@@ -164,7 +164,7 @@ type StartWorkflow struct {
 	// LastCompletion contains offset of last completion results.
 	LastCompletion int `json:"lastCompletion,omitempty"`
 	// Typed search attributes
-	SearchAttributes map[string]*TypedSearchAttribute `json:"search_attributes"`
+	SearchAttributes map[string]*TypedSearchAttribute `json:"search_attributes,omitempty"`
 }
 
 // InvokeSignal invokes signal with a set of arguments.
