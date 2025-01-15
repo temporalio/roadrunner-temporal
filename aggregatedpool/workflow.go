@@ -3,6 +3,7 @@ package aggregatedpool
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -181,14 +182,30 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 					Value: str,
 				}
 			case enumspb.INDEXED_VALUE_TYPE_INT:
-				str, ok := v.(int)
-				if !ok {
+				switch tt := v.(type) {
+				case int:
+					tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
+						Type:  internal.IntType,
+						Value: tt,
+					}
+				case int64:
+					tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
+						Type:  internal.IntType,
+						Value: tt,
+					}
+				case string:
+					res, err := strconv.Atoi(tt)
+					if err != nil {
+						wp.log.Warn("typed search attribute found, but it is not an int", zap.Error(err), zap.String("key", k.GetName()))
+						continue
+					}
+					tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
+						Type:  internal.IntType,
+						Value: res,
+					}
+				default:
 					wp.log.Warn("typed search attribute found, but it is not an int", zap.String("key", k.GetName()))
 					continue
-				}
-				tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
-					Type:  internal.IntType,
-					Value: str,
 				}
 			case enumspb.INDEXED_VALUE_TYPE_DOUBLE:
 				str, ok := v.(float64)
