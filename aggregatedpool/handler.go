@@ -360,10 +360,25 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 				}
 
 				switch ti := v.Value.(type) {
+				case float64:
+					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueSet(int64(ti)))
 				case int:
 					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueSet(int64(ti)))
 				case int64:
 					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueSet(ti))
+				case int32:
+					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueSet(int64(ti)))
+				case int16:
+					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueSet(int64(ti)))
+				case int8:
+					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueSet(int64(ti)))
+				case string:
+					i, err := strconv.ParseInt(ti, 10, 64)
+					if err != nil {
+						wp.log.Warn("failed to parse int", zap.Error(err))
+						continue
+					}
+					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueSet(i))
 				default:
 					wp.log.Warn("field value is not an int type", zap.String("key", k), zap.Any("value", v.Value))
 				}
@@ -395,11 +410,21 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 					continue
 				}
 
-				if tt, ok := v.Value.([]string); ok {
+				switch tt := v.Value.(type) {
+				case []string:
 					sau = append(sau, temporal.NewSearchAttributeKeyKeywordList(k).ValueSet(tt))
-				} else {
+				case []any:
+					var res []string
+					for _, v := range tt {
+						if s, ok := v.(string); ok {
+							res = append(res, s)
+						}
+					}
+					sau = append(sau, temporal.NewSearchAttributeKeyKeywordList(k).ValueSet(res))
+				default:
 					wp.log.Warn("field value is not a []string (strings array) type", zap.String("key", k), zap.Any("value", v.Value))
 				}
+
 			case internal.StringType:
 				if v.Operation == internal.TypedSearchAttributeOperationUnset {
 					sau = append(sau, temporal.NewSearchAttributeKeyString(k).ValueUnset())
