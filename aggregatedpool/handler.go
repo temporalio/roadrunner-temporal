@@ -359,11 +359,15 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 					continue
 				}
 
-				if tt, ok := v.Value.(int); ok {
-					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueSet(int64(tt)))
-				} else {
+				switch ti := v.Value.(type) {
+				case int:
+					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueSet(int64(ti)))
+				case int64:
+					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueSet(ti))
+				default:
 					wp.log.Warn("field value is not an int type", zap.String("key", k), zap.Any("value", v.Value))
 				}
+
 			case internal.KeywordType:
 				if v.Operation == internal.TypedSearchAttributeOperationUnset {
 					sau = append(sau, temporal.NewSearchAttributeKeyKeyword(k).ValueUnset())
