@@ -7,7 +7,7 @@ toolchain go1.23.4
 require (
 	github.com/goccy/go-json v0.10.4
 	github.com/google/uuid v1.6.0
-	github.com/roadrunner-server/api/v4 v4.17.0
+	github.com/roadrunner-server/api/v4 v4.18.1
 	github.com/roadrunner-server/endure/v2 v2.6.1
 	github.com/roadrunner-server/errors v1.4.1
 	github.com/roadrunner-server/events v1.0.1
@@ -15,11 +15,11 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/uber-go/tally/v4 v4.1.17-0.20240412215630-22fe011f5ff0
 	go.temporal.io/api v1.43.1
-	go.temporal.io/sdk v1.31.0
+	go.temporal.io/sdk v1.32.1
 	go.temporal.io/sdk/contrib/tally v0.2.0
 	go.temporal.io/server v1.26.2
 	go.uber.org/zap v1.27.0
-	google.golang.org/protobuf v1.36.2
+	google.golang.org/protobuf v1.36.3
 )
 
 require (
@@ -42,7 +42,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.25.1 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/nexus-rpc/sdk-go v0.1.0 // indirect
+	github.com/nexus-rpc/sdk-go v0.1.1 // indirect
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
@@ -67,8 +67,8 @@ require (
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250106144421-5f5ef82da422 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250106144421-5f5ef82da422 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
 	google.golang.org/grpc v1.69.4
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
