@@ -40,6 +40,7 @@ const (
 	continueAsNewCommand                       = "ContinueAsNew"
 	upsertWorkflowSearchAttributesCommand      = "UpsertWorkflowSearchAttributes"
 	upsertWorkflowTypedSearchAttributesCommand = "UpsertWorkflowTypedSearchAttributes"
+	upsertMemo                                 = "UpsertMemo"
 
 	signalExternalWorkflowCommand = "SignalExternalWorkflow"
 	cancelExternalWorkflowCommand = "CancelExternalWorkflow"
@@ -50,7 +51,6 @@ const (
 	panicCommand  = "Panic"
 )
 
-// TypedSearchAttributeTypes
 type TypedSearchAttributeType string
 
 const (
@@ -176,7 +176,7 @@ type InvokeSignal struct {
 	Name string `json:"name"`
 }
 
-// InvokeQuery invokes query with a set of arguments.
+// InvokeQuery invokes a query with a set of arguments.
 type InvokeQuery struct {
 	// RunID workflow run id.
 	RunID string `json:"runId"`
@@ -195,13 +195,13 @@ type InvokeUpdate struct {
 	Type string `json:"type"`
 }
 
-// CancelWorkflow asks worker to gracefully stop workflow, if possible (signal).
+// CancelWorkflow asks the worker to gracefully stop workflow, if possible (signal).
 type CancelWorkflow struct {
 	// RunID workflow run id.
 	RunID string `json:"runId"`
 }
 
-// DestroyWorkflow asks worker to offload workflow from memory.
+// DestroyWorkflow asks a worker to offload workflow from memory.
 type DestroyWorkflow struct {
 	// RunID workflow run id.
 	RunID string `json:"runId"`
@@ -221,7 +221,7 @@ type ExecuteActivity struct {
 	Options bindings.ExecuteActivityOptions `json:"options,omitempty"`
 }
 
-// ExecuteLocalActivityOptions Since we use proto everywhere we need to convert Activity options (proto) to non-proto LA options
+// ExecuteLocalActivityOptions Since we use proto everywhere, we need to convert Activity options (proto) to non-proto LA options
 type ExecuteLocalActivityOptions struct {
 	ScheduleToCloseTimeout time.Duration
 	StartToCloseTimeout    time.Duration
@@ -250,7 +250,13 @@ type GetChildWorkflowExecution struct {
 	ID uint64 `json:"id"`
 }
 
-// NewTimer starts new timer.
+// UpsertMemo updates workflow memo.
+type UpsertMemo struct {
+	// Memos to update.
+	Memo map[string]any `json:"memo"`
+}
+
+// NewTimer starts a new timer.
 type NewTimer struct {
 	// Milliseconds defines timer duration.
 	Milliseconds int `json:"ms"`
@@ -266,10 +272,10 @@ type GetVersion struct {
 	MaxSupported int    `json:"maxSupported"`
 }
 
-// CompleteWorkflow sent by worker to complete workflow. Might include additional error as part of the payload.
+// CompleteWorkflow sent by the worker to complete workflow. Might include additional error as part of the payload.
 type CompleteWorkflow struct{}
 
-// CompleteUpdate sent by worker to complete update
+// UpdateCompleted sent by worker to complete update
 type UpdateCompleted struct {
 	ID string `json:"id"`
 }
@@ -284,7 +290,7 @@ type ContinueAsNew struct {
 	// Result defines workflow execution result.
 	Name string `json:"name"`
 
-	// Options for continued as new workflow.
+	// Options for continued as a new workflow.
 	Options struct {
 		TaskQueueName       string
 		WorkflowRunTimeout  time.Duration
@@ -292,7 +298,7 @@ type ContinueAsNew struct {
 	} `json:"options"`
 }
 
-// UpsertWorkflowSearchAttributes allows to upsert search attributes
+// UpsertWorkflowSearchAttributes allows upsert search attributes
 type UpsertWorkflowSearchAttributes struct {
 	SearchAttributes map[string]any `json:"searchAttributes"`
 }
@@ -303,12 +309,12 @@ type TypedSearchAttribute struct {
 	Value     any                           `json:"value"`
 }
 
-// UpsertWorkflowTypedSearchAttributes allows to upsert search attributes
+// UpsertWorkflowTypedSearchAttributes allows upsert search attributes
 type UpsertWorkflowTypedSearchAttributes struct {
 	SearchAttributes map[string]*TypedSearchAttribute `json:"search_attributes"`
 }
 
-// SignalExternalWorkflow sends signal to external workflow.
+// SignalExternalWorkflow sends a signal to external workflow.
 type SignalExternalWorkflow struct {
 	Namespace         string `json:"namespace"`
 	WorkflowID        string `json:"workflowID"`
@@ -317,7 +323,7 @@ type SignalExternalWorkflow struct {
 	ChildWorkflowOnly bool   `json:"childWorkflowOnly"`
 }
 
-// CancelExternalWorkflow canceller external workflow.
+// CancelExternalWorkflow canceler external workflow.
 type CancelExternalWorkflow struct {
 	Namespace  string `json:"namespace"`
 	WorkflowID string `json:"workflowID"`
@@ -481,6 +487,8 @@ func CommandName(cmd any) (string, error) {
 		return cancelCommand, nil
 	case Panic, *Panic:
 		return panicCommand, nil
+	case UpsertMemo, *UpsertMemo:
+		return upsertMemo, nil
 	case InvokeUpdate, *InvokeUpdate:
 		return invokeUpdateCommand, nil
 	default:

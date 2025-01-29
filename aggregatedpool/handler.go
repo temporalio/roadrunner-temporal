@@ -513,6 +513,13 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		// do not wrap error to pass it directly to Temporal
 		return temporal.GetDefaultFailureConverter().FailureToError(msg.Failure)
 
+	case *internal.UpsertMemo:
+		wp.log.Debug("upsert memo request", zap.Uint64("ID", msg.ID), zap.Any("memos", command.Memo))
+		err := wp.env.UpsertMemo(command.Memo)
+		if err != nil {
+			return errors.E(op, err)
+		}
+
 	default:
 		return errors.E(op, errors.Str("undefined command"))
 	}
