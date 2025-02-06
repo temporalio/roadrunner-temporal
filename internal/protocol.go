@@ -563,6 +563,9 @@ func InitCommand(name string) (any, error) {
 	case upsertWorkflowTypedSearchAttributesCommand:
 		return &UpsertWorkflowTypedSearchAttributes{}, nil
 
+	case upsertMemo:
+		return &UpsertMemo{}, nil
+
 	case signalExternalWorkflowCommand:
 		return &SignalExternalWorkflow{}, nil
 
