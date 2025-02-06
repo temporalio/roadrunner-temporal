@@ -515,6 +515,10 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 
 	case *internal.UpsertMemo:
 		wp.log.Debug("upsert memo request", zap.Uint64("ID", msg.ID), zap.Any("memos", command.Memo))
+		if len(command.Memo) == 0 {
+			return nil
+		}
+
 		err := wp.env.UpsertMemo(command.Memo)
 		if err != nil {
 			return errors.E(op, err)
