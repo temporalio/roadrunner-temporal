@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        php: [ "8.3" ]
+        php: [ "8.4" ]
         go: [ stable ]
         os: [ "ubuntu-latest" ]
     steps:
