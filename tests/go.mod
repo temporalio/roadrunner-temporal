@@ -21,7 +21,7 @@ require (
 	github.com/roadrunner-server/status/v5 v5.1.2
 	github.com/stretchr/testify v1.10.0
 	github.com/temporalio/roadrunner-temporal/v5 v5.3.1
-	go.temporal.io/api v1.44.0
+	go.temporal.io/api v1.44.1
 	go.temporal.io/sdk v1.32.1
 	go.uber.org/zap v1.27.0
 )
