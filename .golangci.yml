@@ -4,16 +4,9 @@ run:
   timeout: 1m
   allow-parallel-runners: true
 
-output:
-  formats: colored-line-number # colored-line-number|line-number|json|tab|checkstyle|code-climate
-
 linters-settings:
   wsl:
     allow-assign-and-anything: true
-  govet:
-    shadow: true
-  golint:
-    min-confidence: 0.1
   gocyclo:
     min-complexity: 15
   godot:
