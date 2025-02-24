@@ -11,7 +11,7 @@ require (
 	github.com/roadrunner-server/endure/v2 v2.6.1
 	github.com/roadrunner-server/errors v1.4.1
 	github.com/roadrunner-server/events v1.0.1
-	github.com/roadrunner-server/pool v1.1.2
+	github.com/roadrunner-server/pool v1.1.3
 	github.com/stretchr/testify v1.10.0
 	github.com/uber-go/tally/v4 v4.1.17-0.20240412215630-22fe011f5ff0
 	go.temporal.io/api v1.44.1
