@@ -15,7 +15,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/uber-go/tally/v4 v4.1.17-0.20240412215630-22fe011f5ff0
 	go.temporal.io/api v1.45.0
-	go.temporal.io/sdk v1.32.1
+	go.temporal.io/sdk v1.33.0
 	go.temporal.io/sdk/contrib/tally v0.2.0
 	go.temporal.io/server v1.27.0
 	go.uber.org/zap v1.27.0
@@ -56,7 +56,6 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa // indirect
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
