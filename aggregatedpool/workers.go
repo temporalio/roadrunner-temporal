@@ -45,8 +45,8 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 			zap.Bool("disable_eager_activities", wi[i].Options.DisableEagerActivities),
 			zap.Int("max_concurrent_eager_activity_execution_size", wi[i].Options.MaxConcurrentEagerActivityExecutionSize),
 			zap.Bool("disable_registration_aliasing", wi[i].Options.DisableRegistrationAliasing),
-			zap.String("build_id", wi[i].Options.BuildID),
-			zap.Bool("use_buildID_for_versioning", wi[i].Options.UseBuildIDForVersioning),
+			zap.Bool("use_versioning", wi[i].Options.DeploymentOptions.UseVersioning),
+			zap.String("version", wi[i].Options.DeploymentOptions.Version),
 		)
 
 		// just to be sure
@@ -54,10 +54,6 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 
 		if wi[i].TaskQueue == "" {
 			wi[i].TaskQueue = temporalClient.DefaultNamespace
-		}
-
-		if wi[i].Options.BuildID != "" {
-			wi[i].Options.UseBuildIDForVersioning = true
 		}
 
 		if wi[i].Options.Identity == "" {
