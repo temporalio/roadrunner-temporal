@@ -1,4 +1,4 @@
-package data_converter //nolint:revive,stylecheck
+package data_converter //nolint:revive
 
 import (
 	"testing"
