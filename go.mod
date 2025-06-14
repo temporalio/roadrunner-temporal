@@ -22,6 +22,12 @@ require (
 	google.golang.org/protobuf v1.36.6
 )
 
+require (
+	github.com/go-logr/logr v1.4.3 // indirect
+	go.opentelemetry.io/otel v1.36.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v1.36.0 // indirect
+)
+
 replace github.com/uber-go/tally/v4 => github.com/uber-go/tally/v4 v4.1.10
 
 require (

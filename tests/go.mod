@@ -8,17 +8,17 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/pborman/uuid v1.2.1
 	github.com/roadrunner-server/api/v4 v4.20.0
-	github.com/roadrunner-server/config/v5 v5.1.7
+	github.com/roadrunner-server/config/v5 v5.1.8
 	github.com/roadrunner-server/endure/v2 v2.6.2
 	github.com/roadrunner-server/goridge/v3 v3.8.3
-	github.com/roadrunner-server/informer/v5 v5.1.7
-	github.com/roadrunner-server/logger/v5 v5.1.7
-	github.com/roadrunner-server/otel/v5 v5.1.7
+	github.com/roadrunner-server/informer/v5 v5.1.8
+	github.com/roadrunner-server/logger/v5 v5.1.8
+	github.com/roadrunner-server/otel/v5 v5.1.8
 	github.com/roadrunner-server/pool v1.1.3
-	github.com/roadrunner-server/resetter/v5 v5.1.7
-	github.com/roadrunner-server/rpc/v5 v5.1.7
-	github.com/roadrunner-server/server/v5 v5.2.8
-	github.com/roadrunner-server/status/v5 v5.1.7
+	github.com/roadrunner-server/resetter/v5 v5.1.8
+	github.com/roadrunner-server/rpc/v5 v5.1.8
+	github.com/roadrunner-server/server/v5 v5.2.9
+	github.com/roadrunner-server/status/v5 v5.1.8
 	github.com/stretchr/testify v1.10.0
 	github.com/temporalio/roadrunner-temporal/v5 v5.3.1
 	go.temporal.io/api v1.50.0
