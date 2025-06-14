@@ -2,6 +2,7 @@ package rrtemporal
 
 import (
 	"context"
+	stderr "errors"
 	"os"
 	"time"
 
@@ -43,6 +44,7 @@ type RecordHeartbeatRequest struct {
 // RecordHeartbeatResponse sent back to the worker to indicate that activity was canceled.
 type RecordHeartbeatResponse struct {
 	Canceled bool `json:"canceled"`
+	Paused   bool `json:"paused"`
 }
 
 // RecordActivityHeartbeat records heartbeat for an activity.
@@ -75,6 +77,14 @@ func (r *rpc) RecordActivityHeartbeat(in RecordHeartbeatRequest, out *RecordHear
 	r.plugin.mu.RUnlock()
 
 	activity.RecordHeartbeat(ctx, details)
+
+	err = context.Cause(ctx)
+	if err != nil {
+		if stderr.Is(err, activity.ErrActivityPaused) {
+			*out = RecordHeartbeatResponse{Paused: true}
+			return nil
+		}
+	}
 
 	select {
 	case <-ctx.Done():

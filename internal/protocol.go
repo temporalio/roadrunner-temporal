@@ -260,6 +260,12 @@ type UpsertMemo struct {
 type NewTimer struct {
 	// Milliseconds defines timer duration.
 	Milliseconds int `json:"ms"`
+	// Summary is a simple string identifying this timer. While it can be
+	// normal text, it is best to treat as a timer ID. This value will be
+	// visible in UI and CLI.
+	//
+	// NOTE: Experimental
+	Summary string `json:"summary"`
 }
 
 // SideEffect to be recorded into the history.
