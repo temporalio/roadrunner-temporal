@@ -1,6 +1,6 @@
 module github.com/temporalio/roadrunner-temporal/v5
 
-go 1.24
+go 1.24.1
 
 toolchain go1.24.4
 
@@ -13,11 +13,11 @@ require (
 	github.com/roadrunner-server/events v1.0.1
 	github.com/roadrunner-server/pool v1.1.3
 	github.com/stretchr/testify v1.10.0
-	github.com/uber-go/tally/v4 v4.1.17-0.20240412215630-22fe011f5ff0
+	github.com/uber-go/tally/v4 v4.1.17
 	go.temporal.io/api v1.50.0
 	go.temporal.io/sdk v1.34.0
 	go.temporal.io/sdk/contrib/tally v0.2.0
-	go.temporal.io/server v1.27.2
+	go.temporal.io/server v1.28.0
 	go.uber.org/zap v1.27.0
 	google.golang.org/protobuf v1.36.6
 )
