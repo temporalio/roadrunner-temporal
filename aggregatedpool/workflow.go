@@ -10,8 +10,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/roadrunner-server/pool/payload"
+	"github.com/temporalio/roadrunner-temporal/v5/api"
 	"github.com/temporalio/roadrunner-temporal/v5/canceller"
-	"github.com/temporalio/roadrunner-temporal/v5/common"
 	"github.com/temporalio/roadrunner-temporal/v5/internal"
 	"github.com/temporalio/roadrunner-temporal/v5/queue"
 	"github.com/temporalio/roadrunner-temporal/v5/registry"
@@ -45,8 +45,8 @@ func seq() uint64 {
 }
 
 type Workflow struct {
-	codec common.Codec
-	pool  common.Pool
+	codec api.Codec
+	pool  api.Pool
 	rrID  string
 
 	// LocalActivityFn
@@ -75,7 +75,7 @@ type Workflow struct {
 }
 
 // NewWorkflowDefinition ... WorkflowDefinition Constructor
-func NewWorkflowDefinition(codec common.Codec, la LaFn, pool common.Pool, log *zap.Logger) *Workflow {
+func NewWorkflowDefinition(codec api.Codec, la LaFn, pool api.Pool, log *zap.Logger) *Workflow {
 	return &Workflow{
 		rrID:  uuid.NewString(),
 		log:   log,

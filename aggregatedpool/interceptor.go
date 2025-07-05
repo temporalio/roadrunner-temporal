@@ -3,7 +3,7 @@ package aggregatedpool
 import (
 	"context"
 
-	"github.com/temporalio/roadrunner-temporal/v5/common"
+	"github.com/temporalio/roadrunner-temporal/v5/api"
 	"go.temporal.io/sdk/interceptor"
 )
 
@@ -34,7 +34,7 @@ func (a *activityInboundInterceptor) Init(outbound interceptor.ActivityOutboundI
 
 func (a *activityInboundInterceptor) ExecuteActivity(ctx context.Context, in *interceptor.ExecuteActivityInput) (any, error) {
 	// re-store headers under the RR context key
-	ctx = context.WithValue(ctx, common.HeaderContextKey, interceptor.Header(ctx))
+	ctx = context.WithValue(ctx, api.HeaderContextKey, interceptor.Header(ctx))
 	return a.Next.ExecuteActivity(ctx, in)
 }
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/temporalio/roadrunner-temporal/v5/common"
+	"github.com/temporalio/roadrunner-temporal/v5/api"
 	"github.com/temporalio/roadrunner-temporal/v5/internal"
 	tActivity "go.temporal.io/sdk/activity"
 	temporalClient "go.temporal.io/sdk/client"
@@ -15,7 +15,7 @@ import (
 
 const tq = "taskqueue"
 
-func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo, log *zap.Logger, tc temporalClient.Client, interceptors map[string]common.Interceptor) ([]worker.Worker, error) {
+func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo, log *zap.Logger, tc temporalClient.Client, interceptors map[string]api.Interceptor) ([]worker.Worker, error) {
 	workers := make([]worker.Worker, 0, 1)
 
 	for i := 0; i < len(wi); i++ {

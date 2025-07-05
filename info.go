@@ -7,15 +7,19 @@ import (
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/goridge/v3/pkg/frame"
 	"github.com/roadrunner-server/pool/payload"
-	"github.com/temporalio/roadrunner-temporal/v5/common"
+	"github.com/temporalio/roadrunner-temporal/v5/api"
 	"github.com/temporalio/roadrunner-temporal/v5/internal"
 )
 
-func WorkerInfo(c common.Codec, p common.Pool, rrVersion string) ([]*internal.WorkerInfo, error) {
+func WorkerInfo(c api.Codec, p api.Pool, rrVersion string, wwPID int) ([]*internal.WorkerInfo, error) {
 	const op = errors.Op("workflow_definition_init")
 
 	pl := &payload.Payload{}
-	err := c.Encode(&internal.Context{}, pl, &internal.Message{ID: 0, Command: internal.GetWorkerInfo{RRVersion: rrVersion}})
+	err := c.Encode(&internal.Context{}, pl, &internal.Message{ID: 0, Command: internal.GetWorkerInfo{
+		RRVersion: rrVersion,
+		WWPID:     wwPID,
+	}},
+	)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}

@@ -16,7 +16,7 @@ import (
 	"github.com/roadrunner-server/events"
 	"github.com/roadrunner-server/pool/state/process"
 	"github.com/temporalio/roadrunner-temporal/v5/aggregatedpool"
-	"github.com/temporalio/roadrunner-temporal/v5/common"
+	"github.com/temporalio/roadrunner-temporal/v5/api"
 	"github.com/temporalio/roadrunner-temporal/v5/internal"
 	"github.com/temporalio/roadrunner-temporal/v5/internal/codec/proto"
 	tclient "go.temporal.io/sdk/client"
@@ -61,13 +61,13 @@ type temporal struct {
 	client        tclient.Client
 	workers       []worker.Worker
 
-	interceptors map[string]common.Interceptor
+	interceptors map[string]api.Interceptor
 }
 
 type Plugin struct {
 	mu sync.RWMutex
 
-	server        common.Server
+	server        api.Server
 	log           *zap.Logger
 	config        *Config
 	statsExporter *StatsExporter
@@ -87,7 +87,7 @@ type Plugin struct {
 	stopCh   chan struct{}
 }
 
-func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) error {
+func (p *Plugin) Init(cfg api.Configurer, log Logger, server api.Server) error {
 	const op = errors.Op("temporal_plugin_init")
 
 	if !cfg.Has(pluginName) {
@@ -159,7 +159,7 @@ func (p *Plugin) Init(cfg common.Configurer, log Logger, server common.Server) e
 	}
 
 	// initialize interceptors
-	p.temporal.interceptors = make(map[string]common.Interceptor)
+	p.temporal.interceptors = make(map[string]api.Interceptor)
 	// empty
 	p.apiKey.Store(ptrTo(""))
 
@@ -350,6 +350,12 @@ func (p *Plugin) Reset() error {
 	}
 	p.log.Info("workflow pool restarted")
 
+	if len(p.wfP.Workers()) < 1 {
+		return errors.E(op, errors.Str("failed to allocate a workflow worker"))
+	}
+
+	p.wwPID = int(p.wfP.Workers()[0].Pid())
+
 	ctxA, cancelA := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancelA()
 	errAp := p.actP.Reset(ctxA)
@@ -359,7 +365,7 @@ func (p *Plugin) Reset() error {
 	p.log.Info("activity pool restarted")
 
 	// get worker info
-	wi, err := WorkerInfo(p.codec, p.wfP, p.rrVersion)
+	wi, err := WorkerInfo(p.codec, p.wfP, p.rrVersion, p.wwPID)
 	if err != nil {
 		return err
 	}
@@ -396,12 +402,12 @@ func (p *Plugin) Reset() error {
 func (p *Plugin) Collects() []*dep.In {
 	return []*dep.In{
 		dep.Fits(func(pp any) {
-			mdw := pp.(common.Interceptor)
+			mdw := pp.(api.Interceptor)
 			// just to be safe
 			p.mu.Lock()
 			p.temporal.interceptors[mdw.Name()] = mdw
 			p.mu.Unlock()
-		}, (*common.Interceptor)(nil)),
+		}, (*api.Interceptor)(nil)),
 	}
 }
 
