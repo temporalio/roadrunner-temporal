@@ -193,6 +193,7 @@ func (p *Plugin) Serve() chan error {
 
 				// check pid, message from the go sdk is: process exited, pid: 334455 <-- we are looking for this pid
 				// sdk 2.18.1
+				// TODO: potential bug here, if the pid contains the WW pid, it will reset everything (btw, should not be a problem)
 				switch strings.Contains(ev.Message(), strconv.Itoa(p.wwPID)) {
 				// stopped workflow worker
 				case true:
