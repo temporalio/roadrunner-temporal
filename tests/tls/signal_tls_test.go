@@ -167,31 +167,33 @@ func Test_SignalStepsProto(t *testing.T) {
 		"WorkflowWithSignaledSteps",
 	)
 	assert.NoError(t, err)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
 
-	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), "begin", true)
+	err = s.Client.SignalWorkflow(ctx, w.GetID(), w.GetRunID(), "begin", true)
 	assert.NoError(t, err)
 
-	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), "next1", true)
+	err = s.Client.SignalWorkflow(ctx, w.GetID(), w.GetRunID(), "next1", true)
 	assert.NoError(t, err)
 
-	v, err := s.Client.QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "value", nil)
+	v, err := s.Client.QueryWorkflow(ctx, w.GetID(), w.GetRunID(), "value", nil)
 	assert.NoError(t, err)
 
 	var r int
 	assert.NoError(t, v.Get(&r))
 	assert.Equal(t, 2, r)
 
-	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), "next2", true)
+	err = s.Client.SignalWorkflow(ctx, w.GetID(), w.GetRunID(), "next2", true)
 	assert.NoError(t, err)
 
-	v, err = s.Client.QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "value", nil)
+	v, err = s.Client.QueryWorkflow(ctx, w.GetID(), w.GetRunID(), "value", nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, v.Get(&r))
 	assert.Equal(t, 3, r)
 
 	var result int
-	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.NoError(t, w.Get(ctx, &result))
 
 	// 3 ticks
 	assert.Equal(t, 3, result)
