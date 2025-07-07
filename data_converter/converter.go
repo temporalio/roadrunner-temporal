@@ -1,4 +1,4 @@
-package data_converter //nolint:revive
+package data_converter
 
 import (
 	commonpb "go.temporal.io/api/common/v1"

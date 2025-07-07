@@ -9,7 +9,7 @@ import (
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/goridge/v3/pkg/frame"
 	"github.com/roadrunner-server/pool/payload"
-	"github.com/temporalio/roadrunner-temporal/v5/common"
+	"github.com/temporalio/roadrunner-temporal/v5/api"
 	"github.com/temporalio/roadrunner-temporal/v5/internal"
 	commonpb "go.temporal.io/api/common/v1"
 	tActivity "go.temporal.io/sdk/activity"
@@ -18,13 +18,13 @@ import (
 )
 
 type LocalActivityFn struct {
-	codec common.Codec
-	pool  common.Pool
+	codec api.Codec
+	pool  api.Pool
 	log   *zap.Logger
 	seqID uint64
 }
 
-func NewLocalActivityFn(codec common.Codec, pool common.Pool, log *zap.Logger) *LocalActivityFn {
+func NewLocalActivityFn(codec api.Codec, pool api.Pool, log *zap.Logger) *LocalActivityFn {
 	return &LocalActivityFn{
 		codec: codec,
 		pool:  pool,

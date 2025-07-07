@@ -64,10 +64,18 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
+	if len(wp.Workers()) < 1 {
+		return errors.E(errors.Str("failed to allocate a workflow worker"))
+	}
+
+	// set all fields
+	// we have only 1 worker for the workflow pool
+	p.wwPID = int(wp.Workers()[0].Pid())
+
 	wfDef := aggregatedpool.NewWorkflowDefinition(codec, laDef.ExecuteLA, wp, p.log)
 
 	// get worker information
-	wi, err := WorkerInfo(codec, wp, p.rrVersion)
+	wi, err := WorkerInfo(codec, wp, p.rrVersion, p.wwPID)
 	if err != nil {
 		return err
 	}
@@ -92,14 +100,6 @@ func (p *Plugin) initPool() error {
 			return err
 		}
 	}
-
-	if len(wp.Workers()) < 1 {
-		return errors.E(errors.Str("failed to allocate a workflow worker"))
-	}
-
-	// set all fields
-	// we have only 1 worker for the workflow pool
-	p.wwPID = int(wp.Workers()[0].Pid())
 
 	p.temporal.rrWorkflowDef = wfDef
 	p.temporal.rrActivityDef = actDef

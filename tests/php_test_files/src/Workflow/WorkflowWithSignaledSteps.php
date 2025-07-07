@@ -16,11 +16,6 @@ class WorkflowWithSignaledSteps
     #[WorkflowMethod(name: 'WorkflowWithSignaledSteps')]
     public function handler()
     {
-        $simple = Workflow::newActivityStub(
-            SimpleActivity::class,
-            ActivityOptions::new()->withStartToCloseTimeout(5)
-        );
-
         $value = 0;
         Workflow::registerQuery('value', function () use (&$value) {
             return $value;

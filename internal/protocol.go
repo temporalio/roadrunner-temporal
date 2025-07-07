@@ -134,6 +134,7 @@ func (msg *Message) Reset() {
 // GetWorkerInfo reads worker information.
 type GetWorkerInfo struct {
 	RRVersion string `json:"rr_version"`
+	WWPID     int    `json:"ww_pid"`
 }
 
 // InvokeActivity invokes activity.

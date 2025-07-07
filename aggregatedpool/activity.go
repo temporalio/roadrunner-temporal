@@ -9,7 +9,7 @@ import (
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/goridge/v3/pkg/frame"
 	"github.com/roadrunner-server/pool/payload"
-	"github.com/temporalio/roadrunner-temporal/v5/common"
+	"github.com/temporalio/roadrunner-temporal/v5/api"
 	"github.com/temporalio/roadrunner-temporal/v5/internal"
 	commonpb "go.temporal.io/api/common/v1"
 	tActivity "go.temporal.io/sdk/activity"
@@ -24,8 +24,8 @@ const (
 )
 
 type Activity struct {
-	codec   common.Codec
-	pool    common.Pool
+	codec   api.Codec
+	pool    api.Pool
 	log     *zap.Logger
 	seqID   uint64
 	running sync.Map
@@ -34,7 +34,7 @@ type Activity struct {
 	disableActivityWorkers bool
 }
 
-func NewActivityDefinition(ac common.Codec, p common.Pool, log *zap.Logger, disableActivityWorkers bool) *Activity {
+func NewActivityDefinition(ac api.Codec, p api.Pool, log *zap.Logger, disableActivityWorkers bool) *Activity {
 	return &Activity{
 		log:   log,
 		codec: ac,
@@ -86,7 +86,7 @@ func (a *Activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 			HeartbeatDetails: len(heartbeatDetails.Payloads),
 		},
 		Payloads: args,
-		Header:   common.ActivityHeadersFromCtx(ctx),
+		Header:   api.ActivityHeadersFromCtx(ctx),
 	}
 
 	if len(heartbeatDetails.Payloads) != 0 {
