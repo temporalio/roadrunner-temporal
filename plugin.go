@@ -343,14 +343,6 @@ func (p *Plugin) Reset() error {
 	p.temporal.workers = nil
 	worker.PurgeStickyWorkflowCache()
 
-	ctxW, cancelW := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancelW()
-	errWp := p.wfP.Reset(ctxW)
-	if errWp != nil {
-		return errors.E(op, errWp)
-	}
-	p.log.Info("workflow pool restarted")
-
 	if len(p.wfP.Workers()) < 1 {
 		return errors.E(op, errors.Str("failed to allocate a workflow worker"))
 	}
