@@ -15,7 +15,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/uber-go/tally/v4 v4.1.17
 	go.temporal.io/api v1.50.0
-	go.temporal.io/sdk v1.34.0
+	go.temporal.io/sdk v1.35.0
 	go.temporal.io/sdk/contrib/tally v0.2.0
 	go.temporal.io/server v1.28.0
 	go.uber.org/zap v1.27.0
