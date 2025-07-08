@@ -26,10 +26,6 @@ func Test_ResetWorkerWorkflow(t *testing.T) {
 		WorkflowExecutionTimeout: 12 * time.Second,
 	}
 
-	// Create client with 1-second timeout for operations
-	_, clientCancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer clientCancel()
-
 	// Start the workflow with a 10-second timer parameter
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -40,7 +36,7 @@ func Test_ResetWorkerWorkflow(t *testing.T) {
 	require.NoError(t, err)
 
 	// Allow workflow to start
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(time.Second)
 
 	// Query the workflow to kill the worker - this should timeout
 	queryCtx, queryCancel := context.WithTimeout(context.Background(), 1*time.Second)
@@ -52,21 +48,25 @@ func Test_ResetWorkerWorkflow(t *testing.T) {
 	assert.Error(t, err)
 
 	// Cancel the workflow
-	err = s.Client.CancelWorkflow(context.Background(), w.GetID(), w.GetRunID())
+	cancelCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err = s.Client.CancelWorkflow(cancelCtx, w.GetID(), w.GetRunID())
 	assert.NoError(t, err)
 
 	// Wait for workflow to complete and verify it's canceled
 	resultCtx, resultCancel := context.WithTimeout(context.Background(), 12*time.Second)
 	defer resultCancel()
 
-	var result interface{}
+	var result any
 	err = w.Get(resultCtx, &result)
 
 	// Should fail with a canceled error
 	assert.Error(t, err)
 
 	// Verify the workflow was actually canceled
-	we, err := s.Client.DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	we, err := s.Client.DescribeWorkflowExecution(ctx, w.GetID(), w.GetRunID())
 	require.NoError(t, err)
 	assert.Equal(t, enums.WORKFLOW_EXECUTION_STATUS_CANCELED, we.WorkflowExecutionInfo.Status)
 
