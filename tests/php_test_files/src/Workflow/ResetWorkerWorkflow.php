@@ -26,7 +26,7 @@ final class ResetWorkerWorkflow
      * @param int<1, max> $sleep Freeze the worker until killed.
      */
     #[Workflow\QueryMethod('die')]
-    public function die(int $sleep = 2)
+    public function die(int $sleep = 4)
     {
         sleep($sleep);
         exit(1);

@@ -20,18 +20,18 @@ func Test_ResetWorkerWorkflow(t *testing.T) {
 	wg.Add(1)
 	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
-	// Create workflow options with 12-second execution timeout
+	// Create workflow options with 20-second execution timeout
 	workflowOptions := client.StartWorkflowOptions{
 		TaskQueue:                "default",
-		WorkflowExecutionTimeout: 12 * time.Second,
+		WorkflowExecutionTimeout: 20 * time.Second,
 	}
 
-	// Start the workflow with a 10-second timer parameter
+	// Start the workflow with a 15-second timer parameter
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
 		workflowOptions,
 		"ResetWorkerWorkflow",
-		10, // 10-second timer parameter
+		15, // 15-second timer parameter
 	)
 	require.NoError(t, err)
 
@@ -39,19 +39,18 @@ func Test_ResetWorkerWorkflow(t *testing.T) {
 	time.Sleep(time.Second)
 
 	// Query the workflow to kill the worker - this should timeout
-	queryCtx, queryCancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer queryCancel()
-
-	_, err = s.Client.QueryWorkflow(queryCtx, w.GetID(), w.GetRunID(), "die", nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	_, err = s.Client.QueryWorkflow(ctx, w.GetID(), w.GetRunID(), "die", nil)
+	cancel()
 
 	// Should fail with a timeout since the worker dies during query execution
 	assert.Error(t, err)
 
 	// Cancel the workflow
-	cancelCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	err = s.Client.CancelWorkflow(cancelCtx, w.GetID(), w.GetRunID())
+	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+	err = s.Client.CancelWorkflow(ctx, w.GetID(), w.GetRunID())
 	assert.NoError(t, err)
+	cancel()
 
 	// Wait for workflow to complete and verify it's canceled
 	resultCtx, resultCancel := context.WithTimeout(context.Background(), 12*time.Second)
@@ -64,11 +63,11 @@ func Test_ResetWorkerWorkflow(t *testing.T) {
 	assert.Error(t, err)
 
 	// Verify the workflow was actually canceled
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 	we, err := s.Client.DescribeWorkflowExecution(ctx, w.GetID(), w.GetRunID())
 	require.NoError(t, err)
 	assert.Equal(t, enums.WORKFLOW_EXECUTION_STATUS_CANCELED, we.WorkflowExecutionInfo.Status)
+	cancel()
 
 	stopCh <- struct{}{}
 	wg.Wait()
