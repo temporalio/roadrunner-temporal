@@ -22,12 +22,6 @@ require (
 	google.golang.org/protobuf v1.36.6
 )
 
-require (
-	github.com/go-logr/logr v1.4.3 // indirect
-	go.opentelemetry.io/otel v1.36.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.36.0 // indirect
-)
-
 replace github.com/uber-go/tally/v4 => github.com/uber-go/tally/v4 v4.1.10
 
 require (
@@ -67,6 +61,6 @@ require (
 	golang.org/x/time v0.12.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250707201910-8d1bb00bc6a7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250707201910-8d1bb00bc6a7 // indirect
-	google.golang.org/grpc v1.73.0
+	google.golang.org/grpc v1.74.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
