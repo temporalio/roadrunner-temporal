@@ -39,13 +39,13 @@ func Test_ResetWorkerWorkflow(t *testing.T) {
 	time.Sleep(time.Second)
 
 	// Query the workflow to kill the worker - this should timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	_, err = s.Client.QueryWorkflow(ctx, w.GetID(), w.GetRunID(), "die", nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 4 * time.Second)
+	_, err = s.Client.QueryWorkflow(ctx, w.GetID(), w.GetRunID(), "die", 1)
 	cancel()
 
 	// Should fail with a timeout since the worker dies during query execution
 	require.Error(t, err)
-
+	
 	// Cancel the workflow
 	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
 	err = s.Client.CancelWorkflow(ctx, w.GetID(), w.GetRunID())
