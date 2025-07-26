@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	roadrunnerTemporal "github.com/temporalio/roadrunner-temporal/v5"
-	"github.com/temporalio/roadrunner-temporal/v5/data_converter"
+	"github.com/temporalio/roadrunner-temporal/v5/dataconverter"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
 	temporalClient "go.temporal.io/sdk/client"
@@ -137,7 +137,7 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, confi
 		}
 	}()
 
-	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
+	dc := dataconverter.NewDataConverter(converter.GetDefaultDataConverter())
 	client, err := temporalClient.Dial(temporalClient.Options{
 		HostPort:      "127.0.0.1:7233",
 		Namespace:     "default",
@@ -193,7 +193,7 @@ func NewTestServerTLS(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, co
 		}
 	}()
 
-	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
+	dc := dataconverter.NewDataConverter(converter.GetDefaultDataConverter())
 
 	cert, err := tls.LoadX509KeyPair("../env/temporal_tls/certs/client.pem", "../env/temporal_tls/certs/client.key")
 	require.NoError(t, err)
@@ -278,7 +278,7 @@ func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.W
 		}
 	}()
 
-	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
+	dc := dataconverter.NewDataConverter(converter.GetDefaultDataConverter())
 	client, err := temporalClient.Dial(temporalClient.Options{
 		HostPort:      "127.0.0.1:7233",
 		Namespace:     "default",
@@ -338,7 +338,7 @@ func NewTestServerWithOtelInterceptor(t *testing.T, stopCh chan struct{}, wg *sy
 		}
 	}()
 
-	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
+	dc := dataconverter.NewDataConverter(converter.GetDefaultDataConverter())
 	client, err := temporalClient.Dial(temporalClient.Options{
 		HostPort:      "127.0.0.1:7233",
 		Namespace:     "default",

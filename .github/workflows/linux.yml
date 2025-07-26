@@ -150,9 +150,9 @@ jobs:
         run: |
           go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat ./tests/pkgs.txt) -coverprofile=./tests/coverage-ci/rrt_c.out -covermode=atomic canceller/canceller.go canceller/canceller_test.go
 
-      - name: Run Temporal data_converter module tests
+      - name: Run Temporal dataconverter module tests
         run: |
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat ./tests/pkgs.txt) -coverprofile=./tests/coverage-ci/rrt_dc.out -covermode=atomic data_converter/converter.go data_converter/converter_test.go
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat ./tests/pkgs.txt) -coverprofile=./tests/coverage-ci/rrt_dc.out -covermode=atomic dataconverter/converter.go dataconverter/converter_test.go
 
       - name: Run Temporal queue module tests
         run: |

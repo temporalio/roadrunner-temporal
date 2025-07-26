@@ -17,4 +17,4 @@ ignore:
   - "proto"
   - "internal/codec/interface"
   - "internal/interface"
-  - "internal/data_converter/converter_test.go"
+  - "internal/dataconverter/converter_test.go"

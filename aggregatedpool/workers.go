@@ -46,7 +46,8 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 			zap.Int("max_concurrent_eager_activity_execution_size", wi[i].Options.MaxConcurrentEagerActivityExecutionSize),
 			zap.Bool("disable_registration_aliasing", wi[i].Options.DisableRegistrationAliasing),
 			zap.Bool("use_versioning", wi[i].Options.DeploymentOptions.UseVersioning),
-			zap.Any("version", wi[i].Options.DeploymentOptions.Version),
+			zap.String("build_id", wi[i].Options.DeploymentOptions.Version.BuildId),
+			zap.String("deployment_name", wi[i].Options.DeploymentOptions.Version.DeploymentName),
 		)
 
 		// just to be sure

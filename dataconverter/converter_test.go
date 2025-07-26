@@ -1,4 +1,4 @@
-package data_converter //nolint:revive
+package dataconverter
 
 import (
 	"testing"

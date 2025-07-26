@@ -7,7 +7,7 @@ import (
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/pool/pool"
 	"github.com/temporalio/roadrunner-temporal/v5/aggregatedpool"
-	"github.com/temporalio/roadrunner-temporal/v5/data_converter"
+	"github.com/temporalio/roadrunner-temporal/v5/dataconverter"
 	"github.com/temporalio/roadrunner-temporal/v5/internal/codec/proto"
 	"github.com/temporalio/roadrunner-temporal/v5/internal/logger"
 	tclient "go.temporal.io/sdk/client"
@@ -37,7 +37,7 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	dc := data_converter.NewDataConverter(converter.GetDefaultDataConverter())
+	dc := dataconverter.NewDataConverter(converter.GetDefaultDataConverter())
 	codec := proto.NewCodec(p.log, dc)
 
 	// LA + A definitions
