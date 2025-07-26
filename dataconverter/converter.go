@@ -1,4 +1,4 @@
-package data_converter
+package dataconverter
 
 import (
 	commonpb "go.temporal.io/api/common/v1"
