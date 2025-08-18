@@ -2,6 +2,7 @@ package internal
 
 import (
 	"go.temporal.io/sdk/worker"
+	"go.temporal.io/sdk/workflow"
 )
 
 // WorkerInfo outlines information about every available worker and it's TaskQueues.
@@ -22,33 +23,6 @@ type WorkerInfo struct {
 	Activities []ActivityInfo
 }
 
-// VersioningBehavior specifies when existing workflows could change their Build ID.
-//
-// NOTE: Experimental
-//
-// Exposed as: [go.temporal.io/sdk/workflow.VersioningBehavior]
-type VersioningBehavior int
-
-const (
-	// VersioningBehaviorUnspecified - Workflow versioning policy unknown.
-	//  A default [VersioningBehaviorUnspecified] policy forces
-	// every workflow to explicitly set a [VersioningBehavior] different from [VersioningBehaviorUnspecified].
-	//
-	// Exposed as: [go.temporal.io/sdk/workflow.VersioningBehaviorUnspecified]
-	VersioningBehaviorUnspecified VersioningBehavior = iota
-
-	// VersioningBehaviorPinned - Workflow should be pinned to the current Build ID until manually moved.
-	//
-	// Exposed as: [go.temporal.io/sdk/workflow.VersioningBehaviorPinned]
-	VersioningBehaviorPinned
-
-	// VersioningBehaviorAutoUpgrade - Workflow automatically moves to the latest
-	// version (default Build ID of the task queue) when the next task is dispatched.
-	//
-	// Exposed as: [go.temporal.io/sdk/workflow.VersioningBehaviorAutoUpgrade]
-	VersioningBehaviorAutoUpgrade
-)
-
 // WorkflowInfo describes a single worker workflow.
 type WorkflowInfo struct {
 	// Name of the workflow.
@@ -58,7 +32,7 @@ type WorkflowInfo struct {
 	// Signals pre-defined for the workflow type.
 	Signals []string `json:"signals"`
 	// VersioningBehavior for the workflow.
-	VersioningBehavior VersioningBehavior `json:"versioning_behavior,omitempty"`
+	VersioningBehavior workflow.VersioningBehavior `json:"versioning_behavior,omitempty"`
 }
 
 // ActivityInfo describes single worker activity.
