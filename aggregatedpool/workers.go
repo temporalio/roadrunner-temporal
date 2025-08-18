@@ -76,6 +76,7 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 		for j := 0; j < len(wi[i].Workflows); j++ {
 			wrk.RegisterWorkflowWithOptions(wDef, workflow.RegisterOptions{
 				Name:                          wi[i].Workflows[j].Name,
+				VersioningBehavior:            workflow.VersioningBehavior(wi[i].Workflows[j].VersioningBehavior),
 				DisableAlreadyRegisteredCheck: false,
 			})
 
@@ -101,6 +102,7 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 		for j := 0; j < len(wi[i].Workflows); j++ {
 			wrk.RegisterWorkflowWithOptions(wDef, workflow.RegisterOptions{
 				Name:                          wi[i].Workflows[j].Name,
+				VersioningBehavior:            workflow.VersioningBehavior(wi[i].Workflows[j].VersioningBehavior),
 				DisableAlreadyRegisteredCheck: false,
 			})
 
