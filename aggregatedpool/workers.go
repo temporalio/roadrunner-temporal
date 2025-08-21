@@ -18,7 +18,7 @@ const tq = "taskqueue"
 func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo, log *zap.Logger, tc temporalClient.Client, interceptors map[string]api.Interceptor) ([]worker.Worker, error) {
 	workers := make([]worker.Worker, 0, 1)
 
-	for i := 0; i < len(wi); i++ {
+	for i := range wi {
 		log.Debug("worker info",
 			zap.String(tq, wi[i].TaskQueue),
 			zap.Any("flags", wi[i].Flags),
@@ -59,7 +59,7 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 
 		if wi[i].Options.Identity == "" {
 			wi[i].Options.Identity = fmt.Sprintf(
-				"%s:%s",
+				"roadrunner:%s:%s",
 				wi[i].TaskQueue,
 				uuid.NewString(),
 			)
@@ -85,7 +85,9 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 
 		if actDef.disableActivityWorkers {
 			log.Debug("activity workers disabled", zap.String(tq, wi[i].TaskQueue))
-			goto RegisterWorkflows
+			// add worker to the pool without activities
+			workers = append(workers, wrk)
+			continue
 		}
 
 		for j := 0; j < len(wi[i].Activities); j++ {
@@ -97,18 +99,7 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 
 			log.Debug("activity registered", zap.String(tq, wi[i].TaskQueue), zap.Any("workflow name", wi[i].Activities[j].Name))
 		}
-
-	RegisterWorkflows:
-		for j := 0; j < len(wi[i].Workflows); j++ {
-			wrk.RegisterWorkflowWithOptions(wDef, workflow.RegisterOptions{
-				Name:                          wi[i].Workflows[j].Name,
-				VersioningBehavior:            wi[i].Workflows[j].VersioningBehavior,
-				DisableAlreadyRegisteredCheck: false,
-			})
-
-			log.Debug("workflow registered", zap.String(tq, wi[i].TaskQueue), zap.Any("workflow name", wi[i].Workflows[j].Name))
-		}
-
+		// add worker to the pool
 		workers = append(workers, wrk)
 	}
 
