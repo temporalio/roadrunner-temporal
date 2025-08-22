@@ -24,6 +24,8 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 			zap.Any("flags", wi[i].Flags),
 			zap.Int("num_workflows", len(wi[i].Workflows)),
 			zap.Int("num_activities", len(wi[i].Activities)),
+			zap.Any("workflows", wi[i].Workflows),
+			zap.Any("activities", wi[i].Activities),
 			zap.Int("max_concurrent_activity_execution_size", wi[i].Options.MaxConcurrentActivityExecutionSize),
 			zap.Float64("worker_activities_per_second", wi[i].Options.WorkerActivitiesPerSecond),
 			zap.Int("max_concurrent_local_activity_execution_size", wi[i].Options.MaxConcurrentLocalActivityExecutionSize),
@@ -80,7 +82,7 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 				DisableAlreadyRegisteredCheck: false,
 			})
 
-			log.Debug("workflow registered", zap.String(tq, wi[i].TaskQueue), zap.Any("workflow name", wi[i].Workflows[j].Name))
+			log.Debug("workflow registered", zap.String(tq, wi[i].TaskQueue), zap.Any("workflow name", wi[i].Workflows[j].Name), zap.Int("versioning_behavior", int(wi[i].Workflows[j].VersioningBehavior)))
 		}
 
 		if actDef.disableActivityWorkers {
