@@ -2,6 +2,7 @@ package internal
 
 import (
 	"go.temporal.io/sdk/worker"
+	"go.temporal.io/sdk/workflow"
 )
 
 // WorkerInfo outlines information about every available worker and it's TaskQueues.
@@ -30,6 +31,8 @@ type WorkflowInfo struct {
 	Queries []string `json:"queries"`
 	// Signals pre-defined for the workflow type.
 	Signals []string `json:"signals"`
+	// VersioningBehavior for the workflow.
+	VersioningBehavior workflow.VersioningBehavior `json:"versioning_behavior,omitempty"`
 }
 
 // ActivityInfo describes single worker activity.
