@@ -15,12 +15,14 @@ require (
 	github.com/stretchr/testify v1.11.0
 	github.com/uber-go/tally/v4 v4.1.17
 	go.temporal.io/api v1.52.0
-	go.temporal.io/sdk v1.35.0
+	go.temporal.io/sdk v1.36.0
 	go.temporal.io/sdk/contrib/tally v0.2.0
 	go.temporal.io/server v1.28.1
 	go.uber.org/zap v1.27.0
 	google.golang.org/protobuf v1.36.7
 )
+
+require github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2 // indirect
 
 replace github.com/uber-go/tally/v4 => github.com/uber-go/tally/v4 v4.1.10
 
@@ -33,7 +35,6 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/mock v1.7.0-rc.1 // indirect
-	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nexus-rpc/sdk-go v0.4.0 // indirect
