@@ -2,6 +2,7 @@ package rrtemporal
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/roadrunner-server/errors"
@@ -140,6 +141,12 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 	p.log.Debug("PHP-SDK version: " + phpSdkVersion)
 	worker.SetStickyWorkflowCacheSize(p.config.CacheSize)
 
+	dialOpts := make([]grpc.DialOption, 0, 2)
+	dialOpts = append(dialOpts, grpc.WithUnaryInterceptor(rewriteNameAndVersion(phpSdkVersion)))
+	if os.Getenv("NO_PROXY") != "" {
+		dialOpts = append(dialOpts, grpc.WithNoProxy())
+	}
+
 	opts := tclient.Options{
 		HostPort:       p.config.Address,
 		MetricsHandler: p.temporal.mh,
@@ -147,10 +154,8 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 		Logger:         logger.NewZapAdapter(p.log),
 		DataConverter:  dc,
 		ConnectionOptions: tclient.ConnectionOptions{
-			TLS: p.temporal.tlsCfg,
-			DialOptions: []grpc.DialOption{
-				grpc.WithUnaryInterceptor(rewriteNameAndVersion(phpSdkVersion)),
-			},
+			TLS:         p.temporal.tlsCfg,
+			DialOptions: dialOpts,
 		},
 
 		Credentials: tclient.NewAPIKeyDynamicCredentials(func(context.Context) (string, error) {
