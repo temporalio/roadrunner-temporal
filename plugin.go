@@ -282,7 +282,7 @@ func (p *Plugin) Workers() []*process.State {
 
 	states := make([]*process.State, 0, len(wfPw)+len(actPw))
 
-	for i := 0; i < len(wfPw); i++ {
+	for i := range wfPw {
 		st, err := process.WorkerProcessState(wfPw[i])
 		if err != nil {
 			// log error and continue
@@ -293,7 +293,7 @@ func (p *Plugin) Workers() []*process.State {
 		states = append(states, st)
 	}
 
-	for i := 0; i < len(actPw); i++ {
+	for i := range actPw {
 		st, err := process.WorkerProcessState(actPw[i])
 		if err != nil {
 			// log error and continue
@@ -377,7 +377,7 @@ func (p *Plugin) Reset() error {
 	}
 
 	// start workers
-	for i := 0; i < len(workers); i++ {
+	for i := range workers {
 		err = workers[i].Start()
 		if err != nil {
 			return err

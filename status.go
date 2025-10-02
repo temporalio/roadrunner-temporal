@@ -21,7 +21,7 @@ func (p *Plugin) Status() (*status.Status, error) {
 
 	workers := p.actP.Workers()
 
-	for i := 0; i < len(workers); i++ {
+	for i := range workers {
 		if workers[i].State().IsActive() {
 			return &status.Status{
 				Code: http.StatusOK,
@@ -47,7 +47,7 @@ func (p *Plugin) Ready() (*status.Status, error) {
 
 	workers := p.actP.Workers()
 
-	for i := 0; i < len(workers); i++ {
+	for i := range workers {
 		// If state of the worker is ready (at least 1)
 		// we assume, that plugin's worker pool is ready
 		if workers[i].State().Compare(fsm.StateReady) {

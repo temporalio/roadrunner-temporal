@@ -219,7 +219,7 @@ type ExecuteActivity struct {
 	// Name defines activity name.
 	Name string `json:"name"`
 	// Options to run activity.
-	Options bindings.ExecuteActivityOptions `json:"options,omitempty"`
+	Options bindings.ExecuteActivityOptions `json:"options"`
 }
 
 // ExecuteLocalActivityOptions Since we use proto everywhere, we need to convert Activity options (proto) to non-proto LA options
@@ -227,6 +227,7 @@ type ExecuteLocalActivityOptions struct {
 	ScheduleToCloseTimeout time.Duration
 	StartToCloseTimeout    time.Duration
 	RetryPolicy            *commonpb.RetryPolicy
+	Summary                string
 }
 
 // ExecuteLocalActivity command by workflow worker.
@@ -234,7 +235,7 @@ type ExecuteLocalActivity struct {
 	// Name defines activity name.
 	Name string `json:"name"`
 	// Options to run activity.
-	Options ExecuteLocalActivityOptions `json:"options,omitempty"`
+	Options ExecuteLocalActivityOptions `json:"options"`
 }
 
 // ExecuteChildWorkflow executes child workflow.
@@ -242,7 +243,7 @@ type ExecuteChildWorkflow struct {
 	// Name defines workflow name.
 	Name string `json:"name"`
 	// Options to run activity.
-	Options bindings.WorkflowOptions `json:"options,omitempty"`
+	Options bindings.WorkflowOptions `json:"options"`
 }
 
 // GetChildWorkflowExecution returns the WorkflowID and RunId of child workflow.
@@ -382,6 +383,7 @@ func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnviron
 	truTemOptions := bindings.ExecuteLocalActivityOptions{
 		ScheduleToCloseTimeout: cmd.Options.ScheduleToCloseTimeout,
 		StartToCloseTimeout:    cmd.Options.StartToCloseTimeout,
+		Summary:                cmd.Options.Summary,
 	}
 
 	if cmd.Options.RetryPolicy != nil {
@@ -396,7 +398,7 @@ func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnviron
 		truTemOptions.RetryPolicy = rp
 	}
 
-	// TODO: should be careful here: header + inputArgs header are pointers and might be changed independently which will cause race
+	// should be careful here: header + inputArgs header are pointers and might be changed independently which will cause race
 	params := bindings.ExecuteLocalActivityParams{
 		ExecuteLocalActivityOptions: truTemOptions,
 		ActivityFn:                  fn,

@@ -95,7 +95,7 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	for i := 0; i < len(workers); i++ {
+	for i := range workers {
 		err = workers[i].Start()
 		if err != nil {
 			return err
@@ -179,7 +179,7 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 }
 
 func rewriteNameAndVersion(phpSdkVersion string) grpc.UnaryClientInterceptor {
-	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	return func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		md, ok := metadata.FromOutgoingContext(ctx)
 		if md == nil || !ok {
 			return invoker(ctx, method, req, reply, cc, opts...)

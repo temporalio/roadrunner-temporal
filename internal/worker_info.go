@@ -12,7 +12,7 @@ type WorkerInfo struct {
 	// TaskQueue assigned to the worker.
 	TaskQueue string `json:"TaskQueue"`
 	// Options describe worker options.
-	Options worker.Options `json:"options,omitempty"`
+	Options worker.Options `json:"options"`
 	// PhpSdkVersion is the underlying PHP-SDK version
 	PhpSdkVersion string `json:"PhpSdkVersion,omitempty"`
 	// Flags are internal worker flags.
