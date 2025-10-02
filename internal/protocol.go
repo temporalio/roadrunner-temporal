@@ -398,7 +398,7 @@ func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnviron
 		truTemOptions.RetryPolicy = rp
 	}
 
-	// should be careful here: header + inputArgs header are pointers and might be changed independently which will cause race
+	// Should be careful here: header + inputArgs header are pointers and might be changed independently which will cause race.
 	params := bindings.ExecuteLocalActivityParams{
 		ExecuteLocalActivityOptions: truTemOptions,
 		ActivityFn:                  fn,
