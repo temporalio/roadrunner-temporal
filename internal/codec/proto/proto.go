@@ -44,7 +44,7 @@ func (c *Codec) Encode(ctx *internal.Context, p *payload.Payload, msg ...*intern
 
 	request.Messages = make([]*protocolV1.Message, len(msg))
 
-	for i := 0; i < len(msg); i++ {
+	for i := range msg {
 		pm := &protocolV1.Message{}
 		err := c.packMessage(msg[i], ctx, pm)
 		if err != nil {
@@ -126,7 +126,7 @@ func (c *Codec) DecodeWorkerInfo(p *payload.Payload, wi *[]*internal.WorkerInfo)
 
 	payloads := info[0].Payloads.GetPayloads()
 
-	for i := 0; i < len(payloads); i++ {
+	for i := range payloads {
 		tmp := &internal.WorkerInfo{}
 		err = c.dc.FromPayload(payloads[i], tmp)
 		if err != nil {

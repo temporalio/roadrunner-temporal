@@ -13,7 +13,7 @@ services:
       - "8126:8126"
 
   envoy:
-    image: bitnami/envoy:latest
+    image: bitnamilegacy/envoy:latest
     ports:
       - "4433:443"
     volumes:

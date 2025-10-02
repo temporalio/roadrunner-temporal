@@ -62,7 +62,7 @@ func WorkerInfo(c api.Codec, p api.Pool, rrVersion string, wwPID int) ([]*intern
 func WorkflowsInfo(wi []*internal.WorkerInfo) map[string]*internal.WorkflowInfo {
 	workflowInfo := make(map[string]*internal.WorkflowInfo)
 
-	for i := 0; i < len(wi); i++ {
+	for i := range wi {
 		for j := 0; j < len(wi[i].Workflows); j++ {
 			workflowInfo[wi[i].Workflows[j].Name] = &wi[i].Workflows[j]
 		}
@@ -74,7 +74,7 @@ func WorkflowsInfo(wi []*internal.WorkerInfo) map[string]*internal.WorkflowInfo 
 func ActivitiesInfo(wi []*internal.WorkerInfo) map[string]*internal.ActivityInfo {
 	activitiesInfo := make(map[string]*internal.ActivityInfo)
 
-	for i := 0; i < len(wi); i++ {
+	for i := range wi {
 		for j := 0; j < len(wi[i].Activities); j++ {
 			activitiesInfo[wi[i].Activities[j].Name] = &wi[i].Activities[j]
 		}
