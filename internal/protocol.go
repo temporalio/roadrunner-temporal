@@ -89,8 +89,6 @@ type Context struct {
 	// and it is suggested.
 	// This value may change throughout the life of the workflow.
 	ContinueAsNewSuggested bool `json:"continue_as_new_suggested"`
-	// RetryPolicy for the activity or local activity. Might be nil.
-	RetryPolicy *RetryPolicy `json:"retry_policy,omitempty"`
 }
 
 // Message used to exchange the send commands and receive responses from underlying workers.
