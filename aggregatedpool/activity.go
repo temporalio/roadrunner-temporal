@@ -96,9 +96,17 @@ func (a *Activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 	pl := a.getPld()
 	defer a.putPld(pl)
 
-	err := a.codec.Encode(&internal.Context{
-		TaskQueue: info.TaskQueue,
-	}, pl, msg)
+	err := a.codec.Encode(
+		&internal.Context{
+			TaskQueue: info.TaskQueue,
+			RetryPolicy: &internal.RetryPolicy{
+				InitialInterval:        info.RetryPolicy.InitialInterval,
+				BackoffCoefficient:     info.RetryPolicy.BackoffCoefficient,
+				MaximumInterval:        info.RetryPolicy.MaximumInterval,
+				MaximumAttempts:        info.RetryPolicy.MaximumAttempts,
+				NonRetryableErrorTypes: info.RetryPolicy.NonRetryableErrorTypes,
+			},
+		}, pl, msg)
 	if err != nil {
 		return nil, err
 	}
