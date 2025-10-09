@@ -96,9 +96,10 @@ func (a *Activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 	pl := a.getPld()
 	defer a.putPld(pl)
 
-	err := a.codec.Encode(&internal.Context{
-		TaskQueue: info.TaskQueue,
-	}, pl, msg)
+	err := a.codec.Encode(
+		&internal.Context{
+			TaskQueue: info.TaskQueue,
+		}, pl, msg)
 	if err != nil {
 		return nil, err
 	}

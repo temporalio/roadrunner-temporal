@@ -59,7 +59,10 @@ func (la *LocalActivityFn) ExecuteLA(ctx context.Context, hdr *commonpb.Header, 
 	pl := getPld()
 	defer putPld(pl)
 
-	err := la.codec.Encode(&internal.Context{TaskQueue: info.TaskQueue}, pl, msg)
+	err := la.codec.Encode(
+		&internal.Context{
+			TaskQueue: info.TaskQueue,
+		}, pl, msg)
 	if err != nil {
 		return nil, err
 	}
