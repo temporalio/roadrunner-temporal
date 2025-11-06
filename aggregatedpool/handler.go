@@ -740,10 +740,13 @@ func (wp *Workflow) runCommand(cmd any, payloads *commonpb.Payloads, header *com
 }
 
 func (wp *Workflow) getWorkflowWorkerPid() int {
+	wp.log.Debug("fetching workflow worker pid")
 	wfw := wp.pool.Workers()
 	if len(wfw) > 0 {
+		wp.log.Debug("workflow worker pid found", zap.Int("pid", int(wfw[0].Pid())))
 		return int(wfw[0].Pid())
 	}
+	wp.log.Debug("workflow worker pid not found")
 	return 0
 }
 
