@@ -72,6 +72,13 @@ func (wp *Workflow) handleUpdate(name string, id string, input *commonpb.Payload
 			callbacks.Complete(msg.Payloads, nil)
 		}
 
+		// attempt to prevent sending the response from the dead worker
+		wwPid := 0
+		wfw := wp.pool.Workers()
+		if len(wfw) > 0 {
+			wwPid = int(wfw[0].Pid())
+		}
+
 		// push validate command
 		wp.mq.PushCommand(
 			&internal.InvokeUpdate{
@@ -82,6 +89,7 @@ func (wp *Workflow) handleUpdate(name string, id string, input *commonpb.Payload
 			},
 			input,
 			header,
+			wwPid,
 		)
 	}
 
@@ -90,16 +98,29 @@ func (wp *Workflow) handleUpdate(name string, id string, input *commonpb.Payload
 
 // schedule cancel command
 func (wp *Workflow) handleCancel() {
+	// attempt to prevent sending the response from the dead worker
+	wwPid := 0
+	wfw := wp.pool.Workers()
+	if len(wfw) > 0 {
+		wwPid = int(wfw[0].Pid())
+	}
 	wp.mq.PushCommand(
 		internal.CancelWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID},
 		nil,
 		wp.header,
+		wwPid,
 	)
 }
 
 // schedule the signal processing
 func (wp *Workflow) handleSignal(name string, input *commonpb.Payloads, header *commonpb.Header) error {
 	wp.log.Debug("signal request", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID), zap.String("name", name))
+	// attempt to prevent sending the response from the dead worker
+	wwPid := 0
+	wfw := wp.pool.Workers()
+	if len(wfw) > 0 {
+		wwPid = int(wfw[0].Pid())
+	}
 	wp.mq.PushCommand(
 		internal.InvokeSignal{
 			RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
@@ -107,6 +128,7 @@ func (wp *Workflow) handleSignal(name string, input *commonpb.Payloads, header *
 		},
 		input,
 		header,
+		wwPid,
 	)
 
 	return nil
@@ -678,7 +700,14 @@ func (wp *Workflow) flushQueue() error {
 func (wp *Workflow) runCommand(cmd any, payloads *commonpb.Payloads, header *commonpb.Header) (*internal.Message, error) {
 	const op = errors.Op("workflow_process_runcommand")
 	msg := &internal.Message{}
-	wp.mq.AllocateMessage(cmd, payloads, header, msg)
+	// attempt to prevent sending the response from the dead worker
+	wwPid := 0
+	wfw := wp.pool.Workers()
+	if len(wfw) > 0 {
+		wwPid = int(wfw[0].Pid())
+	}
+
+	wp.mq.AllocateMessage(cmd, payloads, header, msg, wwPid)
 
 	if wp.mh != nil {
 		wp.mh.Gauge(RrMetricName).Update(float64(wp.pool.QueueSize()))

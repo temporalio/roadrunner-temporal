@@ -264,10 +264,18 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 		stwfcmd.LastCompletion = len(lastCompletion.Payloads)
 	}
 
+	// attempt to prevent sending the response from the dead worker
+	wwPid := 0
+	wfw := wp.pool.Workers()
+	if len(wfw) > 0 {
+		wwPid = int(wfw[0].Pid())
+	}
+
 	wp.mq.PushCommand(
 		stwfcmd,
 		input,
 		wp.header,
+		wwPid,
 	)
 }
 
@@ -361,7 +369,7 @@ func (wp *Workflow) StackTrace() string {
 
 func (wp *Workflow) Close() {
 	wp.log.Debug("close workflow", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID))
-	// when closing workflow, we should drain(execute) unhandled updates
+	// when closing the workflow, we should drain(execute) unhandled updates
 	if wp.env.DrainUnhandledUpdates() {
 		wp.log.Info("drained unhandled updates")
 	}

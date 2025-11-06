@@ -30,20 +30,22 @@ func (mq *MessageQueue) Flush() {
 // AllocateMessage ..
 // TODO(rustatian) allocate??? -> to sync.Pool
 // Remove this method if flavor of sync.Pool with internal.Message
-func (mq *MessageQueue) AllocateMessage(cmd any, payloads *common.Payloads, header *common.Header, ret *internal.Message) {
+func (mq *MessageQueue) AllocateMessage(cmd any, payloads *common.Payloads, header *common.Header, ret *internal.Message, wfPid int) {
 	ret.ID = mq.SeqID()
 	ret.Command = cmd
+	ret.WorkflowWorkerPID = wfPid
 	ret.Payloads = payloads
 	ret.Header = header
 }
 
-func (mq *MessageQueue) PushCommand(cmd any, payloads *common.Payloads, header *common.Header) {
+func (mq *MessageQueue) PushCommand(cmd any, payloads *common.Payloads, header *common.Header, wfPid int) {
 	mq.mu.Lock()
 	mq.queue = append(mq.queue, &internal.Message{
-		ID:       mq.SeqID(),
-		Command:  cmd,
-		Payloads: payloads,
-		Header:   header,
+		ID:                mq.SeqID(),
+		WorkflowWorkerPID: wfPid,
+		Command:           cmd,
+		Payloads:          payloads,
+		Header:            header,
 	})
 	mq.mu.Unlock()
 }
