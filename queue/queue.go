@@ -50,18 +50,23 @@ func (mq *MessageQueue) PushCommand(cmd any, payloads *common.Payloads, header *
 	mq.mu.Unlock()
 }
 
-func (mq *MessageQueue) PushResponse(id uint64, payloads *common.Payloads) {
+func (mq *MessageQueue) PushResponse(id uint64, payloads *common.Payloads, wfPid int) {
 	mq.mu.Lock()
 	mq.queue = append(mq.queue, &internal.Message{
-		ID:       id,
-		Payloads: payloads,
+		ID:                id,
+		WorkflowWorkerPID: wfPid,
+		Payloads:          payloads,
 	})
 	mq.mu.Unlock()
 }
 
-func (mq *MessageQueue) PushError(id uint64, failure *failure.Failure) {
+func (mq *MessageQueue) PushError(id uint64, failure *failure.Failure, wfPid int) {
 	mq.mu.Lock()
-	mq.queue = append(mq.queue, &internal.Message{ID: id, Failure: failure})
+	mq.queue = append(mq.queue, &internal.Message{
+		ID:                id,
+		WorkflowWorkerPID: wfPid,
+		Failure:           failure,
+	})
 	mq.mu.Unlock()
 }
 
