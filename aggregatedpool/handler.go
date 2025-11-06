@@ -72,13 +72,6 @@ func (wp *Workflow) handleUpdate(name string, id string, input *commonpb.Payload
 			callbacks.Complete(msg.Payloads, nil)
 		}
 
-		// attempt to prevent sending the response from the dead worker
-		wwPid := 0
-		wfw := wp.pool.Workers()
-		if len(wfw) > 0 {
-			wwPid = int(wfw[0].Pid())
-		}
-
 		// push validate command
 		wp.mq.PushCommand(
 			&internal.InvokeUpdate{
@@ -89,7 +82,7 @@ func (wp *Workflow) handleUpdate(name string, id string, input *commonpb.Payload
 			},
 			input,
 			header,
-			wwPid,
+			wp.getWorkflowWorkerPid(),
 		)
 	}
 
@@ -98,29 +91,17 @@ func (wp *Workflow) handleUpdate(name string, id string, input *commonpb.Payload
 
 // schedule cancel command
 func (wp *Workflow) handleCancel() {
-	// attempt to prevent sending the response from the dead worker
-	wwPid := 0
-	wfw := wp.pool.Workers()
-	if len(wfw) > 0 {
-		wwPid = int(wfw[0].Pid())
-	}
 	wp.mq.PushCommand(
 		internal.CancelWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID},
 		nil,
 		wp.header,
-		wwPid,
+		wp.getWorkflowWorkerPid(),
 	)
 }
 
 // schedule the signal processing
 func (wp *Workflow) handleSignal(name string, input *commonpb.Payloads, header *commonpb.Header) error {
 	wp.log.Debug("signal request", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID), zap.String("name", name))
-	// attempt to prevent sending the response from the dead worker
-	wwPid := 0
-	wfw := wp.pool.Workers()
-	if len(wfw) > 0 {
-		wwPid = int(wfw[0].Pid())
-	}
 	wp.mq.PushCommand(
 		internal.InvokeSignal{
 			RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
@@ -128,7 +109,7 @@ func (wp *Workflow) handleSignal(name string, input *commonpb.Payloads, header *
 		},
 		input,
 		header,
-		wwPid,
+		wp.getWorkflowWorkerPid(),
 	)
 
 	return nil
@@ -701,13 +682,8 @@ func (wp *Workflow) runCommand(cmd any, payloads *commonpb.Payloads, header *com
 	const op = errors.Op("workflow_process_runcommand")
 	msg := &internal.Message{}
 	// attempt to prevent sending the response from the dead worker
-	wwPid := 0
-	wfw := wp.pool.Workers()
-	if len(wfw) > 0 {
-		wwPid = int(wfw[0].Pid())
-	}
 
-	wp.mq.AllocateMessage(cmd, payloads, header, msg, wwPid)
+	wp.mq.AllocateMessage(cmd, payloads, header, msg, wp.getWorkflowWorkerPid())
 
 	if wp.mh != nil {
 		wp.mh.Gauge(RrMetricName).Update(float64(wp.pool.QueueSize()))
@@ -761,6 +737,14 @@ func (wp *Workflow) runCommand(cmd any, payloads *commonpb.Payloads, header *com
 
 	wp.putPld(pl)
 	return msgs[0], nil
+}
+
+func (wp *Workflow) getWorkflowWorkerPid() int {
+	wfw := wp.pool.Workers()
+	if len(wfw) > 0 {
+		return int(wfw[0].Pid())
+	}
+	return 0
 }
 
 func (wp *Workflow) getPld() *payload.Payload {

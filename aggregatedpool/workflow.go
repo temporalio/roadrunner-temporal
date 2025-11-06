@@ -264,18 +264,11 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 		stwfcmd.LastCompletion = len(lastCompletion.Payloads)
 	}
 
-	// attempt to prevent sending the response from the dead worker
-	wwPid := 0
-	wfw := wp.pool.Workers()
-	if len(wfw) > 0 {
-		wwPid = int(wfw[0].Pid())
-	}
-
 	wp.mq.PushCommand(
 		stwfcmd,
 		input,
 		wp.header,
-		wwPid,
+		wp.getWorkflowWorkerPid(),
 	)
 }
 
