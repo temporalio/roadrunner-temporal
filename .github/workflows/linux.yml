@@ -34,6 +34,8 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v5
+        with:
+          submodules: true
 
       - name: Install dependencies with composer
         uses: ramsey/composer-install@v3
