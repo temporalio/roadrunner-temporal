@@ -64,19 +64,19 @@ jobs:
           cd tests/acceptance
           php-sdk/vendor/bin/dload build -vv
 
-      - name: Run Functional tests
-        env:
-          ROADRUNNER_BINARY: './rr'
-        run: |
-          cd tests/acceptance/php-sdk
-          composer test:func
-
       - name: Run Acceptance tests
         env:
           ROADRUNNER_BINARY: './rr'
         run: |
           cd tests/acceptance/php-sdk
           composer test:accept
+
+      - name: Run Functional tests
+        env:
+          ROADRUNNER_BINARY: './rr'
+        run: |
+          cd tests/acceptance/php-sdk
+          composer test:func
 
   rrtemporal_updates_test:
     name: RR Temporal updates tests with (Go ${{ matrix.go }}, PHP ${{ matrix.php }}, OS ${{matrix.os}})
