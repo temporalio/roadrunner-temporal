@@ -13,6 +13,7 @@
             <plugin name="temporal" replace="../.."/>
             <plugin name="rpc"/>
             <plugin name="kv"/>
+            <plugin name="memory"/>
             <plugin name="server"/>
             <plugin name="logger"/>
             <plugin name="appLogger"/>
