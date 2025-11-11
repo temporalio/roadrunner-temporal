@@ -54,16 +54,22 @@ jobs:
           cd tests/acceptance/php-sdk
           vendor/bin/dload get temporal
           vendor/bin/dload get temporal-tests-server
-          vendor/bin/dload get rr
 
-      # todo: replace rr downloading with building
+      - name: Build RoadRunner
+        run: |
+          cd tests/acceptance
+          php-sdk/vendor/bin/dload build
 
       - name: Run Functional tests
+        env:
+          ROADRUNNER_BINARY: './rr'
         run: |
           cd tests/acceptance/php-sdk
           composer test:func
 
       - name: Run Acceptance tests
+        env:
+          ROADRUNNER_BINARY: './rr'
         run: |
           cd tests/acceptance/php-sdk
           composer test:accept

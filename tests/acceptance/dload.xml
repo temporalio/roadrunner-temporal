@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<dload xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/php-internal/dload/refs/heads/1.x/dload.xsd"
+       temp-dir="./runtime"
+>
+    <actions>
+        <download software="velox" />
+        <velox config-file="./velox.toml"
+               binary-path="./php-sdk/rr"
+        >
+            <plugin name="temporal" replace="../.."/>
+            <plugin name="rpc"/>
+            <plugin name="kv"/>
+            <plugin name="server"/>
+            <plugin name="logger"/>
+            <plugin name="appLogger"/>
+            <plugin name="status"/>
+        </velox>
+    </actions>
+</dload>
