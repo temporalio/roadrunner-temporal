@@ -58,7 +58,7 @@ jobs:
       - name: Build RoadRunner
         run: |
           cd tests/acceptance
-          php-sdk/vendor/bin/dload build
+          php-sdk/vendor/bin/dload build -vv
 
       - name: Run Functional tests
         env:
