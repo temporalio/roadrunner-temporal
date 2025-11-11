@@ -56,6 +56,8 @@ jobs:
           vendor/bin/dload get temporal-tests-server
 
       - name: Build RoadRunner
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd tests/acceptance
           php-sdk/vendor/bin/dload build -vv
