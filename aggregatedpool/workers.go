@@ -36,7 +36,7 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 			)
 		}
 
-		// interceptor used here to  the headers
+		// interceptor used here to the headers
 		wi[i].Options.Interceptors = append(wi[i].Options.Interceptors, NewWorkerInterceptor())
 		for _, interceptor := range interceptors {
 			wi[i].Options.Interceptors = append(wi[i].Options.Interceptors, interceptor.WorkerInterceptor())

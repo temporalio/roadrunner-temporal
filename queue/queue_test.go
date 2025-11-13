@@ -16,7 +16,7 @@ func Test_MessageQueueFlushError(t *testing.T) {
 		return atomic.AddUint64(&index, 1)
 	})
 
-	mq.PushError(1, &failure.Failure{})
+	mq.PushError(1, &failure.Failure{}, 0)
 	assert.Len(t, mq.Messages(), 1)
 
 	mq.Flush()
@@ -30,7 +30,7 @@ func Test_MessageQueueFlushResponse(t *testing.T) {
 		return atomic.AddUint64(&index, 1)
 	})
 
-	mq.PushResponse(1, &common.Payloads{})
+	mq.PushResponse(1, &common.Payloads{}, 0)
 	assert.Len(t, mq.Messages(), 1)
 
 	mq.Flush()
@@ -44,7 +44,7 @@ func Test_MessageQueueCommandID(t *testing.T) {
 		return atomic.AddUint64(&index, 1)
 	})
 
-	mq.PushCommand(internal.StartWorkflow{}, &common.Payloads{}, &common.Header{})
+	mq.PushCommand(internal.StartWorkflow{}, &common.Payloads{}, &common.Header{}, 0)
 	assert.Len(t, mq.Messages(), 1)
 
 	mq.Flush()
