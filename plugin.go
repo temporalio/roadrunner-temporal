@@ -20,6 +20,7 @@ import (
 	"github.com/temporalio/roadrunner-temporal/v5/internal"
 	"github.com/temporalio/roadrunner-temporal/v5/internal/codec/proto"
 	tclient "go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
 	"go.uber.org/zap"
 
@@ -61,7 +62,8 @@ type temporal struct {
 	client        tclient.Client
 	workers       []worker.Worker
 
-	interceptors map[string]api.Interceptor
+	interceptors        map[string]api.Interceptor
+	customDataConverter converter.PayloadConverter
 }
 
 type Plugin struct {
@@ -285,7 +287,7 @@ func (p *Plugin) Workers() []*process.State {
 	for i := range wfPw {
 		st, err := process.WorkerProcessState(wfPw[i])
 		if err != nil {
-			// log error and continue
+			// log the error and continue
 			p.log.Error("worker process state error", zap.Error(err))
 			continue
 		}
@@ -296,7 +298,7 @@ func (p *Plugin) Workers() []*process.State {
 	for i := range actPw {
 		st, err := process.WorkerProcessState(actPw[i])
 		if err != nil {
-			// log error and continue
+			// log the error and continue
 			p.log.Error("worker process state error", zap.Error(err))
 			continue
 		}
@@ -410,6 +412,9 @@ func (p *Plugin) Collects() []*dep.In {
 			p.temporal.interceptors[mdw.Name()] = mdw
 			p.mu.Unlock()
 		}, (*api.Interceptor)(nil)),
+		dep.Fits(func(pp any) {
+			p.temporal.customDataConverter = pp.(converter.PayloadConverter)
+		}, (*converter.PayloadConverter)(nil)),
 	}
 }
 

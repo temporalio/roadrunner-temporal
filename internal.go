@@ -38,8 +38,19 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	dc := dataconverter.NewDataConverter(converter.GetDefaultDataConverter())
-	codec := proto.NewCodec(p.log, dc)
+	dc := make([]converter.PayloadConverter, 0, 5)
+	// standard payload converters
+	dc = append(dc, converter.NewNilPayloadConverter())
+	dc = append(dc, converter.NewByteSlicePayloadConverter())
+	dc = append(dc, converter.NewProtoJSONPayloadConverter())
+	dc = append(dc, converter.NewProtoPayloadConverter())
+
+	if p.temporal.customDataConverter != nil {
+		dc = append(dc, p.temporal.customDataConverter)
+	}
+
+	rrdc := dataconverter.NewDataConverter(converter.NewCompositeDataConverter(dc...))
+	codec := proto.NewCodec(p.log, rrdc)
 
 	// LA + A definitions
 	actDef := aggregatedpool.NewActivityDefinition(codec, ap, p.log, p.config.DisableActivityWorkers)
@@ -85,7 +96,7 @@ func (p *Plugin) initPool() error {
 		return errors.Str("worker info should contain at least 1 worker")
 	}
 
-	err = p.initTemporalClient(wi[0].PhpSdkVersion, wi[0].Flags, dc)
+	err = p.initTemporalClient(wi[0].PhpSdkVersion, wi[0].Flags, rrdc)
 	if err != nil {
 		return err
 	}
