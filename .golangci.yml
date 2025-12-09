@@ -54,6 +54,11 @@ linters:
       for-loops: true
     wsl:
       allow-assign-and-anything: true
+    revive:
+      rules:
+        - name: var-naming
+          disabled: true
+
   exclusions:
     generated: lax
     presets:

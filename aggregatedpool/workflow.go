@@ -268,6 +268,7 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 		stwfcmd,
 		input,
 		wp.header,
+		wp.getWorkflowWorkerPid(),
 	)
 }
 
@@ -361,7 +362,7 @@ func (wp *Workflow) StackTrace() string {
 
 func (wp *Workflow) Close() {
 	wp.log.Debug("close workflow", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID))
-	// when closing workflow, we should drain(execute) unhandled updates
+	// when closing the workflow, we should drain(execute) unhandled updates
 	if wp.env.DrainUnhandledUpdates() {
 		wp.log.Info("drained unhandled updates")
 	}

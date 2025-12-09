@@ -147,6 +147,11 @@ func (c *Codec) packMessage(msg *internal.Message, ctx *internal.Context, protoM
 	protoMsg.Header = msg.Header
 	protoMsg.HistoryLength = int64(ctx.HistoryLen)
 	protoMsg.RunId = ctx.RrID
+	if msg.WorkflowWorkerPID < 0 {
+		protoMsg.Wwpid = 0
+	} else {
+		protoMsg.Wwpid = uint64(msg.WorkflowWorkerPID)
+	}
 	// new fields
 	protoMsg.TaskQueue = ctx.TaskQueue
 	protoMsg.TickTime = ctx.TickTime

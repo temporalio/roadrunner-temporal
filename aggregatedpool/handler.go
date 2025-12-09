@@ -82,6 +82,7 @@ func (wp *Workflow) handleUpdate(name string, id string, input *commonpb.Payload
 			},
 			input,
 			header,
+			wp.getWorkflowWorkerPid(),
 		)
 	}
 
@@ -94,6 +95,7 @@ func (wp *Workflow) handleCancel() {
 		internal.CancelWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID},
 		nil,
 		wp.header,
+		wp.getWorkflowWorkerPid(),
 	)
 }
 
@@ -107,6 +109,7 @@ func (wp *Workflow) handleSignal(name string, input *commonpb.Payloads, header *
 		},
 		input,
 		header,
+		wp.getWorkflowWorkerPid(),
 	)
 
 	return nil
@@ -223,7 +226,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 			return errors.E(op, err)
 		}
 
-		wp.mq.PushResponse(msg.ID, result)
+		wp.mq.PushResponse(msg.ID, result, wp.getWorkflowWorkerPid())
 		err = wp.flushQueue()
 		if err != nil {
 			return errors.E(op, err)
@@ -279,7 +282,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 	case *internal.CompleteWorkflow:
 		wp.log.Debug("complete workflow request", zap.Uint64("ID", msg.ID))
 		result, _ := wp.env.GetDataConverter().ToPayloads(completed)
-		wp.mq.PushResponse(msg.ID, result)
+		wp.mq.PushResponse(msg.ID, result, wp.getWorkflowWorkerPid())
 
 		if msg.Failure == nil {
 			wp.env.Complete(msg.Payloads, nil)
@@ -291,7 +294,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 	case *internal.ContinueAsNew:
 		wp.log.Debug("continue-as-new request", zap.Uint64("ID", msg.ID), zap.String("name", command.Name))
 		result, _ := wp.env.GetDataConverter().ToPayloads(completed)
-		wp.mq.PushResponse(msg.ID, result)
+		wp.mq.PushResponse(msg.ID, result, wp.getWorkflowWorkerPid())
 
 		wp.env.Complete(nil, &workflow.ContinueAsNewError{
 			WorkflowType: &bindings.WorkflowType{
@@ -503,7 +506,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		}
 
 		result, _ := wp.env.GetDataConverter().ToPayloads(completed)
-		wp.mq.PushResponse(msg.ID, result)
+		wp.mq.PushResponse(msg.ID, result, wp.getWorkflowWorkerPid())
 
 		err = wp.flushQueue()
 		if err != nil {
@@ -540,12 +543,12 @@ func (wp *Workflow) createLocalActivityCallback(id uint64) bindings.LocalActivit
 
 		if lar.Err != nil {
 			wp.log.Debug("error", zap.Error(lar.Err), zap.Int32("attempt", lar.Attempt), zap.Duration("backoff", lar.Backoff))
-			wp.mq.PushError(id, temporal.GetDefaultFailureConverter().ErrorToFailure(lar.Err))
+			wp.mq.PushError(id, temporal.GetDefaultFailureConverter().ErrorToFailure(lar.Err), wp.getWorkflowWorkerPid())
 			return
 		}
 
 		wp.log.Debug("pushing local activity response", zap.Uint64("ID", id))
-		wp.mq.PushResponse(id, lar.Result)
+		wp.mq.PushResponse(id, lar.Result, wp.getWorkflowWorkerPid())
 	}
 
 	return func(lar *bindings.LocalActivityResultWrapper) {
@@ -571,13 +574,13 @@ func (wp *Workflow) createCallback(id uint64, t string) bindings.ResultHandler {
 
 		if err != nil {
 			wp.log.Debug("error", zap.Error(err), zap.String("type", t))
-			wp.mq.PushError(id, temporal.GetDefaultFailureConverter().ErrorToFailure(err))
+			wp.mq.PushError(id, temporal.GetDefaultFailureConverter().ErrorToFailure(err), wp.getWorkflowWorkerPid())
 			return
 		}
 
 		wp.log.Debug("pushing response", zap.Uint64("ID", id), zap.String("type", t))
 		// fetch original payload
-		wp.mq.PushResponse(id, result)
+		wp.mq.PushResponse(id, result, wp.getWorkflowWorkerPid())
 	}
 
 	return func(result *commonpb.Payloads, err error) {
@@ -603,11 +606,11 @@ func (wp *Workflow) createContinuableCallback(id uint64, t string) bindings.Resu
 		wp.canceller.Discard(id)
 
 		if err != nil {
-			wp.mq.PushError(id, temporal.GetDefaultFailureConverter().ErrorToFailure(err))
+			wp.mq.PushError(id, temporal.GetDefaultFailureConverter().ErrorToFailure(err), wp.getWorkflowWorkerPid())
 			return
 		}
 
-		wp.mq.PushResponse(id, result)
+		wp.mq.PushResponse(id, result, wp.getWorkflowWorkerPid())
 		err = wp.flushQueue()
 		if err != nil {
 			panic(err)
@@ -678,7 +681,9 @@ func (wp *Workflow) flushQueue() error {
 func (wp *Workflow) runCommand(cmd any, payloads *commonpb.Payloads, header *commonpb.Header) (*internal.Message, error) {
 	const op = errors.Op("workflow_process_runcommand")
 	msg := &internal.Message{}
-	wp.mq.AllocateMessage(cmd, payloads, header, msg)
+	// attempt to prevent sending the response from the dead worker
+
+	wp.mq.AllocateMessage(cmd, payloads, header, msg, wp.getWorkflowWorkerPid())
 
 	if wp.mh != nil {
 		wp.mh.Gauge(RrMetricName).Update(float64(wp.pool.QueueSize()))
@@ -732,6 +737,17 @@ func (wp *Workflow) runCommand(cmd any, payloads *commonpb.Payloads, header *com
 
 	wp.putPld(pl)
 	return msgs[0], nil
+}
+
+func (wp *Workflow) getWorkflowWorkerPid() int {
+	wp.log.Debug("fetching workflow worker pid")
+	wfw := wp.pool.Workers()
+	if len(wfw) > 0 {
+		wp.log.Debug("workflow worker pid found", zap.Int("pid", int(wfw[0].Pid())))
+		return int(wfw[0].Pid())
+	}
+	wp.log.Debug("workflow worker pid not found")
+	return 0
 }
 
 func (wp *Workflow) getPld() *payload.Payload {

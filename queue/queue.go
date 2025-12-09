@@ -30,36 +30,43 @@ func (mq *MessageQueue) Flush() {
 // AllocateMessage ..
 // TODO(rustatian) allocate??? -> to sync.Pool
 // Remove this method if flavor of sync.Pool with internal.Message
-func (mq *MessageQueue) AllocateMessage(cmd any, payloads *common.Payloads, header *common.Header, ret *internal.Message) {
+func (mq *MessageQueue) AllocateMessage(cmd any, payloads *common.Payloads, header *common.Header, ret *internal.Message, wfPid int) {
 	ret.ID = mq.SeqID()
 	ret.Command = cmd
+	ret.WorkflowWorkerPID = wfPid
 	ret.Payloads = payloads
 	ret.Header = header
 }
 
-func (mq *MessageQueue) PushCommand(cmd any, payloads *common.Payloads, header *common.Header) {
+func (mq *MessageQueue) PushCommand(cmd any, payloads *common.Payloads, header *common.Header, wfPid int) {
 	mq.mu.Lock()
 	mq.queue = append(mq.queue, &internal.Message{
-		ID:       mq.SeqID(),
-		Command:  cmd,
-		Payloads: payloads,
-		Header:   header,
+		ID:                mq.SeqID(),
+		WorkflowWorkerPID: wfPid,
+		Command:           cmd,
+		Payloads:          payloads,
+		Header:            header,
 	})
 	mq.mu.Unlock()
 }
 
-func (mq *MessageQueue) PushResponse(id uint64, payloads *common.Payloads) {
+func (mq *MessageQueue) PushResponse(id uint64, payloads *common.Payloads, wfPid int) {
 	mq.mu.Lock()
 	mq.queue = append(mq.queue, &internal.Message{
-		ID:       id,
-		Payloads: payloads,
+		ID:                id,
+		WorkflowWorkerPID: wfPid,
+		Payloads:          payloads,
 	})
 	mq.mu.Unlock()
 }
 
-func (mq *MessageQueue) PushError(id uint64, failure *failure.Failure) {
+func (mq *MessageQueue) PushError(id uint64, failure *failure.Failure, wfPid int) {
 	mq.mu.Lock()
-	mq.queue = append(mq.queue, &internal.Message{ID: id, Failure: failure})
+	mq.queue = append(mq.queue, &internal.Message{
+		ID:                id,
+		WorkflowWorkerPID: wfPid,
+		Failure:           failure,
+	})
 	mq.mu.Unlock()
 }
 

@@ -94,7 +94,8 @@ type Context struct {
 // Message used to exchange the send commands and receive responses from underlying workers.
 type Message struct {
 	// ID contains ID of the command, response or error.
-	ID uint64 `json:"id"`
+	ID                uint64 `json:"id"`
+	WorkflowWorkerPID int    `json:"workflow_worker_pid,omitempty"`
 	// Command of the message in unmarshalled form. Pointer.
 	Command any `json:"command,omitempty"`
 	// Failure associated with command id.
