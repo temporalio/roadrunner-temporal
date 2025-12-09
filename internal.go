@@ -44,6 +44,7 @@ func (p *Plugin) initPool() error {
 	dc = append(dc, converter.NewByteSlicePayloadConverter())
 	dc = append(dc, converter.NewProtoJSONPayloadConverter())
 	dc = append(dc, converter.NewProtoPayloadConverter())
+	dc = append(dc, converter.NewJSONPayloadConverter())
 
 	if p.temporal.customDataConverter != nil {
 		dc = append(dc, p.temporal.customDataConverter)
