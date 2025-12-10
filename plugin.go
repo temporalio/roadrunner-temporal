@@ -62,8 +62,8 @@ type temporal struct {
 	client        tclient.Client
 	workers       []worker.Worker
 
-	interceptors        map[string]api.Interceptor
-	customDataConverter converter.PayloadConverter
+	interceptors           map[string]api.Interceptor
+	customPayloadConverter converter.PayloadConverter
 }
 
 type Plugin struct {
@@ -163,7 +163,7 @@ func (p *Plugin) Init(cfg api.Configurer, log Logger, server api.Server) error {
 	// initialize interceptors
 	p.temporal.interceptors = make(map[string]api.Interceptor)
 	// empty
-	p.apiKey.Store(ptrTo(""))
+	p.apiKey.Store(ptr(""))
 
 	return nil
 }
@@ -413,7 +413,7 @@ func (p *Plugin) Collects() []*dep.In {
 			p.mu.Unlock()
 		}, (*api.Interceptor)(nil)),
 		dep.Fits(func(pp any) {
-			p.temporal.customDataConverter = pp.(converter.PayloadConverter)
+			p.temporal.customPayloadConverter = pp.(converter.PayloadConverter)
 		}, (*converter.PayloadConverter)(nil)),
 	}
 }
@@ -426,6 +426,6 @@ func (p *Plugin) RPC() any {
 	return &rpc{plugin: p, client: p.temporal.client}
 }
 
-func ptrTo[T any](v T) *T {
+func ptr[T any](v T) *T {
 	return &v
 }

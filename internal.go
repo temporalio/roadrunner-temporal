@@ -46,8 +46,8 @@ func (p *Plugin) initPool() error {
 	dc = append(dc, converter.NewProtoPayloadConverter())
 	dc = append(dc, converter.NewJSONPayloadConverter())
 
-	if p.temporal.customDataConverter != nil {
-		dc = append(dc, p.temporal.customDataConverter)
+	if p.temporal.customPayloadConverter != nil {
+		dc = append(dc, p.temporal.customPayloadConverter)
 	}
 
 	rrdc := dataconverter.NewDataConverter(converter.NewCompositeDataConverter(dc...))
@@ -146,7 +146,7 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 
 	if val, ok := flags[APIKey]; ok {
 		if val != "" {
-			p.apiKey.Store(ptrTo(val))
+			p.apiKey.Store(ptr(val))
 		}
 	}
 
