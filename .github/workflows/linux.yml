@@ -75,7 +75,7 @@ jobs:
           docker compose -f env/docker-compose-temporal-updates.yaml up -d --remove-orphans
 
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: coverage_1
           path: ./tests/coverage-ci
@@ -168,7 +168,7 @@ jobs:
           docker compose -f env/docker-compose-temporal.yaml up -d --remove-orphans
 
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: coverage_2
           path: ./tests/coverage-ci
@@ -242,7 +242,7 @@ jobs:
           docker compose -f env/temporal_tls/docker-compose.yml down
 
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: coverage_3
           path: ./tests/coverage-ci
