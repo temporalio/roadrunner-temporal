@@ -272,7 +272,9 @@ type NewTimer struct {
 }
 
 // SideEffect to be recorded into the history.
-type SideEffect struct{}
+type SideEffect struct {
+	Summary string `json:"summary"`
+}
 
 // GetVersion requests version marker.
 type GetVersion struct {

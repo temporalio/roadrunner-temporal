@@ -239,6 +239,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 				return msg.Payloads, nil
 			},
 			wp.createContinuableCallback(msg.ID, "SideEffect"),
+			command.Summary,
 		)
 
 	case *internal.UpdateCompleted:

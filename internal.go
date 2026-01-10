@@ -156,8 +156,10 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 		ConnectionOptions: tclient.ConnectionOptions{
 			TLS:         p.temporal.tlsCfg,
 			DialOptions: dialOpts,
+			// explicitly disable TLS if no config provided
+			// because we're always using NewApiKeyDynamicCredentials which leads (from sdk-go 1.39) to TLS by default
+			TLSDisabled: p.config.TLS == nil,
 		},
-
 		Credentials: tclient.NewAPIKeyDynamicCredentials(func(context.Context) (string, error) {
 			if p.apiKey.Load() != nil {
 				return *p.apiKey.Load(), nil
