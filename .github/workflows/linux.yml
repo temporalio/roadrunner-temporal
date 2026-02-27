@@ -258,7 +258,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Download code coverage results
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
       - run: |
           cd coverage_1
           echo 'mode: atomic' > summary.txt
