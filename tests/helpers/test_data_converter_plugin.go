@@ -37,6 +37,9 @@ func (p *TestDataConverterPlugin) ToPayload(value any) (*commonpb.Payload, error
 		return nil, err
 	}
 	// re-tag with our custom encoding so Temporal stores it with our metadata
+	if payload.Metadata == nil {
+		payload.Metadata = make(map[string][]byte, 1)
+	}
 	payload.Metadata["encoding"] = []byte(p.Encoding())
 	return payload, nil
 }

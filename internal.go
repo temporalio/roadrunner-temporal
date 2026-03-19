@@ -47,8 +47,8 @@ func (p *Plugin) initPool() error {
 
 	var dc converter.DataConverter
 	if len(customConverters) > 0 {
-		// custom converters are placed before JSON so they can handle ToPayload for their types;
-		// JSON converter is always last as it accepts any value
+		// Standard converters (Nil, ByteSlice, ProtoJSON, Proto) come first,
+		// then custom converters, then JSON converter last as it accepts any value.
 		pcs := make([]converter.PayloadConverter, 0, 5+len(customConverters))
 		pcs = append(pcs,
 			converter.NewNilPayloadConverter(),
@@ -66,12 +66,11 @@ func (p *Plugin) initPool() error {
 	rrdc := dataconverter.NewDataConverter(dc)
 	codec := proto.NewCodec(p.log, rrdc)
 
-	// LA + A definitions
+	// Activity and local-activity definitions share the activity pool.
 	actDef := aggregatedpool.NewActivityDefinition(codec, ap, p.log, p.config.DisableActivityWorkers)
 	laDef := aggregatedpool.NewLocalActivityFn(codec, ap, p.log)
-	// ------------------
 
-	// ---------- WORKFLOW POOL -------------
+	// Workflow pool: single dedicated worker with extended allocate timeout.
 	wp, err := p.server.NewPool(
 		context.Background(),
 		&pool.Config{
@@ -186,8 +185,8 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 			TLSDisabled: p.config.TLS == nil,
 		},
 		Credentials: tclient.NewAPIKeyDynamicCredentials(func(context.Context) (string, error) {
-			if p.apiKey.Load() != nil {
-				return *p.apiKey.Load(), nil
+			if v := p.apiKey.Load(); v != nil {
+				return *v, nil
 			}
 
 			return "", nil

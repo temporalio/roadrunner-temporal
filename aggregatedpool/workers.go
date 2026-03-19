@@ -19,7 +19,7 @@ import (
 const tq = "taskqueue"
 
 // ResolveInterceptors returns the list of WorkerInterceptors to apply.
-// The built-in header-propagation interceptor is always first.
+// The built-in header context-bridging interceptor is always first.
 // When enabledOrder is non-empty, only those named interceptors are used (in the specified order);
 // an error is returned if any name is not found in the map.
 // When enabledOrder is empty, all collected interceptors are applied.
@@ -27,7 +27,7 @@ func ResolveInterceptors(
 	interceptors map[string]api.Interceptor,
 	enabledOrder []string,
 ) ([]sdkinterceptor.WorkerInterceptor, error) {
-	// +1 if 0 in both
+	// +1 for the built-in interceptor at position 0
 	result := make([]sdkinterceptor.WorkerInterceptor, 1, max(len(enabledOrder), len(interceptors))+1)
 	result[0] = NewWorkerInterceptor()
 
@@ -53,6 +53,7 @@ func ResolveInterceptors(
 }
 
 // ResolveDataConverters returns the list of custom PayloadConverters to apply.
+// When both inputs are empty, nil, nil is returned (no custom converters needed).
 // When enabledOrder is non-empty, only those converters are used (in the specified order);
 // an error is returned if any encoding is not found in the map.
 // When enabledOrder is empty, all collected converters are applied.
@@ -97,7 +98,7 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 	for i := range wi {
 		log.Debug("worker info", zap.Any("worker_info", wi[i]))
 
-		// just to be sure
+		// Override to 0: RoadRunner manages worker lifecycle independently
 		wi[i].Options.WorkerStopTimeout = 0
 
 		if wi[i].TaskQueue == "" {

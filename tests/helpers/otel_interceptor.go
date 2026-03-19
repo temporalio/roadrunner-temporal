@@ -16,10 +16,9 @@ import (
 // OpenTelemetry tracer provider. This allows tests to assert on captured spans
 // without needing an external collector or stderr capture.
 type InMemoryOtelInterceptorPlugin struct {
-	config Configurer
-	tp     *sdktrace.TracerProvider
-	Exp    *tracetest.InMemoryExporter
-	wi     sdkinterceptor.WorkerInterceptor
+	tp  *sdktrace.TracerProvider
+	Exp *tracetest.InMemoryExporter
+	wi  sdkinterceptor.WorkerInterceptor
 }
 
 // NewInMemoryOtelInterceptorPlugin creates a new in-memory OTEL interceptor plugin
@@ -27,7 +26,11 @@ type InMemoryOtelInterceptorPlugin struct {
 func NewInMemoryOtelInterceptorPlugin(t *testing.T) *InMemoryOtelInterceptorPlugin {
 	exp := tracetest.NewInMemoryExporter()
 	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exp))
-	t.Cleanup(func() { _ = tp.Shutdown(context.Background()) })
+	t.Cleanup(func() {
+		if err := tp.Shutdown(context.Background()); err != nil {
+			t.Errorf("failed to shut down tracer provider: %v", err)
+		}
+	})
 
 	tracer := tp.Tracer("temporal-test")
 	ti, err := otelinterceptor.NewTracingInterceptor(otelinterceptor.TracerOptions{Tracer: tracer})
@@ -36,8 +39,7 @@ func NewInMemoryOtelInterceptorPlugin(t *testing.T) *InMemoryOtelInterceptorPlug
 	return &InMemoryOtelInterceptorPlugin{tp: tp, Exp: exp, wi: ti}
 }
 
-func (i *InMemoryOtelInterceptorPlugin) Init(cfg Configurer) error {
-	i.config = cfg
+func (i *InMemoryOtelInterceptorPlugin) Init(_ Configurer) error {
 	return nil
 }
 

@@ -163,7 +163,7 @@ func (p *Plugin) Init(cfg api.Configurer, log Logger, server api.Server) error {
 	// initialize interceptors and data converters
 	p.temporal.interceptors = make(map[string]api.Interceptor)
 	p.temporal.dataConverters = make(map[string]converter.PayloadConverter)
-	// empty
+	// Initialize with empty API key; populated from PHP SDK flags during pool init.
 	p.apiKey.Store(ptr(""))
 
 	return nil
@@ -407,8 +407,12 @@ func (p *Plugin) Collects() []*dep.In {
 	return []*dep.In{
 		dep.Fits(func(pp any) {
 			mdw := pp.(api.Interceptor)
-			// just to be safe
 			p.mu.Lock()
+			if _, exists := p.temporal.interceptors[mdw.Name()]; exists {
+				p.log.Warn("interceptor with this name is already registered, overwriting",
+					zap.String("name", mdw.Name()),
+				)
+			}
 			p.temporal.interceptors[mdw.Name()] = mdw
 			p.mu.Unlock()
 		}, (*api.Interceptor)(nil)),

@@ -189,5 +189,33 @@ func (c *Config) InitDefault() error {
 		}
 	}
 
+	// Validate interceptor names
+	if len(c.Interceptors) > 0 {
+		seen := make(map[string]struct{}, len(c.Interceptors))
+		for _, name := range c.Interceptors {
+			if name == "" {
+				return errors.E(op, errors.Str("interceptor name must not be empty"))
+			}
+			if _, exists := seen[name]; exists {
+				return errors.E(op, errors.Errorf("duplicate interceptor name %q", name))
+			}
+			seen[name] = struct{}{}
+		}
+	}
+
+	// Validate data converter encodings
+	if len(c.DataConverters) > 0 {
+		seen := make(map[string]struct{}, len(c.DataConverters))
+		for _, encoding := range c.DataConverters {
+			if encoding == "" {
+				return errors.E(op, errors.Str("data converter encoding must not be empty"))
+			}
+			if _, exists := seen[encoding]; exists {
+				return errors.E(op, errors.Errorf("duplicate data converter encoding %q", encoding))
+			}
+			seen[encoding] = struct{}{}
+		}
+	}
+
 	return nil
 }

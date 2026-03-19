@@ -115,8 +115,8 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, confi
 		&status.Plugin{},
 	)
 
-	assert.NoError(t, err)
-	assert.NoError(t, container.Init())
+	require.NoError(t, err)
+	require.NoError(t, container.Init())
 
 	errCh, err := container.Serve()
 	require.NoError(t, err)
@@ -259,8 +259,8 @@ func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.W
 		&TemporalInterceptorPlugin{},
 	)
 
-	assert.NoError(t, err)
-	assert.NoError(t, container.Init())
+	require.NoError(t, err)
+	require.NoError(t, container.Init())
 
 	errCh, err := container.Serve()
 	require.NoError(t, err)
@@ -319,8 +319,8 @@ func NewTestServerWithDataConverter(t *testing.T, stopCh chan struct{}, wg *sync
 		&TestDataConverterPlugin{},
 	)
 
-	assert.NoError(t, err)
-	assert.NoError(t, container.Init())
+	require.NoError(t, err)
+	require.NoError(t, container.Init())
 
 	errCh, err := container.Serve()
 	require.NoError(t, err)
@@ -376,8 +376,8 @@ func NewTestServerWithOtelInterceptor(t *testing.T, stopCh chan struct{}, wg *sy
 		otelPlugin,
 	)
 
-	assert.NoError(t, err)
-	assert.NoError(t, container.Init())
+	require.NoError(t, err)
+	require.NoError(t, container.Init())
 
 	errCh, err := container.Serve()
 	require.NoError(t, err)
