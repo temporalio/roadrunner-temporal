@@ -26,8 +26,8 @@ func ResolveInterceptors(
 	interceptors map[string]api.Interceptor,
 	configuredOrder []string,
 ) ([]sdkinterceptor.WorkerInterceptor, error) {
-	n := max(len(configuredOrder), len(interceptors))
-	result := make([]sdkinterceptor.WorkerInterceptor, 1, 1+n)
+	// +1 if 0 in both
+	result := make([]sdkinterceptor.WorkerInterceptor, 1, max(len(configuredOrder), len(interceptors))+1)
 	result[0] = NewWorkerInterceptor()
 
 	if len(configuredOrder) > 0 {
@@ -36,7 +36,7 @@ func ResolveInterceptors(
 			if !ok {
 				return nil, errors.E(
 					errors.Op("temporal_resolve_interceptors"),
-					errors.Str(fmt.Sprintf("interceptor %q is not registered", name)),
+					errors.Errorf("interceptor %q is not registered", name),
 				)
 			}
 

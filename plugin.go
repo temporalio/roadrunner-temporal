@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	// PluginName defines public service name.
+	// pluginName defines the service name used for configuration lookup and plugin registration.
 	pluginName string = "temporal"
 	metricsKey string = "temporal.metrics"
 
@@ -252,10 +252,8 @@ func (p *Plugin) Stop(ctx context.Context) error {
 
 		// might be nil if the user didn't set the metrics
 		if p.temporal.tallyCloser != nil {
-			// there might be a panic if the io.Closer is not nil, but the actual type is nil
-			err := p.temporal.tallyCloser.Close()
-			if err != nil {
-				p.mu.Unlock()
+			if err := p.temporal.tallyCloser.Close(); err != nil {
+				p.log.Error("failed to close tally metrics", zap.Error(err))
 			}
 		}
 
@@ -403,7 +401,7 @@ func (p *Plugin) Reset() error {
 	return nil
 }
 
-// Collects collecting grpc interceptors
+// Collects registers dependency injection collectors for Temporal worker interceptors and custom payload converters.
 func (p *Plugin) Collects() []*dep.In {
 	return []*dep.In{
 		dep.Fits(func(pp any) {
@@ -414,7 +412,9 @@ func (p *Plugin) Collects() []*dep.In {
 			p.mu.Unlock()
 		}, (*api.Interceptor)(nil)),
 		dep.Fits(func(pp any) {
+			p.mu.Lock()
 			p.temporal.customPayloadConverter = pp.(converter.PayloadConverter)
+			p.mu.Unlock()
 		}, (*converter.PayloadConverter)(nil)),
 	}
 }

@@ -38,19 +38,23 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	dc := make([]converter.PayloadConverter, 0, 5)
-	// standard payload converters
-	dc = append(dc, converter.NewNilPayloadConverter())
-	dc = append(dc, converter.NewByteSlicePayloadConverter())
-	dc = append(dc, converter.NewProtoJSONPayloadConverter())
-	dc = append(dc, converter.NewProtoPayloadConverter())
-	dc = append(dc, converter.NewJSONPayloadConverter())
-
+	var dc converter.DataConverter
 	if p.temporal.customPayloadConverter != nil {
-		dc = append(dc, p.temporal.customPayloadConverter)
+		// custom converter is placed before JSON so it can handle ToPayload for its types;
+		// JSON converter is always last as it accepts any value
+		dc = converter.NewCompositeDataConverter(
+			converter.NewNilPayloadConverter(),
+			converter.NewByteSlicePayloadConverter(),
+			converter.NewProtoJSONPayloadConverter(),
+			converter.NewProtoPayloadConverter(),
+			p.temporal.customPayloadConverter,
+			converter.NewJSONPayloadConverter(),
+		)
+	} else {
+		dc = converter.GetDefaultDataConverter()
 	}
 
-	rrdc := dataconverter.NewDataConverter(converter.NewCompositeDataConverter(dc...))
+	rrdc := dataconverter.NewDataConverter(dc)
 	codec := proto.NewCodec(p.log, rrdc)
 
 	// LA + A definitions

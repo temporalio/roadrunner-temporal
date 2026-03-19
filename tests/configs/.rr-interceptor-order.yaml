@@ -10,7 +10,7 @@ temporal:
   address: "127.0.0.1:7233"
   cache_size: 10
   interceptors:
-    - "temporal_test.incterceptor_plugin"
+    - "temporal_test.interceptor_plugin"
   activities:
     num_workers: 4
 

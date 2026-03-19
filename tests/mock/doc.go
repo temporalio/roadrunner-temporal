@@ -1,3 +1,3 @@
-// Package mocklogger provides mock implementations of logging and observer interfaces
-// used in integration tests for the Temporal plugin.
+// Package mocklogger provides test logging infrastructure including an in-memory
+// zapcore.Core observer and a zap.Logger implementation compatible with the Endure container lifecycle.
 package mocklogger

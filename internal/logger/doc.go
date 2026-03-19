@@ -1,3 +1,3 @@
-// Package logger provides adapter utilities for bridging zap-based logging
-// with the common log interface used by the Temporal SDK.
+// Package logger provides an adapter that bridges zap.Logger with the
+// go.temporal.io/sdk/log.Logger interface used by the Temporal SDK client.
 package logger

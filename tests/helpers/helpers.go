@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	rrVersion string = "2024.2.0"
+	rrVersion string = "2025.1.11"
 )
 
 type Configurer interface {
@@ -263,9 +263,7 @@ func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.W
 	assert.NoError(t, container.Init())
 
 	errCh, err := container.Serve()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	go func() {
 		defer wg.Done()
@@ -289,9 +287,6 @@ func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.W
 		DataConverter: dc,
 		Logger:        newZapAdapter(initLogger()),
 	})
-	if err != nil {
-		panic(err)
-	}
 	require.NoError(t, err)
 
 	return &TestServer{
@@ -325,9 +320,7 @@ func NewTestServerWithOtelInterceptor(t *testing.T, stopCh chan struct{}, wg *sy
 	assert.NoError(t, container.Init())
 
 	errCh, err := container.Serve()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	go func() {
 		defer wg.Done()
@@ -351,9 +344,6 @@ func NewTestServerWithOtelInterceptor(t *testing.T, stopCh chan struct{}, wg *sy
 		DataConverter: dc,
 		Logger:        newZapAdapter(initLogger()),
 	})
-	if err != nil {
-		panic(err)
-	}
 	require.NoError(t, err)
 
 	return &TestServer{

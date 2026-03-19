@@ -96,3 +96,31 @@ func TestResolveInterceptors_EmptyMap_EmptyConfig(t *testing.T) {
 	// only the built-in interceptor
 	assert.Len(t, result, 1)
 }
+
+func TestResolveInterceptors_NilMap_NilConfig(t *testing.T) {
+	result, err := ResolveInterceptors(nil, nil)
+	require.NoError(t, err)
+
+	// only the built-in interceptor
+	assert.Len(t, result, 1)
+}
+
+func TestResolveInterceptors_NilMap_WithConfig(t *testing.T) {
+	_, err := ResolveInterceptors(nil, []string{"a"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `"a"`)
+}
+
+func TestResolveInterceptors_DuplicateNames(t *testing.T) {
+	mockA, _ := newMock("a")
+
+	interceptors := map[string]api.Interceptor{
+		"a": mockA,
+	}
+
+	result, err := ResolveInterceptors(interceptors, []string{"a", "a"})
+	require.NoError(t, err)
+
+	// built-in + 2 copies of "a"
+	assert.Len(t, result, 3)
+}

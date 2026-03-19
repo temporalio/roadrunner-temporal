@@ -27,7 +27,7 @@ func (pt *TemporalInterceptorPlugin) Stop(context.Context) error {
 }
 
 func (pt *TemporalInterceptorPlugin) Name() string {
-	return "temporal_test.incterceptor_plugin"
+	return "temporal_test.interceptor_plugin"
 }
 
 func (pt *TemporalInterceptorPlugin) WorkerInterceptor() interceptor.WorkerInterceptor {

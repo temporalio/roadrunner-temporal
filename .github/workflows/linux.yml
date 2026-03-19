@@ -151,15 +151,15 @@ jobs:
 
       - name: Run Temporal canceller module tests
         run: |
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./tests/coverage-ci/rrt_c.out -covermode=atomic ./canceller/...
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=github.com/temporalio/roadrunner-temporal/v5/... -coverprofile=./tests/coverage-ci/rrt_c.out -covermode=atomic ./canceller/...
 
       - name: Run Temporal dataconverter module tests
         run: |
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./tests/coverage-ci/rrt_dc.out -covermode=atomic ./dataconverter/...
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=github.com/temporalio/roadrunner-temporal/v5/... -coverprofile=./tests/coverage-ci/rrt_dc.out -covermode=atomic ./dataconverter/...
 
       - name: Run Temporal queue module tests
         run: |
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./tests/coverage-ci/rrt_q.out -covermode=atomic ./queue/...
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=github.com/temporalio/roadrunner-temporal/v5/... -coverprofile=./tests/coverage-ci/rrt_q.out -covermode=atomic ./queue/...
 
       - name: Run Temporal tests with coverage
         run: |
@@ -263,39 +263,20 @@ jobs:
       - name: Download code coverage results
         uses: actions/download-artifact@v8
       - run: |
-          cd coverage_1
-          echo 'mode: atomic' > summary.txt
-          tail -q -n +2 *.out >> summary.txt
-          awk '
-            NR == 1 { print; next }
-            /^github\.com\/temporalio\/roadrunner-temporal\/v5\// {
-              sub(/^github\.com\/temporalio\/roadrunner-temporal\/v5\//, "", $0)
-              print
-            }
-          ' summary.txt > summary.filtered.txt
-          mv summary.filtered.txt summary.txt
-          cd ../coverage_2
-          echo 'mode: atomic' > summary.txt
-          tail -q -n +2 *.out >> summary.txt
-          awk '
-            NR == 1 { print; next }
-            /^github\.com\/temporalio\/roadrunner-temporal\/v5\// {
-              sub(/^github\.com\/temporalio\/roadrunner-temporal\/v5\//, "", $0)
-              print
-            }
-          ' summary.txt > summary.filtered.txt
-          mv summary.filtered.txt summary.txt
-          cd ../coverage_3
-          echo 'mode: atomic' > summary.txt
-          tail -q -n +2 *.out >> summary.txt
-          awk '
-            NR == 1 { print; next }
-            /^github\.com\/temporalio\/roadrunner-temporal\/v5\// {
-              sub(/^github\.com\/temporalio\/roadrunner-temporal\/v5\//, "", $0)
-              print
-            }
-          ' summary.txt > summary.filtered.txt
-          mv summary.filtered.txt summary.txt
+          for dir in coverage_1 coverage_2 coverage_3; do
+            cd "$dir"
+            echo 'mode: atomic' > summary.txt
+            tail -q -n +2 *.out >> summary.txt
+            awk '
+              NR == 1 { print; next }
+              /^github\.com\/temporalio\/roadrunner-temporal\/v5\// {
+                sub(/^github\.com\/temporalio\/roadrunner-temporal\/v5\//, "", $0)
+                print
+              }
+            ' summary.txt > summary.filtered.txt
+            mv summary.filtered.txt summary.txt
+            cd ..
+          done
 
       - name: upload to codecov
         uses: codecov/codecov-action@v5 # Docs: <https://github.com/codecov/codecov-action>
