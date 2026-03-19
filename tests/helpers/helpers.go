@@ -17,7 +17,6 @@ import (
 	"github.com/roadrunner-server/endure/v2"
 	"github.com/roadrunner-server/informer/v5"
 	"github.com/roadrunner-server/logger/v5"
-	"github.com/roadrunner-server/otel/v5"
 	"github.com/roadrunner-server/resetter/v5"
 	"github.com/roadrunner-server/rpc/v5"
 	"github.com/roadrunner-server/server/v5"
@@ -235,12 +234,17 @@ func NewTestServerTLS(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, co
 	}
 }
 
-func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *TestServer {
+func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, configPaths ...string) *TestServer {
 	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
+
+	cfgPath := "../configs/.rr-proto.yaml"
+	if len(configPaths) > 0 {
+		cfgPath = configPaths[0]
+	}
 
 	cfg := &configImpl.Plugin{
 		Timeout: time.Minute,
-		Path:    "../configs/.rr-proto.yaml",
+		Path:    cfgPath,
 		Version: rrVersion,
 	}
 
@@ -295,14 +299,16 @@ func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.W
 	}
 }
 
-func NewTestServerWithOtelInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *TestServer {
+func NewTestServerWithOtelInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) (*TestServer, *InMemoryOtelInterceptorPlugin) {
 	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
+
+	otelPlugin := NewInMemoryOtelInterceptorPlugin(t)
 
 	cfg := &configImpl.Plugin{
 		Timeout: time.Minute,
+		Path:    "../configs/.rr-proto.yaml",
+		Version: rrVersion,
 	}
-	cfg.Path = "../configs/.rr-otlp.yaml"
-	cfg.Version = rrVersion
 
 	err := container.RegisterAll(
 		cfg,
@@ -312,7 +318,7 @@ func NewTestServerWithOtelInterceptor(t *testing.T, stopCh chan struct{}, wg *sy
 		&informer.Plugin{},
 		&server.Plugin{},
 		&rpc.Plugin{},
-		&otel.Plugin{},
+		otelPlugin,
 	)
 
 	assert.NoError(t, err)
@@ -352,7 +358,7 @@ func NewTestServerWithOtelInterceptor(t *testing.T, stopCh chan struct{}, wg *sy
 
 	return &TestServer{
 		Client: client,
-	}
+	}, otelPlugin
 }
 
 func (s *TestServer) AssertContainsEvent(client temporalClient.Client, t *testing.T, w temporalClient.WorkflowRun, assert func(*history.HistoryEvent) bool) {

@@ -821,7 +821,7 @@ func Test_SagaWorkflowLAProto(t *testing.T) {
 }
 
 func getActivities(t *testing.T) []string {
-	conn, err := net.Dial("tcp", "127.0.0.1:6001")
+	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
 	assert.NoError(t, err)
 	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 
@@ -834,7 +834,7 @@ func getActivities(t *testing.T) []string {
 }
 
 func getWorkflows(t *testing.T) []string {
-	conn, err := net.Dial("tcp", "127.0.0.1:6001")
+	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
 	assert.NoError(t, err)
 	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 

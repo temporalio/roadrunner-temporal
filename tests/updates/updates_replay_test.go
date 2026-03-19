@@ -85,7 +85,7 @@ func TestUpdatesReplay(t *testing.T) {
 
 func downloadWFHistory(address, wid, rid, wname, path string) func(t *testing.T) {
 	return func(t *testing.T) {
-		conn, err := net.Dial("tcp", address)
+		conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", address)
 		require.NoError(t, err)
 		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 
@@ -107,7 +107,7 @@ func downloadWFHistory(address, wid, rid, wname, path string) func(t *testing.T)
 
 func replayFromJSON(address, path, wname string) func(t *testing.T) {
 	return func(t *testing.T) {
-		conn, err := net.Dial("tcp", address)
+		conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", address)
 		require.NoError(t, err)
 		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 

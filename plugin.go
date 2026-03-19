@@ -382,6 +382,7 @@ func (p *Plugin) Reset() error {
 		p.log,
 		p.temporal.client,
 		p.temporal.interceptors,
+		p.config.Interceptors,
 	)
 	if err != nil {
 		return err

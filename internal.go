@@ -102,7 +102,7 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	workers, err := aggregatedpool.TemporalWorkers(wfDef, actDef, wi, p.log, p.temporal.client, p.temporal.interceptors)
+	workers, err := aggregatedpool.TemporalWorkers(wfDef, actDef, wi, p.log, p.temporal.client, p.temporal.interceptors, p.config.Interceptors)
 	if err != nil {
 		return err
 	}

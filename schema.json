@@ -17,6 +17,15 @@
       "type": "integer",
       "default": 10000
     },
+    "interceptors": {
+      "description": "Ordered list of registered worker interceptor plugin names. When set, only these interceptors are applied in the specified order. When omitted, all registered interceptors are applied.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
     "namespace": {
       "description": "Namespace for this client to work with.",
       "type": "string",

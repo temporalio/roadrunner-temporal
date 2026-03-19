@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        php: [ "8.4" ]
+        php: [ "8.5" ]
         go: [ stable ]
         os: [ "ubuntu-latest" ]
     steps:
@@ -42,7 +42,7 @@ jobs:
           echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
       - name: Init Composer Cache # Docs: <https://git.io/JfAKn#php---composer>
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('**/composer.json') }}
@@ -52,7 +52,7 @@ jobs:
         run: cd tests/php_test_files && composer update --prefer-dist --no-progress --ansi
 
       - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -70,12 +70,12 @@ jobs:
           cd tests
           docker compose -f env/docker-compose-temporal-updates.yaml up -d --remove-orphans
 
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/rrt_upd.out -covermode=atomic ./updates
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=github.com/temporalio/roadrunner-temporal/v5/... -coverprofile=./coverage-ci/rrt_upd.out -covermode=atomic ./updates
 
           docker compose -f env/docker-compose-temporal-updates.yaml up -d --remove-orphans
 
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: coverage_1
           path: ./tests/coverage-ci
@@ -86,7 +86,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        php: [ "8.4" ]
+        php: [ "8.5" ]
         go: [ stable ]
         os: [ "ubuntu-latest" ]
     steps:
@@ -111,7 +111,7 @@ jobs:
           echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
       - name: Init Composer Cache # Docs: <https://git.io/JfAKn#php---composer>
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('**/composer.json') }}
@@ -121,7 +121,7 @@ jobs:
         run: cd tests/php_test_files && composer update --prefer-dist --no-progress --ansi
 
       - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -137,7 +137,7 @@ jobs:
       - name: Add custom CA certificate
         run: |
           cd tests
-          
+
           ./env/temporal_tls/generate-test-certs.sh
           export TEMPORAL_TLS_CERTS_DIR=/etc/temporal/config/certs
           export TEMPORAL_LOCAL_CERT_DIR=$(pwd)/env/temporal_tls/certs
@@ -148,27 +148,27 @@ jobs:
 
       - name: Run Temporal canceller module tests
         run: |
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat ./tests/pkgs.txt) -coverprofile=./tests/coverage-ci/rrt_c.out -covermode=atomic canceller/canceller.go canceller/canceller_test.go
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./tests/coverage-ci/rrt_c.out -covermode=atomic ./canceller/...
 
       - name: Run Temporal dataconverter module tests
         run: |
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat ./tests/pkgs.txt) -coverprofile=./tests/coverage-ci/rrt_dc.out -covermode=atomic dataconverter/converter.go dataconverter/converter_test.go
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./tests/coverage-ci/rrt_dc.out -covermode=atomic ./dataconverter/...
 
       - name: Run Temporal queue module tests
         run: |
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat ./tests/pkgs.txt) -coverprofile=./tests/coverage-ci/rrt_q.out -covermode=atomic queue/queue.go queue/queue_test.go
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./tests/coverage-ci/rrt_q.out -covermode=atomic ./queue/...
 
       - name: Run Temporal tests with coverage
         run: |
           cd tests
           docker compose -f env/docker-compose-temporal.yaml up -d --remove-orphans
 
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/rrt.out -covermode=atomic ./general
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=github.com/temporalio/roadrunner-temporal/v5/... -coverprofile=./coverage-ci/rrt.out -covermode=atomic ./general
 
           docker compose -f env/docker-compose-temporal.yaml up -d --remove-orphans
 
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: coverage_2
           path: ./tests/coverage-ci
@@ -179,7 +179,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        php: [ "8.4" ]
+        php: [ "8.5" ]
         go: [ stable ]
         os: [ "ubuntu-latest" ]
     steps:
@@ -204,7 +204,7 @@ jobs:
           echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
       - name: Init Composer Cache # Docs: <https://git.io/JfAKn#php---composer>
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('**/composer.json') }}
@@ -214,7 +214,7 @@ jobs:
         run: cd tests/php_test_files && composer update --prefer-dist --no-progress --ansi
 
       - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -230,19 +230,19 @@ jobs:
       - name: Run Temporal TLS tests with coverage
         run: |
           cd tests
-          
+
           ./env/temporal_tls/generate-test-certs.sh
           export TEMPORAL_TLS_CERTS_DIR=/etc/temporal/config/certs
           export TEMPORAL_LOCAL_CERT_DIR=$(pwd)/env/temporal_tls/certs
           docker compose -f env/temporal_tls/docker-compose.yml up -d --remove-orphans
           sleep 60
-          
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/rrt_tls.out -covermode=atomic ./tls
+
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=github.com/temporalio/roadrunner-temporal/v5/... -coverprofile=./coverage-ci/rrt_tls.out -covermode=atomic ./tls
 
           docker compose -f env/temporal_tls/docker-compose.yml down
 
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: coverage_3
           path: ./tests/coverage-ci
@@ -258,20 +258,41 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Download code coverage results
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
       - run: |
           cd coverage_1
           echo 'mode: atomic' > summary.txt
           tail -q -n +2 *.out >> summary.txt
-          sed -i '2,${/roadrunner/!d}' summary.txt
+          awk '
+            NR == 1 { print; next }
+            /^github\.com\/temporalio\/roadrunner-temporal\/v5\// {
+              sub(/^github\.com\/temporalio\/roadrunner-temporal\/v5\//, "", $0)
+              print
+            }
+          ' summary.txt > summary.filtered.txt
+          mv summary.filtered.txt summary.txt
           cd ../coverage_2
           echo 'mode: atomic' > summary.txt
           tail -q -n +2 *.out >> summary.txt
-          sed -i '2,${/roadrunner/!d}' summary.txt
+          awk '
+            NR == 1 { print; next }
+            /^github\.com\/temporalio\/roadrunner-temporal\/v5\// {
+              sub(/^github\.com\/temporalio\/roadrunner-temporal\/v5\//, "", $0)
+              print
+            }
+          ' summary.txt > summary.filtered.txt
+          mv summary.filtered.txt summary.txt
           cd ../coverage_3
           echo 'mode: atomic' > summary.txt
           tail -q -n +2 *.out >> summary.txt
-          sed -i '2,${/roadrunner/!d}' summary.txt
+          awk '
+            NR == 1 { print; next }
+            /^github\.com\/temporalio\/roadrunner-temporal\/v5\// {
+              sub(/^github\.com\/temporalio\/roadrunner-temporal\/v5\//, "", $0)
+              print
+            }
+          ' summary.txt > summary.filtered.txt
+          mv summary.filtered.txt summary.txt
 
       - name: upload to codecov
         uses: codecov/codecov-action@v5 # Docs: <https://github.com/codecov/codecov-action>
