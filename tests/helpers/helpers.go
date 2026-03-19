@@ -294,6 +294,66 @@ func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.W
 	}
 }
 
+func NewTestServerWithDataConverter(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, configPaths ...string) *TestServer {
+	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
+
+	cfgPath := "../configs/.rr-data-converter.yaml"
+	if len(configPaths) > 0 {
+		cfgPath = configPaths[0]
+	}
+
+	cfg := &configImpl.Plugin{
+		Timeout: time.Minute,
+		Path:    cfgPath,
+		Version: rrVersion,
+	}
+
+	err := container.RegisterAll(
+		cfg,
+		&roadrunnerTemporal.Plugin{},
+		&logger.Plugin{},
+		&resetter.Plugin{},
+		&informer.Plugin{},
+		&server.Plugin{},
+		&rpc.Plugin{},
+		&TestDataConverterPlugin{},
+	)
+
+	assert.NoError(t, err)
+	assert.NoError(t, container.Init())
+
+	errCh, err := container.Serve()
+	require.NoError(t, err)
+
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case er := <-errCh:
+				assert.Fail(t, fmt.Sprintf("got error from vertex: %s, error: %v", er.VertexID, er.Error))
+				assert.NoError(t, container.Stop())
+				return
+			case <-stopCh:
+				assert.NoError(t, container.Stop())
+				return
+			}
+		}
+	}()
+
+	dc := dataconverter.NewDataConverter(converter.GetDefaultDataConverter())
+	client, err := temporalClient.Dial(temporalClient.Options{
+		HostPort:      "127.0.0.1:7233",
+		Namespace:     "default",
+		DataConverter: dc,
+		Logger:        newZapAdapter(initLogger()),
+	})
+	require.NoError(t, err)
+
+	return &TestServer{
+		Client: client,
+	}
+}
+
 func NewTestServerWithOtelInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) (*TestServer, *InMemoryOtelInterceptorPlugin) {
 	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
 

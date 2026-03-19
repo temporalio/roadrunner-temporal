@@ -38,18 +38,27 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
+	customConverters, err := aggregatedpool.ResolveDataConverters(
+		p.temporal.dataConverters, p.config.DataConverters,
+	)
+	if err != nil {
+		return err
+	}
+
 	var dc converter.DataConverter
-	if p.temporal.customPayloadConverter != nil {
-		// custom converter is placed before JSON so it can handle ToPayload for its types;
+	if len(customConverters) > 0 {
+		// custom converters are placed before JSON so they can handle ToPayload for their types;
 		// JSON converter is always last as it accepts any value
-		dc = converter.NewCompositeDataConverter(
+		pcs := make([]converter.PayloadConverter, 0, 5+len(customConverters))
+		pcs = append(pcs,
 			converter.NewNilPayloadConverter(),
 			converter.NewByteSlicePayloadConverter(),
 			converter.NewProtoJSONPayloadConverter(),
 			converter.NewProtoPayloadConverter(),
-			p.temporal.customPayloadConverter,
-			converter.NewJSONPayloadConverter(),
 		)
+		pcs = append(pcs, customConverters...)
+		pcs = append(pcs, converter.NewJSONPayloadConverter())
+		dc = converter.NewCompositeDataConverter(pcs...)
 	} else {
 		dc = converter.GetDefaultDataConverter()
 	}

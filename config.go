@@ -15,6 +15,7 @@ type Config struct {
 	Activities             *pool.Config `mapstructure:"activities"`
 	TLS                    *TLS         `mapstructure:"tls, omitempty"`
 	Interceptors           []string     `mapstructure:"interceptors"`
+	DataConverters         []string     `mapstructure:"data_converters"`
 	DisableActivityWorkers bool         `mapstructure:"disable_activity_workers"`
 
 	Address   string `mapstructure:"address"`

@@ -18,7 +18,16 @@
       "default": 10000
     },
     "interceptors": {
-      "description": "Ordered list of registered worker interceptor plugin names. When set, only these interceptors are applied in the specified order. When omitted, all registered interceptors are applied.",
+      "description": "Ordered list of enabled worker interceptor plugin names. When set, only these interceptors are active and applied in the specified order. When omitted, all registered interceptors are applied.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "data_converters": {
+      "description": "Ordered list of enabled custom data converter encodings. When set, only these converters are active and applied in the specified order. When omitted, all registered custom converters are applied. Custom converters are inserted before the default JSON converter in the converter chain.",
       "type": "array",
       "uniqueItems": true,
       "items": {

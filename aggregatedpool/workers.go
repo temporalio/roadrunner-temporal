@@ -9,6 +9,7 @@ import (
 	"github.com/temporalio/roadrunner-temporal/v5/internal"
 	tActivity "go.temporal.io/sdk/activity"
 	temporalClient "go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/converter"
 	sdkinterceptor "go.temporal.io/sdk/interceptor"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
@@ -17,21 +18,21 @@ import (
 
 const tq = "taskqueue"
 
-// ResolveInterceptors returns the ordered list of WorkerInterceptors to apply.
+// ResolveInterceptors returns the list of WorkerInterceptors to apply.
 // The built-in header-propagation interceptor is always first.
-// When configuredOrder is non-empty, only those named interceptors are used (in order);
+// When enabledOrder is non-empty, only those named interceptors are used (in the specified order);
 // an error is returned if any name is not found in the map.
-// When configuredOrder is empty, all collected interceptors are applied.
+// When enabledOrder is empty, all collected interceptors are applied.
 func ResolveInterceptors(
 	interceptors map[string]api.Interceptor,
-	configuredOrder []string,
+	enabledOrder []string,
 ) ([]sdkinterceptor.WorkerInterceptor, error) {
 	// +1 if 0 in both
-	result := make([]sdkinterceptor.WorkerInterceptor, 1, max(len(configuredOrder), len(interceptors))+1)
+	result := make([]sdkinterceptor.WorkerInterceptor, 1, max(len(enabledOrder), len(interceptors))+1)
 	result[0] = NewWorkerInterceptor()
 
-	if len(configuredOrder) > 0 {
-		for _, name := range configuredOrder {
+	if len(enabledOrder) > 0 {
+		for _, name := range enabledOrder {
 			intcpt, ok := interceptors[name]
 			if !ok {
 				return nil, errors.E(
@@ -48,6 +49,40 @@ func ResolveInterceptors(
 		}
 	}
 
+	return result, nil
+}
+
+// ResolveDataConverters returns the list of custom PayloadConverters to apply.
+// When enabledOrder is non-empty, only those converters are used (in the specified order);
+// an error is returned if any encoding is not found in the map.
+// When enabledOrder is empty, all collected converters are applied.
+func ResolveDataConverters(
+	converters map[string]converter.PayloadConverter,
+	enabledOrder []string,
+) ([]converter.PayloadConverter, error) {
+	if len(converters) == 0 && len(enabledOrder) == 0 {
+		return nil, nil
+	}
+
+	if len(enabledOrder) > 0 {
+		result := make([]converter.PayloadConverter, 0, len(enabledOrder))
+		for _, encoding := range enabledOrder {
+			dc, ok := converters[encoding]
+			if !ok {
+				return nil, errors.E(
+					errors.Op("temporal_resolve_data_converters"),
+					errors.Errorf("data converter with encoding %q is not registered", encoding),
+				)
+			}
+			result = append(result, dc)
+		}
+		return result, nil
+	}
+
+	result := make([]converter.PayloadConverter, 0, len(converters))
+	for _, dc := range converters {
+		result = append(result, dc)
+	}
 	return result, nil
 }
 

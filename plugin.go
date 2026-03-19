@@ -62,8 +62,8 @@ type temporal struct {
 	client        tclient.Client
 	workers       []worker.Worker
 
-	interceptors           map[string]api.Interceptor
-	customPayloadConverter converter.PayloadConverter
+	interceptors   map[string]api.Interceptor
+	dataConverters map[string]converter.PayloadConverter
 }
 
 type Plugin struct {
@@ -160,8 +160,9 @@ func (p *Plugin) Init(cfg api.Configurer, log Logger, server api.Server) error {
 		}
 	}
 
-	// initialize interceptors
+	// initialize interceptors and data converters
 	p.temporal.interceptors = make(map[string]api.Interceptor)
+	p.temporal.dataConverters = make(map[string]converter.PayloadConverter)
 	// empty
 	p.apiKey.Store(ptr(""))
 
@@ -412,8 +413,14 @@ func (p *Plugin) Collects() []*dep.In {
 			p.mu.Unlock()
 		}, (*api.Interceptor)(nil)),
 		dep.Fits(func(pp any) {
+			pc := pp.(converter.PayloadConverter)
 			p.mu.Lock()
-			p.temporal.customPayloadConverter = pp.(converter.PayloadConverter)
+			if _, exists := p.temporal.dataConverters[pc.Encoding()]; exists {
+				p.log.Warn("data converter with this encoding is already registered, overwriting",
+					zap.String("encoding", pc.Encoding()),
+				)
+			}
+			p.temporal.dataConverters[pc.Encoding()] = pc
 			p.mu.Unlock()
 		}, (*converter.PayloadConverter)(nil)),
 	}
