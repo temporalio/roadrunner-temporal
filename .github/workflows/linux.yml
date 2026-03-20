@@ -67,12 +67,19 @@ jobs:
           cd tests/acceptance
           php-sdk/vendor/bin/dload build -vv
 
-      - name: Run Acceptance tests
+      - name: Run Acceptance Fast tests
         env:
           ROADRUNNER_BINARY: './rr'
         run: |
           cd tests/acceptance/php-sdk
-          composer test:accept
+          composer test:accept-fast
+
+      - name: Run Acceptance Slow tests
+        env:
+          ROADRUNNER_BINARY: './rr'
+        run: |
+          cd tests/acceptance/php-sdk
+          composer test:accept-slow
 
       - name: Run Functional tests
         env:

@@ -5,37 +5,48 @@ The PHP SDK is included as a submodule in this repository.
 
 ### Setup
 
-To run the PHP SDK, you need to install Composer dependencies:
+First, setup `sdk-php` Git submodule:
+
+```bash
+git submodule update --remote
+```
+
+Now `tests/acceptance/php-sdk` contains PHP SDK source code.
+
+Next, to run the PHP SDK, you need to install PHP dependencies:
 
 ```bash
 cd tests/acceptance/php-sdk
-composer update
+composer install
 ```
 
 Next, you need to download the Temporal Dev Server and Temporal Test Server.
 This is done using the DLoad utility, which comes bundled with the PHP SDK.
 DLoad automatically fetches the correct binary versions from the configuration, which is especially useful since different PHP SDK branches may require different Temporal server versions (including pre-release builds with experimental features).
 
-Download the binaries with:
+Download the binaries with the following command: (from `tests/acceptance/php-sdk`)
 
 ```bash
-cd tests/acceptance/php-sdk
 vendor/bin/dload get temporal temporal-tests-server
 ```
 
-To build RoadRunner with the Temporal plugin, we also use DLoad. It fetches the plugin version numbers from build.roadrunner.dev, generates the Velox configuration, and runs Velox to build RoadRunner with the current codebase.
+To build RoadRunner with the Temporal plugin, we also use DLoad. 
+It fetches the plugin version numbers from build.roadrunner.dev, generates the Velox configuration, and runs Velox to build RoadRunner with the current codebase.
+
+Run the following command to build RoadRunner: (from `tests/acceptance`)
 
 ```bash
-cd tests/acceptance
+cd ..
 php-sdk/vendor/bin/dload build
 ```
 
 ### Running Tests
 
-Navigate to the php-sdk directory and run the Acceptance or Functional tests using Composer:
+Navigate to the php-sdk directory and run the Acceptance or Functional tests using Composer: (from `tests/acceptance/php-sdk`)
 
 ```bash
-cd tests/acceptance/php-sdk
-composer test:acc
-composer test:func
+cd php-sdk
+ROADRUNNER_BINARY='./rr' composer test:accept-fast
+ROADRUNNER_BINARY='./rr' composer test:accept-slow
+ROADRUNNER_BINARY='./rr' composer test:func
 ```

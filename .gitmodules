@@ -1,3 +1,4 @@
 [submodule "tests/acceptance/php-sdk"]
 	path = tests/acceptance/php-sdk
 	url = git@github.com:temporalio/sdk-php.git
+	branch = master
