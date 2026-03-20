@@ -27,7 +27,7 @@ DLoad automatically fetches the correct binary versions from the configuration, 
 Download the binaries with the following command: (from `tests/acceptance/php-sdk`)
 
 ```bash
-vendor/bin/dload get temporal temporal-tests-server
+composer get:binaries
 ```
 
 To build RoadRunner with the Temporal plugin, we also use DLoad. 
