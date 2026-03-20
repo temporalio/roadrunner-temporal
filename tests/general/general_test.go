@@ -125,7 +125,7 @@ func Test_DisabledActivityWorkers(t *testing.T) {
 }
 
 func assertWorkers(t *testing.T, workers int) {
-	conn, err := net.Dial("tcp", "127.0.0.1:6001")
+	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
 	assert.NoError(t, err)
 	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 	// WorkerList contains list of workers.

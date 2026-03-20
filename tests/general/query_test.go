@@ -49,22 +49,24 @@ func Test_ListQueriesProto(t *testing.T) {
 
 	workers := getWorkers(t)
 
-	for i := 0; i < len(workers); i++ {
+	for i := range workers {
 		proc, errF := os.FindProcess(int(workers[i].Pid))
 		require.NoError(t, errF)
 		_ = proc.Kill()
 	}
 
-	time.Sleep(time.Second * 10)
-
-	ctx, cancel = context.WithTimeout(context.Background(), time.Minute)
-	v, err = s.Client.QueryWorkflow(ctx, w.GetID(), w.GetRunID(), "error", -1)
-	assert.Nil(t, v)
-	assert.Error(t, err)
-	time.Sleep(time.Second)
-	cancel()
-
-	assert.Contains(t, err.Error(), "KnownQueryTypes=[get]")
+	// Poll until workers recover and the query returns the expected error.
+	// On slow CI runners, worker recovery can take over 60 seconds.
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		qCtx, qCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer qCancel()
+		qv, qerr := s.Client.QueryWorkflow(qCtx, w.GetID(), w.GetRunID(), "error", -1)
+		assert.Nil(collect, qv)
+		assert.Error(collect, qerr)
+		if qerr != nil {
+			assert.Contains(collect, qerr.Error(), "KnownQueryTypes=[get]")
+		}
+	}, 2*time.Minute, 3*time.Second)
 
 	ctx, cancel = context.WithTimeout(context.Background(), time.Minute)
 	assert.NoError(t, w.Get(ctx, &r))

@@ -238,7 +238,7 @@ func Test_WorkerError_DisasterRecovery_Heavy(t *testing.T) {
 	// Makes worker pool unable to recover for some time
 	require.NoError(t, os.Rename("../php_test_files/worker.php", "../php_test_files/worker.bak"))
 
-	conn, err := net.Dial("tcp", "127.0.0.1:6001")
+	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
 	assert.NoError(t, err)
 	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 	// WorkerList contains list of workers.
@@ -292,7 +292,7 @@ func Test_WorkerError_DisasterRecovery_HeavyLA(t *testing.T) {
 	// Makes worker pool unable to recover for some time
 	require.NoError(t, os.Rename("../php_test_files/worker-la.php", "../php_test_files/worker-la.bak"))
 
-	conn, err := net.Dial("tcp", "127.0.0.1:6001")
+	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
 	assert.NoError(t, err)
 	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 	// WorkerList contains list of workers.
@@ -586,7 +586,7 @@ func Test_ActivityErrorLA_DisasterRecoveryProto(t *testing.T) {
 }
 
 func getWorkers(t *testing.T) []process.State {
-	conn, err := net.Dial("tcp", "127.0.0.1:6001")
+	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
 	assert.NoError(t, err)
 	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 	// WorkerList contains list of workers.
@@ -603,7 +603,7 @@ func getWorkers(t *testing.T) []process.State {
 }
 
 func reset(t *testing.T) {
-	conn, err := net.Dial("tcp", "127.0.0.1:6001")
+	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
 	assert.NoError(t, err)
 	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 

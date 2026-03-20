@@ -55,18 +55,25 @@ func Test_ListQueriesProto(t *testing.T) {
 		_ = proc.Kill()
 	}
 
-	worker.PurgeStickyWorkflowCache()
-	time.Sleep(time.Second)
+	// Poll until workers recover and the query returns the expected error.
+	// On slow CI runners, worker recovery can take over 60 seconds.
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		qCtx, qCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer qCancel()
+		qv, qerr := s.Client.QueryWorkflow(qCtx, w.GetID(), w.GetRunID(), "error", -1)
+		assert.Nil(collect, qv)
+		assert.Error(collect, qerr)
+		if qerr != nil {
+			assert.Contains(collect, qerr.Error(), "KnownQueryTypes=[get]")
+		}
+	}, 2*time.Minute, 3*time.Second)
 
-	v, err = s.Client.QueryWorkflow(context.Background(), w.GetID(), w.GetRunID(), "error", -1)
-	assert.Nil(t, v)
-	assert.Error(t, err)
-
-	assert.Contains(t, err.Error(), "KnownQueryTypes=[get]")
-
-	assert.NoError(t, w.Get(context.Background(), &r))
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+	assert.NoError(t, w.Get(ctx, &r))
 	assert.Equal(t, 0, r)
+	cancel()
 
+	s.Client.Close()
 	stopCh <- struct{}{}
 	wg.Wait()
 }

@@ -17,7 +17,6 @@ import (
 	"github.com/roadrunner-server/endure/v2"
 	"github.com/roadrunner-server/informer/v5"
 	"github.com/roadrunner-server/logger/v5"
-	"github.com/roadrunner-server/otel/v5"
 	"github.com/roadrunner-server/resetter/v5"
 	"github.com/roadrunner-server/rpc/v5"
 	"github.com/roadrunner-server/server/v5"
@@ -34,7 +33,7 @@ import (
 )
 
 const (
-	rrVersion string = "2024.2.0"
+	rrVersion string = "2025.1.11"
 )
 
 type Configurer interface {
@@ -116,8 +115,8 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, confi
 		&status.Plugin{},
 	)
 
-	assert.NoError(t, err)
-	assert.NoError(t, container.Init())
+	require.NoError(t, err)
+	require.NoError(t, container.Init())
 
 	errCh, err := container.Serve()
 	require.NoError(t, err)
@@ -235,8 +234,130 @@ func NewTestServerTLS(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, co
 	}
 }
 
-func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *TestServer {
+func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, configPaths ...string) *TestServer {
 	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
+
+	cfgPath := "../configs/.rr-proto.yaml"
+	if len(configPaths) > 0 {
+		cfgPath = configPaths[0]
+	}
+
+	cfg := &configImpl.Plugin{
+		Timeout: time.Minute,
+		Path:    cfgPath,
+		Version: rrVersion,
+	}
+
+	err := container.RegisterAll(
+		cfg,
+		&roadrunnerTemporal.Plugin{},
+		&logger.Plugin{},
+		&resetter.Plugin{},
+		&informer.Plugin{},
+		&server.Plugin{},
+		&rpc.Plugin{},
+		&TemporalInterceptorPlugin{},
+	)
+
+	require.NoError(t, err)
+	require.NoError(t, container.Init())
+
+	errCh, err := container.Serve()
+	require.NoError(t, err)
+
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case er := <-errCh:
+				assert.Fail(t, fmt.Sprintf("got error from vertex: %s, error: %v", er.VertexID, er.Error))
+				assert.NoError(t, container.Stop())
+				return
+			case <-stopCh:
+				assert.NoError(t, container.Stop())
+				return
+			}
+		}
+	}()
+
+	dc := dataconverter.NewDataConverter(converter.GetDefaultDataConverter())
+	client, err := temporalClient.Dial(temporalClient.Options{
+		HostPort:      "127.0.0.1:7233",
+		Namespace:     "default",
+		DataConverter: dc,
+		Logger:        newZapAdapter(initLogger()),
+	})
+	require.NoError(t, err)
+
+	return &TestServer{
+		Client: client,
+	}
+}
+
+func NewTestServerWithDataConverter(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, configPaths ...string) *TestServer {
+	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
+
+	cfgPath := "../configs/.rr-data-converter.yaml"
+	if len(configPaths) > 0 {
+		cfgPath = configPaths[0]
+	}
+
+	cfg := &configImpl.Plugin{
+		Timeout: time.Minute,
+		Path:    cfgPath,
+		Version: rrVersion,
+	}
+
+	err := container.RegisterAll(
+		cfg,
+		&roadrunnerTemporal.Plugin{},
+		&logger.Plugin{},
+		&resetter.Plugin{},
+		&informer.Plugin{},
+		&server.Plugin{},
+		&rpc.Plugin{},
+		&TestDataConverterPlugin{},
+	)
+
+	require.NoError(t, err)
+	require.NoError(t, container.Init())
+
+	errCh, err := container.Serve()
+	require.NoError(t, err)
+
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case er := <-errCh:
+				assert.Fail(t, fmt.Sprintf("got error from vertex: %s, error: %v", er.VertexID, er.Error))
+				assert.NoError(t, container.Stop())
+				return
+			case <-stopCh:
+				assert.NoError(t, container.Stop())
+				return
+			}
+		}
+	}()
+
+	dc := dataconverter.NewDataConverter(converter.GetDefaultDataConverter())
+	client, err := temporalClient.Dial(temporalClient.Options{
+		HostPort:      "127.0.0.1:7233",
+		Namespace:     "default",
+		DataConverter: dc,
+		Logger:        newZapAdapter(initLogger()),
+	})
+	require.NoError(t, err)
+
+	return &TestServer{
+		Client: client,
+	}
+}
+
+func NewTestServerWithOtelInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) (*TestServer, *InMemoryOtelInterceptorPlugin) {
+	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
+
+	otelPlugin := NewInMemoryOtelInterceptorPlugin(t)
 
 	cfg := &configImpl.Plugin{
 		Timeout: time.Minute,
@@ -252,16 +373,14 @@ func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.W
 		&informer.Plugin{},
 		&server.Plugin{},
 		&rpc.Plugin{},
-		&TemporalInterceptorPlugin{},
+		otelPlugin,
 	)
 
-	assert.NoError(t, err)
-	assert.NoError(t, container.Init())
+	require.NoError(t, err)
+	require.NoError(t, container.Init())
 
 	errCh, err := container.Serve()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	go func() {
 		defer wg.Done()
@@ -285,74 +404,11 @@ func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.W
 		DataConverter: dc,
 		Logger:        newZapAdapter(initLogger()),
 	})
-	if err != nil {
-		panic(err)
-	}
 	require.NoError(t, err)
 
 	return &TestServer{
 		Client: client,
-	}
-}
-
-func NewTestServerWithOtelInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *TestServer {
-	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
-
-	cfg := &configImpl.Plugin{
-		Timeout: time.Minute,
-	}
-	cfg.Path = "../configs/.rr-otlp.yaml"
-	cfg.Version = rrVersion
-
-	err := container.RegisterAll(
-		cfg,
-		&roadrunnerTemporal.Plugin{},
-		&logger.Plugin{},
-		&resetter.Plugin{},
-		&informer.Plugin{},
-		&server.Plugin{},
-		&rpc.Plugin{},
-		&otel.Plugin{},
-	)
-
-	assert.NoError(t, err)
-	assert.NoError(t, container.Init())
-
-	errCh, err := container.Serve()
-	if err != nil {
-		panic(err)
-	}
-
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case er := <-errCh:
-				assert.Fail(t, fmt.Sprintf("got error from vertex: %s, error: %v", er.VertexID, er.Error))
-				assert.NoError(t, container.Stop())
-				return
-			case <-stopCh:
-				assert.NoError(t, container.Stop())
-				return
-			}
-		}
-	}()
-
-	dc := dataconverter.NewDataConverter(converter.GetDefaultDataConverter())
-	client, err := temporalClient.Dial(temporalClient.Options{
-		HostPort:      "127.0.0.1:7233",
-		Namespace:     "default",
-		DataConverter: dc,
-		Logger:        newZapAdapter(initLogger()),
-	})
-	if err != nil {
-		panic(err)
-	}
-	require.NoError(t, err)
-
-	return &TestServer{
-		Client: client,
-	}
+	}, otelPlugin
 }
 
 func (s *TestServer) AssertContainsEvent(client temporalClient.Client, t *testing.T, w temporalClient.WorkflowRun, assert func(*history.HistoryEvent) bool) {

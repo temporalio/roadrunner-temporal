@@ -209,7 +209,7 @@ type DestroyWorkflow struct {
 	RunID string `json:"runId"`
 }
 
-// GetStackTrace asks worker to offload workflow from memory.
+// GetStackTrace asks the worker to return the current stack trace of a workflow.
 type GetStackTrace struct {
 	// RunID workflow run id.
 	RunID string `json:"runId"`

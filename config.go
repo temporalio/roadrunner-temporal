@@ -14,6 +14,8 @@ type Config struct {
 	Metrics                *Metrics     `mapstructure:"metrics"`
 	Activities             *pool.Config `mapstructure:"activities"`
 	TLS                    *TLS         `mapstructure:"tls, omitempty"`
+	Interceptors           []string     `mapstructure:"interceptors"`
+	DataConverters         []string     `mapstructure:"data_converters"`
 	DisableActivityWorkers bool         `mapstructure:"disable_activity_workers"`
 
 	Address   string `mapstructure:"address"`
@@ -184,6 +186,34 @@ func (c *Config) InitDefault() error {
 			default:
 				c.TLS.auth = tls.NoClientCert
 			}
+		}
+	}
+
+	// Validate interceptor names
+	if len(c.Interceptors) > 0 {
+		seen := make(map[string]struct{}, len(c.Interceptors))
+		for _, name := range c.Interceptors {
+			if name == "" {
+				return errors.E(op, errors.Str("interceptor name must not be empty"))
+			}
+			if _, exists := seen[name]; exists {
+				return errors.E(op, errors.Errorf("duplicate interceptor name %q", name))
+			}
+			seen[name] = struct{}{}
+		}
+	}
+
+	// Validate data converter encodings
+	if len(c.DataConverters) > 0 {
+		seen := make(map[string]struct{}, len(c.DataConverters))
+		for _, encoding := range c.DataConverters {
+			if encoding == "" {
+				return errors.E(op, errors.Str("data converter encoding must not be empty"))
+			}
+			if _, exists := seen[encoding]; exists {
+				return errors.E(op, errors.Errorf("duplicate data converter encoding %q", encoding))
+			}
+			seen[encoding] = struct{}{}
 		}
 	}
 

@@ -15,6 +15,3 @@ coverage:
 ignore:
   - "tests"
   - "proto"
-  - "internal/codec/interface"
-  - "internal/interface"
-  - "internal/dataconverter/converter_test.go"

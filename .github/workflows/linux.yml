@@ -10,6 +10,9 @@ on:
       - master
       - stable
 
+permissions:
+  contents: read
+
 jobs:
   rrtemporal_updates_test:
     name: RR Temporal updates tests with (Go ${{ matrix.go }}, PHP ${{ matrix.php }}, OS ${{matrix.os}})
@@ -17,7 +20,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        php: [ "8.4" ]
+        php: [ "8.5" ]
         go: [ stable ]
         os: [ "ubuntu-latest" ]
     steps:
@@ -70,7 +73,7 @@ jobs:
           cd tests
           docker compose -f env/docker-compose-temporal-updates.yaml up -d --remove-orphans
 
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/rrt_upd.out -covermode=atomic ./updates
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=github.com/temporalio/roadrunner-temporal/v5/... -coverprofile=./coverage-ci/rrt_upd.out -covermode=atomic ./updates
 
           docker compose -f env/docker-compose-temporal-updates.yaml up -d --remove-orphans
 
@@ -86,7 +89,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        php: [ "8.4" ]
+        php: [ "8.5" ]
         go: [ stable ]
         os: [ "ubuntu-latest" ]
     steps:
@@ -137,7 +140,7 @@ jobs:
       - name: Add custom CA certificate
         run: |
           cd tests
-          
+
           ./env/temporal_tls/generate-test-certs.sh
           export TEMPORAL_TLS_CERTS_DIR=/etc/temporal/config/certs
           export TEMPORAL_LOCAL_CERT_DIR=$(pwd)/env/temporal_tls/certs
@@ -148,22 +151,22 @@ jobs:
 
       - name: Run Temporal canceller module tests
         run: |
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat ./tests/pkgs.txt) -coverprofile=./tests/coverage-ci/rrt_c.out -covermode=atomic canceller/canceller.go canceller/canceller_test.go
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=github.com/temporalio/roadrunner-temporal/v5/... -coverprofile=./tests/coverage-ci/rrt_c.out -covermode=atomic ./canceller/...
 
       - name: Run Temporal dataconverter module tests
         run: |
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat ./tests/pkgs.txt) -coverprofile=./tests/coverage-ci/rrt_dc.out -covermode=atomic dataconverter/converter.go dataconverter/converter_test.go
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=github.com/temporalio/roadrunner-temporal/v5/... -coverprofile=./tests/coverage-ci/rrt_dc.out -covermode=atomic ./dataconverter/...
 
       - name: Run Temporal queue module tests
         run: |
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat ./tests/pkgs.txt) -coverprofile=./tests/coverage-ci/rrt_q.out -covermode=atomic queue/queue.go queue/queue_test.go
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=github.com/temporalio/roadrunner-temporal/v5/... -coverprofile=./tests/coverage-ci/rrt_q.out -covermode=atomic ./queue/...
 
       - name: Run Temporal tests with coverage
         run: |
           cd tests
           docker compose -f env/docker-compose-temporal.yaml up -d --remove-orphans
 
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/rrt.out -covermode=atomic ./general
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=github.com/temporalio/roadrunner-temporal/v5/... -coverprofile=./coverage-ci/rrt.out -covermode=atomic ./general
 
           docker compose -f env/docker-compose-temporal.yaml up -d --remove-orphans
 
@@ -179,7 +182,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        php: [ "8.4" ]
+        php: [ "8.5" ]
         go: [ stable ]
         os: [ "ubuntu-latest" ]
     steps:
@@ -230,14 +233,14 @@ jobs:
       - name: Run Temporal TLS tests with coverage
         run: |
           cd tests
-          
+
           ./env/temporal_tls/generate-test-certs.sh
           export TEMPORAL_TLS_CERTS_DIR=/etc/temporal/config/certs
           export TEMPORAL_LOCAL_CERT_DIR=$(pwd)/env/temporal_tls/certs
           docker compose -f env/temporal_tls/docker-compose.yml up -d --remove-orphans
           sleep 60
-          
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/rrt_tls.out -covermode=atomic ./tls
+
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=github.com/temporalio/roadrunner-temporal/v5/... -coverprofile=./coverage-ci/rrt_tls.out -covermode=atomic ./tls
 
           docker compose -f env/temporal_tls/docker-compose.yml down
 
@@ -260,18 +263,20 @@ jobs:
       - name: Download code coverage results
         uses: actions/download-artifact@v8
       - run: |
-          cd coverage_1
-          echo 'mode: atomic' > summary.txt
-          tail -q -n +2 *.out >> summary.txt
-          sed -i '2,${/roadrunner/!d}' summary.txt
-          cd ../coverage_2
-          echo 'mode: atomic' > summary.txt
-          tail -q -n +2 *.out >> summary.txt
-          sed -i '2,${/roadrunner/!d}' summary.txt
-          cd ../coverage_3
-          echo 'mode: atomic' > summary.txt
-          tail -q -n +2 *.out >> summary.txt
-          sed -i '2,${/roadrunner/!d}' summary.txt
+          for dir in coverage_1 coverage_2 coverage_3; do
+            cd "$dir"
+            echo 'mode: atomic' > summary.txt
+            tail -q -n +2 *.out >> summary.txt
+            awk '
+              NR == 1 { print; next }
+              /^github\.com\/temporalio\/roadrunner-temporal\/v5\// {
+                sub(/^github\.com\/temporalio\/roadrunner-temporal\/v5\//, "", $0)
+                print
+              }
+            ' summary.txt > summary.filtered.txt
+            mv summary.filtered.txt summary.txt
+            cd ..
+          done
 
       - name: upload to codecov
         uses: codecov/codecov-action@v5 # Docs: <https://github.com/codecov/codecov-action>

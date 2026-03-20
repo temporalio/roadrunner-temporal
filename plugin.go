@@ -20,6 +20,7 @@ import (
 	"github.com/temporalio/roadrunner-temporal/v5/internal"
 	"github.com/temporalio/roadrunner-temporal/v5/internal/codec/proto"
 	tclient "go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
 	"go.uber.org/zap"
 
@@ -27,7 +28,7 @@ import (
 )
 
 const (
-	// PluginName defines public service name.
+	// pluginName defines the service name used for configuration lookup and plugin registration.
 	pluginName string = "temporal"
 	metricsKey string = "temporal.metrics"
 
@@ -61,7 +62,8 @@ type temporal struct {
 	client        tclient.Client
 	workers       []worker.Worker
 
-	interceptors map[string]api.Interceptor
+	interceptors   map[string]api.Interceptor
+	dataConverters map[string]converter.PayloadConverter
 }
 
 type Plugin struct {
@@ -158,10 +160,11 @@ func (p *Plugin) Init(cfg api.Configurer, log Logger, server api.Server) error {
 		}
 	}
 
-	// initialize interceptors
+	// initialize interceptors and data converters
 	p.temporal.interceptors = make(map[string]api.Interceptor)
-	// empty
-	p.apiKey.Store(ptrTo(""))
+	p.temporal.dataConverters = make(map[string]converter.PayloadConverter)
+	// Initialize with empty API key; populated from PHP SDK flags during pool init.
+	p.apiKey.Store(ptr(""))
 
 	return nil
 }
@@ -250,10 +253,8 @@ func (p *Plugin) Stop(ctx context.Context) error {
 
 		// might be nil if the user didn't set the metrics
 		if p.temporal.tallyCloser != nil {
-			// there might be a panic if the io.Closer is not nil, but the actual type is nil
-			err := p.temporal.tallyCloser.Close()
-			if err != nil {
-				p.mu.Unlock()
+			if err := p.temporal.tallyCloser.Close(); err != nil {
+				p.log.Error("failed to close tally metrics", zap.Error(err))
 			}
 		}
 
@@ -285,7 +286,7 @@ func (p *Plugin) Workers() []*process.State {
 	for i := range wfPw {
 		st, err := process.WorkerProcessState(wfPw[i])
 		if err != nil {
-			// log error and continue
+			// log the error and continue
 			p.log.Error("worker process state error", zap.Error(err))
 			continue
 		}
@@ -296,7 +297,7 @@ func (p *Plugin) Workers() []*process.State {
 	for i := range actPw {
 		st, err := process.WorkerProcessState(actPw[i])
 		if err != nil {
-			// log error and continue
+			// log the error and continue
 			p.log.Error("worker process state error", zap.Error(err))
 			continue
 		}
@@ -380,6 +381,7 @@ func (p *Plugin) Reset() error {
 		p.log,
 		p.temporal.client,
 		p.temporal.interceptors,
+		p.config.Interceptors,
 	)
 	if err != nil {
 		return err
@@ -400,16 +402,31 @@ func (p *Plugin) Reset() error {
 	return nil
 }
 
-// Collects collecting grpc interceptors
+// Collects registers dependency injection collectors for Temporal worker interceptors and custom payload converters.
 func (p *Plugin) Collects() []*dep.In {
 	return []*dep.In{
 		dep.Fits(func(pp any) {
 			mdw := pp.(api.Interceptor)
-			// just to be safe
 			p.mu.Lock()
+			if _, exists := p.temporal.interceptors[mdw.Name()]; exists {
+				p.log.Warn("interceptor with this name is already registered, overwriting",
+					zap.String("name", mdw.Name()),
+				)
+			}
 			p.temporal.interceptors[mdw.Name()] = mdw
 			p.mu.Unlock()
 		}, (*api.Interceptor)(nil)),
+		dep.Fits(func(pp any) {
+			pc := pp.(converter.PayloadConverter)
+			p.mu.Lock()
+			if _, exists := p.temporal.dataConverters[pc.Encoding()]; exists {
+				p.log.Warn("data converter with this encoding is already registered, overwriting",
+					zap.String("encoding", pc.Encoding()),
+				)
+			}
+			p.temporal.dataConverters[pc.Encoding()] = pc
+			p.mu.Unlock()
+		}, (*converter.PayloadConverter)(nil)),
 	}
 }
 
@@ -421,6 +438,6 @@ func (p *Plugin) RPC() any {
 	return &rpc{plugin: p, client: p.temporal.client}
 }
 
-func ptrTo[T any](v T) *T {
+func ptr[T any](v T) *T {
 	return &v
 }

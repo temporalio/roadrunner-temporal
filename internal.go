@@ -38,15 +38,39 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	dc := dataconverter.NewDataConverter(converter.GetDefaultDataConverter())
-	codec := proto.NewCodec(p.log, dc)
+	customConverters, err := aggregatedpool.ResolveDataConverters(
+		p.temporal.dataConverters, p.config.DataConverters,
+	)
+	if err != nil {
+		return err
+	}
 
-	// LA + A definitions
+	var dc converter.DataConverter
+	if len(customConverters) > 0 {
+		// Standard converters (Nil, ByteSlice, ProtoJSON, Proto) come first,
+		// then custom converters, then JSON converter last as it accepts any value.
+		pcs := make([]converter.PayloadConverter, 0, 5+len(customConverters))
+		pcs = append(pcs,
+			converter.NewNilPayloadConverter(),
+			converter.NewByteSlicePayloadConverter(),
+			converter.NewProtoJSONPayloadConverter(),
+			converter.NewProtoPayloadConverter(),
+		)
+		pcs = append(pcs, customConverters...)
+		pcs = append(pcs, converter.NewJSONPayloadConverter())
+		dc = converter.NewCompositeDataConverter(pcs...)
+	} else {
+		dc = converter.GetDefaultDataConverter()
+	}
+
+	rrdc := dataconverter.NewDataConverter(dc)
+	codec := proto.NewCodec(p.log, rrdc)
+
+	// Activity and local-activity definitions share the activity pool.
 	actDef := aggregatedpool.NewActivityDefinition(codec, ap, p.log, p.config.DisableActivityWorkers)
 	laDef := aggregatedpool.NewLocalActivityFn(codec, ap, p.log)
-	// ------------------
 
-	// ---------- WORKFLOW POOL -------------
+	// Workflow pool: single dedicated worker with extended allocate timeout.
 	wp, err := p.server.NewPool(
 		context.Background(),
 		&pool.Config{
@@ -85,12 +109,12 @@ func (p *Plugin) initPool() error {
 		return errors.Str("worker info should contain at least 1 worker")
 	}
 
-	err = p.initTemporalClient(wi[0].PhpSdkVersion, wi[0].Flags, dc)
+	err = p.initTemporalClient(wi[0].PhpSdkVersion, wi[0].Flags, rrdc)
 	if err != nil {
 		return err
 	}
 
-	workers, err := aggregatedpool.TemporalWorkers(wfDef, actDef, wi, p.log, p.temporal.client, p.temporal.interceptors)
+	workers, err := aggregatedpool.TemporalWorkers(wfDef, actDef, wi, p.log, p.temporal.client, p.temporal.interceptors, p.config.Interceptors)
 	if err != nil {
 		return err
 	}
@@ -134,7 +158,7 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 
 	if val, ok := flags[APIKey]; ok {
 		if val != "" {
-			p.apiKey.Store(ptrTo(val))
+			p.apiKey.Store(ptr(val))
 		}
 	}
 
@@ -161,8 +185,8 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 			TLSDisabled: p.config.TLS == nil,
 		},
 		Credentials: tclient.NewAPIKeyDynamicCredentials(func(context.Context) (string, error) {
-			if p.apiKey.Load() != nil {
-				return *p.apiKey.Load(), nil
+			if v := p.apiKey.Load(); v != nil {
+				return *v, nil
 			}
 
 			return "", nil

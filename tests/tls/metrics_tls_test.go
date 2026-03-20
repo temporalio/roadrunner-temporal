@@ -146,7 +146,7 @@ func Test_SimpleWorkflowMetricsStatsdNewDriver(t *testing.T) {
 	assert.NoError(t, err)
 
 	time.Sleep(time.Second * 2)
-	metrics, err := getStatsd()
+	metrics, err := getStatsd(t.Context())
 	assert.NoError(t, err)
 
 	assert.Contains(t, metrics, "request_attempt")
@@ -189,8 +189,8 @@ func get() (string, error) {
 }
 
 // get request and return body
-func getStatsd() (string, error) {
-	conn, err := net.Dial("tcp4", "127.0.0.1:8126")
+func getStatsd(ctx context.Context) (string, error) {
+	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp4", "127.0.0.1:8126")
 	if err != nil {
 		return "", err
 	}
