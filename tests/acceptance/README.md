@@ -35,9 +35,11 @@ It fetches the plugin version numbers from build.roadrunner.dev, generates the V
 
 Run the following command to build RoadRunner: (from `tests/acceptance`)
 
+> **Note:** Before building, you must generate a GitHub Personal Access Token at https://github.com/settings/personal-access-tokens and use it as the `GITHUB_TOKEN` environment variable.
+
 ```bash
 cd ..
-php-sdk/vendor/bin/dload build
+CGO_ENABLED=0 GITHUB_TOKEN=YOUR_TOKEN_HER php-sdk/vendor/bin/dload build
 ```
 
 ### Running Tests
