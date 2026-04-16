@@ -374,9 +374,11 @@ func (p *Plugin) Reset() error {
 	}
 
 	// based on the worker info -> initialize workers
+	nexusHandler := aggregatedpool.NewNexusHandler(p.codec, p.actP, p.log)
 	workers, err := aggregatedpool.TemporalWorkers(
 		p.temporal.rrWorkflowDef,
 		p.temporal.rrActivityDef,
+		nexusHandler,
 		wi,
 		p.log,
 		p.temporal.client,

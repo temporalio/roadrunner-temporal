@@ -530,6 +530,35 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 			return errors.E(op, err)
 		}
 
+	case *internal.ExecuteNexusOperation:
+		wp.log.Debug("nexus operation request",
+			zap.Uint64("ID", msg.ID),
+			zap.String("endpoint", command.Endpoint),
+			zap.String("service", command.Service),
+			zap.String("operation", command.Operation),
+		)
+
+		params := command.NexusOperationParams(msg.Payloads, msg.Header)
+
+		// startedHandler: PHP currently waits atomically; logged only.
+		seq := wp.env.ExecuteNexusOperation(
+			params,
+			wp.createNexusOperationCallback(msg.ID),
+			func(token string, err error) {
+				if err != nil {
+					wp.log.Debug("nexus operation start failed", zap.Uint64("ID", msg.ID), zap.Error(err))
+					return
+				}
+				wp.log.Debug("nexus operation started", zap.Uint64("ID", msg.ID), zap.String("token", token))
+			},
+		)
+
+		wp.canceller.Register(msg.ID, func() error {
+			wp.log.Debug("cancel nexus operation request", zap.Int64("seq", seq))
+			wp.env.RequestCancelNexusOperation(seq)
+			return nil
+		})
+
 	default:
 		return errors.E(op, errors.Str("undefined command"))
 	}
@@ -595,6 +624,41 @@ func (wp *Workflow) createCallback(id uint64, t string) bindings.ResultHandler {
 		wp.callbacks = append(wp.callbacks, func() error {
 			wp.log.Debug("appending callback", zap.Uint64("ID", id), zap.String("type", t))
 			callback(result, err)
+			return nil
+		})
+	}
+}
+
+// createNexusOperationCallback wraps a single-Payload Nexus result into the
+// multi-Payload PushResponse shape PHP expects. Mirrors createCallback otherwise.
+func (wp *Workflow) createNexusOperationCallback(id uint64) func(*commonpb.Payload, error) {
+	run := func(result *commonpb.Payload, err error) {
+		wp.log.Debug("executing nexus operation callback", zap.Uint64("ID", id))
+		wp.canceller.Discard(id)
+
+		if err != nil {
+			wp.log.Debug("nexus operation error", zap.Error(err), zap.Uint64("ID", id))
+			wp.mq.PushError(id, temporal.GetDefaultFailureConverter().ErrorToFailure(err), wp.getWorkflowWorkerPid())
+			return
+		}
+
+		var payloads *commonpb.Payloads
+		if result != nil {
+			payloads = &commonpb.Payloads{Payloads: []*commonpb.Payload{result}}
+		}
+		wp.mq.PushResponse(id, payloads, wp.getWorkflowWorkerPid())
+	}
+
+	return func(result *commonpb.Payload, err error) {
+		if atomic.LoadUint32(&wp.inLoop) == 1 {
+			wp.log.Debug("calling nexus operation callback IN LOOP", zap.Uint64("ID", id))
+			run(result, err)
+			return
+		}
+
+		wp.callbacks = append(wp.callbacks, func() error {
+			wp.log.Debug("appending nexus operation callback", zap.Uint64("ID", id))
+			run(result, err)
 			return nil
 		})
 	}
