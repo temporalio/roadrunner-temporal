@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"strings"
+
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 )
@@ -21,6 +23,18 @@ type WorkerInfo struct {
 	Workflows []WorkflowInfo
 	// Activities provided by the worker.
 	Activities []ActivityInfo
+	// NexusServices provided by the worker.
+	NexusServices []NexusServiceInfo `json:"NexusServices,omitempty"`
+}
+
+// HasFlag reports whether the named worker flag is truthy.
+// Accepts "1" or any case of "true"; anything else (incl. missing) is false.
+func (wi *WorkerInfo) HasFlag(name string) bool {
+	v, ok := wi.Flags[name]
+	if !ok {
+		return false
+	}
+	return v == "1" || strings.EqualFold(v, "true")
 }
 
 // WorkflowInfo describes a single worker workflow.
@@ -39,4 +53,12 @@ type WorkflowInfo struct {
 type ActivityInfo struct {
 	// Name describes public activity name.
 	Name string `json:"name"`
+}
+
+// NexusServiceInfo describes a single Nexus service registered on the worker.
+type NexusServiceInfo struct {
+	// Name is the Nexus service name.
+	Name string `json:"name"`
+	// Operations lists all operation names in this service.
+	Operations []string `json:"operations"`
 }

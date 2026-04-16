@@ -87,7 +87,7 @@ func ResolveDataConverters(
 	return result, nil
 }
 
-func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo, log *zap.Logger, tc temporalClient.Client, interceptors map[string]api.Interceptor, configuredInterceptors []string) ([]worker.Worker, error) {
+func TemporalWorkers(wDef *Workflow, actDef *Activity, nexusHandler *NexusHandler, wi []*internal.WorkerInfo, log *zap.Logger, tc temporalClient.Client, interceptors map[string]api.Interceptor, configuredInterceptors []string) ([]worker.Worker, error) {
 	resolved, err := ResolveInterceptors(interceptors, configuredInterceptors)
 	if err != nil {
 		return nil, err
@@ -143,6 +143,15 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 
 			log.Debug("activity registered", zap.String(tq, wi[i].TaskQueue), zap.Any("workflow name", wi[i].Activities[j].Name))
 		}
+		if nexusHandler != nil {
+			methodCancelSupported := wi[i].HasFlag("nexus_method_cancel")
+			for j := 0; j < len(wi[i].NexusServices); j++ {
+				svc := nexusHandler.CreateNexusService(wi[i].TaskQueue, wi[i].NexusServices[j].Name, wi[i].NexusServices[j].Operations, methodCancelSupported)
+				wrk.RegisterNexusService(svc)
+				log.Debug("nexus service registered", zap.String(tq, wi[i].TaskQueue), zap.String("service", wi[i].NexusServices[j].Name), zap.Int("operations", len(wi[i].NexusServices[j].Operations)), zap.Strings("ops", wi[i].NexusServices[j].Operations), zap.Bool("method_cancel_supported", methodCancelSupported))
+			}
+		}
+
 		// add worker to the pool
 		workers = append(workers, wrk)
 	}

@@ -49,6 +49,14 @@ const (
 
 	cancelCommand = "Cancel"
 	panicCommand  = "Panic"
+
+	// Nexus commands: Go → PHP (handler side)
+	invokeNexusOperationCommand       = "InvokeNexusOperation"
+	cancelNexusOperationCommand       = "CancelNexusOperation"
+	cancelNexusOperationMethodCommand = "CancelNexusOperationMethod"
+
+	// Nexus commands: PHP → Go (caller side from workflow)
+	executeNexusOperationCommand = "ExecuteNexusOperation"
 )
 
 type TypedSearchAttributeType string
@@ -358,6 +366,82 @@ type Panic struct {
 	Message string `json:"message"`
 }
 
+// NexusLink mirrors nexus.Link in JSON-friendly form for the RR↔PHP codec.
+type NexusLink struct {
+	URL  string `json:"url"`
+	Type string `json:"type"`
+}
+
+// InvokeNexusOperation: Go → PHP, handler-side Nexus task dispatch.
+type InvokeNexusOperation struct {
+	Service         string            `json:"service"`
+	Operation       string            `json:"operation"`
+	RequestID       string            `json:"requestId"`
+	Callback        string            `json:"callback,omitempty"`
+	CallbackHeaders map[string]string `json:"callbackHeaders,omitempty"`
+	Headers         map[string]string `json:"headers,omitempty"`
+	Links           []NexusLink       `json:"links,omitempty"`
+	// InvocationID correlates with CancelNexusOperationMethod. Set only when
+	// worker advertises `nexus_method_cancel`; omitted (zero) for backwards compat.
+	InvocationID uint64 `json:"invocationId,omitempty"`
+}
+
+// CancelNexusOperationMethod tells PHP to stop running an in-flight handler
+// *method* (cooperative, single-threaded). Distinct from CancelNexusOperation
+// which targets the business operation. Emitted only to workers with the
+// `nexus_method_cancel` flag.
+type CancelNexusOperationMethod struct {
+	InvocationID uint64 `json:"invocationId"` // matches InvokeNexusOperation.InvocationID
+	Reason       string `json:"reason,omitempty"`
+}
+
+// CancelNexusOperation: Go → PHP, cancel an async business operation by token.
+type CancelNexusOperation struct {
+	Service        string `json:"service"`
+	Operation      string `json:"operation"`
+	OperationToken string `json:"operationToken"`
+}
+
+// NexusOperationOptions is PHP's marshalled DTO nested under "options".
+// PHP also ships endpoint/service in here (the marshaller dumps the whole DTO),
+// but those duplicate the top-level ExecuteNexusOperation fields and are
+// intentionally not decoded — top-level is the single source of truth.
+type NexusOperationOptions struct {
+	// nanoseconds (PHP DateIntervalType default; matches Go time.Duration encoding).
+	ScheduleToCloseTimeout time.Duration `json:"scheduleToCloseTimeout,omitempty"`
+	// 0=Unspecified, 1=Abandon, 2=TryCancel, 3=WaitRequested, 4=WaitCompleted.
+	CancellationType int `json:"cancellationType,omitempty"`
+}
+
+// ExecuteNexusOperation: PHP → Go, workflow calling a Nexus operation.
+type ExecuteNexusOperation struct {
+	Endpoint  string                `json:"endpoint"`
+	Service   string                `json:"service"`
+	Operation string                `json:"operation"`
+	Options   NexusOperationOptions `json:"options,omitempty"`
+	// Raw HTTP-style headers propagated to handler's OperationContext.
+	// Separate from the Temporal interceptor `Header` (typed payloads).
+	NexusHeaders map[string]string `json:"nexusHeaders,omitempty"`
+}
+
+// NexusOperationParams builds ExecuteNexusOperationParams. Nexus is single-payload
+// by spec; only the first payload is used. The Header arg is currently unused
+// (Nexus headers travel on NexusHeaders); kept for symmetry with ActivityParams.
+func (cmd ExecuteNexusOperation) NexusOperationParams(payloads *commonpb.Payloads, _ *commonpb.Header) bindings.ExecuteNexusOperationParams {
+	var input *commonpb.Payload
+	if pls := payloads.GetPayloads(); len(pls) > 0 {
+		input = pls[0]
+	}
+
+	client := bindings.NewNexusClient(cmd.Endpoint, cmd.Service)
+	options := workflow.NexusOperationOptions{
+		ScheduleToCloseTimeout: cmd.Options.ScheduleToCloseTimeout,
+		CancellationType:       workflow.NexusOperationCancellationType(cmd.Options.CancellationType),
+	}
+
+	return bindings.NewExecuteNexusOperationParams(client, cmd.Operation, input, options, cmd.NexusHeaders)
+}
+
 // ActivityParams maps activity command to activity params.
 func (cmd ExecuteActivity) ActivityParams(env bindings.WorkflowEnvironment, payloads *commonpb.Payloads, header *commonpb.Header) bindings.ExecuteActivityParams {
 	params := bindings.ExecuteActivityParams{
@@ -503,6 +587,14 @@ func CommandName(cmd any) (string, error) {
 		return upsertMemo, nil
 	case InvokeUpdate, *InvokeUpdate:
 		return invokeUpdateCommand, nil
+	case InvokeNexusOperation, *InvokeNexusOperation:
+		return invokeNexusOperationCommand, nil
+	case CancelNexusOperation, *CancelNexusOperation:
+		return cancelNexusOperationCommand, nil
+	case CancelNexusOperationMethod, *CancelNexusOperationMethod:
+		return cancelNexusOperationMethodCommand, nil
+	case ExecuteNexusOperation, *ExecuteNexusOperation:
+		return executeNexusOperationCommand, nil
 	default:
 		return "", errors.E(op, errors.Errorf("undefined command type: %s", cmd))
 	}
@@ -595,6 +687,18 @@ func InitCommand(name string) (any, error) {
 
 	case invokeUpdateCommand:
 		return &InvokeUpdate{}, nil
+
+	case invokeNexusOperationCommand:
+		return &InvokeNexusOperation{}, nil
+
+	case cancelNexusOperationCommand:
+		return &CancelNexusOperation{}, nil
+
+	case cancelNexusOperationMethodCommand:
+		return &CancelNexusOperationMethod{}, nil
+
+	case executeNexusOperationCommand:
+		return &ExecuteNexusOperation{}, nil
 
 	default:
 		return nil, errors.E(op, errors.Errorf("undefined command name: %s, possible outdated RoadRunner version", name))
