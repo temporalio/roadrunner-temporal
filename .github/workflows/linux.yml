@@ -41,7 +41,7 @@ jobs:
           submodules: true
 
       - name: Install dependencies with composer
-        uses: ramsey/composer-install@v3
+        uses: ramsey/composer-install@v4
         with:
           working-directory: tests/acceptance/php-sdk
 
