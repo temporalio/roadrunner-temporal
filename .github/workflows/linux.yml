@@ -352,7 +352,7 @@ jobs:
           done
 
       - name: upload to codecov
-        uses: codecov/codecov-action@v5 # Docs: <https://github.com/codecov/codecov-action>
+        uses: codecov/codecov-action@v6 # Docs: <https://github.com/codecov/codecov-action>
         with:
           files: ./coverage_1/summary.txt,./coverage_2/summary.txt,./coverage_3/summary.txt
 
