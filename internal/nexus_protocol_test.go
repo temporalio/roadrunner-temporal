@@ -24,6 +24,8 @@ func TestCommandName_Nexus(t *testing.T) {
 		{"CancelNexusOperationMethod ptr", &CancelNexusOperationMethod{}, "CancelNexusOperationMethod"},
 		{"ExecuteNexusOperation value", ExecuteNexusOperation{}, "ExecuteNexusOperation"},
 		{"ExecuteNexusOperation ptr", &ExecuteNexusOperation{}, "ExecuteNexusOperation"},
+		{"GetNexusOperationStarted value", GetNexusOperationStarted{}, "GetNexusOperationStarted"},
+		{"GetNexusOperationStarted ptr", &GetNexusOperationStarted{}, "GetNexusOperationStarted"},
 	}
 
 	for _, tt := range tests {
@@ -45,6 +47,7 @@ func TestInitCommand_Nexus(t *testing.T) {
 		{"CancelNexusOperation", "CancelNexusOperation", &CancelNexusOperation{}},
 		{"CancelNexusOperationMethod", "CancelNexusOperationMethod", &CancelNexusOperationMethod{}},
 		{"ExecuteNexusOperation", "ExecuteNexusOperation", &ExecuteNexusOperation{}},
+		{"GetNexusOperationStarted", "GetNexusOperationStarted", &GetNexusOperationStarted{}},
 	}
 
 	for _, tt := range tests {
@@ -52,6 +55,38 @@ func TestInitCommand_Nexus(t *testing.T) {
 			got, err := InitCommand(tt.typeName)
 			require.NoError(t, err)
 			assert.IsType(t, tt.wantType, got)
+		})
+	}
+}
+
+// TestGetNexusOperationStarted_DecodesPHPWireShape pins the JSON contract with
+// the PHP Internal\Transport\Request\GetNexusOperationStarted: a single `id`
+// field carrying the original ExecuteNexusOperation message ID.
+func TestGetNexusOperationStarted_DecodesPHPWireShape(t *testing.T) {
+	wire := []byte(`{"id":42}`)
+	var cmd GetNexusOperationStarted
+	require.NoError(t, json.Unmarshal(wire, &cmd))
+	assert.Equal(t, uint64(42), cmd.ID)
+}
+
+// TestGetNexusOperationStarted_RoundTrip ensures we can also marshal back to
+// the same wire shape — useful if RR ever needs to log or echo the request.
+func TestGetNexusOperationStarted_RoundTrip(t *testing.T) {
+	cmd := GetNexusOperationStarted{ID: 77}
+	data, err := json.Marshal(cmd)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"id":77}`, string(data))
+}
+
+// TestInitCommand_RemovedPollingCommands guards against a regression that
+// would silently re-introduce the old polling protocol. RR no longer
+// understands these names — they must come back as "undefined command".
+func TestInitCommand_RemovedPollingCommands(t *testing.T) {
+	for _, removed := range []string{"GetNexusOperationResult", "CancelNexusOperationResult"} {
+		t.Run(removed, func(t *testing.T) {
+			got, err := InitCommand(removed)
+			assert.Error(t, err, "removed command %q must not decode anymore", removed)
+			assert.Nil(t, got)
 		})
 	}
 }
