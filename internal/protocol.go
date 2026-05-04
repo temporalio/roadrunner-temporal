@@ -56,7 +56,8 @@ const (
 	cancelNexusOperationMethodCommand = "CancelNexusOperationMethod"
 
 	// Nexus commands: PHP → Go (caller side from workflow)
-	executeNexusOperationCommand = "ExecuteNexusOperation"
+	executeNexusOperationCommand    = "ExecuteNexusOperation"
+	getNexusOperationStartedCommand = "GetNexusOperationStarted"
 )
 
 type TypedSearchAttributeType string
@@ -413,6 +414,20 @@ type NexusOperationOptions struct {
 	CancellationType int `json:"cancellationType,omitempty"`
 }
 
+// GetNexusOperationStarted: PHP → Go, listen-and-wait for the start envelope of
+// a caller-side Nexus operation identified by ID (the original
+// ExecuteNexusOperation message ID).
+//
+// RR registers a listener on its NexusStartedRegistry; the response is pushed
+// when the SDK's started callback fires (handler ack'd the start). Mirrors the
+// GetChildWorkflowExecution shape for child workflows — no polling, no race.
+//
+// Response: a single JSON-encoded NexusStartEnvelope payload (`{async, token?}`),
+// or a Failure if the start errored.
+type GetNexusOperationStarted struct {
+	ID uint64 `json:"id"`
+}
+
 // ExecuteNexusOperation: PHP → Go, workflow calling a Nexus operation.
 type ExecuteNexusOperation struct {
 	Endpoint  string                `json:"endpoint"`
@@ -595,6 +610,8 @@ func CommandName(cmd any) (string, error) {
 		return cancelNexusOperationMethodCommand, nil
 	case ExecuteNexusOperation, *ExecuteNexusOperation:
 		return executeNexusOperationCommand, nil
+	case GetNexusOperationStarted, *GetNexusOperationStarted:
+		return getNexusOperationStartedCommand, nil
 	default:
 		return "", errors.E(op, errors.Errorf("undefined command type: %s", cmd))
 	}
@@ -699,6 +716,9 @@ func InitCommand(name string) (any, error) {
 
 	case executeNexusOperationCommand:
 		return &ExecuteNexusOperation{}, nil
+
+	case getNexusOperationStartedCommand:
+		return &GetNexusOperationStarted{}, nil
 
 	default:
 		return nil, errors.E(op, errors.Errorf("undefined command name: %s, possible outdated RoadRunner version", name))

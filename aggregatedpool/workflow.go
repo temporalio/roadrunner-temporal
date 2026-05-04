@@ -67,6 +67,12 @@ type Workflow struct {
 	updateCompleteCb map[string]func(res *internal.Message)
 	updateValidateCb map[string]func(res *internal.Message)
 
+	// caller-side Nexus started registry: maps the original ExecuteNexusOperation
+	// message ID to its (token, err) start ack. GetNexusOperationStarted{ID}
+	// requests register listeners here; the SDK's started callback pushes the
+	// entry. Mirrors `ids` (registry.IDRegistry) for child workflows.
+	nexusStarted *registry.NexusStartedRegistry
+
 	log *zap.Logger
 	mh  temporalClient.MetricsHandler
 
@@ -102,6 +108,7 @@ func (wp *Workflow) NewWorkflowDefinition() bindings.WorkflowDefinition {
 		updateCompleteCb: make(map[string]func(res *internal.Message)),
 		updateValidateCb: make(map[string]func(res *internal.Message)),
 		updatesQueue:     map[string]struct{}{},
+		nexusStarted:     new(registry.NexusStartedRegistry),
 		// -- updates
 		pool:  wp.pool,
 		codec: wp.codec,
@@ -375,6 +382,9 @@ func (wp *Workflow) Close() {
 	for k := range wp.updateCompleteCb {
 		delete(wp.updateCompleteCb, k)
 	}
+
+	// nexusStarted registry is per-workflow-instance and GC'd with the Workflow
+	// struct itself; no manual cleanup needed (matches `ids` for child workflows).
 
 	// send destroy command
 	_, _ = wp.runCommand(internal.DestroyWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID}, nil, wp.header)
