@@ -543,15 +543,15 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		// Register-and-wait: completion callback resolves the original
 		// ExecuteNexusOperation request; started callback pushes into the
 		// nexusStarted registry where GetNexusOperationStarted listens.
-		seq := wp.env.ExecuteNexusOperation(
+		nexusSeq := wp.env.ExecuteNexusOperation(
 			params,
 			wp.makeNexusCompletionResponseCallback(msg.ID),
 			wp.makeNexusStartedRegistryCallback(msg.ID),
 		)
 
 		wp.canceller.Register(msg.ID, func() error {
-			wp.log.Debug("cancel nexus operation request", zap.Int64("seq", seq))
-			wp.env.RequestCancelNexusOperation(seq)
+			wp.log.Debug("cancel nexus operation request", zap.Int64("seq", nexusSeq))
+			wp.env.RequestCancelNexusOperation(nexusSeq)
 			return nil
 		})
 
