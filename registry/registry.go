@@ -6,38 +6,50 @@ import (
 	bindings "go.temporal.io/sdk/internalbindings"
 )
 
-// IDRegistry used to gain access to child workflow ids after they become available via callback result.
-type IDRegistry struct {
+// Registry stores at most one (value, err) entry per uint64 ID and at most one
+// listener per ID. Push delivers to a registered listener (if any); Listen
+// fires immediately if a Push has already happened for that ID, otherwise it
+// waits for the next Push.
+//
+// Last-write-wins for both entries and listeners. The zero value is usable.
+type Registry[T any] struct {
 	sync.Mutex
-	ids       sync.Map
+	entries   sync.Map
 	listeners sync.Map
 }
 
-type Listener func(w bindings.WorkflowExecution, err error)
+// ListenerFunc is invoked once per (id, value, err) triple delivered.
+type ListenerFunc[T any] func(value T, err error)
 
-type entry struct {
-	w   bindings.WorkflowExecution
-	err error
+type entry[T any] struct {
+	value T
+	err   error
 }
 
-func (c *IDRegistry) Listen(id uint64, cl Listener) {
-	c.listeners.Store(id, cl)
-	val, exist := c.ids.Load(id)
+func (r *Registry[T]) Listen(id uint64, cl ListenerFunc[T]) {
+	r.listeners.Store(id, cl)
+	val, exist := r.entries.Load(id)
 	if exist {
-		c.Lock()
-		e := val.(entry)
-		cl(e.w, e.err)
-		c.Unlock()
+		r.Lock()
+		e := val.(entry[T])
+		cl(e.value, e.err)
+		r.Unlock()
 	}
 }
 
-func (c *IDRegistry) Push(id uint64, w bindings.WorkflowExecution, err error) {
-	c.ids.Store(id, entry{w: w, err: err})
-	l, exist := c.listeners.Load(id)
+func (r *Registry[T]) Push(id uint64, value T, err error) {
+	r.entries.Store(id, entry[T]{value: value, err: err})
+	l, exist := r.listeners.Load(id)
 	if exist {
-		c.Lock()
-		list := l.(Listener)
-		list(w, err)
-		c.Unlock()
+		r.Lock()
+		list := l.(ListenerFunc[T])
+		list(value, err)
+		r.Unlock()
 	}
 }
+
+// IDRegistry used to gain access to child workflow ids after they become available via callback result.
+type IDRegistry = Registry[bindings.WorkflowExecution]
+
+// Listener is the listener type for IDRegistry.
+type Listener = ListenerFunc[bindings.WorkflowExecution]
