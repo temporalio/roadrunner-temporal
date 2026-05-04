@@ -42,11 +42,17 @@ const (
 
 // NexusHandler forwards Nexus Start/Cancel to PHP workers via the activity pool.
 type NexusHandler struct {
-	codec   api.Codec
-	pool    api.Pool
-	log     *zap.Logger
-	seqID   uint64
-	pldPool *sync.Pool
+	codec api.Codec
+	pool  api.Pool
+	log   *zap.Logger
+	// seqID is the wire-envelope ID counter for outgoing internal.Message.ID.
+	seqID uint64
+	// invocationSeq is the InvocationID counter, paired only with the
+	// CancelNexusOperationMethod cooperative-cancel protocol. Kept separate from
+	// seqID so envelope-ID generation can evolve without touching the
+	// PHP-visible InvocationID semantics.
+	invocationSeq uint64
+	pldPool       *sync.Pool
 
 	// inFlight gates CancelNexusOperationMethod emission to avoid racing a cancel past completion.
 	inFlight sync.Map
@@ -115,9 +121,7 @@ func (h *NexusHandler) startOperation(
 	options nexus.StartOperationOptions,
 	methodCancelSupported bool,
 ) (nexus.HandlerStartOperationResult[converter.RawValue], error) {
-	const op = errors.Op("nexus_handler_start_operation")
-
-	h.log.Debug("nexus start operation", zap.String("service", serviceName), zap.String("operation", operationName), zap.String("taskqueue", taskQueue))
+	h.log.Debug("nexus start operation", zap.String("service", serviceName), zap.String("operation", operationName), zap.String(tq, taskQueue))
 
 	headers := make(map[string]string)
 	for k, v := range options.Header {
@@ -141,8 +145,11 @@ func (h *NexusHandler) startOperation(
 		})
 	}
 
-	// Wire envelope ID; reused as InvocationID only when the worker supports method cancel.
-	invocationID := atomic.AddUint64(&h.seqID, 1)
+	// invocationID is the cooperative-cancel correlation ID; emitted only when
+	// the worker advertises method-cancel support. Distinct from the wire
+	// envelope ID below — they are separate counters to keep their semantics
+	// independent.
+	var invocationID uint64
 	cmd := internal.InvokeNexusOperation{
 		Service:         serviceName,
 		Operation:       operationName,
@@ -153,10 +160,11 @@ func (h *NexusHandler) startOperation(
 		Links:           links,
 	}
 	if methodCancelSupported {
+		invocationID = atomic.AddUint64(&h.invocationSeq, 1)
 		cmd.InvocationID = invocationID
 	}
 	msg := &internal.Message{
-		ID:      invocationID,
+		ID:      atomic.AddUint64(&h.seqID, 1),
 		Command: cmd,
 	}
 
@@ -180,40 +188,45 @@ func (h *NexusHandler) startOperation(
 	pl := h.getPld()
 	defer h.putPld(pl)
 
-	err := h.codec.Encode(&internal.Context{TaskQueue: taskQueue}, pl, msg)
-	if err != nil {
-		return nil, errors.E(op, err)
+	if err := h.codec.Encode(&internal.Context{TaskQueue: taskQueue}, pl, msg); err != nil {
+		// Encoding our own request is a deterministic local bug, not a transient
+		// fault — don't ask the server to retry it.
+		return nil, newNexusHandlerError(nexus.HandlerErrorTypeInternal, nexus.HandlerErrorRetryBehaviorNonRetryable, "encode nexus request", err)
 	}
 
 	ch := make(chan struct{}, 1)
 	result, err := h.pool.Exec(ctx, pl, ch)
 	if err != nil {
-		return nil, errors.E(op, err)
+		// Pool returned before queueing — typically pool busy / exec rejected; retryable.
+		return nil, newNexusHandlerError(nexus.HandlerErrorTypeUnavailable, nexus.HandlerErrorRetryBehaviorRetryable, "exec nexus request", err)
 	}
 
 	var r *payload.Payload
 	select {
 	case pld := <-result:
 		if pld.Error() != nil {
-			return nil, errors.E(op, pld.Error())
+			// Worker-side execution failure: retryable per Nexus spec for INTERNAL.
+			return nil, newNexusHandlerError(nexus.HandlerErrorTypeInternal, nexus.HandlerErrorRetryBehaviorUnspecified, "nexus worker exec error", pld.Error())
 		}
 		if pld.Payload().Flags&frame.STREAM != 0 {
 			ch <- struct{}{}
-			return nil, errors.E(op, errors.Str("streaming is not supported"))
+			// Protocol-level violation by worker; non-retryable client error.
+			return nil, newNexusHandlerError(nexus.HandlerErrorTypeBadRequest, nexus.HandlerErrorRetryBehaviorNonRetryable, "streaming is not supported", nil)
 		}
 		r = pld.Payload()
 	default:
-		return nil, errors.E(op, errors.Str("nexus worker empty response"))
+		// Pool returned a result channel without a value — should not happen on a
+		// healthy pool. Treat as transient.
+		return nil, newNexusHandlerError(nexus.HandlerErrorTypeInternal, nexus.HandlerErrorRetryBehaviorRetryable, "nexus worker empty response", nil)
 	}
 
-	out := make([]*internal.Message, 0, 2)
-	err = h.codec.Decode(r, &out)
-	if err != nil {
-		return nil, errors.E(op, err)
+	out := make([]*internal.Message, 0, 1)
+	if err := h.codec.Decode(r, &out); err != nil {
+		return nil, newNexusHandlerError(nexus.HandlerErrorTypeInternal, nexus.HandlerErrorRetryBehaviorNonRetryable, "decode nexus response", err)
 	}
 
 	if len(out) != 1 {
-		return nil, errors.E(op, errors.Str("invalid nexus worker response"))
+		return nil, newNexusHandlerError(nexus.HandlerErrorTypeInternal, nexus.HandlerErrorRetryBehaviorNonRetryable, "invalid nexus worker response", nil)
 	}
 
 	retMsg := out[0]
@@ -418,9 +431,7 @@ func (h *NexusHandler) cancelOperation(
 	token string,
 	options nexus.CancelOperationOptions,
 ) error {
-	const op = errors.Op("nexus_handler_cancel_operation")
-
-	h.log.Debug("nexus cancel operation", zap.String("service", serviceName), zap.String("operation", operationName), zap.String("token", token))
+	h.log.Debug("nexus cancel operation", zap.String("service", serviceName), zap.String("operation", operationName), zap.String("token", token), zap.String(tq, taskQueue))
 
 	msg := &internal.Message{
 		ID: atomic.AddUint64(&h.seqID, 1),
@@ -434,27 +445,43 @@ func (h *NexusHandler) cancelOperation(
 	pl := h.getPld()
 	defer h.putPld(pl)
 
-	err := h.codec.Encode(&internal.Context{TaskQueue: taskQueue}, pl, msg)
-	if err != nil {
-		return errors.E(op, err)
+	if err := h.codec.Encode(&internal.Context{TaskQueue: taskQueue}, pl, msg); err != nil {
+		return newNexusHandlerError(nexus.HandlerErrorTypeInternal, nexus.HandlerErrorRetryBehaviorNonRetryable, "encode nexus cancel request", err)
 	}
 
 	ch := make(chan struct{}, 1)
 	result, err := h.pool.Exec(ctx, pl, ch)
 	if err != nil {
-		return errors.E(op, err)
+		return newNexusHandlerError(nexus.HandlerErrorTypeUnavailable, nexus.HandlerErrorRetryBehaviorRetryable, "exec nexus cancel request", err)
 	}
 
 	select {
 	case pld := <-result:
 		if pld.Error() != nil {
-			return errors.E(op, pld.Error())
+			return newNexusHandlerError(nexus.HandlerErrorTypeInternal, nexus.HandlerErrorRetryBehaviorUnspecified, "nexus worker exec error", pld.Error())
 		}
 	default:
-		return errors.E(op, errors.Str("nexus worker empty response"))
+		return newNexusHandlerError(nexus.HandlerErrorTypeInternal, nexus.HandlerErrorRetryBehaviorRetryable, "nexus worker empty response", nil)
 	}
 
 	return nil
+}
+
+// newNexusHandlerError constructs a *nexus.HandlerError with explicit type and
+// retry behavior. cause may be nil. The cause string is appended to Message so
+// it surfaces via Error() (HandlerError.Error() doesn't print Cause), while the
+// original error is preserved for errors.Unwrap / errors.Is.
+func newNexusHandlerError(typ nexus.HandlerErrorType, retry nexus.HandlerErrorRetryBehavior, message string, cause error) *nexus.HandlerError {
+	full := message
+	if cause != nil {
+		full = message + ": " + cause.Error()
+	}
+	return &nexus.HandlerError{
+		Type:          typ,
+		Message:       full,
+		RetryBehavior: retry,
+		Cause:         cause,
+	}
 }
 
 // watchForMethodCancel: one goroutine per in-flight invocation; emits cancel on ctx.Done.

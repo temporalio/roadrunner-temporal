@@ -114,8 +114,7 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	nexusHandler := aggregatedpool.NewNexusHandler(codec, ap, p.log)
-	workers, err := aggregatedpool.TemporalWorkers(wfDef, actDef, nexusHandler, wi, p.log, p.temporal.client, p.temporal.interceptors, p.config.Interceptors)
+	workers, err := aggregatedpool.TemporalWorkers(wfDef, actDef, newNexusHandler(codec, ap, p.log), wi, p.log, p.temporal.client, p.temporal.interceptors, p.config.Interceptors)
 	if err != nil {
 		return err
 	}

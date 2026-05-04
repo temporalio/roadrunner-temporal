@@ -10,15 +10,13 @@ import (
 // listener per ID. Push delivers to a registered listener (if any); Listen
 // fires immediately if a Push has already happened for that ID, otherwise it
 // waits for the next Push.
-//
-// Last-write-wins for both entries and listeners. The zero value is usable.
 type Registry[T any] struct {
 	sync.Mutex
-	entries   sync.Map
+	ids       sync.Map
 	listeners sync.Map
 }
 
-// ListenerFunc is invoked once per (id, value, err) triple delivered.
+// ListenerFunc is invoked once per ID with the delivered (value, err) pair.
 type ListenerFunc[T any] func(value T, err error)
 
 type entry[T any] struct {
@@ -26,25 +24,25 @@ type entry[T any] struct {
 	err   error
 }
 
-func (r *Registry[T]) Listen(id uint64, cl ListenerFunc[T]) {
-	r.listeners.Store(id, cl)
-	val, exist := r.entries.Load(id)
+func (c *Registry[T]) Listen(id uint64, cl ListenerFunc[T]) {
+	c.listeners.Store(id, cl)
+	val, exist := c.ids.Load(id)
 	if exist {
-		r.Lock()
+		c.Lock()
 		e := val.(entry[T])
 		cl(e.value, e.err)
-		r.Unlock()
+		c.Unlock()
 	}
 }
 
-func (r *Registry[T]) Push(id uint64, value T, err error) {
-	r.entries.Store(id, entry[T]{value: value, err: err})
-	l, exist := r.listeners.Load(id)
+func (c *Registry[T]) Push(id uint64, value T, err error) {
+	c.ids.Store(id, entry[T]{value: value, err: err})
+	l, exist := c.listeners.Load(id)
 	if exist {
-		r.Lock()
+		c.Lock()
 		list := l.(ListenerFunc[T])
 		list(value, err)
-		r.Unlock()
+		c.Unlock()
 	}
 }
 
