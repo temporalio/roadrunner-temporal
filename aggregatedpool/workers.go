@@ -143,8 +143,13 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, nexusHandler *NexusHandle
 
 			log.Debug("activity registered", zap.String(tq, wi[i].TaskQueue), zap.Any("workflow name", wi[i].Activities[j].Name))
 		}
-		if nexusHandler != nil {
-			methodCancelSupported := wi[i].HasFlag("nexus_method_cancel")
+		if nexusHandler != nil && len(wi[i].NexusServices) > 0 {
+			// Method-cancel support is implied by the worker registering any Nexus
+			// service: every PHP-SDK that ships Nexus services also implements
+			// CancelNexusOperationMethod (both arrived in the same release). The
+			// legacy `nexus_method_cancel` flag is still parsed into Flags for
+			// back-compat introspection but is no longer the capability signal.
+			const methodCancelSupported = true
 			for j := 0; j < len(wi[i].NexusServices); j++ {
 				svc := nexusHandler.CreateNexusService(wi[i].TaskQueue, wi[i].NexusServices[j].Name, wi[i].NexusServices[j].Operations, methodCancelSupported)
 				wrk.RegisterNexusService(svc)

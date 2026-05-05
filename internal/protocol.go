@@ -382,15 +382,16 @@ type InvokeNexusOperation struct {
 	CallbackHeaders map[string]string `json:"callbackHeaders,omitempty"`
 	Headers         map[string]string `json:"headers,omitempty"`
 	Links           []NexusLink       `json:"links,omitempty"`
-	// InvocationID correlates with CancelNexusOperationMethod. Set only when
-	// worker advertises `nexus_method_cancel`; omitted (zero) for backwards compat.
+	// InvocationID correlates with CancelNexusOperationMethod. Set whenever the
+	// worker advertises any Nexus service — method-cancel support is implied by
+	// service registration. Omitted (zero) for non-Nexus workers.
 	InvocationID uint64 `json:"invocationId,omitempty"`
 }
 
 // CancelNexusOperationMethod tells PHP to stop running an in-flight handler
 // *method* (cooperative, single-threaded). Distinct from CancelNexusOperation
-// which targets the business operation. Emitted only to workers with the
-// `nexus_method_cancel` flag.
+// which targets the business operation. Emitted to any worker that registered
+// at least one Nexus service.
 type CancelNexusOperationMethod struct {
 	InvocationID uint64 `json:"invocationId"` // matches InvokeNexusOperation.InvocationID
 	Reason       string `json:"reason,omitempty"`
