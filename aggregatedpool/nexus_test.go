@@ -47,7 +47,7 @@ func TestNexusHandler_CreateNexusService(t *testing.T) {
 	log := zap.NewNop()
 	handler := NewNexusHandler(nil, nil, log)
 
-	svc := handler.CreateNexusService("test-queue", "GreetingService", []string{"greet", "farewell"}, false)
+	svc := handler.CreateNexusService("test-queue", "GreetingService", []string{"greet", "farewell"})
 
 	assert.NotNil(t, svc)
 	assert.Equal(t, "GreetingService", svc.Name)
@@ -65,7 +65,7 @@ func TestNexusHandler_CreateNexusService_NoOperations(t *testing.T) {
 	log := zap.NewNop()
 	handler := NewNexusHandler(nil, nil, log)
 
-	svc := handler.CreateNexusService("test-queue", "EmptyService", []string{}, false)
+	svc := handler.CreateNexusService("test-queue", "EmptyService", []string{})
 
 	assert.NotNil(t, svc)
 	assert.Equal(t, "EmptyService", svc.Name)
@@ -76,7 +76,7 @@ func TestNexusHandler_CreateNexusService_NilOperations(t *testing.T) {
 	handler := NewNexusHandler(nil, nil, log)
 
 	// Should not panic with nil slice
-	svc := handler.CreateNexusService("test-queue", "EmptyService", nil, false)
+	svc := handler.CreateNexusService("test-queue", "EmptyService", nil)
 	assert.NotNil(t, svc)
 }
 
@@ -84,8 +84,8 @@ func TestNexusHandler_CreateNexusService_MultipleServices(t *testing.T) {
 	log := zap.NewNop()
 	handler := NewNexusHandler(nil, nil, log)
 
-	svc1 := handler.CreateNexusService("test-queue", "ServiceA", []string{"opA1", "opA2"}, false)
-	svc2 := handler.CreateNexusService("test-queue", "ServiceB", []string{"opB"}, false)
+	svc1 := handler.CreateNexusService("test-queue", "ServiceA", []string{"opA1", "opA2"})
+	svc2 := handler.CreateNexusService("test-queue", "ServiceB", []string{"opB"})
 
 	assert.Equal(t, "ServiceA", svc1.Name)
 	assert.Equal(t, "ServiceB", svc2.Name)
@@ -106,8 +106,8 @@ func TestNexusHandler_CreateNexusService_DifferentTaskQueues(t *testing.T) {
 
 	// Same service name on different task queues — each operation should
 	// carry its own task queue (verified through the operation struct).
-	svc1 := handler.CreateNexusService("queue-1", "Service", []string{"op"}, false)
-	svc2 := handler.CreateNexusService("queue-2", "Service", []string{"op"}, false)
+	svc1 := handler.CreateNexusService("queue-1", "Service", []string{"op"})
+	svc2 := handler.CreateNexusService("queue-2", "Service", []string{"op"})
 
 	require.NotNil(t, svc1.Operation("op"))
 	require.NotNil(t, svc2.Operation("op"))
@@ -121,8 +121,8 @@ func TestNexusHandler_CreateNexusService_DuplicateRegistration(t *testing.T) {
 	handler := NewNexusHandler(nil, nil, log)
 
 	// Registering same service name twice produces independent service objects
-	svc1 := handler.CreateNexusService("test-queue", "SameService", []string{"op1"}, false)
-	svc2 := handler.CreateNexusService("test-queue", "SameService", []string{"op2"}, false)
+	svc1 := handler.CreateNexusService("test-queue", "SameService", []string{"op1"})
+	svc2 := handler.CreateNexusService("test-queue", "SameService", []string{"op2"})
 
 	require.NotNil(t, svc1)
 	require.NotNil(t, svc2)
@@ -185,7 +185,7 @@ func TestNexusOperation_TaskQueuePropagation(t *testing.T) {
 	handler := NewNexusHandler(nil, nil, log)
 
 	taskQueue := "my-special-queue"
-	svc := handler.CreateNexusService(taskQueue, "Svc", []string{"op1", "op2", "op3"}, false)
+	svc := handler.CreateNexusService(taskQueue, "Svc", []string{"op1", "op2", "op3"})
 	require.NotNil(t, svc)
 
 	for _, opName := range []string{"op1", "op2", "op3"} {
@@ -227,7 +227,7 @@ func TestNexusHandler_OperationsListPreservesOrder(t *testing.T) {
 	handler := NewNexusHandler(nil, nil, log)
 
 	ops := []string{"alpha", "beta", "gamma", "delta"}
-	svc := handler.CreateNexusService("tq", "OrderedSvc", ops, false)
+	svc := handler.CreateNexusService("tq", "OrderedSvc", ops)
 
 	// All operations should be findable
 	for _, name := range ops {

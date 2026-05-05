@@ -77,7 +77,6 @@ func TestStartOperation_EncodesTaskQueue(t *testing.T) {
 		"greet",
 		nil,
 		nexus.StartOperationOptions{},
-		false,
 	)
 
 	require.Error(t, err)
@@ -108,7 +107,6 @@ func TestStartOperation_EncodesAllFields(t *testing.T) {
 				"X-Token": "callback-token",
 			},
 		},
-		false,
 	)
 
 	require.NotNil(t, codec.encodedMsg)
@@ -142,7 +140,6 @@ func TestStartOperation_EncodesPayload(t *testing.T) {
 		"op",
 		input,
 		nexus.StartOperationOptions{},
-		false,
 	)
 
 	require.NotNil(t, codec.encodedMsg)
@@ -164,7 +161,6 @@ func TestStartOperation_NilInputProducesNilPayloads(t *testing.T) {
 		"op",
 		nil, // nil input
 		nexus.StartOperationOptions{},
-		false,
 	)
 
 	require.NotNil(t, codec.encodedMsg)
@@ -184,7 +180,6 @@ func TestStartOperation_EncodeErrorReturnsError(t *testing.T) {
 		"op",
 		nil,
 		nexus.StartOperationOptions{},
-		false,
 	)
 
 	require.Error(t, err)
@@ -198,10 +193,10 @@ func TestStartOperation_IncrementsSeqID(t *testing.T) {
 	}
 	handler := NewNexusHandler(codec, nil, zap.NewNop())
 
-	_, _ = handler.startOperation(context.Background(), "tq", "S", "o", nil, nexus.StartOperationOptions{}, false)
+	_, _ = handler.startOperation(context.Background(), "tq", "S", "o", nil, nexus.StartOperationOptions{})
 	firstID := codec.encodedMsg.ID
 
-	_, _ = handler.startOperation(context.Background(), "tq", "S", "o", nil, nexus.StartOperationOptions{}, false)
+	_, _ = handler.startOperation(context.Background(), "tq", "S", "o", nil, nexus.StartOperationOptions{})
 	secondID := codec.encodedMsg.ID
 
 	assert.Greater(t, secondID, firstID, "seqID should increment between calls")
@@ -221,7 +216,7 @@ func TestStartOperation_EncodesCallerLinks(t *testing.T) {
 			{URL: u1, Type: "example.one"},
 			{URL: u2, Type: "example.two"},
 		},
-	}, false)
+	})
 
 	require.NotNil(t, codec.encodedMsg)
 	cmd, ok := codec.encodedMsg.Command.(internal.InvokeNexusOperation)
@@ -237,7 +232,7 @@ func TestStartOperation_NoLinksOmitsField(t *testing.T) {
 	codec := &mockCodec{encodeErr: errors.New("stop")}
 	handler := NewNexusHandler(codec, nil, zap.NewNop())
 
-	_, _ = handler.startOperation(context.Background(), "tq", "S", "op", nil, nexus.StartOperationOptions{}, false)
+	_, _ = handler.startOperation(context.Background(), "tq", "S", "op", nil, nexus.StartOperationOptions{})
 
 	require.NotNil(t, codec.encodedMsg)
 	cmd, ok := codec.encodedMsg.Command.(internal.InvokeNexusOperation)
@@ -318,7 +313,7 @@ func TestStartOperation_ConcurrentSeqIDIncrement(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, _ = handler.startOperation(context.Background(), "tq", "S", "o", nil, nexus.StartOperationOptions{}, false)
+			_, _ = handler.startOperation(context.Background(), "tq", "S", "o", nil, nexus.StartOperationOptions{})
 		}()
 	}
 	wg.Wait()
@@ -353,41 +348,16 @@ func (c *recordingCodec) DecodeWorkerInfo(_ *payload.Payload, _ *[]*internal.Wor
 
 // ── Method cancellation tests ──────────────────────────────────
 
-// TestStartOperation_MethodCancelDisabledOmitsInvocationID exercises the
-// methodCancelSupported=false code path: when the operation is registered
-// without method-cancel support, no InvocationID is set on the command and
-// the PHP side won't see a method-cancel signal. Modern workers register
-// services with methodCancelSupported=true unconditionally; this test pins
-// the function-level contract so the alternative path remains correct if a
-// future capability gate flips it off.
-func TestStartOperation_MethodCancelDisabledOmitsInvocationID(t *testing.T) {
+// TestStartOperation_SetsInvocationID verifies that every Start carries an
+// InvocationID matching the wire envelope ID (`msg.ID`) — that's the
+// correlation key for CancelNexusOperationMethod.
+func TestStartOperation_SetsInvocationID(t *testing.T) {
 	codec := &mockCodec{encodeErr: errors.New("stop")}
 	handler := NewNexusHandler(codec, nil, zap.NewNop())
 
 	_, _ = handler.startOperation(
 		context.Background(), "tq", "S", "op",
 		nil, nexus.StartOperationOptions{},
-		false, // methodCancelSupported (legacy / non-Nexus path)
-	)
-
-	require.NotNil(t, codec.encodedMsg)
-	cmd, ok := codec.encodedMsg.Command.(internal.InvokeNexusOperation)
-	require.True(t, ok)
-	assert.Equal(t, uint64(0), cmd.InvocationID,
-		"InvocationID must be 0 when worker doesn't advertise method-cancel support")
-}
-
-// TestStartOperation_MethodCancelEnabledSetsInvocationID verifies that the
-// InvocationID is propagated on the command when method-cancel is supported,
-// matching the wire envelope ID (`msg.ID`).
-func TestStartOperation_MethodCancelEnabledSetsInvocationID(t *testing.T) {
-	codec := &mockCodec{encodeErr: errors.New("stop")}
-	handler := NewNexusHandler(codec, nil, zap.NewNop())
-
-	_, _ = handler.startOperation(
-		context.Background(), "tq", "S", "op",
-		nil, nexus.StartOperationOptions{},
-		true,
 	)
 
 	require.NotNil(t, codec.encodedMsg)

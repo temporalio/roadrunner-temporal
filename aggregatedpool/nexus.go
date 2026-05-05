@@ -47,7 +47,7 @@ type NexusHandler struct {
 	log   *zap.Logger
 	// seqID is the wire-envelope ID counter for outgoing internal.Message.ID.
 	seqID uint64
-	// invocationSeq is the InvocationID counter, paired only with the
+	// invocationSeq is the InvocationID counter paired with the
 	// CancelNexusOperationMethod cooperative-cancel protocol. Kept separate from
 	// seqID so envelope-ID generation can evolve without touching the
 	// PHP-visible InvocationID semantics.
@@ -72,18 +72,15 @@ func NewNexusHandler(codec api.Codec, pool api.Pool, log *zap.Logger) *NexusHand
 	}
 }
 
-// nexusOperation forwards Start/Cancel to PHP. methodCancelSupported gates
-// InvocationID + CancelNexusOperationMethod emission. Modern workers that
-// register Nexus services always set this to true; the parameter is retained
-// to keep the per-operation behavior pinned at registration time and to allow
-// unit-level testing of both code paths.
+// nexusOperation forwards Start/Cancel to PHP. Cooperative method-cancel is
+// always wired: every PHP-SDK that ships Nexus services also handles
+// CancelNexusOperationMethod (both arrived in the same release).
 type nexusOperation struct {
 	nexus.UnimplementedOperation[converter.RawValue, converter.RawValue]
-	name                  string
-	serviceName           string
-	taskQueue             string
-	handler               *NexusHandler
-	methodCancelSupported bool
+	name        string
+	serviceName string
+	taskQueue   string
+	handler     *NexusHandler
 }
 
 func (op *nexusOperation) Name() string {
@@ -91,7 +88,7 @@ func (op *nexusOperation) Name() string {
 }
 
 func (op *nexusOperation) Start(ctx context.Context, input converter.RawValue, options nexus.StartOperationOptions) (nexus.HandlerStartOperationResult[converter.RawValue], error) {
-	return op.handler.startOperation(ctx, op.taskQueue, op.serviceName, op.name, input.Payload(), options, op.methodCancelSupported)
+	return op.handler.startOperation(ctx, op.taskQueue, op.serviceName, op.name, input.Payload(), options)
 }
 
 func (op *nexusOperation) Cancel(ctx context.Context, token string, options nexus.CancelOperationOptions) error {
@@ -99,16 +96,15 @@ func (op *nexusOperation) Cancel(ctx context.Context, token string, options nexu
 }
 
 // CreateNexusService builds a nexus.Service with pass-through operations.
-func (h *NexusHandler) CreateNexusService(taskQueue string, serviceName string, operationNames []string, methodCancelSupported bool) *nexus.Service {
+func (h *NexusHandler) CreateNexusService(taskQueue string, serviceName string, operationNames []string) *nexus.Service {
 	svc := nexus.NewService(serviceName)
 	ops := make([]nexus.RegisterableOperation, 0, len(operationNames))
 	for _, name := range operationNames {
 		ops = append(ops, &nexusOperation{
-			name:                  name,
-			serviceName:           serviceName,
-			taskQueue:             taskQueue,
-			handler:               h,
-			methodCancelSupported: methodCancelSupported,
+			name:        name,
+			serviceName: serviceName,
+			taskQueue:   taskQueue,
+			handler:     h,
 		})
 	}
 	svc.MustRegister(ops...)
@@ -122,7 +118,6 @@ func (h *NexusHandler) startOperation(
 	operationName string,
 	input *commonpb.Payload,
 	options nexus.StartOperationOptions,
-	methodCancelSupported bool,
 ) (nexus.HandlerStartOperationResult[converter.RawValue], error) {
 	h.log.Debug("nexus start operation", zap.String("service", serviceName), zap.String("operation", operationName), zap.String(tq, taskQueue))
 
@@ -148,27 +143,22 @@ func (h *NexusHandler) startOperation(
 		})
 	}
 
-	// invocationID is the cooperative-cancel correlation ID; emitted only when
-	// the worker advertises method-cancel support. Distinct from the wire
-	// envelope ID below — they are separate counters to keep their semantics
-	// independent.
-	var invocationID uint64
-	cmd := internal.InvokeNexusOperation{
-		Service:         serviceName,
-		Operation:       operationName,
-		RequestID:       options.RequestID,
-		Callback:        options.CallbackURL,
-		CallbackHeaders: callbackHeaders,
-		Headers:         headers,
-		Links:           links,
-	}
-	if methodCancelSupported {
-		invocationID = atomic.AddUint64(&h.invocationSeq, 1)
-		cmd.InvocationID = invocationID
-	}
+	// invocationID is the cooperative-cancel correlation ID. Distinct from the
+	// wire envelope ID below — they are separate counters to keep their
+	// semantics independent.
+	invocationID := atomic.AddUint64(&h.invocationSeq, 1)
 	msg := &internal.Message{
-		ID:      atomic.AddUint64(&h.seqID, 1),
-		Command: cmd,
+		ID: atomic.AddUint64(&h.seqID, 1),
+		Command: internal.InvokeNexusOperation{
+			Service:         serviceName,
+			Operation:       operationName,
+			RequestID:       options.RequestID,
+			Callback:        options.CallbackURL,
+			CallbackHeaders: callbackHeaders,
+			Headers:         headers,
+			Links:           links,
+			InvocationID:    invocationID,
+		},
 	}
 
 	if input != nil {
@@ -178,15 +168,13 @@ func (h *NexusHandler) startOperation(
 	// Watch for ctx cancellation while Start is in flight; emit method cancel on PHP side.
 	// Order matters on cleanup: clear inFlight BEFORE closing done, so the watcher
 	// can't observe a stale entry in the brief window between the two.
-	if methodCancelSupported {
-		h.inFlight.Store(invocationID, struct{}{})
-		done := make(chan struct{})
-		defer func() {
-			h.inFlight.Delete(invocationID)
-			close(done)
-		}()
-		go h.watchForMethodCancel(ctx, invocationID, done)
-	}
+	h.inFlight.Store(invocationID, struct{}{})
+	done := make(chan struct{})
+	defer func() {
+		h.inFlight.Delete(invocationID)
+		close(done)
+	}()
+	go h.watchForMethodCancel(ctx, invocationID, done)
 
 	pl := h.getPld()
 	defer h.putPld(pl)
