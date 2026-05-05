@@ -40,25 +40,22 @@ const (
 	nexusCancelMethodTimeout = 5 * time.Second
 )
 
-// NexusHandler forwards Nexus Start/Cancel to PHP workers via the activity pool.
+// NexusHandler forwards handler-side Nexus Start/Cancel to PHP via the activity pool.
 type NexusHandler struct {
 	codec api.Codec
 	pool  api.Pool
 	log   *zap.Logger
-	// seqID is the wire-envelope ID counter for outgoing internal.Message.ID.
-	seqID uint64
-	// invocationSeq is the InvocationID counter paired with the
-	// CancelNexusOperationMethod cooperative-cancel protocol. Kept separate from
-	// seqID so envelope-ID generation can evolve without touching the
-	// PHP-visible InvocationID semantics.
+	// seqID is the wire envelope ID; invocationSeq is the InvocationID seen by
+	// PHP and used by CancelNexusOperationMethod. Kept separate so wire format
+	// can evolve without touching cooperative-cancel semantics.
+	seqID         uint64
 	invocationSeq uint64
 	pldPool       *sync.Pool
-
-	// inFlight gates CancelNexusOperationMethod emission to avoid racing a cancel past completion.
+	// inFlight gates CancelNexusOperationMethod emission so we don't race a
+	// cancel past Start completion.
 	inFlight sync.Map
 }
 
-// NewNexusHandler creates a new Nexus handler that forwards to PHP.
 func NewNexusHandler(codec api.Codec, pool api.Pool, log *zap.Logger) *NexusHandler {
 	return &NexusHandler{
 		codec: codec,
@@ -72,9 +69,6 @@ func NewNexusHandler(codec api.Codec, pool api.Pool, log *zap.Logger) *NexusHand
 	}
 }
 
-// nexusOperation forwards Start/Cancel to PHP. Cooperative method-cancel is
-// always wired: every PHP-SDK that ships Nexus services also handles
-// CancelNexusOperationMethod (both arrived in the same release).
 type nexusOperation struct {
 	nexus.UnimplementedOperation[converter.RawValue, converter.RawValue]
 	name        string
@@ -143,9 +137,6 @@ func (h *NexusHandler) startOperation(
 		})
 	}
 
-	// invocationID is the cooperative-cancel correlation ID. Distinct from the
-	// wire envelope ID below — they are separate counters to keep their
-	// semantics independent.
 	invocationID := atomic.AddUint64(&h.invocationSeq, 1)
 	msg := &internal.Message{
 		ID: atomic.AddUint64(&h.seqID, 1),
@@ -516,11 +507,7 @@ func (h *NexusHandler) sendCancelMethod(invocationID uint64, reason string) {
 }
 
 func (h *NexusHandler) getPld() *payload.Payload {
-	pld, ok := h.pldPool.Get().(*payload.Payload)
-	if !ok {
-		return new(payload.Payload)
-	}
-	return pld
+	return h.pldPool.Get().(*payload.Payload)
 }
 
 func (h *NexusHandler) putPld(pld *payload.Payload) {

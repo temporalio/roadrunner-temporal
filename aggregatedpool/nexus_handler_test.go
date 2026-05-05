@@ -348,9 +348,8 @@ func (c *recordingCodec) DecodeWorkerInfo(_ *payload.Payload, _ *[]*internal.Wor
 
 // ── Method cancellation tests ──────────────────────────────────
 
-// TestStartOperation_SetsInvocationID verifies that every Start carries an
-// InvocationID matching the wire envelope ID (`msg.ID`) — that's the
-// correlation key for CancelNexusOperationMethod.
+// InvocationID must equal the wire envelope ID — that's the correlation key
+// CancelNexusOperationMethod uses to find the in-flight handler.
 func TestStartOperation_SetsInvocationID(t *testing.T) {
 	codec := &mockCodec{encodeErr: errors.New("stop")}
 	handler := NewNexusHandler(codec, nil, zap.NewNop())
@@ -399,9 +398,8 @@ func (p *recordingPool) AddWorker() error                   { panic("not used") 
 func (p *recordingPool) QueueSize() uint64                  { panic("not used") }
 func (p *recordingPool) Reset(context.Context) error        { panic("not used") }
 
-// TestSendCancelMethod_EncodesCorrectCommand verifies the CancelNexusOperationMethod
-// message built by sendCancelMethod carries the right invocation id and reason
-// and uses a background context (not the cancelled one).
+// sendCancelMethod must use a fresh context — the caller's ctx is the one
+// that was just cancelled, so reusing it would mean the cancel never lands.
 func TestSendCancelMethod_EncodesCorrectCommand(t *testing.T) {
 	codec := &mockCodec{}
 	pool := &recordingPool{}
@@ -422,16 +420,9 @@ func TestSendCancelMethod_EncodesCorrectCommand(t *testing.T) {
 	assert.NoError(t, pool.lastCtxErrAtExec, "sendCancelMethod must use a live ctx at Exec time")
 }
 
-// TestStartOperation_CtxCancelTriggersMethodCancel exercises the full
-// goroutine that watches for ctx cancellation while Start is blocked in the
-// PHP pool. We block the pool indefinitely, then cancel the caller's ctx,
-// and verify that the watcher emits a CancelNexusOperationMethod to the pool.
+// ctx cancel while a Nexus invocation is in-flight must emit a
+// CancelNexusOperationMethod so the PHP-side handler stops promptly.
 func TestStartOperation_CtxCancelTriggersMethodCancel(t *testing.T) {
-	// Encode fails so Start returns quickly — we only care that the method
-	// cancel path fires. Without a cooperating pool stub we can't easily
-	// exercise the "pool blocks, then ctx cancels, then unblocks" path from
-	// Start's perspective, so we call watchForMethodCancel directly with the
-	// inFlight bookkeeping set up as Start would.
 	codec := &mockCodec{}
 	pool := &recordingPool{}
 	handler := NewNexusHandler(codec, pool, zap.NewNop())
@@ -458,9 +449,6 @@ func TestStartOperation_CtxCancelTriggersMethodCancel(t *testing.T) {
 	assert.Contains(t, cmd.Reason, "canceled")
 }
 
-// TestStartOperation_DoneClosedSkipsMethodCancel verifies the watcher exits
-// cleanly (without sending a cancel) when Start completes before ctx
-// cancellation.
 func TestStartOperation_DoneClosedSkipsMethodCancel(t *testing.T) {
 	codec := &mockCodec{}
 	pool := &recordingPool{}
@@ -483,10 +471,8 @@ func TestStartOperation_DoneClosedSkipsMethodCancel(t *testing.T) {
 	assert.EqualValues(t, 0, atomic.LoadInt32(&pool.execCalls))
 }
 
-// TestStartOperation_CtxCancelAfterCompletionNoop verifies the race where
-// the invocation completed (inFlight cleared) before ctx cancellation is
-// handled. The second-check on inFlight inside watchForMethodCancel must
-// swallow the cancel to avoid targeting a handler that's already gone.
+// Race guard: ctx cancels AFTER the invocation completed (inFlight already
+// cleared). Watcher must swallow the cancel rather than target a gone handler.
 func TestStartOperation_CtxCancelAfterCompletionNoop(t *testing.T) {
 	codec := &mockCodec{}
 	pool := &recordingPool{}
@@ -510,10 +496,7 @@ func TestStartOperation_CtxCancelAfterCompletionNoop(t *testing.T) {
 
 // ── Failure-cause preservation tests ───────────────────────────
 
-// TestNexusErrorFromFailure_PreservesStackTrace verifies the Go side surfaces
-// the PHP stack trace inside the nexus error's Cause. Before the fix the Cause
-// held only the message, so PHP tracebacks were silently dropped at the RR
-// boundary.
+// Regression: PHP stack trace must surface in Cause, not just the message.
 func TestNexusErrorFromFailure_PreservesStackTrace(t *testing.T) {
 	f := &failurepb.Failure{
 		Message:    "boom",
@@ -592,9 +575,7 @@ func TestFailureToCauseString_NilIsEmpty(t *testing.T) {
 	assert.Equal(t, "", failureToCauseString(nil))
 }
 
-// TestFailureToCauseString_TruncatesDeepChain guards against pathological
-// PHP-side cause chains causing unbounded growth (or, with the old recursive
-// version, stack overflow).
+// Pathological deep cause chain from PHP must truncate, not grow unbounded.
 func TestFailureToCauseString_TruncatesDeepChain(t *testing.T) {
 	// Build a chain ~3x deeper than the limit.
 	depth := failureChainMaxDepth*3 + 5
@@ -676,8 +657,7 @@ func TestExtractNexusLinks_NilPayloadSafe(t *testing.T) {
 	assert.Nil(t, extractNexusLinks(nil, zap.NewNop()))
 }
 
-// TestSendCancelMethod_EncodeErrorSwallowed verifies that a codec error during
-// cancel encoding is logged but not propagated — this is fire-and-forget.
+// sendCancelMethod is fire-and-forget — encode failures are logged, never propagated.
 func TestSendCancelMethod_EncodeErrorSwallowed(t *testing.T) {
 	codec := &mockCodec{encodeErr: errors.New("encode boom")}
 	pool := &recordingPool{}

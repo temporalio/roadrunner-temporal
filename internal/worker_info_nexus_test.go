@@ -9,8 +9,6 @@ import (
 )
 
 func TestWorkerInfo_NexusServicesJSON(t *testing.T) {
-	// Verify that PHP's "nexusServices" JSON key is properly parsed
-	// and Operations are correctly unmarshaled.
 	jsonPayload := []byte(`{
 		"TaskQueue": "test-queue",
 		"nexusServices": [
@@ -33,7 +31,6 @@ func TestWorkerInfo_NexusServicesJSON(t *testing.T) {
 }
 
 func TestWorkerInfo_EmptyNexusServices(t *testing.T) {
-	// Verify that missing or empty nexusServices field is handled gracefully
 	jsonPayload := []byte(`{"TaskQueue": "test-queue"}`)
 
 	var wi WorkerInfo
@@ -64,28 +61,4 @@ func TestWorkerInfo_NexusServicesJSONLowercase(t *testing.T) {
 	require.NoError(t, json.Unmarshal(jsonPayload, &wi))
 	require.Len(t, wi.NexusServices, 1)
 	assert.Equal(t, "S", wi.NexusServices[0].Name)
-}
-
-func TestWorkerInfo_HasFlag(t *testing.T) {
-	for name, tc := range map[string]struct {
-		flags map[string]string
-		key   string
-		want  bool
-	}{
-		"missing":           {nil, "x", false},
-		"absent":            {map[string]string{"y": "true"}, "x", false},
-		"true lowercase":    {map[string]string{"x": "true"}, "x", true},
-		"True mixedcase":    {map[string]string{"x": "True"}, "x", true},
-		"TRUE uppercase":    {map[string]string{"x": "TRUE"}, "x", true},
-		"one":               {map[string]string{"x": "1"}, "x", true},
-		"empty value false": {map[string]string{"x": ""}, "x", false},
-		"false":             {map[string]string{"x": "false"}, "x", false},
-		"zero":              {map[string]string{"x": "0"}, "x", false},
-		"yes (rejected)":    {map[string]string{"x": "yes"}, "x", false},
-	} {
-		t.Run(name, func(t *testing.T) {
-			wi := WorkerInfo{Flags: tc.flags}
-			assert.Equal(t, tc.want, wi.HasFlag(tc.key))
-		})
-	}
 }

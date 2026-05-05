@@ -7,8 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestNexusStartedRegistry_PushThenListen — Push happens BEFORE Listen.
-// The listener must fire immediately on registration with the stored entry.
 func TestNexusStartedRegistry_PushThenListen(t *testing.T) {
 	r := &NexusStartedRegistry{}
 
@@ -25,8 +23,6 @@ func TestNexusStartedRegistry_PushThenListen(t *testing.T) {
 	assert.NoError(t, gotErr)
 }
 
-// TestNexusStartedRegistry_ListenThenPush — Listen happens BEFORE Push.
-// The listener must fire when Push is called for the registered ID.
 func TestNexusStartedRegistry_ListenThenPush(t *testing.T) {
 	r := &NexusStartedRegistry{}
 
@@ -44,8 +40,7 @@ func TestNexusStartedRegistry_ListenThenPush(t *testing.T) {
 	assert.NoError(t, gotErr)
 }
 
-// TestNexusStartedRegistry_EmptyTokenSync — sync ops carry token=="".
-// The listener must fire normally with empty token (caller derives Async=false).
+// Sync Nexus ops push token="" — listener must still fire so caller resolves cleanly.
 func TestNexusStartedRegistry_EmptyTokenSync(t *testing.T) {
 	r := &NexusStartedRegistry{}
 
@@ -61,7 +56,6 @@ func TestNexusStartedRegistry_EmptyTokenSync(t *testing.T) {
 	assert.Equal(t, "", gotToken)
 }
 
-// TestNexusStartedRegistry_PushError — error path delivers err verbatim.
 func TestNexusStartedRegistry_PushError(t *testing.T) {
 	r := &NexusStartedRegistry{}
 
@@ -78,8 +72,6 @@ func TestNexusStartedRegistry_PushError(t *testing.T) {
 	assert.Same(t, startErr, gotErr)
 }
 
-// TestNexusStartedRegistry_PushErrorAfterPushSucceeds — already-Push'd entry
-// in error state is delivered to a late Listen call too.
 func TestNexusStartedRegistry_PushErrorBeforeListen(t *testing.T) {
 	r := &NexusStartedRegistry{}
 
@@ -94,8 +86,6 @@ func TestNexusStartedRegistry_PushErrorBeforeListen(t *testing.T) {
 	assert.Same(t, startErr, gotErr)
 }
 
-// TestNexusStartedRegistry_DistinctIDs — registries are partitioned by ID.
-// A Push for one ID must not fire listeners registered under a different ID.
 func TestNexusStartedRegistry_DistinctIDs(t *testing.T) {
 	r := &NexusStartedRegistry{}
 
@@ -111,10 +101,7 @@ func TestNexusStartedRegistry_DistinctIDs(t *testing.T) {
 	assert.True(t, firedB)
 }
 
-// TestNexusStartedRegistry_OverwriteEntry — the registry stores the most
-// recent Push under an ID. Without a registered listener, repeated Push calls
-// just overwrite the cached entry; the listener observes the latest one when
-// it eventually registers.
+// Repeated Push for the same ID overwrites — late Listen sees only the latest entry.
 func TestNexusStartedRegistry_OverwriteEntry(t *testing.T) {
 	r := &NexusStartedRegistry{}
 
@@ -128,9 +115,7 @@ func TestNexusStartedRegistry_OverwriteEntry(t *testing.T) {
 	assert.Equal(t, "second", gotToken)
 }
 
-// TestNexusStartedRegistry_ListenReplacesListener — registering a second
-// Listener for the same ID replaces the first (last-write-wins). Mirrors
-// the IDRegistry semantics where each msg.ID has at most one waiter.
+// Second Listen for the same ID wins — Push must reach only the most recent listener.
 func TestNexusStartedRegistry_ListenReplacesListener(t *testing.T) {
 	r := &NexusStartedRegistry{}
 

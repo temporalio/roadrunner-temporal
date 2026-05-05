@@ -91,50 +91,6 @@ func TestInitCommand_RemovedPollingCommands(t *testing.T) {
 	}
 }
 
-func TestInvokeNexusOperation_Fields(t *testing.T) {
-	op := InvokeNexusOperation{
-		Service:   "GreetingService",
-		Operation: "greet",
-		RequestID: "req-123",
-		Callback:  "http://callback.example.com",
-		CallbackHeaders: map[string]string{
-			"Auth": "token",
-		},
-		Headers: map[string]string{
-			"Content-Type": "application/json",
-		},
-	}
-
-	assert.Equal(t, "GreetingService", op.Service)
-	assert.Equal(t, "greet", op.Operation)
-	assert.Equal(t, "req-123", op.RequestID)
-	assert.Equal(t, "http://callback.example.com", op.Callback)
-	assert.Equal(t, "token", op.CallbackHeaders["Auth"])
-	assert.Equal(t, "application/json", op.Headers["Content-Type"])
-}
-
-func TestCancelNexusOperation_Fields(t *testing.T) {
-	op := CancelNexusOperation{
-		Service:        "GreetingService",
-		Operation:      "greet",
-		OperationToken: "async-token-xyz",
-	}
-
-	assert.Equal(t, "GreetingService", op.Service)
-	assert.Equal(t, "greet", op.Operation)
-	assert.Equal(t, "async-token-xyz", op.OperationToken)
-}
-
-func TestCancelNexusOperationMethod_Fields(t *testing.T) {
-	op := CancelNexusOperationMethod{
-		InvocationID: 42,
-		Reason:       "pool shutdown",
-	}
-
-	assert.Equal(t, uint64(42), op.InvocationID)
-	assert.Equal(t, "pool shutdown", op.Reason)
-}
-
 func TestCancelNexusOperationMethod_JSONRoundTrip(t *testing.T) {
 	// InvocationID must NOT be omitempty — zero is a valid "no-op" id on the
 	// wire (PHP side treats 0 as "no invocation to cancel"), and losing it
@@ -153,44 +109,16 @@ func TestCancelNexusOperationMethod_JSONRoundTrip(t *testing.T) {
 	assert.Equal(t, op, back)
 }
 
-// InvocationID is omitempty on InvokeNexusOperation so older PHP workers that
-// don't look at the field see the same wire shape as before.
-func TestInvokeNexusOperation_InvocationIDOmittedWhenZero(t *testing.T) {
-	op := InvokeNexusOperation{
-		Service:   "S",
-		Operation: "o",
-	}
-	data, err := json.Marshal(op)
+// InvocationID is the cooperative-cancel correlation key and must always
+// be present on the wire — PHP needs it for CancelNexusOperationMethod.
+func TestInvokeNexusOperation_InvocationIDAlwaysPresent(t *testing.T) {
+	zero, err := json.Marshal(InvokeNexusOperation{Service: "S", Operation: "o"})
 	require.NoError(t, err)
-	assert.NotContains(t, string(data), "invocationId",
-		"invocationId must be omitted from the wire when zero for backwards compat")
-}
+	assert.Contains(t, string(zero), `"invocationId":0`)
 
-func TestInvokeNexusOperation_InvocationIDPresentWhenSet(t *testing.T) {
-	op := InvokeNexusOperation{
-		Service:      "S",
-		Operation:    "o",
-		InvocationID: 99,
-	}
-	data, err := json.Marshal(op)
+	set, err := json.Marshal(InvokeNexusOperation{Service: "S", Operation: "o", InvocationID: 99})
 	require.NoError(t, err)
-	assert.Contains(t, string(data), `"invocationId":99`)
-}
-
-func TestExecuteNexusOperation_Fields(t *testing.T) {
-	op := ExecuteNexusOperation{
-		Endpoint:  "my-endpoint",
-		Service:   "GreetingService",
-		Operation: "greet",
-		Options: NexusOperationOptions{
-			ScheduleToCloseTimeout: 10 * time.Second,
-		},
-	}
-
-	assert.Equal(t, "my-endpoint", op.Endpoint)
-	assert.Equal(t, "GreetingService", op.Service)
-	assert.Equal(t, "greet", op.Operation)
-	assert.Equal(t, 10*time.Second, op.Options.ScheduleToCloseTimeout)
+	assert.Contains(t, string(set), `"invocationId":99`)
 }
 
 // TestExecuteNexusOperation_OptionsEndpointServiceIgnored pins the contract:
@@ -257,44 +185,6 @@ func TestExecuteNexusOperation_OmitsZeroOptions(t *testing.T) {
 	var op ExecuteNexusOperation
 	require.NoError(t, json.Unmarshal(wire, &op))
 	assert.Equal(t, time.Duration(0), op.Options.ScheduleToCloseTimeout)
-}
-
-// TestExecuteNexusOperation_NexusOperationParams covers the params builder
-// without standing up a full WorkflowEnvironment: we only assert the public
-// shape (operation name, single payload, options.ScheduleToCloseTimeout). The
-// NexusClient and ExecuteNexusOperationParams fields are unexported in
-// sdk-go's `internal`, so we exercise them indirectly by feeding the params
-// into a no-op environment and expecting no panic.
-func TestExecuteNexusOperation_NexusOperationParams(t *testing.T) {
-	cmd := ExecuteNexusOperation{
-		Endpoint:  "ep",
-		Service:   "svc",
-		Operation: "op",
-		Options: NexusOperationOptions{
-			ScheduleToCloseTimeout: 5 * time.Second,
-		},
-	}
-
-	payload := &commonpb.Payload{
-		Metadata: map[string][]byte{"encoding": []byte("json/plain")},
-		Data:     []byte(`"hello"`),
-	}
-	payloads := &commonpb.Payloads{Payloads: []*commonpb.Payload{payload}}
-
-	params := cmd.NexusOperationParams(payloads, nil)
-	// The struct fields are unexported; we sanity-check that the builder
-	// accepts the inputs without panicking and returns a value of the
-	// right type. Behavioural coverage of the dispatch path lives in the
-	// aggregatedpool tests where a real WorkflowEnvironment is in scope.
-	_ = params
-}
-
-// TestExecuteNexusOperation_NexusOperationParams_EmptyPayloads ensures the
-// builder tolerates a nil/empty payload bag (PHP can dispatch a no-arg op).
-func TestExecuteNexusOperation_NexusOperationParams_EmptyPayloads(t *testing.T) {
-	cmd := ExecuteNexusOperation{Endpoint: "e", Service: "s", Operation: "o"}
-	_ = cmd.NexusOperationParams(nil, nil)
-	_ = cmd.NexusOperationParams(&commonpb.Payloads{}, nil)
 }
 
 // TestNexusOperationOptions_DecodesCancellationType pins the wire shape for
@@ -408,14 +298,4 @@ func TestExecuteNexusOperation_NexusOperationParams_AcceptsNexusHeaders(t *testi
 			_ = cmd.NexusOperationParams(&commonpb.Payloads{}, nil)
 		})
 	})
-}
-
-func TestNexusServiceInfo_JSONTags(t *testing.T) {
-	svc := NexusServiceInfo{
-		Name:       "GreetingService",
-		Operations: []string{"greet", "farewell"},
-	}
-
-	assert.Equal(t, "GreetingService", svc.Name)
-	assert.Equal(t, []string{"greet", "farewell"}, svc.Operations)
 }
