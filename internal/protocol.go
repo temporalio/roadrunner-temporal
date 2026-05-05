@@ -5,7 +5,7 @@ import (
 
 	"github.com/roadrunner-server/errors"
 	commonpb "go.temporal.io/api/common/v1"
-	"go.temporal.io/api/failure/v1"
+	failure "go.temporal.io/api/failure/v1"
 	"go.temporal.io/sdk/activity"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/temporal"
@@ -401,13 +401,14 @@ func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnviron
 		truTemOptions.RetryPolicy = rp
 	}
 
-	// Should be careful here: header + inputArgs header are pointers and might be changed independently which will cause race.
 	params := bindings.ExecuteLocalActivityParams{
 		ExecuteLocalActivityOptions: truTemOptions,
 		ActivityFn:                  fn,
 		ActivityType:                cmd.Name,
 		InputArgs:                   []any{header, payloads},
 		WorkflowInfo:                env.WorkflowInfo(),
+		DataConverter:               env.GetDataConverter(),
+		FailureConverter:            env.GetFailureConverter(),
 		ScheduledTime:               time.Now(),
 		Header:                      header,
 	}
