@@ -22,16 +22,12 @@ import (
 
 // ── NexusStartEnvelope JSON wire shape ────────────────────────────────
 
-// TestNexusStartEnvelope_AsyncShape pins the JSON contract PHP relies on:
-// {"async":true,"token":"…"} for async ops.
 func TestNexusStartEnvelope_AsyncShape(t *testing.T) {
 	data, err := json.Marshal(NexusStartEnvelope{Async: true, Token: "tok-123"})
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"async":true,"token":"tok-123"}`, string(data))
 }
 
-// TestNexusStartEnvelope_SyncShape pins the JSON contract for sync ops:
-// {"async":false} — token is omitempty so the field is absent.
 func TestNexusStartEnvelope_SyncShape(t *testing.T) {
 	data, err := json.Marshal(NexusStartEnvelope{Async: false, Token: ""})
 	require.NoError(t, err)
@@ -39,10 +35,8 @@ func TestNexusStartEnvelope_SyncShape(t *testing.T) {
 	assert.NotContains(t, string(data), "token")
 }
 
-// TestNexusStartEnvelope_RoundTripViaTemporalConverter goes through the same
-// codec PHP receives the envelope from (`env.GetDataConverter().ToPayloads`).
-// Guards against breaking the wire shape if the default converter ever
-// changes its JSON serialisation rules.
+// Round-trip through the actual data converter PHP receives the envelope
+// from — guards against silent breakage if the default converter changes.
 func TestNexusStartEnvelope_RoundTripViaTemporalConverter(t *testing.T) {
 	conv := converter.GetDefaultDataConverter()
 	payloads, err := conv.ToPayloads(NexusStartEnvelope{Async: true, Token: "round-trip"})
@@ -86,8 +80,6 @@ func newCallerWorkflow(t *testing.T) *Workflow {
 
 // ── makeNexusStartedRegistryCallback ──────────────────────────────────
 
-// TestMakeNexusStartedRegistryCallback_InLoopPushesImmediately — callback
-// called while inLoop==1 must Push to nexusStarted synchronously, not defer.
 func TestMakeNexusStartedRegistryCallback_InLoopPushesImmediately(t *testing.T) {
 	wp := newCallerWorkflow(t)
 	atomic.StoreUint32(&wp.inLoop, 1)
@@ -105,9 +97,6 @@ func TestMakeNexusStartedRegistryCallback_InLoopPushesImmediately(t *testing.T) 
 	assert.Equal(t, "tok-async", gotToken, "registry must contain the pushed entry")
 }
 
-// TestMakeNexusStartedRegistryCallback_OutOfLoopDefers — callback called
-// while inLoop==0 must enqueue itself in wp.callbacks; the registry stays
-// empty until the queued callback runs.
 func TestMakeNexusStartedRegistryCallback_OutOfLoopDefers(t *testing.T) {
 	wp := newCallerWorkflow(t)
 	atomic.StoreUint32(&wp.inLoop, 0)
@@ -127,9 +116,6 @@ func TestMakeNexusStartedRegistryCallback_OutOfLoopDefers(t *testing.T) {
 	assert.True(t, fired, "registry listener must fire once the deferred callback runs")
 }
 
-// TestMakeNexusStartedRegistryCallback_ErrorIsForwarded — start errors flow
-// through the registry verbatim so the listener can surface them as a
-// PushError on the GetNexusOperationStarted response.
 func TestMakeNexusStartedRegistryCallback_ErrorIsForwarded(t *testing.T) {
 	wp := newCallerWorkflow(t)
 	atomic.StoreUint32(&wp.inLoop, 1)
@@ -147,8 +133,6 @@ func TestMakeNexusStartedRegistryCallback_ErrorIsForwarded(t *testing.T) {
 
 // ── makeNexusCompletionResponseCallback ───────────────────────────────
 
-// TestMakeNexusCompletionResponseCallback_InLoopSuccess — success completion
-// while inLoop==1 pushes a single-payload response and discards the canceller.
 func TestMakeNexusCompletionResponseCallback_InLoopSuccess(t *testing.T) {
 	wp := newCallerWorkflow(t)
 	atomic.StoreUint32(&wp.inLoop, 1)
@@ -172,9 +156,8 @@ func TestMakeNexusCompletionResponseCallback_InLoopSuccess(t *testing.T) {
 	assert.Same(t, payload, msgs[0].Payloads.Payloads[0])
 }
 
-// TestMakeNexusCompletionResponseCallback_NilPayloadStillPushesEmptyResponse —
-// some sync ops complete with no result payload; the callback must still push
-// a response so the PHP side resolves cleanly with a 0-payload Values.
+// Sync ops can complete with nil payload — PHP still needs a response with
+// a zero-Payloads bag, not no message at all.
 func TestMakeNexusCompletionResponseCallback_NilPayloadStillPushesEmptyResponse(t *testing.T) {
 	wp := newCallerWorkflow(t)
 	atomic.StoreUint32(&wp.inLoop, 1)
@@ -189,8 +172,6 @@ func TestMakeNexusCompletionResponseCallback_NilPayloadStillPushesEmptyResponse(
 	assert.Nil(t, msgs[0].Failure)
 }
 
-// TestMakeNexusCompletionResponseCallback_ErrorPath — failure flows as a
-// Failure on the response; no Payloads bag is produced.
 func TestMakeNexusCompletionResponseCallback_ErrorPath(t *testing.T) {
 	wp := newCallerWorkflow(t)
 	atomic.StoreUint32(&wp.inLoop, 1)
@@ -206,9 +187,6 @@ func TestMakeNexusCompletionResponseCallback_ErrorPath(t *testing.T) {
 	assert.Nil(t, msgs[0].Payloads)
 }
 
-// TestMakeNexusCompletionResponseCallback_OutOfLoopDefers — completion
-// arriving outside the workflow loop is queued; nothing reaches the message
-// queue until the deferred callback runs.
 func TestMakeNexusCompletionResponseCallback_OutOfLoopDefers(t *testing.T) {
 	wp := newCallerWorkflow(t)
 	atomic.StoreUint32(&wp.inLoop, 0)
