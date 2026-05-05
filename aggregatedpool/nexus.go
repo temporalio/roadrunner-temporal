@@ -73,7 +73,10 @@ func NewNexusHandler(codec api.Codec, pool api.Pool, log *zap.Logger) *NexusHand
 }
 
 // nexusOperation forwards Start/Cancel to PHP. methodCancelSupported gates
-// InvocationID + CancelNexusOperationMethod for backwards compat with older workers.
+// InvocationID + CancelNexusOperationMethod emission. Modern workers that
+// register Nexus services always set this to true; the parameter is retained
+// to keep the per-operation behavior pinned at registration time and to allow
+// unit-level testing of both code paths.
 type nexusOperation struct {
 	nexus.UnimplementedOperation[converter.RawValue, converter.RawValue]
 	name                  string

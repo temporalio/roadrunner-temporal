@@ -353,10 +353,13 @@ func (c *recordingCodec) DecodeWorkerInfo(_ *payload.Payload, _ *[]*internal.Wor
 
 // ── Method cancellation tests ──────────────────────────────────
 
-// TestStartOperation_MethodCancelDisabledOmitsInvocationID verifies that a
-// worker without the `nexus_method_cancel` flag is kept strictly
-// wire-compatible: no InvocationID is set on the command, so the PHP side
-// skips registering a MethodCanceller (older workers wouldn't know about it).
+// TestStartOperation_MethodCancelDisabledOmitsInvocationID exercises the
+// methodCancelSupported=false code path: when the operation is registered
+// without method-cancel support, no InvocationID is set on the command and
+// the PHP side won't see a method-cancel signal. Modern workers register
+// services with methodCancelSupported=true unconditionally; this test pins
+// the function-level contract so the alternative path remains correct if a
+// future capability gate flips it off.
 func TestStartOperation_MethodCancelDisabledOmitsInvocationID(t *testing.T) {
 	codec := &mockCodec{encodeErr: errors.New("stop")}
 	handler := NewNexusHandler(codec, nil, zap.NewNop())
@@ -364,7 +367,7 @@ func TestStartOperation_MethodCancelDisabledOmitsInvocationID(t *testing.T) {
 	_, _ = handler.startOperation(
 		context.Background(), "tq", "S", "op",
 		nil, nexus.StartOperationOptions{},
-		false, // methodCancelSupported
+		false, // methodCancelSupported (legacy / non-Nexus path)
 	)
 
 	require.NotNil(t, codec.encodedMsg)
