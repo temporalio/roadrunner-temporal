@@ -382,9 +382,9 @@ type InvokeNexusOperation struct {
 	CallbackHeaders map[string]string `json:"callbackHeaders,omitempty"`
 	Headers         map[string]string `json:"headers,omitempty"`
 	Links           []NexusLink       `json:"links,omitempty"`
-	// InvocationID correlates with CancelNexusOperationMethod. Set whenever the
-	// worker advertises any Nexus service — method-cancel support is implied by
-	// service registration. Omitted (zero) for non-Nexus workers.
+	// InvocationID correlates with CancelNexusOperationMethod. Always non-zero
+	// on the wire; the `omitempty` tag is preserved only so that test fixtures
+	// or future no-cancel modes can elide it cleanly.
 	InvocationID uint64 `json:"invocationId,omitempty"`
 }
 
