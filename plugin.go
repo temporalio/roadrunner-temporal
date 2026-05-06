@@ -56,6 +56,7 @@ type temporal struct {
 	rrWorkflowDef *aggregatedpool.Workflow
 	workflows     map[string]*internal.WorkflowInfo
 	activities    map[string]*internal.ActivityInfo
+	nexusServices map[string]*internal.NexusServiceInfo
 	mh            tclient.MetricsHandler
 	tallyCloser   io.Closer
 	tlsCfg        *tls.Config
