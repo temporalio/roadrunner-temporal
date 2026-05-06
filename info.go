@@ -82,3 +82,15 @@ func ActivitiesInfo(wi []*internal.WorkerInfo) map[string]*internal.ActivityInfo
 
 	return activitiesInfo
 }
+
+func NexusServicesInfo(wi []*internal.WorkerInfo) map[string]*internal.NexusServiceInfo {
+	nexusInfo := make(map[string]*internal.NexusServiceInfo)
+
+	for i := range wi {
+		for j := 0; j < len(wi[i].NexusServices); j++ {
+			nexusInfo[wi[i].NexusServices[j].Name] = &wi[i].NexusServices[j]
+		}
+	}
+
+	return nexusInfo
+}
