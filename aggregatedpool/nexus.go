@@ -206,14 +206,8 @@ func (h *NexusHandler) startOperation(
 	return h.decodeStartReply(ctx, out[0])
 }
 
-// decodeStartReply translates a PHP→Go reply for InvokeNexusOperation into
-// the SDK-shaped result. The reply variants are:
-//
-//	*internal.NexusOperationStarted (Async=false): sync success; payload in retMsg.Payloads.
-//	*internal.NexusOperationStarted (Async=true):  async success; token in the reply DTO.
-//	nil command + retMsg.Failure:                  operation- or handler-error path.
-//	nil command + nil failure:                     malformed reply.
-//	any other Command type:                        unexpected reply.
+// decodeStartReply maps a PHP→Go reply into the SDK start-result shape.
+// Variants: *NexusOperationStarted (sync/async), nil+Failure, nil+nil → HandlerError.
 func (h *NexusHandler) decodeStartReply(ctx context.Context, retMsg *internal.Message) (nexus.HandlerStartOperationResult[converter.RawValue], error) {
 	switch reply := retMsg.Command.(type) {
 	case *internal.NexusOperationStarted:
@@ -247,12 +241,10 @@ func (h *NexusHandler) decodeStartReply(ctx context.Context, retMsg *internal.Me
 	}
 }
 
-// forwardNexusLinks converts internal.NexusLink to nexus.Link and forwards
-// them to the handler context. Malformed URLs are dropped with a warning;
-// caller-context absence is logged once.
-func forwardNexusLinks(ctx context.Context, links []internal.NexusLink, log *zap.Logger) {
+// nexusLinksFromInternal: drop entries with empty url/type or unparseable URL.
+func nexusLinksFromInternal(links []internal.NexusLink, log *zap.Logger) []nexus.Link {
 	if len(links) == 0 {
-		return
+		return nil
 	}
 	out := make([]nexus.Link, 0, len(links))
 	for _, l := range links {
@@ -266,6 +258,12 @@ func forwardNexusLinks(ctx context.Context, links []internal.NexusLink, log *zap
 		}
 		out = append(out, nexus.Link{URL: u, Type: l.Type})
 	}
+	return out
+}
+
+// forwardNexusLinks ships valid links to handler ctx; bare ctx → warn+drop.
+func forwardNexusLinks(ctx context.Context, links []internal.NexusLink, log *zap.Logger) {
+	out := nexusLinksFromInternal(links, log)
 	if len(out) == 0 {
 		return
 	}
