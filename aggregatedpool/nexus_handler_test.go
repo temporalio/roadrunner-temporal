@@ -657,6 +657,57 @@ func TestExtractNexusLinks_NilPayloadSafe(t *testing.T) {
 	assert.Nil(t, extractNexusLinks(nil, zap.NewNop()))
 }
 
+// ── stripNexusKindMarker tests ───────────────────────────────
+
+func TestStripNexusKindMarker_RemovesAsyncKey(t *testing.T) {
+	p := &commonpb.Payload{
+		Metadata: map[string][]byte{
+			"encoding":           []byte("json/plain"),
+			nexusKindMetadataKey: []byte(nexusKindAsync),
+		},
+	}
+
+	stripNexusKindMarker(p)
+
+	_, leaked := p.Metadata[nexusKindMetadataKey]
+	assert.False(t, leaked, "kind metadata key must be removed")
+	// Unrelated metadata must be preserved.
+	assert.Equal(t, []byte("json/plain"), p.Metadata["encoding"])
+}
+
+func TestStripNexusKindMarker_RemovesArbitraryValue(t *testing.T) {
+	// Even non-"async" values must be stripped — defence against PHP setting
+	// the key with any payload it considers internal.
+	p := &commonpb.Payload{
+		Metadata: map[string][]byte{
+			nexusKindMetadataKey: []byte("anything"),
+		},
+	}
+
+	stripNexusKindMarker(p)
+
+	_, leaked := p.Metadata[nexusKindMetadataKey]
+	assert.False(t, leaked, "kind key must be stripped regardless of its value")
+}
+
+func TestStripNexusKindMarker_AbsentKeyIsNoop(t *testing.T) {
+	p := &commonpb.Payload{
+		Metadata: map[string][]byte{"encoding": []byte("json/plain")},
+	}
+
+	assert.NotPanics(t, func() { stripNexusKindMarker(p) })
+	assert.Equal(t, []byte("json/plain"), p.Metadata["encoding"])
+}
+
+func TestStripNexusKindMarker_NilPayloadSafe(t *testing.T) {
+	assert.NotPanics(t, func() { stripNexusKindMarker(nil) })
+}
+
+func TestStripNexusKindMarker_NilMetadataSafe(t *testing.T) {
+	p := &commonpb.Payload{Data: []byte("x")} // Metadata is nil
+	assert.NotPanics(t, func() { stripNexusKindMarker(p) })
+}
+
 // sendCancelMethod is fire-and-forget — encode failures are logged, never propagated.
 func TestSendCancelMethod_EncodeErrorSwallowed(t *testing.T) {
 	codec := &mockCodec{encodeErr: errors.New("encode boom")}

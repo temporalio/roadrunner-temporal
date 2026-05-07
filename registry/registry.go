@@ -46,6 +46,15 @@ func (c *Registry[T]) Push(id uint64, value T, err error) {
 	}
 }
 
+// Discard drops any stored entry and listener for id. Idempotent; safe to call
+// when nothing is registered. Owners of an ID call this once they know no
+// further Push or Listen for that ID is meaningful — e.g. when the wrapping
+// operation has fully completed — to bound memory growth.
+func (c *Registry[T]) Discard(id uint64) {
+	c.ids.Delete(id)
+	c.listeners.Delete(id)
+}
+
 // IDRegistry used to gain access to child workflow ids after they become available via callback result.
 type IDRegistry = Registry[bindings.WorkflowExecution]
 
