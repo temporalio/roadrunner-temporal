@@ -128,3 +128,44 @@ func TestNexusStartedRegistry_ListenReplacesListener(t *testing.T) {
 	assert.False(t, firedFirst, "replaced listener must not fire")
 	assert.True(t, firedSecond)
 }
+
+// After Discard, a late Listen must NOT see the previously-pushed entry.
+func TestNexusStartedRegistry_DiscardDropsPushedEntry(t *testing.T) {
+	r := &NexusStartedRegistry{}
+
+	r.Push(101, "tok", nil)
+	r.Discard(101)
+
+	var fired bool
+	r.Listen(101, func(string, error) { fired = true })
+
+	assert.False(t, fired, "Listen after Discard must not fire from the previous Push")
+}
+
+// After Discard, a subsequent Push must NOT reach a previously registered listener.
+func TestNexusStartedRegistry_DiscardDropsListener(t *testing.T) {
+	r := &NexusStartedRegistry{}
+
+	var fired bool
+	r.Listen(202, func(string, error) { fired = true })
+	r.Discard(202)
+	r.Push(202, "tok", nil)
+
+	assert.False(t, fired, "Push after Discard must not reach the dropped listener")
+}
+
+// Discard on an unknown ID is a no-op, not a panic.
+func TestNexusStartedRegistry_DiscardUnknownIDIsNoop(t *testing.T) {
+	r := &NexusStartedRegistry{}
+
+	assert.NotPanics(t, func() { r.Discard(9999) })
+}
+
+// Discard is idempotent — calling twice on the same ID is safe.
+func TestNexusStartedRegistry_DiscardIdempotent(t *testing.T) {
+	r := &NexusStartedRegistry{}
+
+	r.Push(303, "tok", nil)
+	r.Discard(303)
+	assert.NotPanics(t, func() { r.Discard(303) })
+}

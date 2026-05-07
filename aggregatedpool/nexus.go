@@ -234,6 +234,10 @@ func (h *NexusHandler) startOperation(
 			}, nil
 		}
 
+		// Sync result: defensively strip the kind marker so internal
+		// `_rr_nexus_*` metadata never leaks to the caller via payload metadata.
+		stripNexusKindMarker(p)
+
 		return &nexus.HandlerStartOperationResultSync[converter.RawValue]{
 			Value: converter.NewRawValue(p),
 		}, nil
@@ -291,6 +295,15 @@ func isAsyncPayload(p *commonpb.Payload) bool {
 		return false
 	}
 	return string(md[nexusKindMetadataKey]) == nexusKindAsync
+}
+
+// stripNexusKindMarker removes the internal `_rr_nexus_kind` key from payload
+// metadata. Idempotent and nil-safe.
+func stripNexusKindMarker(p *commonpb.Payload) {
+	if p == nil {
+		return
+	}
+	delete(p.GetMetadata(), nexusKindMetadataKey)
 }
 
 // nexusErrorFromFailure maps a PHP-emitted Failure to a Nexus SDK error:
