@@ -594,34 +594,46 @@ func TestFailureToCauseString_TruncatesDeepChain(t *testing.T) {
 	assert.LessOrEqual(t, strings.Count(out, "lvl"), failureChainMaxDepth)
 }
 
-// ── forwardNexusLinks tests ────────────────────────────────────
+// ── nexusLinksFromInternal tests ───────────────────────────────
 
-func TestForwardNexusLinks_EmptyIsNoop(t *testing.T) {
-	// No handler context, no links → must not panic, must not warn.
-	assert.NotPanics(t, func() {
-		forwardNexusLinks(context.Background(), nil, zap.NewNop())
-	})
-	assert.NotPanics(t, func() {
-		forwardNexusLinks(context.Background(), []internal.NexusLink{}, zap.NewNop())
-	})
+func TestNexusLinksFromInternal_EmptyInputReturnsNil(t *testing.T) {
+	assert.Nil(t, nexusLinksFromInternal(nil, zap.NewNop()))
+	assert.Nil(t, nexusLinksFromInternal([]internal.NexusLink{}, zap.NewNop()))
 }
 
-func TestForwardNexusLinks_SkipsMalformedEntries(t *testing.T) {
-	// Malformed entries (empty url, empty type, unparseable URL) must be
-	// dropped — well-formed ones survive. Out of 4 inputs only the last
-	// is well-formed.
-	links := []internal.NexusLink{
-		{URL: "", Type: "t"},
-		{URL: "u", Type: ""},
-		{URL: "http://[::bad", Type: "t"}, // unparseable
-		{URL: "http://ok/", Type: "t"},
+func TestNexusLinksFromInternal_DropsEntriesWithEmptyFields(t *testing.T) {
+	in := []internal.NexusLink{
+		{URL: "", Type: "t"},          // empty url → drop
+		{URL: "http://a/", Type: ""},  // empty type → drop
+		{URL: "http://b/", Type: "t"}, // valid → keep
 	}
-	// We can't easily intercept nexus.AddHandlerLinks without a handler
-	// context, but the function returning normally without panic for these
-	// inputs is the contract.
-	assert.NotPanics(t, func() {
-		forwardNexusLinks(context.Background(), links, zap.NewNop())
-	})
+	out := nexusLinksFromInternal(in, zap.NewNop())
+	require.Len(t, out, 1)
+	assert.Equal(t, "http://b/", out[0].URL.String())
+	assert.Equal(t, "t", out[0].Type)
+}
+
+func TestNexusLinksFromInternal_DropsUnparseableURLs(t *testing.T) {
+	in := []internal.NexusLink{
+		{URL: "http://[::bad", Type: "t"}, // unparseable → drop
+		{URL: "http://ok/", Type: "t"},    // valid neighbour → keep
+	}
+	out := nexusLinksFromInternal(in, zap.NewNop())
+	require.Len(t, out, 1)
+	assert.Equal(t, "http://ok/", out[0].URL.String())
+}
+
+func TestNexusLinksFromInternal_PreservesOrderingAndFields(t *testing.T) {
+	in := []internal.NexusLink{
+		{URL: "http://a/", Type: "x.one"},
+		{URL: "http://b/", Type: "x.two"},
+	}
+	out := nexusLinksFromInternal(in, zap.NewNop())
+	require.Len(t, out, 2)
+	assert.Equal(t, "http://a/", out[0].URL.String())
+	assert.Equal(t, "x.one", out[0].Type)
+	assert.Equal(t, "http://b/", out[1].URL.String())
+	assert.Equal(t, "x.two", out[1].Type)
 }
 
 // ── decodeStartReply tests ─────────────────────────────────────

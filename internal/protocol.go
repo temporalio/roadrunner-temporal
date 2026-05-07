@@ -405,18 +405,8 @@ type CancelNexusOperation struct {
 	OperationToken string `json:"operationToken"`
 }
 
-// NexusOperationStarted is the PHP → Go success reply for InvokeNexusOperation.
-// Discriminator field Async distinguishes the two success variants:
-//
-//	Async=false: sync result; payload rides in Message.Payloads[0].
-//	Async=true:  async start; Token holds the operation token.
-//
-// Failure paths (OperationError, HandlerError) ride on Message.Failure with the
-// standard nexus.OperationError.* type-prefix on ApplicationFailureInfo.Type and
-// are not represented here.
-//
-// Shape mirrors the caller-side NexusStartEnvelope (aggregatedpool/nexus_caller.go)
-// so the codebase keeps one nexus-start envelope concept on both directions.
+// NexusOperationStarted: PHP→Go reply to InvokeNexusOperation success.
+// Async=false → sync (payload in Message.Payloads); Async=true → Token holds the operation token.
 type NexusOperationStarted struct {
 	Async bool        `json:"async"`
 	Token string      `json:"token,omitempty"`
