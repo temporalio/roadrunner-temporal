@@ -5,7 +5,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	commonpb "go.temporal.io/api/common/v1"
 	enumspb "go.temporal.io/api/enums/v1"
 	failurepb "go.temporal.io/api/failure/v1"
 
@@ -189,42 +188,4 @@ func TestMapNexusRetryBehavior_AllValues(t *testing.T) {
 			assert.Equal(t, c.want, got)
 		})
 	}
-}
-
-// ── Async payload discriminator ─────────────────────────────────────
-
-func TestIsAsyncPayload_DetectsMarker(t *testing.T) {
-	p := &commonpb.Payload{
-		Data: []byte("op-token-1"),
-		Metadata: map[string][]byte{
-			nexusKindMetadataKey: []byte(nexusKindAsync),
-		},
-	}
-	assert.True(t, isAsyncPayload(p))
-}
-
-func TestIsAsyncPayload_RejectsSyncPayload(t *testing.T) {
-	p := &commonpb.Payload{
-		Data:     []byte(`{"result": 42}`),
-		Metadata: map[string][]byte{"encoding": []byte("json/plain")},
-	}
-	assert.False(t, isAsyncPayload(p))
-}
-
-func TestIsAsyncPayload_NilMetadata(t *testing.T) {
-	p := &commonpb.Payload{Data: []byte("x")}
-	assert.False(t, isAsyncPayload(p))
-}
-
-func TestIsAsyncPayload_NilPayload(t *testing.T) {
-	assert.False(t, isAsyncPayload(nil))
-}
-
-func TestIsAsyncPayload_MarkerWithWrongValue(t *testing.T) {
-	p := &commonpb.Payload{
-		Metadata: map[string][]byte{
-			nexusKindMetadataKey: []byte("something-else"),
-		},
-	}
-	assert.False(t, isAsyncPayload(p))
 }

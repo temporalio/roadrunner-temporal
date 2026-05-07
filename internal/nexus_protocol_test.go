@@ -26,6 +26,8 @@ func TestCommandName_Nexus(t *testing.T) {
 		{"ExecuteNexusOperation ptr", &ExecuteNexusOperation{}, "ExecuteNexusOperation"},
 		{"GetNexusOperationStarted value", GetNexusOperationStarted{}, "GetNexusOperationStarted"},
 		{"GetNexusOperationStarted ptr", &GetNexusOperationStarted{}, "GetNexusOperationStarted"},
+		{"NexusOperationStarted value", NexusOperationStarted{}, "NexusOperationStarted"},
+		{"NexusOperationStarted ptr", &NexusOperationStarted{}, "NexusOperationStarted"},
 	}
 
 	for _, tt := range tests {
@@ -48,6 +50,7 @@ func TestInitCommand_Nexus(t *testing.T) {
 		{"CancelNexusOperationMethod", "CancelNexusOperationMethod", &CancelNexusOperationMethod{}},
 		{"ExecuteNexusOperation", "ExecuteNexusOperation", &ExecuteNexusOperation{}},
 		{"GetNexusOperationStarted", "GetNexusOperationStarted", &GetNexusOperationStarted{}},
+		{"NexusOperationStarted", "NexusOperationStarted", &NexusOperationStarted{}},
 	}
 
 	for _, tt := range tests {
@@ -107,6 +110,47 @@ func TestCancelNexusOperationMethod_JSONRoundTrip(t *testing.T) {
 	var back CancelNexusOperationMethod
 	require.NoError(t, json.Unmarshal(data, &back))
 	assert.Equal(t, op, back)
+}
+
+// TestNexusOperationStarted_SyncWireShape pins the PHP→Go reply JSON shape
+// for the sync-success case. Async=false, Token must be omitted, Links may
+// be empty/absent.
+func TestNexusOperationStarted_SyncWireShape(t *testing.T) {
+	out, err := json.Marshal(NexusOperationStarted{Async: false})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"async":false}`, string(out))
+
+	out, err = json.Marshal(NexusOperationStarted{
+		Async: false,
+		Links: []NexusLink{{URL: "http://x/y", Type: "t"}},
+	})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"async":false,"links":[{"url":"http://x/y","type":"t"}]}`, string(out))
+}
+
+// TestNexusOperationStarted_AsyncWireShape pins the PHP→Go reply JSON shape
+// for the async-success case. Async=true, Token populated.
+func TestNexusOperationStarted_AsyncWireShape(t *testing.T) {
+	out, err := json.Marshal(NexusOperationStarted{
+		Async: true,
+		Token: "tok-abc",
+	})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"async":true,"token":"tok-abc"}`, string(out))
+}
+
+// TestNexusOperationStarted_DecodesPHPWireShape pins decode of the typed
+// reply emitted by the PHP route in place of the legacy _rr_nexus_*
+// payload-metadata markers.
+func TestNexusOperationStarted_DecodesPHPWireShape(t *testing.T) {
+	wire := []byte(`{"async":true,"token":"op-1","links":[{"url":"http://a/b","type":"x.y"}]}`)
+	var reply NexusOperationStarted
+	require.NoError(t, json.Unmarshal(wire, &reply))
+	assert.True(t, reply.Async)
+	assert.Equal(t, "op-1", reply.Token)
+	require.Len(t, reply.Links, 1)
+	assert.Equal(t, "http://a/b", reply.Links[0].URL)
+	assert.Equal(t, "x.y", reply.Links[0].Type)
 }
 
 // InvocationID is the cooperative-cancel correlation key and must always

@@ -2,7 +2,6 @@ package aggregatedpool
 
 import (
 	"context"
-	"encoding/json"
 	"net/url"
 	"strings"
 	"sync"
@@ -25,13 +24,6 @@ import (
 
 // Wire contract with PHP — must match FailureConverter::NEXUS_OPERATION_ERROR_TYPE_PREFIX.
 const nexusOperationErrorTypePrefix = "nexus.OperationError."
-
-// Wire contract with PHP NexusTaskHandler. Async result: kind="async", payload data == operation token.
-const (
-	nexusKindMetadataKey  = "_rr_nexus_kind"
-	nexusKindAsync        = "async"
-	nexusLinksMetadataKey = "_rr_nexus_links" // JSON array of {url, type}
-)
 
 const (
 	// Hard limit on cause-chain depth to guard against pathological PHP-side payloads.
@@ -211,99 +203,77 @@ func (h *NexusHandler) startOperation(
 		return nil, newNexusHandlerError(nexus.HandlerErrorTypeInternal, nexus.HandlerErrorRetryBehaviorNonRetryable, "invalid nexus worker response", nil)
 	}
 
-	retMsg := out[0]
-	if retMsg.Failure != nil {
-		return nil, nexusErrorFromFailure(retMsg.Failure)
-	}
+	return h.decodeStartReply(ctx, out[0])
+}
 
-	if retMsg.Payloads != nil && len(retMsg.Payloads.Payloads) > 0 {
-		p := retMsg.Payloads.Payloads[0]
-
-		// Handler links piggyback on payload metadata; strip before forwarding.
-		if links := extractNexusLinks(p, h.log); len(links) > 0 {
-			if nexus.IsHandlerContext(ctx) {
-				nexus.AddHandlerLinks(ctx, links...)
-			} else {
-				h.log.Warn("nexus handler ctx missing; response links dropped", zap.Int("links", len(links)))
-			}
-		}
-
-		if isAsyncPayload(p) {
+// decodeStartReply translates a PHP→Go reply for InvokeNexusOperation into
+// the SDK-shaped result. The reply variants are:
+//
+//	*internal.NexusOperationStarted (Async=false): sync success; payload in retMsg.Payloads.
+//	*internal.NexusOperationStarted (Async=true):  async success; token in the reply DTO.
+//	nil command + retMsg.Failure:                  operation- or handler-error path.
+//	nil command + nil failure:                     malformed reply.
+//	any other Command type:                        unexpected reply.
+func (h *NexusHandler) decodeStartReply(ctx context.Context, retMsg *internal.Message) (nexus.HandlerStartOperationResult[converter.RawValue], error) {
+	switch reply := retMsg.Command.(type) {
+	case *internal.NexusOperationStarted:
+		forwardNexusLinks(ctx, reply.Links, h.log)
+		if reply.Async {
 			return &nexus.HandlerStartOperationResultAsync{
-				OperationToken: string(p.GetData()),
+				OperationToken: reply.Token,
 			}, nil
 		}
-
-		// Sync result: defensively strip the kind marker so internal
-		// `_rr_nexus_*` metadata never leaks to the caller via payload metadata.
-		stripNexusKindMarker(p)
-
+		var p *commonpb.Payload
+		if pls := retMsg.Payloads.GetPayloads(); len(pls) > 0 {
+			p = pls[0]
+		}
 		return &nexus.HandlerStartOperationResultSync[converter.RawValue]{
 			Value: converter.NewRawValue(p),
 		}, nil
-	}
-
-	return &nexus.HandlerStartOperationResultSync[converter.RawValue]{}, nil
-}
-
-// extractNexusLinks reads `_rr_nexus_links` from payload metadata and strips
-// the marker. Mutates p.Metadata. Bad JSON / bad URL → empty slice + warn.
-func extractNexusLinks(p *commonpb.Payload, log *zap.Logger) []nexus.Link {
-	if p == nil {
-		return nil
-	}
-	md := p.GetMetadata()
-	raw, ok := md[nexusLinksMetadataKey]
-	if !ok {
-		return nil
-	}
-	// Strip even on parse failure so internal markers never leak to caller.
-	delete(md, nexusLinksMetadataKey)
-
-	var entries []struct {
-		URL  string `json:"url"`
-		Type string `json:"type"`
-	}
-	if err := json.Unmarshal(raw, &entries); err != nil {
-		log.Warn("nexus links metadata is not valid JSON", zap.Error(err))
-		return nil
-	}
-
-	links := make([]nexus.Link, 0, len(entries))
-	for _, e := range entries {
-		if e.URL == "" || e.Type == "" {
-			continue
+	case nil:
+		if retMsg.Failure != nil {
+			return nil, nexusErrorFromFailure(retMsg.Failure)
 		}
-		u, err := url.Parse(e.URL)
-		if err != nil {
-			log.Warn("nexus link URL is malformed; skipping", zap.String("url", e.URL), zap.Error(err))
-			continue
-		}
-		links = append(links, nexus.Link{URL: u, Type: e.Type})
+		return nil, newNexusHandlerError(
+			nexus.HandlerErrorTypeInternal,
+			nexus.HandlerErrorRetryBehaviorNonRetryable,
+			"nexus worker reply has neither command nor failure", nil)
+	default:
+		_ = reply
+		return nil, newNexusHandlerError(
+			nexus.HandlerErrorTypeInternal,
+			nexus.HandlerErrorRetryBehaviorNonRetryable,
+			"unexpected nexus reply command", nil)
 	}
-	return links
 }
 
-// isAsyncPayload reports whether a payload returned from the PHP worker should
-// be interpreted as an async-start marker rather than a sync result.
-func isAsyncPayload(p *commonpb.Payload) bool {
-	if p == nil {
-		return false
-	}
-	md := p.GetMetadata()
-	if len(md) == 0 {
-		return false
-	}
-	return string(md[nexusKindMetadataKey]) == nexusKindAsync
-}
-
-// stripNexusKindMarker removes the internal `_rr_nexus_kind` key from payload
-// metadata. Idempotent and nil-safe.
-func stripNexusKindMarker(p *commonpb.Payload) {
-	if p == nil {
+// forwardNexusLinks converts internal.NexusLink to nexus.Link and forwards
+// them to the handler context. Malformed URLs are dropped with a warning;
+// caller-context absence is logged once.
+func forwardNexusLinks(ctx context.Context, links []internal.NexusLink, log *zap.Logger) {
+	if len(links) == 0 {
 		return
 	}
-	delete(p.GetMetadata(), nexusKindMetadataKey)
+	out := make([]nexus.Link, 0, len(links))
+	for _, l := range links {
+		if l.URL == "" || l.Type == "" {
+			continue
+		}
+		u, err := url.Parse(l.URL)
+		if err != nil {
+			log.Warn("nexus link URL is malformed; skipping", zap.String("url", l.URL), zap.Error(err))
+			continue
+		}
+		out = append(out, nexus.Link{URL: u, Type: l.Type})
+	}
+	if len(out) == 0 {
+		return
+	}
+	if !nexus.IsHandlerContext(ctx) {
+		log.Warn("nexus handler ctx missing; response links dropped", zap.Int("links", len(out)))
+		return
+	}
+	nexus.AddHandlerLinks(ctx, out...)
 }
 
 // nexusErrorFromFailure maps a PHP-emitted Failure to a Nexus SDK error:

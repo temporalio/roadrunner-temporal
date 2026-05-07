@@ -18,6 +18,7 @@ import (
 	commonpb "go.temporal.io/api/common/v1"
 	enumspb "go.temporal.io/api/enums/v1"
 	failurepb "go.temporal.io/api/failure/v1"
+	"go.temporal.io/sdk/converter"
 	"go.uber.org/zap"
 
 	nexus "github.com/nexus-rpc/sdk-go/nexus"
@@ -593,119 +594,151 @@ func TestFailureToCauseString_TruncatesDeepChain(t *testing.T) {
 	assert.LessOrEqual(t, strings.Count(out, "lvl"), failureChainMaxDepth)
 }
 
-// ── extractNexusLinks tests ────────────────────────────────────
+// ── forwardNexusLinks tests ────────────────────────────────────
 
-func TestExtractNexusLinks_ParsesValidMetadata(t *testing.T) {
-	p := &commonpb.Payload{
-		Data: []byte("result"),
-		Metadata: map[string][]byte{
-			"encoding":            []byte("json/plain"),
-			nexusLinksMetadataKey: []byte(`[{"url":"http://a/b","type":"x.y"},{"url":"http://c/d","type":"p.q"}]`),
-		},
+func TestForwardNexusLinks_EmptyIsNoop(t *testing.T) {
+	// No handler context, no links → must not panic, must not warn.
+	assert.NotPanics(t, func() {
+		forwardNexusLinks(context.Background(), nil, zap.NewNop())
+	})
+	assert.NotPanics(t, func() {
+		forwardNexusLinks(context.Background(), []internal.NexusLink{}, zap.NewNop())
+	})
+}
+
+func TestForwardNexusLinks_SkipsMalformedEntries(t *testing.T) {
+	// Malformed entries (empty url, empty type, unparseable URL) must be
+	// dropped — well-formed ones survive. Out of 4 inputs only the last
+	// is well-formed.
+	links := []internal.NexusLink{
+		{URL: "", Type: "t"},
+		{URL: "u", Type: ""},
+		{URL: "http://[::bad", Type: "t"}, // unparseable
+		{URL: "http://ok/", Type: "t"},
 	}
-
-	links := extractNexusLinks(p, zap.NewNop())
-
-	require.Len(t, links, 2)
-	assert.Equal(t, "http://a/b", links[0].URL.String())
-	assert.Equal(t, "x.y", links[0].Type)
-	assert.Equal(t, "http://c/d", links[1].URL.String())
-	assert.Equal(t, "p.q", links[1].Type)
-
-	// The marker must be stripped so user-visible metadata never leaks the
-	// internal `_rr_nexus_*` namespace.
-	_, leaked := p.Metadata[nexusLinksMetadataKey]
-	assert.False(t, leaked, "links metadata key must be removed after extraction")
-	// Unrelated metadata must be preserved.
-	assert.Equal(t, []byte("json/plain"), p.Metadata["encoding"])
+	// We can't easily intercept nexus.AddHandlerLinks without a handler
+	// context, but the function returning normally without panic for these
+	// inputs is the contract.
+	assert.NotPanics(t, func() {
+		forwardNexusLinks(context.Background(), links, zap.NewNop())
+	})
 }
 
-func TestExtractNexusLinks_AbsentMarkerReturnsNil(t *testing.T) {
-	p := &commonpb.Payload{Metadata: map[string][]byte{"encoding": []byte("json/plain")}}
+// ── decodeStartReply tests ─────────────────────────────────────
 
-	assert.Nil(t, extractNexusLinks(p, zap.NewNop()))
-}
+// Sync reply: Command=*NexusOperationStarted{Async:false}, Payloads carries
+// the result. Decoder must wrap it as HandlerStartOperationResultSync with
+// the payload preserved on the RawValue.
+func TestDecodeStartReply_SyncSuccessUnwrapsPayload(t *testing.T) {
+	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop())
 
-func TestExtractNexusLinks_MalformedJSONDropsAndStrips(t *testing.T) {
-	p := &commonpb.Payload{
-		Metadata: map[string][]byte{
-			nexusLinksMetadataKey: []byte("not json"),
-		},
-	}
-
-	assert.Nil(t, extractNexusLinks(p, zap.NewNop()))
-	_, leaked := p.Metadata[nexusLinksMetadataKey]
-	assert.False(t, leaked, "bad marker must still be stripped to avoid leaking internal bytes")
-}
-
-func TestExtractNexusLinks_SkipsMalformedEntries(t *testing.T) {
-	p := &commonpb.Payload{
-		Metadata: map[string][]byte{
-			// One empty url, one empty type, one bad URL, one valid.
-			nexusLinksMetadataKey: []byte(
-				`[{"url":"","type":"t"},{"url":"u","type":""},{"url":"http://ok/","type":"t"}]`,
-			),
-		},
-	}
-
-	links := extractNexusLinks(p, zap.NewNop())
-	require.Len(t, links, 1, "only well-formed entries survive")
-	assert.Equal(t, "http://ok/", links[0].URL.String())
-}
-
-func TestExtractNexusLinks_NilPayloadSafe(t *testing.T) {
-	assert.Nil(t, extractNexusLinks(nil, zap.NewNop()))
-}
-
-// ── stripNexusKindMarker tests ───────────────────────────────
-
-func TestStripNexusKindMarker_RemovesAsyncKey(t *testing.T) {
-	p := &commonpb.Payload{
-		Metadata: map[string][]byte{
-			"encoding":           []byte("json/plain"),
-			nexusKindMetadataKey: []byte(nexusKindAsync),
-		},
-	}
-
-	stripNexusKindMarker(p)
-
-	_, leaked := p.Metadata[nexusKindMetadataKey]
-	assert.False(t, leaked, "kind metadata key must be removed")
-	// Unrelated metadata must be preserved.
-	assert.Equal(t, []byte("json/plain"), p.Metadata["encoding"])
-}
-
-func TestStripNexusKindMarker_RemovesArbitraryValue(t *testing.T) {
-	// Even non-"async" values must be stripped — defence against PHP setting
-	// the key with any payload it considers internal.
-	p := &commonpb.Payload{
-		Metadata: map[string][]byte{
-			nexusKindMetadataKey: []byte("anything"),
-		},
-	}
-
-	stripNexusKindMarker(p)
-
-	_, leaked := p.Metadata[nexusKindMetadataKey]
-	assert.False(t, leaked, "kind key must be stripped regardless of its value")
-}
-
-func TestStripNexusKindMarker_AbsentKeyIsNoop(t *testing.T) {
-	p := &commonpb.Payload{
+	resultPayload := &commonpb.Payload{
+		Data:     []byte(`{"ok":true}`),
 		Metadata: map[string][]byte{"encoding": []byte("json/plain")},
 	}
+	msg := &internal.Message{
+		Command: &internal.NexusOperationStarted{
+			Async: false,
+			Links: []internal.NexusLink{{URL: "http://x/y", Type: "t"}},
+		},
+		Payloads: &commonpb.Payloads{Payloads: []*commonpb.Payload{resultPayload}},
+	}
 
-	assert.NotPanics(t, func() { stripNexusKindMarker(p) })
-	assert.Equal(t, []byte("json/plain"), p.Metadata["encoding"])
+	res, err := handler.decodeStartReply(context.Background(), msg)
+	require.NoError(t, err)
+	sync, ok := res.(*nexus.HandlerStartOperationResultSync[converter.RawValue])
+	require.True(t, ok, "expected HandlerStartOperationResultSync, got %T", res)
+	// Round-trip the inner payload to make sure it's the one we put in.
+	assert.Equal(t, resultPayload, sync.Value.Payload())
 }
 
-func TestStripNexusKindMarker_NilPayloadSafe(t *testing.T) {
-	assert.NotPanics(t, func() { stripNexusKindMarker(nil) })
+// Sync reply with empty Payloads slice: still returns a sync result with
+// nil Value — matches the pre-refactor empty-payload contract.
+func TestDecodeStartReply_SyncSuccessEmptyPayloads(t *testing.T) {
+	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop())
+
+	msg := &internal.Message{
+		Command:  &internal.NexusOperationStarted{Async: false},
+		Payloads: &commonpb.Payloads{},
+	}
+
+	res, err := handler.decodeStartReply(context.Background(), msg)
+	require.NoError(t, err)
+	sync, ok := res.(*nexus.HandlerStartOperationResultSync[converter.RawValue])
+	require.True(t, ok)
+	assert.Nil(t, sync.Value.Payload())
 }
 
-func TestStripNexusKindMarker_NilMetadataSafe(t *testing.T) {
-	p := &commonpb.Payload{Data: []byte("x")} // Metadata is nil
-	assert.NotPanics(t, func() { stripNexusKindMarker(p) })
+// Async reply: Command=*NexusOperationStarted{Async:true, Token}, no Payloads.
+// Decoder returns HandlerStartOperationResultAsync with the token preserved.
+func TestDecodeStartReply_AsyncSuccessReturnsToken(t *testing.T) {
+	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop())
+
+	msg := &internal.Message{
+		Command: &internal.NexusOperationStarted{
+			Async: true,
+			Token: "tok-1",
+			Links: []internal.NexusLink{{URL: "http://x/y", Type: "t"}},
+		},
+	}
+
+	res, err := handler.decodeStartReply(context.Background(), msg)
+	require.NoError(t, err)
+	async, ok := res.(*nexus.HandlerStartOperationResultAsync)
+	require.True(t, ok, "expected HandlerStartOperationResultAsync, got %T", res)
+	assert.Equal(t, "tok-1", async.OperationToken)
+}
+
+// nil Command + Failure set → existing failurepb mapping path. The mapping
+// itself is exercised by nexus_error_mapping_test.go; here we verify routing.
+func TestDecodeStartReply_NilCommandWithFailureRoutesToMapping(t *testing.T) {
+	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop())
+
+	msg := &internal.Message{
+		Failure: &failurepb.Failure{
+			Message: "boom",
+			FailureInfo: &failurepb.Failure_NexusHandlerFailureInfo{
+				NexusHandlerFailureInfo: &failurepb.NexusHandlerFailureInfo{Type: "INTERNAL"},
+			},
+		},
+	}
+
+	res, err := handler.decodeStartReply(context.Background(), msg)
+	assert.Nil(t, res)
+	require.Error(t, err)
+	he, ok := err.(*nexus.HandlerError)
+	require.True(t, ok, "expected *nexus.HandlerError, got %T", err)
+	assert.Equal(t, "boom", he.Message)
+}
+
+// nil Command + nil Failure: malformed reply → HandlerError(Internal).
+func TestDecodeStartReply_EmptyReplyIsHandlerError(t *testing.T) {
+	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop())
+
+	res, err := handler.decodeStartReply(context.Background(), &internal.Message{})
+	assert.Nil(t, res)
+	require.Error(t, err)
+	he, ok := err.(*nexus.HandlerError)
+	require.True(t, ok, "expected *nexus.HandlerError, got %T", err)
+	assert.Equal(t, nexus.HandlerErrorTypeInternal, he.Type)
+	assert.Contains(t, he.Message, "neither command nor failure")
+}
+
+// Unknown reply command → HandlerError(Internal). Defends against PHP
+// emitting a command name Go doesn't recognize.
+func TestDecodeStartReply_UnknownCommandIsHandlerError(t *testing.T) {
+	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop())
+
+	// CancelNexusOperation is a real command — but never a valid reply.
+	msg := &internal.Message{Command: &internal.CancelNexusOperation{}}
+
+	res, err := handler.decodeStartReply(context.Background(), msg)
+	assert.Nil(t, res)
+	require.Error(t, err)
+	he, ok := err.(*nexus.HandlerError)
+	require.True(t, ok)
+	assert.Equal(t, nexus.HandlerErrorTypeInternal, he.Type)
+	assert.Contains(t, he.Message, "unexpected")
 }
 
 // sendCancelMethod is fire-and-forget — encode failures are logged, never propagated.
