@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/goridge/v3/pkg/frame"
 	"github.com/roadrunner-server/pool/payload"
 	"github.com/temporalio/roadrunner-temporal/v5/api"
@@ -17,6 +16,7 @@ import (
 	enumspb "go.temporal.io/api/enums/v1"
 	failurepb "go.temporal.io/api/failure/v1"
 	"go.temporal.io/sdk/converter"
+	"go.temporal.io/sdk/temporal"
 	"go.uber.org/zap"
 
 	nexus "github.com/nexus-rpc/sdk-go/nexus"
@@ -25,12 +25,8 @@ import (
 // Wire contract with PHP — must match FailureConverter::NEXUS_OPERATION_ERROR_TYPE_PREFIX.
 const nexusOperationErrorTypePrefix = "nexus.OperationError."
 
-const (
-	// Hard limit on cause-chain depth to guard against pathological PHP-side payloads.
-	failureChainMaxDepth = 32
-	// Timeout for the fire-and-forget CancelNexusOperationMethod RPC.
-	nexusCancelMethodTimeout = 5 * time.Second
-)
+// Timeout for the fire-and-forget CancelNexusOperationMethod RPC.
+const nexusCancelMethodTimeout = 5 * time.Second
 
 // NexusHandler forwards handler-side Nexus Start/Cancel to PHP via the activity pool.
 type NexusHandler struct {
@@ -274,13 +270,10 @@ func forwardNexusLinks(ctx context.Context, links []internal.NexusLink, log *zap
 	nexus.AddHandlerLinks(ctx, out...)
 }
 
-// nexusErrorFromFailure maps a PHP-emitted Failure to a Nexus SDK error:
-//
-//	NexusHandlerFailureInfo                       → nexus.HandlerError
-//	ApplicationFailureInfo (type=nexus.Operation*) → nexus.OperationError
-//	anything else                                  → HandlerError(Internal)
+// Cause holds the original proto via failureHolder so SDK-Go's ErrorToFailure
+// round-trips it back without losing structure (same contract as activity.go).
 func nexusErrorFromFailure(f *failurepb.Failure) error {
-	cause := errors.Str(failureToCauseString(f))
+	cause := temporal.GetDefaultFailureConverter().FailureToError(f)
 
 	if nhf := f.GetNexusHandlerFailureInfo(); nhf != nil {
 		return &nexus.HandlerError{
@@ -300,8 +293,9 @@ func nexusErrorFromFailure(f *failurepb.Failure) error {
 				state = nexus.OperationStateFailed
 			}
 			return &nexus.OperationError{
-				State: state,
-				Cause: cause,
+				State:   state,
+				Message: f.GetMessage(),
+				Cause:   cause,
 			}
 		}
 	}
@@ -310,68 +304,6 @@ func nexusErrorFromFailure(f *failurepb.Failure) error {
 		Type:    nexus.HandlerErrorTypeInternal,
 		Message: f.GetMessage(),
 		Cause:   cause,
-	}
-}
-
-// failureToCauseString flattens a Failure (incl. cause chain + stacks) into
-// a Throwable.printStackTrace-style string for Nexus error Cause.
-func failureToCauseString(f *failurepb.Failure) string {
-	if f == nil {
-		return ""
-	}
-	var b strings.Builder
-	// Iterative + bound to guard against pathological PHP-side cause chains.
-	for depth := 0; f != nil && depth < failureChainMaxDepth; depth++ {
-		if depth > 0 {
-			b.WriteString("Caused by: ")
-		}
-		if t := failureTypeTag(f); t != "" {
-			b.WriteString(t)
-			b.WriteString(": ")
-		}
-		b.WriteString(f.GetMessage())
-		b.WriteByte('\n')
-		if st := f.GetStackTrace(); st != "" {
-			b.WriteString(st)
-			if !strings.HasSuffix(st, "\n") {
-				b.WriteByte('\n')
-			}
-		}
-		f = f.GetCause()
-	}
-	if f != nil {
-		b.WriteString("... (cause chain truncated)\n")
-	}
-	return strings.TrimRight(b.String(), "\n")
-}
-
-// failureTypeTag returns a short label for the failure_info variant, "" if untagged.
-func failureTypeTag(f *failurepb.Failure) string {
-	switch {
-	case f.GetApplicationFailureInfo() != nil:
-		if t := f.GetApplicationFailureInfo().GetType(); t != "" {
-			return t
-		}
-		return "ApplicationFailure"
-	case f.GetNexusHandlerFailureInfo() != nil:
-		if t := f.GetNexusHandlerFailureInfo().GetType(); t != "" {
-			return "NexusHandlerError." + t
-		}
-		return "NexusHandlerError"
-	case f.GetTimeoutFailureInfo() != nil:
-		return "Timeout"
-	case f.GetCanceledFailureInfo() != nil:
-		return "Canceled"
-	case f.GetTerminatedFailureInfo() != nil:
-		return "Terminated"
-	case f.GetServerFailureInfo() != nil:
-		return "ServerFailure"
-	case f.GetActivityFailureInfo() != nil:
-		return "ActivityFailure"
-	case f.GetChildWorkflowExecutionFailureInfo() != nil:
-		return "ChildWorkflowExecutionFailure"
-	default:
-		return ""
 	}
 }
 

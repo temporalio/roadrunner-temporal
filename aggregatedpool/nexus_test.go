@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/url"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -19,7 +18,9 @@ import (
 	enumspb "go.temporal.io/api/enums/v1"
 	failurepb "go.temporal.io/api/failure/v1"
 	"go.temporal.io/sdk/converter"
+	"go.temporal.io/sdk/temporal"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	nexus "github.com/nexus-rpc/sdk-go/nexus"
 )
@@ -671,6 +672,7 @@ func TestNexusErrorFromFailure_OperationErrorFailed(t *testing.T) {
 	oe, ok := err.(*nexus.OperationError)
 	require.True(t, ok, "expected *nexus.OperationError, got %T", err)
 	assert.Equal(t, nexus.OperationStateFailed, oe.State)
+	assert.Equal(t, "user rejected", oe.Message)
 }
 
 func TestNexusErrorFromFailure_OperationErrorCanceled(t *testing.T) {
@@ -685,6 +687,7 @@ func TestNexusErrorFromFailure_OperationErrorCanceled(t *testing.T) {
 
 	oe := nexusErrorFromFailure(f).(*nexus.OperationError)
 	assert.Equal(t, nexus.OperationStateCanceled, oe.State)
+	assert.Equal(t, "user canceled", oe.Message)
 }
 
 func TestNexusErrorFromFailure_OperationErrorUnknownStateFallsBackToFailed(t *testing.T) {
@@ -746,10 +749,9 @@ func TestMapNexusRetryBehavior_AllValues(t *testing.T) {
 	}
 }
 
-// ── Failure-cause preservation tests ───────────────────────────
+// ── Failure-cause preservation (round-trip via failureHolder) ──
 
-// Regression: PHP stack trace must surface in Cause, not just the message.
-func TestNexusErrorFromFailure_PreservesStackTrace(t *testing.T) {
+func TestNexusErrorFromFailure_HandlerErrorPreservesCauseProto(t *testing.T) {
 	f := &failurepb.Failure{
 		Message:    "boom",
 		StackTrace: "#0 /app/Handler.php(42): run()\n#1 {main}",
@@ -761,18 +763,15 @@ func TestNexusErrorFromFailure_PreservesStackTrace(t *testing.T) {
 		},
 	}
 
-	err := nexusErrorFromFailure(f)
-	he, ok := err.(*nexus.HandlerError)
-	require.True(t, ok)
-
+	he := nexusErrorFromFailure(f).(*nexus.HandlerError)
 	assert.Equal(t, "boom", he.Message)
-	causeStr := he.Cause.Error()
-	assert.Contains(t, causeStr, "boom")
-	assert.Contains(t, causeStr, "/app/Handler.php(42)")
-	assert.Contains(t, causeStr, "NexusHandlerError")
+
+	roundTripped := temporal.GetDefaultFailureConverter().ErrorToFailure(he.Cause)
+	assert.True(t, proto.Equal(f, roundTripped),
+		"Cause must hold the original proto verbatim;\nwant: %v\ngot:  %v", f, roundTripped)
 }
 
-func TestNexusErrorFromFailure_PreservesNestedCauses(t *testing.T) {
+func TestNexusErrorFromFailure_HandlerErrorPreservesNestedCauseProto(t *testing.T) {
 	inner := &failurepb.Failure{
 		Message:    "db connection failed",
 		StackTrace: "at Db->connect()",
@@ -789,56 +788,48 @@ func TestNexusErrorFromFailure_PreservesNestedCauses(t *testing.T) {
 		},
 	}
 
-	err := nexusErrorFromFailure(outer)
-	causeStr := err.(*nexus.HandlerError).Cause.Error()
-
-	assert.Contains(t, causeStr, "handler failed")
-	assert.Contains(t, causeStr, "EchoService->echo()")
-	assert.Contains(t, causeStr, "Caused by:")
-	assert.Contains(t, causeStr, "db connection failed")
-	assert.Contains(t, causeStr, "Db->connect()")
-	assert.Contains(t, causeStr, "PDOException")
+	he := nexusErrorFromFailure(outer).(*nexus.HandlerError)
+	roundTripped := temporal.GetDefaultFailureConverter().ErrorToFailure(he.Cause)
+	assert.True(t, proto.Equal(outer, roundTripped),
+		"recursive cause chain must survive round-trip;\nwant: %v\ngot:  %v", outer, roundTripped)
 }
 
-func TestNexusErrorFromFailure_OperationErrorPreservesCause(t *testing.T) {
-	f := &failurepb.Failure{
-		Message:    "order rejected",
-		StackTrace: "at OrderService->process()",
+func TestNexusErrorFromFailure_OperationErrorPreservesCauseProto(t *testing.T) {
+	innerDetails := &commonpb.Payloads{
+		Payloads: []*commonpb.Payload{{
+			Metadata: map[string][]byte{"encoding": []byte("json/plain")},
+			Data:     []byte(`"detail-payload-marker"`),
+		}},
+	}
+	innerCause := &failurepb.Failure{
+		Message: "inner-business-message",
 		FailureInfo: &failurepb.Failure_ApplicationFailureInfo{
 			ApplicationFailureInfo: &failurepb.ApplicationFailureInfo{
-				Type: nexusOperationErrorTypePrefix + "failed",
+				Type:    "CustomBusinessType",
+				Details: innerDetails,
+			},
+		},
+	}
+	outer := &failurepb.Failure{
+		Message:    "outer-business-error",
+		StackTrace: "at OrderService->process()",
+		Cause:      innerCause,
+		FailureInfo: &failurepb.Failure_ApplicationFailureInfo{
+			ApplicationFailureInfo: &failurepb.ApplicationFailureInfo{
+				Type:         nexusOperationErrorTypePrefix + "failed",
+				NonRetryable: true,
 			},
 		},
 	}
 
-	err := nexusErrorFromFailure(f)
-	opErr, ok := err.(*nexus.OperationError)
-	require.True(t, ok)
+	oe := nexusErrorFromFailure(outer).(*nexus.OperationError)
+	assert.Equal(t, nexus.OperationStateFailed, oe.State)
+	assert.Equal(t, "outer-business-error", oe.Message)
 
-	assert.Equal(t, nexus.OperationStateFailed, opErr.State)
-	causeStr := opErr.Cause.Error()
-	assert.Contains(t, causeStr, "order rejected")
-	assert.Contains(t, causeStr, "OrderService->process()")
-}
-
-func TestFailureToCauseString_NilIsEmpty(t *testing.T) {
-	assert.Equal(t, "", failureToCauseString(nil))
-}
-
-// Pathological deep cause chain from PHP must truncate, not grow unbounded.
-func TestFailureToCauseString_TruncatesDeepChain(t *testing.T) {
-	depth := failureChainMaxDepth*3 + 5
-	var head *failurepb.Failure
-	for i := 0; i < depth; i++ {
-		head = &failurepb.Failure{
-			Message: "lvl",
-			Cause:   head,
-		}
-	}
-
-	out := failureToCauseString(head)
-	assert.Contains(t, out, "... (cause chain truncated)")
-	assert.LessOrEqual(t, strings.Count(out, "lvl"), failureChainMaxDepth)
+	roundTripped := temporal.GetDefaultFailureConverter().ErrorToFailure(oe.Cause)
+	assert.True(t, proto.Equal(outer, roundTripped),
+		"OperationError.Cause must round-trip with full structure (type, details, recursive cause);\nwant: %v\ngot:  %v",
+		outer, roundTripped)
 }
 
 // ── nexusLinksFromInternal tests ───────────────────────────────
