@@ -89,9 +89,11 @@ func ResolveDataConverters(
 
 // validateVersioningBehavior mirrors the panic the Temporal SDK raises inside
 // RegisterWorkflowWithOptions (go.temporal.io/sdk internal_worker.go) and returns a
-// descriptive error instead of letting it crash the worker: when worker versioning is
-// enabled for a non-empty deployment version with no worker-level default behavior,
-// every workflow must declare its own VersioningBehavior.
+// descriptive error instead of letting it crash the worker: when Deployment-based
+// worker versioning is enabled (DeploymentOptions.UseVersioning with a deployment
+// version) and no worker-level DefaultVersioningBehavior is set, every workflow must
+// declare its own VersioningBehavior. The deprecated UseBuildIDForVersioning flag is
+// not covered.
 func validateVersioningBehavior(opts worker.Options, wf internal.WorkflowInfo, taskQueue string) error {
 	versionSet := opts.DeploymentOptions.Version != (worker.WorkerDeploymentVersion{})
 
