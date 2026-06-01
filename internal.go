@@ -2,6 +2,7 @@ package rrtemporal
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -196,12 +197,19 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 	var err error
 	p.temporal.client, err = tclient.Dial(opts)
 	if err != nil {
-		return err
+		return connectError(p.config.Address, err)
 	}
 
 	p.log.Info("connected to temporal server", zap.String("address", p.config.Address))
 
 	return nil
+}
+
+// connectError describes a failed connection to the Temporal server: it names the
+// target address and hints that the server may not be ready yet, while wrapping the
+// underlying cause with %w so errors.Is/As keep working.
+func connectError(addr string, cause error) error {
+	return fmt.Errorf("failed to connect to the Temporal server at %q: %w; ensure it is reachable and ready to accept connections", addr, cause)
 }
 
 func rewriteNameAndVersion(phpSdkVersion string) grpc.UnaryClientInterceptor {
