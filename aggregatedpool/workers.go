@@ -87,6 +87,27 @@ func ResolveDataConverters(
 	return result, nil
 }
 
+// validateVersioningBehavior mirrors the panic the Temporal SDK raises inside
+// RegisterWorkflowWithOptions (go.temporal.io/sdk internal_worker.go) and returns a
+// descriptive error instead of letting it crash the worker: when worker versioning is
+// enabled for a non-empty deployment version with no worker-level default behavior,
+// every workflow must declare its own VersioningBehavior.
+func validateVersioningBehavior(opts worker.Options, wf internal.WorkflowInfo, taskQueue string) error {
+	versionSet := opts.DeploymentOptions.Version != (worker.WorkerDeploymentVersion{})
+
+	if opts.DeploymentOptions.UseVersioning &&
+		versionSet &&
+		wf.VersioningBehavior == workflow.VersioningBehaviorUnspecified &&
+		opts.DeploymentOptions.DefaultVersioningBehavior == workflow.VersioningBehaviorUnspecified {
+		return errors.E(
+			errors.Op("temporal_validate_versioning"),
+			errors.Errorf("worker versioning is enabled for task queue %q, but workflow %q has no versioning behavior set; set a VersioningBehavior on the workflow or a DefaultVersioningBehavior on the worker", taskQueue, wf.Name),
+		)
+	}
+
+	return nil
+}
+
 func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo, log *zap.Logger, tc temporalClient.Client, interceptors map[string]api.Interceptor, configuredInterceptors []string) ([]worker.Worker, error) {
 	resolved, err := ResolveInterceptors(interceptors, configuredInterceptors)
 	if err != nil {
@@ -118,6 +139,10 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 		wrk := worker.New(tc, wi[i].TaskQueue, wi[i].Options)
 
 		for j := 0; j < len(wi[i].Workflows); j++ {
+			if err := validateVersioningBehavior(wi[i].Options, wi[i].Workflows[j], wi[i].TaskQueue); err != nil {
+				return nil, err
+			}
+
 			wrk.RegisterWorkflowWithOptions(wDef, workflow.RegisterOptions{
 				Name:                          wi[i].Workflows[j].Name,
 				VersioningBehavior:            wi[i].Workflows[j].VersioningBehavior,

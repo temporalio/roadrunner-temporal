@@ -6,9 +6,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/temporalio/roadrunner-temporal/v5/api"
+	"github.com/temporalio/roadrunner-temporal/v5/internal"
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/converter"
 	sdkinterceptor "go.temporal.io/sdk/interceptor"
+	"go.temporal.io/sdk/worker"
+	"go.temporal.io/sdk/workflow"
 )
 
 // mockPayloadConverter implements converter.PayloadConverter for testing.
@@ -246,6 +249,41 @@ func TestResolveDataConverters_NilMap_WithConfig(t *testing.T) {
 	_, err := ResolveDataConverters(nil, []string{"encoding/a"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `"encoding/a"`)
+}
+
+func versioningOpts() worker.Options {
+	return worker.Options{
+		DeploymentOptions: worker.DeploymentOptions{
+			UseVersioning: true,
+			Version:       worker.WorkerDeploymentVersion{DeploymentName: "deploy", BuildID: "1"},
+		},
+	}
+}
+
+func TestValidateVersioningBehavior_EnabledNoBehavior_ReturnsError(t *testing.T) {
+	wf := internal.WorkflowInfo{Name: "Foo", VersioningBehavior: workflow.VersioningBehaviorUnspecified}
+
+	err := validateVersioningBehavior(versioningOpts(), wf, "my-task-queue")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Foo", "should name the offending workflow")
+	assert.Contains(t, err.Error(), "my-task-queue", "should name the task queue")
+}
+
+func TestValidateVersioningBehavior_VersioningOff_OK(t *testing.T) {
+	wf := internal.WorkflowInfo{Name: "Foo", VersioningBehavior: workflow.VersioningBehaviorUnspecified}
+	require.NoError(t, validateVersioningBehavior(worker.Options{}, wf, "my-task-queue"))
+}
+
+func TestValidateVersioningBehavior_WorkflowBehaviorSet_OK(t *testing.T) {
+	wf := internal.WorkflowInfo{Name: "Foo", VersioningBehavior: workflow.VersioningBehaviorPinned}
+	require.NoError(t, validateVersioningBehavior(versioningOpts(), wf, "my-task-queue"))
+}
+
+func TestValidateVersioningBehavior_WorkerDefaultBehaviorSet_OK(t *testing.T) {
+	opts := versioningOpts()
+	opts.DeploymentOptions.DefaultVersioningBehavior = workflow.VersioningBehaviorAutoUpgrade
+	wf := internal.WorkflowInfo{Name: "Foo", VersioningBehavior: workflow.VersioningBehaviorUnspecified}
+	require.NoError(t, validateVersioningBehavior(opts, wf, "my-task-queue"))
 }
 
 func TestResolveDataConverters_EmptyMap_WithConfig(t *testing.T) {
