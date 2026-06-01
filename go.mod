@@ -13,7 +13,7 @@ require (
 	github.com/roadrunner-server/pool v1.1.3
 	github.com/stretchr/testify v1.11.1
 	github.com/uber-go/tally/v4 v4.1.17
-	go.temporal.io/api v1.62.12
+	go.temporal.io/api v1.62.13
 	go.temporal.io/sdk v1.44.1
 	go.temporal.io/sdk/contrib/tally v0.2.0
 	go.temporal.io/server v1.31.0
@@ -63,6 +63,7 @@ require (
 )
 
 require (
+	github.com/nexus-rpc/nexus-proto-annotations v0.1.0 // indirect
 	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.44.0 // indirect
 )
