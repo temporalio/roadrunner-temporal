@@ -2,6 +2,7 @@ package aggregatedpool
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/roadrunner-server/errors"
@@ -87,26 +88,31 @@ func ResolveDataConverters(
 	return result, nil
 }
 
-// validateVersioningBehavior mirrors the panic the Temporal SDK raises inside
-// RegisterWorkflowWithOptions (go.temporal.io/sdk internal_worker.go) and returns a
-// descriptive error instead of letting it crash the worker: when Deployment-based
-// worker versioning is enabled (DeploymentOptions.UseVersioning with a deployment
-// version) and no worker-level DefaultVersioningBehavior is set, every workflow must
-// declare its own VersioningBehavior. The deprecated UseBuildIDForVersioning flag is
-// not covered.
-func validateVersioningBehavior(opts worker.Options, wf internal.WorkflowInfo, taskQueue string) error {
-	versionSet := opts.DeploymentOptions.Version != (worker.WorkerDeploymentVersion{})
+// registerWorkflow runs the SDK workflow registration and converts any panic it raises
+// into a normal error. The Temporal SDK panics (rather than returning an error) on
+// invalid registration config; because RR's config comes from the PHP worker at
+// runtime, that must fail worker init cleanly instead of crashing the process. No
+// SDK-internal condition is mirrored, so nothing here needs to track SDK changes.
+func registerWorkflow(register func(), name, taskQueue string) (err error) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
 
-	if opts.DeploymentOptions.UseVersioning &&
-		versionSet &&
-		wf.VersioningBehavior == workflow.VersioningBehaviorUnspecified &&
-		opts.DeploymentOptions.DefaultVersioningBehavior == workflow.VersioningBehaviorUnspecified {
-		return errors.E(
-			errors.Op("temporal_validate_versioning"),
-			errors.Errorf("worker versioning is enabled for task queue %q, but workflow %q has no versioning behavior set; set a VersioningBehavior on the workflow or a DefaultVersioningBehavior on the worker", taskQueue, wf.Name),
-		)
-	}
+		op := errors.Op("temporal_register_workflow")
+		// Best-effort friendly hint for the common case (missing versioning behavior).
+		// Purely cosmetic: if the SDK reworks this message we still return the generic
+		// error below, so correctness never depends on the matched string.
+		if msg, ok := r.(string); ok && strings.Contains(msg, "versioning behavior") {
+			err = errors.E(op, errors.Errorf("workflow %q on task queue %q has no versioning behavior set while worker versioning is enabled; set a VersioningBehavior on the workflow or a DefaultVersioningBehavior on the worker", name, taskQueue))
+			return
+		}
 
+		err = errors.E(op, errors.Errorf("failed to register workflow %q on task queue %q: %v", name, taskQueue, r))
+	}()
+
+	register()
 	return nil
 }
 
@@ -141,17 +147,20 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 		wrk := worker.New(tc, wi[i].TaskQueue, wi[i].Options)
 
 		for j := 0; j < len(wi[i].Workflows); j++ {
-			if err := validateVersioningBehavior(wi[i].Options, wi[i].Workflows[j], wi[i].TaskQueue); err != nil {
+			wf := wi[i].Workflows[j]
+
+			err := registerWorkflow(func() {
+				wrk.RegisterWorkflowWithOptions(wDef, workflow.RegisterOptions{
+					Name:                          wf.Name,
+					VersioningBehavior:            wf.VersioningBehavior,
+					DisableAlreadyRegisteredCheck: false,
+				})
+			}, wf.Name, wi[i].TaskQueue)
+			if err != nil {
 				return nil, err
 			}
 
-			wrk.RegisterWorkflowWithOptions(wDef, workflow.RegisterOptions{
-				Name:                          wi[i].Workflows[j].Name,
-				VersioningBehavior:            wi[i].Workflows[j].VersioningBehavior,
-				DisableAlreadyRegisteredCheck: false,
-			})
-
-			log.Debug("workflow registered", zap.String(tq, wi[i].TaskQueue), zap.Any("workflow name", wi[i].Workflows[j].Name), zap.Int("versioning_behavior", int(wi[i].Workflows[j].VersioningBehavior)))
+			log.Debug("workflow registered", zap.String(tq, wi[i].TaskQueue), zap.Any("workflow name", wf.Name), zap.Int("versioning_behavior", int(wf.VersioningBehavior)))
 		}
 
 		if actDef.disableActivityWorkers {
