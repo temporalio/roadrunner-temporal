@@ -240,11 +240,13 @@ func Test_SingleActivityWorker_Replaced_NoPoolRestart(t *testing.T) {
 	require.NoError(t, w.Get(context.Background(), &result))
 	require.Equal(t, "hello world", result)
 
-	// Let the watcher finish re-allocating the single replacement and the informer reflect it.
-	time.Sleep(time.Second * 2)
-
-	after := getWorkers(t)
-	require.Len(t, after, 5) // still exactly 5 workers, not a fresh pool
+	// Wait for the watcher to finish re-allocating the single replacement and the informer
+	// to reflect it, instead of a fixed sleep that could be too short on slow CI.
+	var after []process.State
+	require.Eventually(t, func() bool {
+		after = listWorkers(t)
+		return len(after) == 5
+	}, time.Second*30, time.Millisecond*200) // back to exactly 5 workers, not a fresh pool
 
 	var wfAfter int64
 	actAfter := make(map[int64]struct{}, 4)
@@ -672,6 +674,14 @@ func Test_ActivityErrorLA_DisasterRecoveryProto(t *testing.T) {
 }
 
 func getWorkers(t *testing.T) []process.State {
+	workers := listWorkers(t)
+	assert.Len(t, workers, 5)
+	return workers
+}
+
+// listWorkers returns the temporal plugin's workers via the informer RPC without
+// asserting their count, so callers can poll while a dead worker is being replaced.
+func listWorkers(t *testing.T) []process.State {
 	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
 	assert.NoError(t, err)
 	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
@@ -683,7 +693,6 @@ func getWorkers(t *testing.T) []process.State {
 
 	err = c.Call("informer.Workers", "temporal", &list)
 	assert.NoError(t, err)
-	assert.Len(t, list.Workers, 5)
 
 	return list.Workers
 }
