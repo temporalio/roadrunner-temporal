@@ -190,6 +190,92 @@ func Test_ActivityError_DisasterRecovery(t *testing.T) {
 	wg.Wait()
 }
 
+// Test_SingleActivityWorker_Replaced_NoPoolRestart proves the fix for
+// roadrunner-server/roadrunner#2335: when a single activity worker dies, only that worker
+// is replaced (by the pool's watcher) and the rest of the activity pool keeps running -
+// the whole activity pool is NOT restarted.
+func Test_SingleActivityWorker_Replaced_NoPoolRestart(t *testing.T) {
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
+
+	// Snapshot workers. Index 0 is the workflow worker; 1..4 are activity workers.
+	before := getWorkers(t)
+	require.Len(t, before, 5)
+
+	wfPID := before[0].Pid
+	victim := before[1].Pid
+
+	// Original activity PIDs and the survivors (every activity worker but the victim).
+	// Activity worker order is non-deterministic, so compare PIDs as sets, not by index.
+	actBefore := make(map[int64]struct{}, 4)
+	survivors := make(map[int64]struct{}, 3)
+	for i := 1; i < len(before); i++ {
+		actBefore[before[i].Pid] = struct{}{}
+		if before[i].Pid != victim {
+			survivors[before[i].Pid] = struct{}{}
+		}
+	}
+
+	// TimerWorkflow fires a 1s timer BEFORE running its activity, giving a clean window to
+	// kill one activity worker while none is in-flight.
+	w, err := s.Client.ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"TimerWorkflow",
+		"Hello World",
+	)
+	require.NoError(t, err)
+
+	// Kill ONE activity worker during the timer phase.
+	time.Sleep(time.Millisecond * 750)
+	require.NoError(t, syscall.Kill(int(victim), syscall.SIGKILL))
+
+	// The workflow must still complete: the pool replaces only the dead worker and the
+	// activity runs on a healthy one (Temporal retries it if it landed on the victim).
+	var result string
+	require.NoError(t, w.Get(context.Background(), &result))
+	require.Equal(t, "hello world", result)
+
+	// Let the watcher finish re-allocating the single replacement and the informer reflect it.
+	time.Sleep(time.Second * 2)
+
+	after := getWorkers(t)
+	require.Len(t, after, 5) // still exactly 5 workers, not a fresh pool
+
+	var wfAfter int64
+	actAfter := make(map[int64]struct{}, 4)
+	for i := range after {
+		if after[i].Pid == wfPID {
+			wfAfter = after[i].Pid
+			continue
+		}
+		actAfter[after[i].Pid] = struct{}{}
+	}
+
+	// The activity pool was NOT wholesale-restarted:
+	require.Equal(t, wfPID, wfAfter, "workflow worker PID must not change")
+	for pid := range survivors {
+		require.Containsf(t, actAfter, pid, "surviving activity worker %d must keep its PID (pool was not restarted)", pid)
+	}
+	require.NotContains(t, actAfter, victim, "killed activity worker PID must be replaced")
+
+	// Exactly the 3 survivors carried over -> only the dead worker was replaced.
+	carried := 0
+	for pid := range actBefore {
+		if _, ok := actAfter[pid]; ok {
+			carried++
+		}
+	}
+	require.Equal(t, 3, carried, "exactly 3 survivors must carry over (only the dead worker replaced)")
+
+	stopCh <- struct{}{}
+	wg.Wait()
+}
+
 func Test_WorkerError_DisasterRecoveryProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
