@@ -192,26 +192,29 @@ func (p *Plugin) Serve() chan error {
 		for {
 			select {
 			case ev := <-p.events:
-				p.log.Debug("worker stopped, restarting pool and temporal workers", zap.String("message", ev.Message()))
-
-				// check pid, message from the go sdk is: process exited, pid: 334455 <-- we are looking for this pid
-				// sdk 2.18.1
-				// TODO: potential bug here, if the pid contains the WW pid, it will reset everything (btw, should not be a problem)
+				// The pool's worker-watcher already re-allocated a replacement for the
+				// dead worker before emitting this event. Activity workers are stateless
+				// and their tasks are retried by the Temporal server, so the replacement
+				// is enough. Only the stateful workflow worker needs a full reset (purge
+				// the sticky workflow cache and replay).
+				//
+				// The watcher message is "process exited, pid: <PID>". A workflow-worker
+				// death always contains its PID, so it always matches; the only
+				// imperfection is that an activity PID which contains the WF PID as a
+				// substring also triggers a full reset - a harmless over-reset, never a
+				// missed workflow-worker death.
 				switch strings.Contains(ev.Message(), strconv.Itoa(p.wwPID)) {
-				// stopped workflow worker
+				// stopped workflow worker -> full reset
 				case true:
+					p.log.Debug("workflow worker stopped, resetting", zap.String("message", ev.Message()))
 					errR := p.Reset()
 					if errR != nil {
 						errCh <- errors.E(op, errors.Errorf("error during reset: %#v, event: %s", errR, ev.Message()))
 						return
 					}
-					// stopped one of the activity workers
+				// stopped one of the activity workers -> already replaced by the pool, nothing to do
 				case false:
-					errR := p.ResetAP()
-					if errR != nil {
-						errCh <- errors.E(op, errors.Errorf("error during reset: %#v, event: %s", errR, ev.Message()))
-						return
-					}
+					p.log.Debug("activity worker stopped, replaced by the pool", zap.String("message", ev.Message()))
 				}
 
 			case <-p.stopCh:
@@ -306,26 +309,6 @@ func (p *Plugin) Workers() []*process.State {
 	}
 
 	return states
-}
-
-func (p *Plugin) ResetAP() error {
-	const op = errors.Op("temporal_plugin_reset")
-
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	p.log.Info("reset signal received, resetting activity pool")
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-
-	errAp := p.actP.Reset(ctx)
-	if errAp != nil {
-		return errors.E(op, errAp)
-	}
-	p.log.Info("activity pool restarted")
-
-	return nil
 }
 
 func (p *Plugin) Reset() error {
