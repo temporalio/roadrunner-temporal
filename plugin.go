@@ -11,20 +11,23 @@ import (
 	"sync/atomic"
 	"time"
 
+	"net/http"
+
+	"github.com/roadrunner-server/api-go/v6/temporal/v1/temporalV1connect"
 	"github.com/roadrunner-server/endure/v2/dep"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/events"
-	"github.com/roadrunner-server/pool/state/process"
-	"github.com/temporalio/roadrunner-temporal/v5/aggregatedpool"
-	"github.com/temporalio/roadrunner-temporal/v5/api"
-	"github.com/temporalio/roadrunner-temporal/v5/internal"
-	"github.com/temporalio/roadrunner-temporal/v5/internal/codec/proto"
+	"github.com/roadrunner-server/pool/v2/state/process"
+	"github.com/temporalio/roadrunner-temporal/v6/aggregatedpool"
+	"github.com/temporalio/roadrunner-temporal/v6/api"
+	"github.com/temporalio/roadrunner-temporal/v6/internal"
+	"github.com/temporalio/roadrunner-temporal/v6/internal/codec/proto"
 	tclient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
 	"go.uber.org/zap"
 
-	"github.com/roadrunner-server/pool/pool/static_pool"
+	"github.com/roadrunner-server/pool/v2/pool/static_pool"
 )
 
 const (
@@ -417,8 +420,10 @@ func (p *Plugin) Name() string {
 	return pluginName
 }
 
-func (p *Plugin) RPC() any {
-	return &rpc{plugin: p, client: p.temporal.client}
+// RPC returns the TemporalService connect handler mounted on the rpc plugin's
+// server.
+func (p *Plugin) RPC() (string, http.Handler) {
+	return temporalV1connect.NewTemporalServiceHandler(&rpc{plugin: p})
 }
 
 func ptr[T any](v T) *T {
