@@ -18,7 +18,7 @@ import (
 	"github.com/roadrunner-server/server/v5"
 	"github.com/roadrunner-server/status/v5"
 	"github.com/stretchr/testify/require"
-	rrtemporal "github.com/temporalio/roadrunner-temporal/v5"
+	rrtemporal "github.com/temporalio/roadrunner-temporal/v6"
 
 	"github.com/stretchr/testify/assert"
 )

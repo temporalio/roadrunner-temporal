@@ -2,27 +2,20 @@ package updates
 
 import (
 	"context"
-	"net"
-	"net/rpc"
 	"path"
 	"sync"
 	"testing"
 	"tests/helpers"
 	"time"
 
-	protoApi "github.com/roadrunner-server/api/v4/build/temporal/v1"
-	goridgeRpc "github.com/roadrunner-server/goridge/v3/pkg/rpc"
+	"connectrpc.com/connect"
+	protoApi "github.com/roadrunner-server/api-go/v6/temporal/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/api/common/v1"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
 	"go.temporal.io/sdk/client"
-)
-
-const (
-	download string = "temporal.DownloadWorkflowHistory"
-	replay   string = "temporal.ReplayFromJSON"
 )
 
 func TestUpdatesReplay(t *testing.T) {
@@ -75,20 +68,16 @@ func TestUpdatesReplay(t *testing.T) {
 	time.Sleep(time.Second)
 	tmp := path.Join(t.TempDir(), "replay.json")
 
-	t.Run("downloadWFHistory", downloadWFHistory("127.0.0.1:6001", w.GetID(), w.GetRunID(), updateGreetWF, tmp))
-	t.Run("replayFromJSON", replayFromJSON("127.0.0.1:6001", tmp, updateGreetWF))
+	t.Run("downloadWFHistory", downloadWFHistory(w.GetID(), w.GetRunID(), updateGreetWF, tmp))
+	t.Run("replayFromJSON", replayFromJSON(tmp, updateGreetWF))
 
 	stopCh <- struct{}{}
 	wg.Wait()
 	time.Sleep(time.Second)
 }
 
-func downloadWFHistory(address, wid, rid, wname, path string) func(t *testing.T) {
+func downloadWFHistory(wid, rid, wname, path string) func(t *testing.T) {
 	return func(t *testing.T) {
-		conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", address)
-		require.NoError(t, err)
-		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-
 		req := &protoApi.ReplayRequest{
 			SavePath: path,
 			WorkflowType: &common.WorkflowType{
@@ -99,26 +88,22 @@ func downloadWFHistory(address, wid, rid, wname, path string) func(t *testing.T)
 				RunId:      rid,
 			},
 		}
-		resp := &protoApi.ReplayResponse{}
-		err = client.Call(download, req, resp)
+		resp, err := helpers.TemporalClient().DownloadWorkflowHistory(t.Context(), connect.NewRequest(req))
 		require.NoError(t, err)
+		require.Zero(t, resp.Msg.GetStatus().GetCode())
 	}
 }
 
-func replayFromJSON(address, path, wname string) func(t *testing.T) {
+func replayFromJSON(path, wname string) func(t *testing.T) {
 	return func(t *testing.T) {
-		conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", address)
-		require.NoError(t, err)
-		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-
 		req := &protoApi.ReplayRequest{
 			SavePath: path,
 			WorkflowType: &common.WorkflowType{
 				Name: wname,
 			},
 		}
-		resp := &protoApi.ReplayResponse{}
-		err = client.Call(replay, req, resp)
+		resp, err := helpers.TemporalClient().ReplayFromJSON(t.Context(), connect.NewRequest(req))
 		require.NoError(t, err)
+		require.Zero(t, resp.Msg.GetStatus().GetCode())
 	}
 }

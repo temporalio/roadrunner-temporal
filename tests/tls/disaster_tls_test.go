@@ -2,8 +2,6 @@ package tls
 
 import (
 	"context"
-	"net"
-	"net/rpc"
 	"os"
 	"sync"
 	"syscall"
@@ -12,8 +10,8 @@ import (
 
 	"tests/helpers"
 
-	goridgeRpc "github.com/roadrunner-server/goridge/v3/pkg/rpc"
-	"github.com/roadrunner-server/pool/state/process"
+	informerV1 "github.com/roadrunner-server/api-go/v6/informer/v1"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/client"
@@ -238,19 +236,10 @@ func Test_WorkerError_DisasterRecovery_Heavy(t *testing.T) {
 	// Makes worker pool unable to recover for some time
 	require.NoError(t, os.Rename("../php_test_files/worker.php", "../php_test_files/worker.bak"))
 
-	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
-	assert.NoError(t, err)
-	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-	// WorkerList contains list of workers.
-	list := struct {
-		// Workers is list of workers.
-		Workers []process.State `json:"workers"`
-	}{}
-
-	err = c.Call("informer.Workers", "temporal", &list)
+	list, err := helpers.Workers(t.Context())
 	require.NoError(t, err)
 
-	p, err := os.FindProcess(int(list.Workers[0].Pid))
+	p, err := os.FindProcess(int(list[0].GetPid()))
 	assert.NoError(t, err)
 
 	// must fully recover with new worker
@@ -292,19 +281,10 @@ func Test_WorkerError_DisasterRecovery_HeavyLA(t *testing.T) {
 	// Makes worker pool unable to recover for some time
 	require.NoError(t, os.Rename("../php_test_files/worker-la.php", "../php_test_files/worker-la.bak"))
 
-	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
-	assert.NoError(t, err)
-	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-	// WorkerList contains list of workers.
-	list := struct {
-		// Workers is list of workers.
-		Workers []process.State `json:"workers"`
-	}{}
-
-	err = c.Call("informer.Workers", "temporal", &list)
+	list, err := helpers.Workers(t.Context())
 	require.NoError(t, err)
 
-	p, err := os.FindProcess(int(list.Workers[0].Pid))
+	p, err := os.FindProcess(int(list[0].GetPid()))
 	assert.NoError(t, err)
 
 	// must fully recover with new worker
@@ -585,30 +565,14 @@ func Test_ActivityErrorLA_DisasterRecoveryProto(t *testing.T) {
 	wg.Wait()
 }
 
-func getWorkers(t *testing.T) []process.State {
-	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
+func getWorkers(t *testing.T) []*informerV1.ProcessState {
+	list, err := helpers.Workers(t.Context())
 	assert.NoError(t, err)
-	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-	// WorkerList contains list of workers.
-	list := struct {
-		// Workers is list of workers.
-		Workers []process.State `json:"workers"`
-	}{}
+	assert.Len(t, list, 5)
 
-	err = c.Call("informer.Workers", "temporal", &list)
-	assert.NoError(t, err)
-	assert.Len(t, list.Workers, 5)
-
-	return list.Workers
+	return list
 }
 
 func reset(t *testing.T) {
-	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
-	assert.NoError(t, err)
-	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-
-	var ret bool
-	err = c.Call("resetter.Reset", "temporal", &ret)
-	assert.NoError(t, err)
-	require.True(t, ret)
+	require.NoError(t, helpers.Reset(t.Context()))
 }

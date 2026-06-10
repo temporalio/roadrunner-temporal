@@ -3,17 +3,12 @@ package tests
 import (
 	"context"
 	"io"
-	"net"
 	"net/http"
-	"net/rpc"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-
-	goridgeRpc "github.com/roadrunner-server/goridge/v3/pkg/rpc"
-	"github.com/roadrunner-server/pool/state/process"
 
 	"tests/helpers"
 
@@ -125,16 +120,7 @@ func Test_DisabledActivityWorkers(t *testing.T) {
 }
 
 func assertWorkers(t *testing.T, workers int) {
-	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
+	list, err := helpers.Workers(t.Context())
 	assert.NoError(t, err)
-	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-	// WorkerList contains list of workers.
-	list := struct {
-		// Workers is list of workers.
-		Workers []process.State `json:"workers"`
-	}{}
-
-	err = c.Call("informer.Workers", "temporal", &list)
-	assert.NoError(t, err)
-	assert.Len(t, list.Workers, workers)
+	assert.Len(t, list, workers)
 }
