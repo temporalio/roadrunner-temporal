@@ -4,10 +4,10 @@ import (
 	"sync"
 
 	"github.com/goccy/go-json"
-	protocolV1 "github.com/roadrunner-server/api/v4/build/temporal/v1"
+	protocolV1 "github.com/roadrunner-server/api-go/v6/temporal/v1"
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/pool/payload"
-	"github.com/temporalio/roadrunner-temporal/v5/internal"
+	"github.com/roadrunner-server/pool/v2/payload"
+	"github.com/temporalio/roadrunner-temporal/v6/internal"
 	"go.temporal.io/sdk/converter"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"

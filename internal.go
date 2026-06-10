@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/pool/pool"
-	"github.com/temporalio/roadrunner-temporal/v5/aggregatedpool"
-	"github.com/temporalio/roadrunner-temporal/v5/dataconverter"
-	"github.com/temporalio/roadrunner-temporal/v5/internal/codec/proto"
-	"github.com/temporalio/roadrunner-temporal/v5/internal/logger"
+	"github.com/roadrunner-server/pool/v2/pool"
+	"github.com/temporalio/roadrunner-temporal/v6/aggregatedpool"
+	"github.com/temporalio/roadrunner-temporal/v6/dataconverter"
+	"github.com/temporalio/roadrunner-temporal/v6/internal/codec/proto"
+	"github.com/temporalio/roadrunner-temporal/v6/internal/logger"
 	tclient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	staticPool "github.com/roadrunner-server/pool/pool/static_pool"
+	staticPool "github.com/roadrunner-server/pool/v2/pool/static_pool"
 )
 
 const (
