@@ -19,7 +19,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/temporalio/roadrunner-temporal/v5 v5.11.0
 	go.opentelemetry.io/otel/sdk v1.44.0
-	go.temporal.io/api v1.62.13
+	go.temporal.io/api v1.62.14
 	go.temporal.io/sdk v1.44.1
 	go.temporal.io/sdk/contrib/opentelemetry v0.7.0
 	go.uber.org/zap v1.28.0
