@@ -25,28 +25,28 @@ jobs:
         os: [ "ubuntu-latest" ]
     steps:
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v6 # action page: <https://github.com/actions/setup-go>
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: ${{ matrix.go }}
 
       - name: Set up PHP ${{ matrix.php }}
-        uses: shivammathur/setup-php@v2 # action page: <https://github.com/shivammathur/setup-php>
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: ${{ matrix.php }}
           extensions: dom, sockets, grpc, curl, protobuf
 
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           submodules: true
 
       - name: Install dependencies with composer
-        uses: ramsey/composer-install@v4
+        uses: ramsey/composer-install@26d8a556604053a9612623447203a691f406fbe6 # v4
         with:
           working-directory: tests/acceptance/php-sdk
 
       - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -98,18 +98,18 @@ jobs:
         os: [ "ubuntu-latest" ]
     steps:
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v6 # action page: <https://github.com/actions/setup-go>
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: ${{ matrix.go }}
 
       - name: Set up PHP ${{ matrix.php }}
-        uses: shivammathur/setup-php@v2 # action page: <https://github.com/shivammathur/setup-php>
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: ${{ matrix.php }}
           extensions: sockets
 
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Get Composer Cache Directory
         id: composer-cache
@@ -118,7 +118,7 @@ jobs:
           echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
       - name: Init Composer Cache # Docs: <https://git.io/JfAKn#php---composer>
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('**/composer.json') }}
@@ -128,7 +128,7 @@ jobs:
         run: cd tests/php_test_files && composer update --prefer-dist --no-progress --ansi
 
       - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -151,7 +151,7 @@ jobs:
           docker compose -f env/docker-compose-temporal-updates.yaml up -d --remove-orphans
 
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage_1
           path: ./tests/coverage-ci
@@ -167,18 +167,18 @@ jobs:
         os: [ "ubuntu-latest" ]
     steps:
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v6 # action page: <https://github.com/actions/setup-go>
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: ${{ matrix.go }}
 
       - name: Set up PHP ${{ matrix.php }}
-        uses: shivammathur/setup-php@v2 # action page: <https://github.com/shivammathur/setup-php>
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: ${{ matrix.php }}
           extensions: sockets
 
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Get Composer Cache Directory
         id: composer-cache
@@ -187,7 +187,7 @@ jobs:
           echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
       - name: Init Composer Cache # Docs: <https://git.io/JfAKn#php---composer>
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('**/composer.json') }}
@@ -197,7 +197,7 @@ jobs:
         run: cd tests/php_test_files && composer update --prefer-dist --no-progress --ansi
 
       - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -244,7 +244,7 @@ jobs:
           docker compose -f env/docker-compose-temporal.yaml up -d --remove-orphans
 
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage_2
           path: ./tests/coverage-ci
@@ -260,18 +260,18 @@ jobs:
         os: [ "ubuntu-latest" ]
     steps:
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v6 # action page: <https://github.com/actions/setup-go>
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: ${{ matrix.go }}
 
       - name: Set up PHP ${{ matrix.php }}
-        uses: shivammathur/setup-php@v2 # action page: <https://github.com/shivammathur/setup-php>
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: ${{ matrix.php }}
           extensions: sockets
 
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Get Composer Cache Directory
         id: composer-cache
@@ -280,7 +280,7 @@ jobs:
           echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
       - name: Init Composer Cache # Docs: <https://git.io/JfAKn#php---composer>
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('**/composer.json') }}
@@ -290,7 +290,7 @@ jobs:
         run: cd tests/php_test_files && composer update --prefer-dist --no-progress --ansi
 
       - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -318,7 +318,7 @@ jobs:
           docker compose -f env/temporal_tls/docker-compose.yml down
 
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage_3
           path: ./tests/coverage-ci
@@ -334,7 +334,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Download code coverage results
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
       - run: |
           for dir in coverage_1 coverage_2 coverage_3; do
             cd "$dir"
@@ -352,7 +352,7 @@ jobs:
           done
 
       - name: upload to codecov
-        uses: codecov/codecov-action@v6 # Docs: <https://github.com/codecov/codecov-action>
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           files: ./coverage_1/summary.txt,./coverage_2/summary.txt,./coverage_3/summary.txt
 
