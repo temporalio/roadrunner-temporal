@@ -11,11 +11,10 @@ import (
 	"github.com/temporalio/roadrunner-temporal/v6/aggregatedpool"
 	"github.com/temporalio/roadrunner-temporal/v6/dataconverter"
 	"github.com/temporalio/roadrunner-temporal/v6/internal/codec/proto"
-	"github.com/temporalio/roadrunner-temporal/v6/internal/logger"
 	tclient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
+	tlog "go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/worker"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
@@ -159,7 +158,7 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 
 	if val, ok := flags[APIKey]; ok {
 		if val != "" {
-			p.apiKey.Store(ptr(val))
+			p.apiKey.Store(new(val))
 		}
 	}
 
@@ -176,7 +175,7 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 		HostPort:       p.config.Address,
 		MetricsHandler: p.temporal.mh,
 		Namespace:      p.config.Namespace,
-		Logger:         logger.NewZapAdapter(p.log),
+		Logger:         tlog.NewStructuredLogger(p.log),
 		DataConverter:  dc,
 		ConnectionOptions: tclient.ConnectionOptions{
 			TLS:         p.temporal.tlsCfg,
@@ -200,7 +199,7 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 		return connectError(p.config.Address, err)
 	}
 
-	p.log.Info("connected to temporal server", zap.String("address", p.config.Address))
+	p.log.Info("connected to temporal server", "address", p.config.Address)
 
 	return nil
 }

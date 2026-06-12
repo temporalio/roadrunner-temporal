@@ -3,6 +3,7 @@ package aggregatedpool
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -19,7 +20,6 @@ import (
 	enumspb "go.temporal.io/api/enums/v1"
 	temporalClient "go.temporal.io/sdk/client"
 	bindings "go.temporal.io/sdk/internalbindings"
-	"go.uber.org/zap"
 )
 
 // implements WorkflowDefinition interface
@@ -67,7 +67,7 @@ type Workflow struct {
 	updateCompleteCb map[string]func(res *internal.Message)
 	updateValidateCb map[string]func(res *internal.Message)
 
-	log *zap.Logger
+	log *slog.Logger
 	mh  temporalClient.MetricsHandler
 
 	// objects pool
@@ -75,7 +75,7 @@ type Workflow struct {
 }
 
 // NewWorkflowDefinition ... WorkflowDefinition Constructor
-func NewWorkflowDefinition(codec api.Codec, la LaFn, pool api.Pool, log *zap.Logger) *Workflow {
+func NewWorkflowDefinition(codec api.Codec, la LaFn, pool api.Pool, log *slog.Logger) *Workflow {
 	return &Workflow{
 		rrID:  uuid.NewString(),
 		log:   log,
@@ -116,7 +116,7 @@ func (wp *Workflow) NewWorkflowDefinition() bindings.WorkflowDefinition {
 
 // Execute implementation must be asynchronous.
 func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.Header, input *commonpb.Payloads) {
-	wp.log.Debug("workflow execute", zap.String("runID", env.WorkflowInfo().WorkflowExecution.RunID), zap.Any("workflow info", env.WorkflowInfo()))
+	wp.log.Debug("workflow execute", "runID", env.WorkflowInfo().WorkflowExecution.RunID, "workflow info", env.WorkflowInfo())
 
 	wp.mh = env.GetMetricsHandler()
 	wp.env = env
@@ -164,7 +164,7 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 			case enumspb.INDEXED_VALUE_TYPE_TEXT:
 				str, ok := v.(string)
 				if !ok {
-					wp.log.Warn("typed search attribute found, but it is not a string", zap.String("key", k.GetName()))
+					wp.log.Warn("typed search attribute found, but it is not a string", "key", k.GetName())
 					continue
 				}
 				tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
@@ -174,7 +174,7 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 			case enumspb.INDEXED_VALUE_TYPE_KEYWORD:
 				str, ok := v.(string)
 				if !ok {
-					wp.log.Warn("typed search attribute found, but it is not a string[keyword]", zap.String("key", k.GetName()))
+					wp.log.Warn("typed search attribute found, but it is not a string[keyword]", "key", k.GetName())
 					continue
 				}
 				tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
@@ -196,7 +196,7 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 				case string:
 					res, err := strconv.Atoi(tt)
 					if err != nil {
-						wp.log.Warn("typed search attribute found, but it is not an int", zap.Error(err), zap.String("key", k.GetName()))
+						wp.log.Warn("typed search attribute found, but it is not an int", "error", err, "key", k.GetName())
 						continue
 					}
 					tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
@@ -204,13 +204,13 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 						Value: res,
 					}
 				default:
-					wp.log.Warn("typed search attribute found, but it is not an int", zap.String("key", k.GetName()))
+					wp.log.Warn("typed search attribute found, but it is not an int", "key", k.GetName())
 					continue
 				}
 			case enumspb.INDEXED_VALUE_TYPE_DOUBLE:
 				str, ok := v.(float64)
 				if !ok {
-					wp.log.Warn("typed search attribute found, but it is not a float64", zap.String("key", k.GetName()))
+					wp.log.Warn("typed search attribute found, but it is not a float64", "key", k.GetName())
 					continue
 				}
 				tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
@@ -220,7 +220,7 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 			case enumspb.INDEXED_VALUE_TYPE_BOOL:
 				str, ok := v.(bool)
 				if !ok {
-					wp.log.Warn("typed search attribute found, but it is not a bool", zap.String("key", k.GetName()))
+					wp.log.Warn("typed search attribute found, but it is not a bool", "key", k.GetName())
 					continue
 				}
 				tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
@@ -230,7 +230,7 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 			case enumspb.INDEXED_VALUE_TYPE_DATETIME:
 				str, ok := v.(time.Time)
 				if !ok {
-					wp.log.Warn("typed search attribute found, but it is not a datetime", zap.String("key", k.GetName()))
+					wp.log.Warn("typed search attribute found, but it is not a datetime", "key", k.GetName())
 					continue
 				}
 				tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
@@ -240,7 +240,7 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 			case enumspb.INDEXED_VALUE_TYPE_KEYWORD_LIST:
 				str, ok := v.([]string)
 				if !ok {
-					wp.log.Warn("typed search attribute found, but it is not a []string", zap.String("key", k.GetName()))
+					wp.log.Warn("typed search attribute found, but it is not a []string", "key", k.GetName())
 					continue
 				}
 				tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
@@ -284,7 +284,7 @@ func (wp *Workflow) OnWorkflowTaskStarted(t time.Duration) {
 		atomic.StoreUint32(&wp.inLoop, 0)
 	}()
 
-	wp.log.Debug("workflow task started", zap.Duration("time", t))
+	wp.log.Debug("workflow task started", "time", t)
 
 	var err error
 	// do not copy
@@ -361,7 +361,7 @@ func (wp *Workflow) StackTrace() string {
 }
 
 func (wp *Workflow) Close() {
-	wp.log.Debug("close workflow", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID))
+	wp.log.Debug("close workflow", "RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID)
 	// when closing the workflow, we should drain(execute) unhandled updates
 	if wp.env.DrainUnhandledUpdates() {
 		wp.log.Info("drained unhandled updates")

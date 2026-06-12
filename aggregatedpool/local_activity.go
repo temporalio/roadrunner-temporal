@@ -2,6 +2,7 @@ package aggregatedpool
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 
@@ -14,17 +15,16 @@ import (
 	commonpb "go.temporal.io/api/common/v1"
 	tActivity "go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/temporal"
-	"go.uber.org/zap"
 )
 
 type LocalActivityFn struct {
 	codec api.Codec
 	pool  api.Pool
-	log   *zap.Logger
+	log   *slog.Logger
 	seqID uint64
 }
 
-func NewLocalActivityFn(codec api.Codec, pool api.Pool, log *zap.Logger) *LocalActivityFn {
+func NewLocalActivityFn(codec api.Codec, pool api.Pool, log *slog.Logger) *LocalActivityFn {
 	return &LocalActivityFn{
 		codec: codec,
 		pool:  pool,
@@ -54,7 +54,7 @@ func (la *LocalActivityFn) ExecuteLA(ctx context.Context, hdr *commonpb.Header, 
 		Header:   hdr,
 	}
 
-	la.log.Debug("executing local activity fn", zap.Uint64("ID", msg.ID), zap.String("task-queue", info.TaskQueue), zap.String("la ID", info.ActivityID))
+	la.log.Debug("executing local activity fn", "ID", msg.ID, "task-queue", info.TaskQueue, "la ID", info.ActivityID)
 
 	pl := getPld()
 	defer putPld(pl)
