@@ -11,15 +11,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/roadrunner-server/status/v5"
+	"github.com/roadrunner-server/status/v6"
 
-	configImpl "github.com/roadrunner-server/config/v5"
+	configImpl "github.com/roadrunner-server/config/v6"
 	"github.com/roadrunner-server/endure/v2"
-	"github.com/roadrunner-server/informer/v5"
-	"github.com/roadrunner-server/logger/v5"
-	"github.com/roadrunner-server/resetter/v5"
-	"github.com/roadrunner-server/rpc/v5"
-	"github.com/roadrunner-server/server/v5"
+	"github.com/roadrunner-server/informer/v6"
+	"github.com/roadrunner-server/logger/v6"
+	"github.com/roadrunner-server/resetter/v6"
+	"github.com/roadrunner-server/rpc/v6"
+	"github.com/roadrunner-server/server/v6"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	roadrunnerTemporal "github.com/temporalio/roadrunner-temporal/v6"
@@ -28,8 +28,7 @@ import (
 	"go.temporal.io/api/history/v1"
 	temporalClient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
+	tlog "go.temporal.io/sdk/log"
 )
 
 const (
@@ -45,54 +44,6 @@ type Configurer interface {
 
 type TestServer struct {
 	Client temporalClient.Client
-}
-
-type log struct {
-	zl *zap.Logger
-}
-
-// NewZapAdapter ... which uses general log interface
-func newZapAdapter(zapLogger *zap.Logger) *log {
-	return &log{
-		zl: zapLogger.WithOptions(zap.AddCallerSkip(1)),
-	}
-}
-
-func (l *log) Debug(msg string, keyvals ...any) {
-	l.zl.Debug(msg, l.fields(keyvals)...)
-}
-
-func (l *log) Info(msg string, keyvals ...any) {
-	l.zl.Info(msg, l.fields(keyvals)...)
-}
-
-func (l *log) Warn(msg string, keyvals ...any) {
-	l.zl.Warn(msg, l.fields(keyvals)...)
-}
-
-func (l *log) Error(msg string, keyvals ...any) {
-	l.zl.Error(msg, l.fields(keyvals)...)
-}
-
-func (l *log) fields(keyvals []any) []zap.Field {
-	// we should have an even number of keys and values
-	if len(keyvals)%2 != 0 {
-		return []zap.Field{zap.Error(fmt.Errorf("odd number of keyvals pairs: %v", keyvals))}
-	}
-
-	zf := make([]zap.Field, len(keyvals)/2)
-	j := 0
-	for i := 0; i < len(keyvals); i += 2 {
-		key, ok := keyvals[i].(string)
-		if !ok {
-			key = fmt.Sprintf("%v", keyvals[i])
-		}
-
-		zf[j] = zap.Any(key, keyvals[i+1])
-		j++
-	}
-
-	return zf
 }
 
 func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, configPath string) *TestServer {
@@ -141,7 +92,7 @@ func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, confi
 		HostPort:      "127.0.0.1:7233",
 		Namespace:     "default",
 		DataConverter: dc,
-		Logger:        newZapAdapter(initLogger()),
+		Logger:        tlog.NewStructuredLogger(initLogger()),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -215,7 +166,7 @@ func NewTestServerTLS(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, co
 		HostPort:      "127.0.0.1:7233",
 		Namespace:     "default",
 		DataConverter: dc,
-		Logger:        newZapAdapter(initLogger()),
+		Logger:        tlog.NewStructuredLogger(initLogger()),
 		ConnectionOptions: temporalClient.ConnectionOptions{
 			TLS: &tls.Config{
 				MinVersion:   tls.VersionTLS12,
@@ -285,7 +236,7 @@ func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.W
 		HostPort:      "127.0.0.1:7233",
 		Namespace:     "default",
 		DataConverter: dc,
-		Logger:        newZapAdapter(initLogger()),
+		Logger:        tlog.NewStructuredLogger(initLogger()),
 	})
 	require.NoError(t, err)
 
@@ -345,7 +296,7 @@ func NewTestServerWithDataConverter(t *testing.T, stopCh chan struct{}, wg *sync
 		HostPort:      "127.0.0.1:7233",
 		Namespace:     "default",
 		DataConverter: dc,
-		Logger:        newZapAdapter(initLogger()),
+		Logger:        tlog.NewStructuredLogger(initLogger()),
 	})
 	require.NoError(t, err)
 
@@ -402,7 +353,7 @@ func NewTestServerWithOtelInterceptor(t *testing.T, stopCh chan struct{}, wg *sy
 		HostPort:      "127.0.0.1:7233",
 		Namespace:     "default",
 		DataConverter: dc,
-		Logger:        newZapAdapter(initLogger()),
+		Logger:        tlog.NewStructuredLogger(initLogger()),
 	})
 	require.NoError(t, err)
 
@@ -461,29 +412,9 @@ func (s *TestServer) AssertNotContainsEvent(client temporalClient.Client, t *tes
 	}
 }
 
-func initLogger() *zap.Logger {
-	cfg := zap.Config{
-		Level:    zap.NewAtomicLevelAt(zap.ErrorLevel),
-		Encoding: "console",
-		EncoderConfig: zapcore.EncoderConfig{
-			MessageKey:    "message",
-			LevelKey:      "level",
-			TimeKey:       "time",
-			CallerKey:     "caller",
-			NameKey:       "name",
-			StacktraceKey: "stack",
-			EncodeLevel:   zapcore.CapitalLevelEncoder,
-			EncodeTime:    zapcore.ISO8601TimeEncoder,
-			EncodeCaller:  zapcore.ShortCallerEncoder,
-		},
-		OutputPaths:      []string{"stderr"},
-		ErrorOutputPaths: []string{"stderr"},
-	}
-
-	l, err := cfg.Build(zap.AddCaller())
-	if err != nil {
-		panic(err)
-	}
-
-	return l
+func initLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level:     slog.LevelError,
+		AddSource: true,
+	}))
 }
