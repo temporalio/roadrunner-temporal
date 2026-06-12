@@ -2,20 +2,20 @@ package rrtemporal
 
 import (
 	"io"
+	"log/slog"
 	"strconv"
 	"time"
 
 	"github.com/cactus/go-statsd-client/v5/statsd"
 	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/pool/fsm"
-	"github.com/roadrunner-server/pool/state/process"
+	"github.com/roadrunner-server/pool/v2/fsm"
+	"github.com/roadrunner-server/pool/v2/state/process"
 	"github.com/uber-go/tally/v4"
 	"github.com/uber-go/tally/v4/prometheus"
 	tclient "go.temporal.io/sdk/client"
 	ttally "go.temporal.io/sdk/contrib/tally" // temporal tally hanlders
 	statsdreporter "go.temporal.io/server/common/metrics/tally/statsd"
-	"go.uber.org/zap"
 )
 
 const (
@@ -46,12 +46,12 @@ func newStatsExporter(stats Informer) *StatsExporter {
 	}
 }
 
-func newPrometheusScope(c prometheus.Configuration, prefix string, log *zap.Logger) (tally.Scope, io.Closer, error) {
+func newPrometheusScope(c prometheus.Configuration, prefix string, log *slog.Logger) (tally.Scope, io.Closer, error) {
 	reporter, err := c.NewReporter(
 		prometheus.ConfigurationOptions{
 			Registry: prom.NewRegistry(),
 			OnError: func(err error) {
-				log.Error("prometheus registry", zap.Error(err))
+				log.Error("prometheus registry", "error", err)
 			},
 		},
 	)
@@ -123,7 +123,7 @@ func newStatsdScope(statsdConfig *Statsd) (tally.Scope, io.Closer, error) {
 }
 
 // init RR metrics
-func initMetrics(cfg *Config, log *zap.Logger) (tclient.MetricsHandler, io.Closer, error) {
+func initMetrics(cfg *Config, log *slog.Logger) (tclient.MetricsHandler, io.Closer, error) {
 	switch cfg.Metrics.Driver {
 	case driverPrometheus:
 		ms, cl, err := newPrometheusScope(prometheus.Configuration{

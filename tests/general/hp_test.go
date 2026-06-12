@@ -5,15 +5,15 @@ import (
 	"crypto/rand"
 	"crypto/sha512"
 	"fmt"
-	"net"
-	"net/rpc"
 	"strconv"
 	"sync"
 	"testing"
 	"tests/helpers"
 	"time"
 
-	goridgeRpc "github.com/roadrunner-server/goridge/v3/pkg/rpc"
+	protoApi "github.com/roadrunner-server/api-go/v6/temporal/v1"
+
+	"connectrpc.com/connect"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/api/common/v1"
 
@@ -544,6 +544,9 @@ func Test_ActivityHeartbeatProto(t *testing.T) {
 
 	require.Len(t, we.PendingActivities, 1)
 	act := we.PendingActivities[0]
+	// heartbeats are delivered by the PHP worker through the RR control-plane
+	// RPC; fail instead of panicking when none arrived
+	require.NotNil(t, act.HeartbeatDetails)
 	require.Len(t, act.HeartbeatDetails.Payloads, 1)
 	assert.Equal(t, `{"value":2}`, string(act.HeartbeatDetails.Payloads[0].Data))
 
@@ -869,27 +872,15 @@ func Test_SagaWorkflowLAProto(t *testing.T) {
 }
 
 func getActivities(t *testing.T) []string {
-	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
-	assert.NoError(t, err)
-	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-
-	res := make([]string, 0, 10)
-
-	err = c.Call("temporal.GetActivityNames", true, &res)
+	resp, err := helpers.TemporalClient().GetActivityNames(t.Context(), connect.NewRequest(&protoApi.GetNamesRequest{}))
 	assert.NoError(t, err)
 
-	return res
+	return resp.Msg.GetNames()
 }
 
 func getWorkflows(t *testing.T) []string {
-	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
-	assert.NoError(t, err)
-	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-
-	res := make([]string, 0, 10)
-
-	err = c.Call("temporal.GetWorkflowNames", true, &res)
+	resp, err := helpers.TemporalClient().GetWorkflowNames(t.Context(), connect.NewRequest(&protoApi.GetNamesRequest{}))
 	assert.NoError(t, err)
 
-	return res
+	return resp.Msg.GetNames()
 }

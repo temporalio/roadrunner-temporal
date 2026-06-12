@@ -6,73 +6,61 @@ import (
 	"os"
 	"time"
 
-	commonV1 "github.com/roadrunner-server/api/v4/build/common/v1"
-	protoApi "github.com/roadrunner-server/api/v4/build/temporal/v1"
+	"connectrpc.com/connect"
+	commonV1 "github.com/roadrunner-server/api-go/v6/common/v1"
+	protoApi "github.com/roadrunner-server/api-go/v6/temporal/v1"
+	"github.com/roadrunner-server/api-go/v6/temporal/v1/temporalV1connect"
 	"github.com/roadrunner-server/errors"
-	"github.com/temporalio/roadrunner-temporal/v5/internal/logger"
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
 	"go.temporal.io/sdk/activity"
-	"go.temporal.io/sdk/client"
+	tlog "go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
-	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
-/*
-- the method's type is exported.
-- the method is exported.
-- the method has two arguments, both exported (or builtin) types.
-- the method's second argument is a pointer.
-- the method has return type error.
-*/
+// rpc exposes the temporal plugin control API (temporal.v1.TemporalService)
+// on the RoadRunner Connect-RPC plane.
 type rpc struct {
 	plugin *Plugin
-	client client.Client
 }
 
-// RecordHeartbeatRequest sent by activity to record current state.
-type RecordHeartbeatRequest struct {
-	TaskToken []byte `json:"taskToken"`
-	Details   []byte `json:"details"`
+// Compile-time check that rpc implements the generated handler interface.
+var _ temporalV1connect.TemporalServiceHandler = (*rpc)(nil)
+
+// newStatus builds the soft-error status carried inside replay responses
+// (kept in the response body for parity with the v5 RPC behavior).
+func newStatus(code codes.Code, msg string) *commonV1.Status {
+	// gRPC status codes are tiny (0..16), the conversion cannot overflow
+	return &commonV1.Status{Code: int32(code), Message: msg} //nolint:gosec
 }
 
-// RecordHeartbeatResponse sent back to the worker to indicate that activity was canceled.
-type RecordHeartbeatResponse struct {
-	Canceled bool `json:"canceled"`
-	Paused   bool `json:"paused"`
-}
-
-// RecordActivityHeartbeat records heartbeat for an activity.
-// taskToken - is the value of the binary "TaskToken" field of the "ActivityInfo" struct retrieved inside the activity.
-// details - is the progress you want to record along with heart beat for this activity.
-// The errors it can return:
-// - EntityNotExistsError
-// - InternalServiceError
-// - CanceledError
-func (r *rpc) RecordActivityHeartbeat(in RecordHeartbeatRequest, out *RecordHeartbeatResponse) error {
+// RecordActivityHeartbeat records a heartbeat for an activity.
+// task_token - is the value of the binary "TaskToken" field of the "ActivityInfo" struct retrieved inside the activity.
+// details - is the progress you want to record along with the heartbeat for this activity.
+func (r *rpc) RecordActivityHeartbeat(_ context.Context, req *connect.Request[protoApi.RecordHeartbeatRequest]) (*connect.Response[protoApi.RecordHeartbeatResponse], error) {
 	details := &commonpb.Payloads{}
 
-	if len(in.Details) != 0 {
-		if err := proto.Unmarshal(in.Details, details); err != nil {
-			return err
+	if len(req.Msg.GetDetails()) != 0 {
+		if err := proto.Unmarshal(req.Msg.GetDetails(), details); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 	}
 
 	if r.plugin.getActDef() == nil {
-		return errors.Str("no activity definition registered")
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.Str("no activity definition registered"))
 	}
 
 	// find running activity
 	r.plugin.mu.RLock()
-	ctx, err := r.plugin.temporal.rrActivityDef.GetActivityContext(in.TaskToken)
+	ctx, err := r.plugin.temporal.rrActivityDef.GetActivityContext(req.Msg.GetTaskToken())
 	if err != nil {
 		r.plugin.mu.RUnlock()
-		return err
+		return nil, err
 	}
 	r.plugin.mu.RUnlock()
 
@@ -81,65 +69,60 @@ func (r *rpc) RecordActivityHeartbeat(in RecordHeartbeatRequest, out *RecordHear
 	err = context.Cause(ctx)
 	if err != nil {
 		if stderr.Is(err, activity.ErrActivityPaused) {
-			*out = RecordHeartbeatResponse{Paused: true}
-			return nil
+			return connect.NewResponse(&protoApi.RecordHeartbeatResponse{Paused: true}), nil
 		}
 	}
 
+	out := &protoApi.RecordHeartbeatResponse{}
 	select {
 	case <-ctx.Done():
-		*out = RecordHeartbeatResponse{Canceled: true}
+		out.Canceled = true
 	default:
-		*out = RecordHeartbeatResponse{Canceled: false}
+		out.Canceled = false
 	}
 
-	return nil
+	return connect.NewResponse(out), nil
 }
 
-func (r *rpc) GetActivityNames(_ bool, out *[]string) error {
+func (r *rpc) GetActivityNames(_ context.Context, _ *connect.Request[protoApi.GetNamesRequest]) (*connect.Response[protoApi.NamesList], error) {
 	r.plugin.mu.RLock()
 	defer r.plugin.mu.RUnlock()
+
+	out := &protoApi.NamesList{Names: make([]string, 0, len(r.plugin.temporal.activities))}
 	for k := range r.plugin.temporal.activities {
-		*out = append(*out, k)
+		out.Names = append(out.Names, k)
 	}
-	return nil
+
+	return connect.NewResponse(out), nil
 }
 
-func (r *rpc) GetWorkflowNames(_ bool, out *[]string) error {
+func (r *rpc) GetWorkflowNames(_ context.Context, _ *connect.Request[protoApi.GetNamesRequest]) (*connect.Response[protoApi.NamesList], error) {
 	r.plugin.mu.RLock()
 	defer r.plugin.mu.RUnlock()
 
+	out := &protoApi.NamesList{Names: make([]string, 0, len(r.plugin.temporal.workflows))}
 	for k := range r.plugin.temporal.workflows {
-		*out = append(*out, k)
+		out.Names = append(out.Names, k)
 	}
 
-	return nil
+	return connect.NewResponse(out), nil
 }
 
-func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayResponse) error {
+func (r *rpc) ReplayWorkflow(_ context.Context, req *connect.Request[protoApi.ReplayRequest]) (*connect.Response[protoApi.ReplayResponse], error) {
+	in := req.Msg
+	out := &protoApi.ReplayResponse{}
+
 	r.plugin.log.Debug("replay workflow request",
-		zap.String("run_id", in.GetWorkflowExecution().GetRunId()),
-		zap.String("workflow_id", in.GetWorkflowExecution().GetWorkflowId()),
-		zap.String("workflow_name", in.GetWorkflowType().GetName()))
+		"run_id", in.GetWorkflowExecution().GetRunId(),
+		"workflow_id", in.GetWorkflowExecution().GetWorkflowId(),
+		"workflow_name", in.GetWorkflowType().GetName())
 
-	if in.GetWorkflowExecution() == nil || in.GetWorkflowType() == nil {
-		out.Status = &commonV1.Status{
-			Code:    int32(codes.InvalidArgument),
-			Message: "run_id, workflow_id or workflow_name should not be empty",
-		}
+	if in.GetWorkflowExecution() == nil || in.GetWorkflowType() == nil ||
+		in.GetWorkflowExecution().GetRunId() == "" || in.GetWorkflowExecution().GetWorkflowId() == "" || in.GetWorkflowType().GetName() == "" {
+		out.Status = newStatus(codes.InvalidArgument, "run_id, workflow_id or workflow_name should not be empty")
 
-		r.plugin.log.Error("replay workflow request", zap.String("error", "run_id, workflow_id or workflow_name should not be empty"))
-		return nil
-	}
-
-	if in.GetWorkflowExecution().GetRunId() == "" || in.GetWorkflowExecution().GetWorkflowId() == "" || in.GetWorkflowType().GetName() == "" {
-		out.Status = &commonV1.Status{
-			Code:    int32(codes.InvalidArgument),
-			Message: "run_id, workflow_id or workflow_name should not be empty",
-		}
-
-		r.plugin.log.Error("replay workflow request", zap.String("error", "run_id, workflow_id or workflow_name should not be empty"))
-		return nil
+		r.plugin.log.Error("replay workflow request", "error", "run_id, workflow_id or workflow_name should not be empty")
+		return connect.NewResponse(out), nil
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -150,24 +133,18 @@ func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 	for iter.HasNext() {
 		event, err := iter.Next()
 		if err != nil {
-			out.Status = &commonV1.Status{
-				Code:    int32(codes.Internal),
-				Message: err.Error(),
-			}
+			out.Status = newStatus(codes.Internal, err.Error())
 
-			r.plugin.log.Error("history iteration error", zap.Error(err))
-			return nil
+			r.plugin.log.Error("history iteration error", "error", err)
+			return connect.NewResponse(out), nil
 		}
 		hist.Events = append(hist.Events, event)
 	}
 
 	if r.plugin.getWfDef() == nil {
-		out.Status = &commonV1.Status{
-			Code:    int32(codes.FailedPrecondition),
-			Message: "workflow definition is not initialized, retry in a second",
-		}
+		out.Status = newStatus(codes.FailedPrecondition, "workflow definition is not initialized, retry in a second")
 
-		return nil
+		return connect.NewResponse(out), nil
 	}
 
 	replayer := worker.NewWorkflowReplayer()
@@ -176,66 +153,50 @@ func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 		DisableAlreadyRegisteredCheck: false,
 	})
 
-	err := replayer.ReplayWorkflowHistory(logger.NewZapAdapter(r.plugin.log), &hist)
+	err := replayer.ReplayWorkflowHistory(tlog.NewStructuredLogger(r.plugin.log), &hist)
 	if err != nil {
-		out.Status = &commonV1.Status{
-			Code:    int32(codes.FailedPrecondition),
-			Message: err.Error(),
-		}
+		out.Status = newStatus(codes.FailedPrecondition, err.Error())
 
-		r.plugin.log.Error("replay error", zap.Error(err))
-		return nil
+		r.plugin.log.Error("replay error", "error", err)
+		return connect.NewResponse(out), nil
 	}
 
-	out.Status = &commonV1.Status{
-		Code: int32(codes.OK),
-	}
+	out.Status = newStatus(codes.OK, "")
 
 	r.plugin.log.Debug("replay workflow request finished successfully")
 
-	return nil
+	return connect.NewResponse(out), nil
 }
 
-func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.ReplayResponse) error {
+func (r *rpc) DownloadWorkflowHistory(_ context.Context, req *connect.Request[protoApi.ReplayRequest]) (*connect.Response[protoApi.ReplayResponse], error) {
+	in := req.Msg
+	out := &protoApi.ReplayResponse{}
+
 	r.plugin.log.Debug("replay workflow request",
-		zap.String("run_id", in.GetWorkflowExecution().GetRunId()),
-		zap.String("workflow_id", in.GetWorkflowExecution().GetWorkflowId()),
-		zap.String("save_path", in.GetSavePath()))
+		"run_id", in.GetWorkflowExecution().GetRunId(),
+		"workflow_id", in.GetWorkflowExecution().GetWorkflowId(),
+		"save_path", in.GetSavePath())
 
-	if in.GetWorkflowExecution() == nil || in.GetWorkflowType() == nil || in.GetSavePath() == "" {
-		out.Status = &commonV1.Status{
-			Code:    int32(codes.InvalidArgument),
-			Message: "run_id, workflow_id or save_path should not be empty",
-		}
+	if in.GetWorkflowExecution() == nil || in.GetWorkflowType() == nil || in.GetSavePath() == "" ||
+		in.GetWorkflowExecution().GetRunId() == "" || in.GetWorkflowExecution().GetWorkflowId() == "" || in.GetWorkflowType().GetName() == "" {
+		out.Status = newStatus(codes.InvalidArgument, "run_id, workflow_id or save_path should not be empty")
 
-		return nil
-	}
-
-	if in.GetWorkflowExecution().GetRunId() == "" || in.GetWorkflowExecution().GetWorkflowId() == "" || in.GetWorkflowType().GetName() == "" {
-		out.Status = &commonV1.Status{
-			Code:    int32(codes.InvalidArgument),
-			Message: "run_id, workflow_id or save_path should not be empty",
-		}
-
-		r.plugin.log.Error("replay workflow request", zap.String("error", "run_id, workflow_id or save_path should not be empty"))
-		return nil
+		r.plugin.log.Error("replay workflow request", "error", "run_id, workflow_id or save_path should not be empty")
+		return connect.NewResponse(out), nil
 	}
 
 	file, err := os.Create(in.GetSavePath())
 	if err != nil {
-		out.Status = &commonV1.Status{
-			Code:    int32(codes.Internal),
-			Message: err.Error(),
-		}
+		out.Status = newStatus(codes.Internal, err.Error())
 
-		r.plugin.log.Error("failed to create the file", zap.Error(err))
-		return nil
+		r.plugin.log.Error("failed to create the file", "error", err)
+		return connect.NewResponse(out), nil
 	}
 
 	defer func() {
 		err = file.Close()
 		if err != nil {
-			r.plugin.log.Error("failed to close the file", zap.Error(err))
+			r.plugin.log.Error("failed to close the file", "error", err)
 		}
 	}()
 
@@ -248,13 +209,10 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 	for iter.HasNext() {
 		event, errn := iter.Next()
 		if errn != nil {
-			out.Status = &commonV1.Status{
-				Code:    int32(codes.Internal),
-				Message: errn.Error(),
-			}
+			out.Status = newStatus(codes.Internal, errn.Error())
 
-			r.plugin.log.Error("history iteration error", zap.Error(errn))
-			return nil
+			r.plugin.log.Error("history iteration error", "error", errn)
+			return connect.NewResponse(out), nil
 		}
 
 		hist.Events = append(hist.Events, event)
@@ -262,69 +220,55 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 
 	data, err := protojson.Marshal(&hist)
 	if err != nil {
-		out.Status = &commonV1.Status{
-			Code:    int32(codes.Internal),
-			Message: err.Error(),
-		}
+		out.Status = newStatus(codes.Internal, err.Error())
 
-		r.plugin.log.Error("history marshal error", zap.Error(err))
-		return nil
+		r.plugin.log.Error("history marshal error", "error", err)
+		return connect.NewResponse(out), nil
 	}
 
 	_, err = file.Write(data)
 	if err != nil {
-		out.Status = &commonV1.Status{
-			Code:    int32(codes.Internal),
-			Message: err.Error(),
-		}
+		out.Status = newStatus(codes.Internal, err.Error())
 
-		r.plugin.log.Error("history marshal error", zap.Error(err))
-		return nil
+		r.plugin.log.Error("history marshal error", "error", err)
+		return connect.NewResponse(out), nil
 	}
 
-	out.Status = &commonV1.Status{
-		Code: int32(codes.OK),
-	}
+	out.Status = newStatus(codes.OK, "")
 
-	r.plugin.log.Debug("history saved", zap.String("location", in.GetSavePath()))
+	r.plugin.log.Debug("history saved", "location", in.GetSavePath())
 
-	return nil
+	return connect.NewResponse(out), nil
 }
 
-func (r *rpc) ReplayFromJSON(in *protoApi.ReplayRequest, out *protoApi.ReplayResponse) error {
+func (r *rpc) ReplayFromJSON(_ context.Context, req *connect.Request[protoApi.ReplayRequest]) (*connect.Response[protoApi.ReplayResponse], error) {
+	in := req.Msg
+	out := &protoApi.ReplayResponse{}
+
 	r.plugin.log.Debug("replay from JSON request",
-		zap.String("workflow_name", in.GetWorkflowType().GetName()),
-		zap.String("save_path", in.GetSavePath()),
-		zap.Int64("last_event_id", in.GetLastEventId()),
+		"workflow_name", in.GetWorkflowType().GetName(),
+		"save_path", in.GetSavePath(),
+		"last_event_id", in.GetLastEventId(),
 	)
 
 	if in.GetWorkflowType() == nil || in.GetSavePath() == "" {
-		out.Status = &commonV1.Status{
-			Code:    int32(codes.InvalidArgument),
-			Message: "workflow_name and save_path should not be empty",
-		}
+		out.Status = newStatus(codes.InvalidArgument, "workflow_name and save_path should not be empty")
 
-		r.plugin.log.Error("replay from JSON request", zap.String("error", "workflow_name and save_path should not be empty"))
-		return nil
+		r.plugin.log.Error("replay from JSON request", "error", "workflow_name and save_path should not be empty")
+		return connect.NewResponse(out), nil
 	}
 
 	if in.GetWorkflowType().GetName() == "" {
-		out.Status = &commonV1.Status{
-			Code:    int32(codes.InvalidArgument),
-			Message: "workflow_name should not be empty",
-		}
+		out.Status = newStatus(codes.InvalidArgument, "workflow_name should not be empty")
 
-		r.plugin.log.Error("replay from JSON request", zap.String("error", "workflow_name should not be empty"))
-		return nil
+		r.plugin.log.Error("replay from JSON request", "error", "workflow_name should not be empty")
+		return connect.NewResponse(out), nil
 	}
 
 	if r.plugin.getWfDef() == nil {
-		out.Status = &commonV1.Status{
-			Code:    int32(codes.FailedPrecondition),
-			Message: "workflow definition is not initialized, retry in a second",
-		}
+		out.Status = newStatus(codes.FailedPrecondition, "workflow definition is not initialized, retry in a second")
 
-		return nil
+		return connect.NewResponse(out), nil
 	}
 
 	replayer := worker.NewWorkflowReplayer()
@@ -336,61 +280,50 @@ func (r *rpc) ReplayFromJSON(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 	switch in.GetLastEventId() {
 	// we don't have last event ID
 	case 0:
-		err := replayer.ReplayWorkflowHistoryFromJSONFile(logger.NewZapAdapter(r.plugin.log), in.GetSavePath())
+		err := replayer.ReplayWorkflowHistoryFromJSONFile(tlog.NewStructuredLogger(r.plugin.log), in.GetSavePath())
 		if err != nil {
-			out.Status = &commonV1.Status{
-				Code:    int32(codes.FailedPrecondition),
-				Message: err.Error(),
-			}
+			out.Status = newStatus(codes.FailedPrecondition, err.Error())
 
-			r.plugin.log.Error("replay from JSON request", zap.Error(err))
-			return nil
+			r.plugin.log.Error("replay from JSON request", "error", err)
+			return connect.NewResponse(out), nil
 		}
 	default:
 		// we have last event ID
-		err := replayer.ReplayPartialWorkflowHistoryFromJSONFile(logger.NewZapAdapter(r.plugin.log), in.GetSavePath(), in.GetLastEventId())
+		err := replayer.ReplayPartialWorkflowHistoryFromJSONFile(tlog.NewStructuredLogger(r.plugin.log), in.GetSavePath(), in.GetLastEventId())
 		if err != nil {
-			out.Status = &commonV1.Status{
-				Code:    int32(codes.FailedPrecondition),
-				Message: err.Error(),
-			}
+			out.Status = newStatus(codes.FailedPrecondition, err.Error())
 
-			r.plugin.log.Error("replay from JSON request (partial workflow history)", zap.Int64("id", in.GetLastEventId()), zap.Error(err))
-			return nil
+			r.plugin.log.Error("replay from JSON request (partial workflow history)", "id", in.GetLastEventId(), "error", err)
+			return connect.NewResponse(out), nil
 		}
 	}
 
-	out.Status = &commonV1.Status{
-		Code: int32(codes.OK),
-	}
+	out.Status = newStatus(codes.OK, "")
 
 	r.plugin.log.Debug("replay from JSON request finished successfully")
 
-	return nil
+	return connect.NewResponse(out), nil
 }
 
-func (r *rpc) ReplayWorkflowHistory(in *protoApi.History, out *protoApi.ReplayResponse) error {
+func (r *rpc) ReplayWorkflowHistory(_ context.Context, req *connect.Request[protoApi.History]) (*connect.Response[protoApi.ReplayResponse], error) {
+	in := req.Msg
+	out := &protoApi.ReplayResponse{}
+
 	r.plugin.log.Debug("replay from workflow history request",
-		zap.String("workflow_name", in.GetWorkflowType().GetName()),
+		"workflow_name", in.GetWorkflowType().GetName(),
 	)
 
 	if in.GetHistory() == nil || in.GetWorkflowType().GetName() == "" {
-		out.Status = &commonV1.Status{
-			Code:    int32(codes.FailedPrecondition),
-			Message: "workflow_name and/or history should not be empty",
-		}
+		out.Status = newStatus(codes.FailedPrecondition, "workflow_name and/or history should not be empty")
 
 		r.plugin.log.Error("workflow_name and/or history should not be empty")
-		return nil
+		return connect.NewResponse(out), nil
 	}
 
 	if r.plugin.getWfDef() == nil {
-		out.Status = &commonV1.Status{
-			Code:    int32(codes.FailedPrecondition),
-			Message: "workflow definition is not initialized, retry in a second",
-		}
+		out.Status = newStatus(codes.FailedPrecondition, "workflow definition is not initialized, retry in a second")
 
-		return nil
+		return connect.NewResponse(out), nil
 	}
 
 	replayer := worker.NewWorkflowReplayer()
@@ -399,33 +332,26 @@ func (r *rpc) ReplayWorkflowHistory(in *protoApi.History, out *protoApi.ReplayRe
 		DisableAlreadyRegisteredCheck: false,
 	})
 
-	err := replayer.ReplayWorkflowHistory(logger.NewZapAdapter(r.plugin.log), in.GetHistory())
+	err := replayer.ReplayWorkflowHistory(tlog.NewStructuredLogger(r.plugin.log), in.GetHistory())
 	if err != nil {
-		out.Status = &commonV1.Status{
-			Code:    int32(codes.FailedPrecondition),
-			Message: err.Error(),
-		}
+		out.Status = newStatus(codes.FailedPrecondition, err.Error())
 
-		r.plugin.log.Error("replay workflow history", zap.Error(err))
-		return nil
+		r.plugin.log.Error("replay workflow history", "error", err)
+		return connect.NewResponse(out), nil
 	}
 
-	out.Status = &commonV1.Status{
-		Code: int32(codes.OK),
-	}
+	out.Status = newStatus(codes.OK, "")
 
 	r.plugin.log.Debug("replay workflow request finished successfully")
 
-	return nil
+	return connect.NewResponse(out), nil
 }
 
-func (r *rpc) UpdateAPIKey(in *string, out *bool) error {
-	if in != nil && *in != "" {
-		r.plugin.apiKey.Store(in)
-		*out = true
-		return nil
+func (r *rpc) UpdateAPIKey(_ context.Context, req *connect.Request[protoApi.UpdateAPIKeyRequest]) (*connect.Response[protoApi.UpdateAPIKeyResponse], error) {
+	if key := req.Msg.GetApiKey(); key != "" {
+		r.plugin.apiKey.Store(&key)
+		return connect.NewResponse(&protoApi.UpdateAPIKeyResponse{Ok: true}), nil
 	}
 
-	*out = false
-	return nil
+	return connect.NewResponse(&protoApi.UpdateAPIKeyResponse{Ok: false}), nil
 }

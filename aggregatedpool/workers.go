@@ -2,19 +2,19 @@ package aggregatedpool
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/roadrunner-server/errors"
-	"github.com/temporalio/roadrunner-temporal/v5/api"
-	"github.com/temporalio/roadrunner-temporal/v5/internal"
+	"github.com/temporalio/roadrunner-temporal/v6/api"
+	"github.com/temporalio/roadrunner-temporal/v6/internal"
 	tActivity "go.temporal.io/sdk/activity"
 	temporalClient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	sdkinterceptor "go.temporal.io/sdk/interceptor"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
-	"go.uber.org/zap"
 )
 
 const tq = "taskqueue"
@@ -116,7 +116,7 @@ func registerWorkflow(register func(), name, taskQueue string) (err error) {
 	return nil
 }
 
-func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo, log *zap.Logger, tc temporalClient.Client, interceptors map[string]api.Interceptor, configuredInterceptors []string) ([]worker.Worker, error) {
+func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo, log *slog.Logger, tc temporalClient.Client, interceptors map[string]api.Interceptor, configuredInterceptors []string) ([]worker.Worker, error) {
 	resolved, err := ResolveInterceptors(interceptors, configuredInterceptors)
 	if err != nil {
 		return nil, err
@@ -125,7 +125,7 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 	workers := make([]worker.Worker, 0, len(wi))
 
 	for i := range wi {
-		log.Debug("worker info", zap.Any("worker_info", wi[i]))
+		log.Debug("worker info", "worker_info", wi[i])
 
 		// Override to 0: RoadRunner manages worker lifecycle independently
 		wi[i].Options.WorkerStopTimeout = 0
@@ -160,11 +160,11 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 				return nil, err
 			}
 
-			log.Debug("workflow registered", zap.String(tq, wi[i].TaskQueue), zap.Any("workflow name", wf.Name), zap.Int("versioning_behavior", int(wf.VersioningBehavior)))
+			log.Debug("workflow registered", tq, wi[i].TaskQueue, "workflow name", wf.Name, "versioning_behavior", int(wf.VersioningBehavior))
 		}
 
 		if actDef.disableActivityWorkers {
-			log.Debug("activity workers disabled", zap.String(tq, wi[i].TaskQueue))
+			log.Debug("activity workers disabled", tq, wi[i].TaskQueue)
 			// add worker to the pool without activities
 			workers = append(workers, wrk)
 			continue
@@ -177,13 +177,13 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 				SkipInvalidStructFunctions:    false,
 			})
 
-			log.Debug("activity registered", zap.String(tq, wi[i].TaskQueue), zap.Any("workflow name", wi[i].Activities[j].Name))
+			log.Debug("activity registered", tq, wi[i].TaskQueue, "workflow name", wi[i].Activities[j].Name)
 		}
 		// add worker to the pool
 		workers = append(workers, wrk)
 	}
 
-	log.Debug("workers initialized", zap.Int("num_workers", len(workers)))
+	log.Debug("workers initialized", "num_workers", len(workers))
 
 	return workers, nil
 }

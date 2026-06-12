@@ -1,27 +1,27 @@
 package proto
 
 import (
+	"log/slog"
 	"sync"
 
 	"github.com/goccy/go-json"
-	protocolV1 "github.com/roadrunner-server/api/v4/build/temporal/v1"
+	protocolV1 "github.com/roadrunner-server/api-go/v6/temporal/v1"
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/pool/payload"
-	"github.com/temporalio/roadrunner-temporal/v5/internal"
+	"github.com/roadrunner-server/pool/v2/payload"
+	"github.com/temporalio/roadrunner-temporal/v6/internal"
 	"go.temporal.io/sdk/converter"
-	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
 
 // Codec uses protobuf to exchange messages with underlying workers.
 type Codec struct {
-	log    *zap.Logger
+	log    *slog.Logger
 	dc     converter.DataConverter
 	frPool sync.Pool
 }
 
 // NewCodec creates new Proto communication Codec.
-func NewCodec(log *zap.Logger, dc converter.DataConverter) *Codec {
+func NewCodec(log *slog.Logger, dc converter.DataConverter) *Codec {
 	return &Codec{
 		log: log,
 		dc:  dc,
@@ -52,7 +52,7 @@ func (c *Codec) Encode(ctx *internal.Context, p *payload.Payload, msg ...*intern
 		}
 		request.Messages[i] = pm
 
-		c.log.Debug("outgoing message", zap.Uint64("id", pm.Id), zap.ByteString("data", p.Body), zap.ByteString("context", p.Context))
+		c.log.Debug("outgoing message", "id", pm.Id, "data", p.Body, "context", p.Context)
 	}
 
 	// context is always in JSON format
@@ -94,7 +94,7 @@ func (c *Codec) Decode(pld *payload.Payload, result *[]*internal.Message) error 
 			return errM
 		}
 
-		c.log.Debug("received message", zap.Any("command", msg.Command), zap.Uint64("id", msg.ID), zap.ByteString("data", pld.Body))
+		c.log.Debug("received message", "command", msg.Command, "id", msg.ID, "data", pld.Body)
 
 		*result = append(*result, msg)
 	}
@@ -115,7 +115,7 @@ func (c *Codec) DecodeWorkerInfo(p *payload.Payload, wi *[]*internal.WorkerInfo)
 	}
 
 	if len(info) != 1 {
-		c.log.Error("received not valid workflow info", zap.Any("data", info))
+		c.log.Error("received not valid workflow info", "data", info)
 		return errors.E(op, errors.Str("unable to read worker info"))
 	}
 

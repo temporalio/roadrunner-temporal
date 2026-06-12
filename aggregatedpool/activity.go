@@ -2,19 +2,19 @@ package aggregatedpool
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"unsafe"
 
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/goridge/v3/pkg/frame"
-	"github.com/roadrunner-server/pool/payload"
-	"github.com/temporalio/roadrunner-temporal/v5/api"
-	"github.com/temporalio/roadrunner-temporal/v5/internal"
+	"github.com/roadrunner-server/goridge/v4/pkg/frame"
+	"github.com/roadrunner-server/pool/v2/payload"
+	"github.com/temporalio/roadrunner-temporal/v6/api"
+	"github.com/temporalio/roadrunner-temporal/v6/internal"
 	commonpb "go.temporal.io/api/common/v1"
 	tActivity "go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/temporal"
-	"go.uber.org/zap"
 )
 
 const (
@@ -26,7 +26,7 @@ const (
 type Activity struct {
 	codec   api.Codec
 	pool    api.Pool
-	log     *zap.Logger
+	log     *slog.Logger
 	seqID   uint64
 	running sync.Map
 
@@ -34,7 +34,7 @@ type Activity struct {
 	disableActivityWorkers bool
 }
 
-func NewActivityDefinition(ac api.Codec, p api.Pool, log *zap.Logger, disableActivityWorkers bool) *Activity {
+func NewActivityDefinition(ac api.Codec, p api.Pool, log *slog.Logger, disableActivityWorkers bool) *Activity {
 	return &Activity{
 		log:   log,
 		codec: ac,
