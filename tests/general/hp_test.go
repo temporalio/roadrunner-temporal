@@ -544,6 +544,9 @@ func Test_ActivityHeartbeatProto(t *testing.T) {
 
 	require.Len(t, we.PendingActivities, 1)
 	act := we.PendingActivities[0]
+	// heartbeats are delivered by the PHP worker through the RR control-plane
+	// RPC; fail instead of panicking when none arrived
+	require.NotNil(t, act.HeartbeatDetails)
 	require.Len(t, act.HeartbeatDetails.Payloads, 1)
 	assert.Equal(t, `{"value":2}`, string(act.HeartbeatDetails.Payloads[0].Data))
 
