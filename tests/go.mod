@@ -1,6 +1,6 @@
 module tests
 
-go 1.26.3
+go 1.26.4
 
 require (
 	github.com/fatih/color v1.19.0
@@ -83,7 +83,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.temporal.io/sdk/contrib/tally v0.2.0 // indirect
-	go.temporal.io/server v1.31.0 // indirect
+	go.temporal.io/server v1.31.1 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
