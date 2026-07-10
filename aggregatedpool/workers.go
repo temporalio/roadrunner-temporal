@@ -149,6 +149,24 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 		for j := 0; j < len(wi[i].Workflows); j++ {
 			wf := wi[i].Workflows[j]
 
+			// A dynamic workflow is the catch-all: register it via
+			// RegisterDynamicWorkflow (not by name) so it handles any workflow
+			// type that has no statically registered handler. The shared proxy
+			// (wDef) is a WorkflowDefinitionFactory, which RegisterDynamicWorkflow
+			// accepts; it forwards the real workflow type name to PHP.
+			if wf.Dynamic {
+				err := registerWorkflow(func() {
+					wrk.RegisterDynamicWorkflow(wDef, workflow.DynamicRegisterOptions{})
+				}, wf.Name, wi[i].TaskQueue)
+				if err != nil {
+					return nil, err
+				}
+
+				log.Debug("dynamic workflow registered", zap.String(tq, wi[i].TaskQueue), zap.Any("workflow name", wf.Name))
+
+				continue
+			}
+
 			err := registerWorkflow(func() {
 				wrk.RegisterWorkflowWithOptions(wDef, workflow.RegisterOptions{
 					Name:                          wf.Name,
