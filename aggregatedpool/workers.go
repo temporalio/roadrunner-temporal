@@ -147,10 +147,10 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, nexusHandler *NexusHandle
 			// Cooperative method-cancel is always wired: every PHP-SDK that
 			// ships Nexus services also handles CancelNexusOperationMethod
 			// (both arrived in the same release).
-			for j := 0; j < len(wi[i].NexusServices); j++ {
-				svc := nexusHandler.CreateNexusService(wi[i].TaskQueue, wi[i].NexusServices[j].Name, wi[i].NexusServices[j].Operations)
+			for _, ns := range wi[i].NexusServices {
+				svc := nexusHandler.CreateNexusService(wi[i].TaskQueue, ns.Name, ns.Operations)
 				wrk.RegisterNexusService(svc)
-				log.Debug("nexus service registered", zap.String(tq, wi[i].TaskQueue), zap.String("service", wi[i].NexusServices[j].Name), zap.Int("operations", len(wi[i].NexusServices[j].Operations)), zap.Strings("ops", wi[i].NexusServices[j].Operations))
+				log.Debug("nexus service registered", zap.String(tq, wi[i].TaskQueue), zap.String("service", ns.Name), zap.Strings("ops", ns.Operations))
 			}
 		}
 
