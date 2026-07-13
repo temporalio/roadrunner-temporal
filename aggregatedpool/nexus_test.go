@@ -607,7 +607,7 @@ func (p *recordingPool) Exec(ctx context.Context, pld *payload.Payload, _ chan s
 	return ch, nil
 }
 
-func (p *recordingPool) Workers() []*poolWorker.Process     { panic("not used") }
+func (p *recordingPool) Workers() []*poolWorker.Process     { return nil }
 func (p *recordingPool) RemoveWorker(context.Context) error { panic("not used") }
 func (p *recordingPool) AddWorker() error                   { panic("not used") }
 func (p *recordingPool) QueueSize() uint64                  { panic("not used") }

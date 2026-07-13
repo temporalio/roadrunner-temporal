@@ -540,9 +540,6 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 
 		params := command.NexusOperationParams(msg.Payloads, msg.Header)
 
-		// Register-and-wait: completion callback resolves the original
-		// ExecuteNexusOperation request; started callback pushes into the
-		// nexusStarted registry where GetNexusOperationStarted listens.
 		nexusSeq := wp.env.ExecuteNexusOperation(
 			params,
 			wp.makeNexusCompletionResponseCallback(msg.ID),
@@ -558,7 +555,10 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 	case *internal.GetNexusOperationStarted:
 		wp.log.Debug("get nexus operation started", zap.Uint64("ID", msg.ID), zap.Uint64("startID", command.ID))
 
+		// Drop the slot on consume, not on completion: a fast op can complete
+		// before PHP asks, and discarding early would hang this Listen forever.
 		wp.nexusStarted.Listen(command.ID, func(token string, err error) {
+			defer wp.nexusStarted.Discard(command.ID)
 			if err != nil {
 				wp.mq.PushError(msg.ID, temporal.GetDefaultFailureConverter().ErrorToFailure(err), wp.getWorkflowWorkerPid())
 				return

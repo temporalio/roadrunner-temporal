@@ -1,15 +1,11 @@
 package aggregatedpool
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"sync/atomic"
 	"testing"
 
-	"github.com/roadrunner-server/pool/payload"
-	staticPool "github.com/roadrunner-server/pool/pool/static_pool"
-	poolWorker "github.com/roadrunner-server/pool/worker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/temporalio/roadrunner-temporal/v5/canceller"
@@ -51,22 +47,8 @@ func TestNexusStartEnvelope_RoundTripViaTemporalConverter(t *testing.T) {
 
 // ── Caller-side callbacks fixture ─────────────────────────────────
 
-// stubPool is a minimal api.Pool that returns no workers. Only Workers() is
-// exercised (via getWorkflowWorkerPid → pid 0 when empty); the rest panic.
-type stubPool struct{}
-
-func (stubPool) Workers() []*poolWorker.Process     { return nil }
-func (stubPool) RemoveWorker(context.Context) error { panic("not used") }
-func (stubPool) AddWorker() error                   { panic("not used") }
-func (stubPool) QueueSize() uint64                  { panic("not used") }
-func (stubPool) Reset(context.Context) error        { panic("not used") }
-func (stubPool) Exec(context.Context, *payload.Payload, chan struct{}) (chan *staticPool.PExec, error) {
-	panic("not used")
-}
-
 // newCallerWorkflow builds the minimum Workflow needed to exercise the
-// nexus-caller callbacks: queue, canceller, callbacks slice, inLoop flag,
-// nexusStarted registry. No env, no codec — those are unused on these paths.
+// nexus-caller callbacks. recordingPool.Workers() returns nil → pid 0.
 func newCallerWorkflow(t *testing.T) *Workflow {
 	t.Helper()
 	return &Workflow{
@@ -74,7 +56,7 @@ func newCallerWorkflow(t *testing.T) *Workflow {
 		mq:           queue.NewMessageQueue(func() uint64 { return 0 }),
 		canceller:    new(canceller.Canceller),
 		nexusStarted: new(registry.NexusStartedRegistry),
-		pool:         stubPool{},
+		pool:         &recordingPool{},
 	}
 }
 
@@ -196,4 +178,34 @@ func TestMakeNexusCompletionResponseCallback_OutOfLoopDefers(t *testing.T) {
 
 	require.NoError(t, wp.callbacks[0]())
 	assert.Len(t, wp.mq.Messages(), 1, "deferred callback run produces one queued message")
+}
+
+// A fast op can complete before PHP sends GetNexusOperationStarted. Completion
+// must NOT discard the started slot, or the later consume hangs forever.
+func TestMakeNexusCompletionResponseCallback_KeepsStartedSlotForLateConsume(t *testing.T) {
+	wp := newCallerWorkflow(t)
+	atomic.StoreUint32(&wp.inLoop, 1)
+
+	wp.makeNexusStartedRegistryCallback(808)("tok-late", nil)
+	wp.makeNexusCompletionResponseCallback(808)(nil, nil)
+
+	var got string
+	var fired bool
+	wp.nexusStarted.Listen(808, func(token string, err error) { got, fired = token, true })
+
+	require.True(t, fired, "start slot must survive completion so a late consume still resolves")
+	assert.Equal(t, "tok-late", got)
+}
+
+func TestMakeNexusCompletionResponseCallback_DiscardsCancellerSlot(t *testing.T) {
+	wp := newCallerWorkflow(t)
+	atomic.StoreUint32(&wp.inLoop, 1)
+
+	var cancelled bool
+	wp.canceller.Register(909, func() error { cancelled = true; return nil })
+
+	wp.makeNexusCompletionResponseCallback(909)(nil, nil)
+	require.NoError(t, wp.canceller.Cancel(909))
+
+	assert.False(t, cancelled, "completion must discard the canceller slot")
 }

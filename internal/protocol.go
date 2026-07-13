@@ -370,7 +370,7 @@ type Panic struct {
 	Message string `json:"message"`
 }
 
-// NexusLink mirrors nexus.Link in JSON-friendly form for the RR↔PHP codec.
+// NexusLink is the JSON wire form of nexus.Link.
 type NexusLink struct {
 	URL  string `json:"url"`
 	Type string `json:"type"`
@@ -391,10 +391,8 @@ type InvokeNexusOperation struct {
 	InvocationID uint64 `json:"invocationId"`
 }
 
-// CancelNexusOperationMethod tells PHP to stop running an in-flight handler
-// *method* (cooperative, single-threaded). Distinct from CancelNexusOperation
-// which targets the business operation. Emitted to any worker that registered
-// at least one Nexus service.
+// CancelNexusOperationMethod cooperatively stops an in-flight handler method
+// (distinct from CancelNexusOperation, which targets the business operation).
 type CancelNexusOperationMethod struct {
 	InvocationID uint64 `json:"invocationId"` // matches InvokeNexusOperation.InvocationID
 	Reason       string `json:"reason,omitempty"`
