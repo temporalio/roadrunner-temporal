@@ -67,10 +67,7 @@ type Workflow struct {
 	updateCompleteCb map[string]func(res *internal.Message)
 	updateValidateCb map[string]func(res *internal.Message)
 
-	// caller-side Nexus started registry: maps the original ExecuteNexusOperation
-	// message ID to its (token, err) start ack. GetNexusOperationStarted{ID}
-	// requests register listeners here; the SDK's started callback pushes the
-	// entry. Mirrors `ids` (registry.IDRegistry) for child workflows.
+	// caller-side: ExecuteNexusOperation message ID → (token, err) start ack.
 	nexusStarted *registry.NexusStartedRegistry
 
 	log *zap.Logger

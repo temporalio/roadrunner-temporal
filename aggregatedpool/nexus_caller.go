@@ -16,16 +16,13 @@ type NexusStartEnvelope struct {
 }
 
 func (wp *Workflow) makeNexusStartedRegistryCallback(startMsgID uint64) func(string, error) {
-	push := func(token string, err error) {
-		wp.nexusStarted.Push(startMsgID, token, err)
-	}
 	return func(token string, err error) {
 		if atomic.LoadUint32(&wp.inLoop) == 1 {
-			push(token, err)
+			wp.nexusStarted.Push(startMsgID, token, err)
 			return
 		}
 		wp.callbacks = append(wp.callbacks, func() error {
-			push(token, err)
+			wp.nexusStarted.Push(startMsgID, token, err)
 			return nil
 		})
 	}
@@ -34,10 +31,6 @@ func (wp *Workflow) makeNexusStartedRegistryCallback(startMsgID uint64) func(str
 func (wp *Workflow) makeNexusCompletionResponseCallback(startMsgID uint64) func(*commonpb.Payload, error) {
 	deliver := func(result *commonpb.Payload, err error) {
 		wp.canceller.Discard(startMsgID)
-		// Started callback has already fired by completion time (or PHP never
-		// asked for it); drop the registry slot so long-running sticky workers
-		// don't accumulate entries indefinitely.
-		wp.nexusStarted.Discard(startMsgID)
 		if err != nil {
 			wp.mq.PushError(startMsgID, temporal.GetDefaultFailureConverter().ErrorToFailure(err), wp.getWorkflowWorkerPid())
 			return

@@ -107,17 +107,7 @@ func (h *NexusHandler) startOperation(
 ) (nexus.HandlerStartOperationResult[converter.RawValue], error) {
 	h.log.Debug("nexus start operation", zap.String("service", serviceName), zap.String("operation", operationName), zap.String(tq, taskQueue))
 
-	links := make([]internal.NexusLink, 0, len(options.Links))
-	for _, l := range options.Links {
-		u := ""
-		if l.URL != nil {
-			u = l.URL.String()
-		}
-		links = append(links, internal.NexusLink{
-			URL:  u,
-			Type: l.Type,
-		})
-	}
+	links := nexusLinksToInternal(options.Links)
 
 	invocationID := atomic.AddUint64(&h.invocationSeq, 1)
 	msg := &internal.Message{
@@ -140,9 +130,8 @@ func (h *NexusHandler) startOperation(
 		msg.Payloads = &commonpb.Payloads{Payloads: []*commonpb.Payload{input}}
 	}
 
-	// Watch for ctx cancellation while Start is in flight; emit method cancel on PHP side.
-	// Order matters on cleanup: clear inFlight BEFORE closing done, so the watcher
-	// can't observe a stale entry in the brief window between the two.
+	// Watch ctx cancellation during Start; emit method cancel to PHP. The inFlight-before-done
+	// ordering only shrinks the stale-observe window; a stale cancel is harmless (best-effort).
 	h.inFlight.Store(invocationID, struct{}{})
 	done := make(chan struct{})
 	defer func() {
@@ -239,6 +228,18 @@ func (h *NexusHandler) decodeStartReply(ctx context.Context, retMsg *internal.Me
 			nexus.HandlerErrorRetryBehaviorNonRetryable,
 			fmt.Sprintf("unexpected nexus reply command %T", retMsg.Command), nil)
 	}
+}
+
+// nexusLinksToInternal converts SDK links to wire form, dropping URL-less entries.
+func nexusLinksToInternal(links []nexus.Link) []internal.NexusLink {
+	out := make([]internal.NexusLink, 0, len(links))
+	for _, l := range links {
+		if l.URL == nil {
+			continue
+		}
+		out = append(out, internal.NexusLink{URL: l.URL.String(), Type: l.Type})
+	}
+	return out
 }
 
 // nexusLinksFromInternal: drop entries with empty url/type or unparseable URL.
