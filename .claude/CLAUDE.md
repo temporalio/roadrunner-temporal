@@ -84,7 +84,7 @@ golangci-lint run --timeout=10m --build-tags=safe
    - Creates Temporal client with interceptors
    - Starts Temporal workers
 
-2. **Reset Flow** (`plugin.go:Reset()`, `ResetAP()`):
+2. **Reset Flow** (`plugin.go:Reset()`):
    - Triggered by worker stop events
    - Stops Temporal workers, resets pools
    - Purges sticky workflow cache
@@ -94,7 +94,7 @@ golangci-lint run --timeout=10m --build-tags=safe
 3. **Event Handling**:
    - Subscribes to `EventWorkerStopped` events
    - Checks PID in event message to determine WF vs Activity worker
-   - Executes full reset for WF worker, activity-only reset for activity workers
+   - Workflow-worker death triggers a full reset; an activity-worker death needs no reset (the pool's watcher already replaces the single dead worker)
 
 ### Configuration
 

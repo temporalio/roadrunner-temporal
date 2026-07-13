@@ -248,6 +248,36 @@ func TestResolveDataConverters_NilMap_WithConfig(t *testing.T) {
 	assert.Contains(t, err.Error(), `"encoding/a"`)
 }
 
+func TestRegisterWorkflow_NoPanic_OK(t *testing.T) {
+	require.NoError(t, registerWorkflow(func() {}, "Foo", "my-task-queue"))
+}
+
+func TestRegisterWorkflow_VersioningPanic_FriendlyError(t *testing.T) {
+	err := registerWorkflow(func() {
+		panic("workflow type does not have a versioning behavior")
+	}, "Foo", "my-task-queue")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Foo", "should name the offending workflow")
+	assert.Contains(t, err.Error(), "my-task-queue", "should name the task queue")
+	assert.Contains(t, err.Error(), "versioning behavior")
+}
+
+func TestRegisterWorkflow_OtherStringPanic_GenericErrorKeepsCause(t *testing.T) {
+	err := registerWorkflow(func() { panic("boom") }, "Foo", "my-task-queue")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Foo")
+	assert.Contains(t, err.Error(), "boom", "should preserve the original panic value")
+}
+
+func TestRegisterWorkflow_NonStringPanic_Handled(t *testing.T) {
+	err := registerWorkflow(func() { panic(42) }, "Foo", "my-task-queue")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "42", "should preserve a non-string panic value")
+}
+
 func TestResolveDataConverters_EmptyMap_WithConfig(t *testing.T) {
 	_, err := ResolveDataConverters(map[string]converter.PayloadConverter{}, []string{"encoding/a"})
 	require.Error(t, err)
