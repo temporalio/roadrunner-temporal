@@ -418,10 +418,8 @@ type NexusOperationStarted struct {
 	Links []NexusLink `json:"links,omitempty"`
 }
 
-// NexusOperationOptions is PHP's marshalled DTO nested under "options".
-// PHP also ships endpoint/service in here (the marshaller dumps the whole DTO),
-// but those duplicate the top-level ExecuteNexusOperation fields and are
-// intentionally not decoded — top-level is the single source of truth.
+// NexusOperationOptions is PHP's "options" DTO. Endpoint/service also appear here
+// but are ignored — the top-level ExecuteNexusOperation fields are authoritative.
 type NexusOperationOptions struct {
 	// nanoseconds (PHP DateIntervalType default; matches Go time.Duration encoding).
 	ScheduleToCloseTimeout time.Duration `json:"scheduleToCloseTimeout,omitempty"`
@@ -431,21 +429,12 @@ type NexusOperationOptions struct {
 	StartToCloseTimeout time.Duration `json:"startToCloseTimeout,omitempty"`
 	// 0=Unspecified, 1=Abandon, 2=TryCancel, 3=WaitRequested, 4=WaitCompleted.
 	CancellationType int `json:"cancellationType,omitempty"`
-	// Summary is a single-line fixed summary for this Nexus Operation that appears
-	// in UI/CLI. The SDK carries it as command UserMetadata, not in the attributes.
+	// Single-line summary; the SDK carries it as command UserMetadata.
 	Summary string `json:"summary,omitempty"`
 }
 
-// GetNexusOperationStarted: PHP → Go, listen-and-wait for the start envelope of
-// a caller-side Nexus operation identified by ID (the original
-// ExecuteNexusOperation message ID).
-//
-// RR registers a listener on its NexusStartedRegistry; the response is pushed
-// when the SDK's started callback fires (handler ack'd the start). Mirrors the
-// GetChildWorkflowExecution shape for child workflows — no polling, no race.
-//
-// Response: a single JSON-encoded NexusStartEnvelope payload (`{async, token?}`),
-// or a Failure if the start errored.
+// GetNexusOperationStarted: PHP → Go, listen-and-wait for the start ack of a
+// caller-side Nexus op by its original ExecuteNexusOperation message ID.
 type GetNexusOperationStarted struct {
 	ID uint64 `json:"id"`
 }
@@ -461,9 +450,8 @@ type ExecuteNexusOperation struct {
 	NexusHeaders map[string]string `json:"nexusHeaders,omitempty"`
 }
 
-// NexusOperationParams builds ExecuteNexusOperationParams. Nexus is single-payload
-// by spec; only the first payload is used. The Header arg is currently unused
-// (Nexus headers travel on NexusHeaders); kept for symmetry with ActivityParams.
+// NexusOperationParams builds ExecuteNexusOperationParams (single-payload by spec).
+// The Header arg is unused (Nexus headers travel on NexusHeaders); kept for symmetry.
 func (cmd ExecuteNexusOperation) NexusOperationParams(payloads *commonpb.Payloads, _ *commonpb.Header) bindings.ExecuteNexusOperationParams {
 	var input *commonpb.Payload
 	if pls := payloads.GetPayloads(); len(pls) > 0 {

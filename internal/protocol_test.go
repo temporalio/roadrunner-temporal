@@ -97,9 +97,7 @@ func TestInitCommand_Nexus(t *testing.T) {
 	}
 }
 
-// TestGetNexusOperationStarted_DecodesPHPWireShape pins the JSON contract with
-// the PHP Internal\Transport\Request\GetNexusOperationStarted: a single `id`
-// field carrying the original ExecuteNexusOperation message ID.
+// Wire contract: a single `id` = the original ExecuteNexusOperation message ID.
 func TestGetNexusOperationStarted_DecodesPHPWireShape(t *testing.T) {
 	wire := []byte(`{"id":42}`)
 	var cmd GetNexusOperationStarted
@@ -107,8 +105,6 @@ func TestGetNexusOperationStarted_DecodesPHPWireShape(t *testing.T) {
 	assert.Equal(t, uint64(42), cmd.ID)
 }
 
-// TestGetNexusOperationStarted_RoundTrip ensures we can also marshal back to
-// the same wire shape — useful if RR ever needs to log or echo the request.
 func TestGetNexusOperationStarted_RoundTrip(t *testing.T) {
 	cmd := GetNexusOperationStarted{ID: 77}
 	data, err := json.Marshal(cmd)
@@ -116,9 +112,7 @@ func TestGetNexusOperationStarted_RoundTrip(t *testing.T) {
 	assert.JSONEq(t, `{"id":77}`, string(data))
 }
 
-// TestInitCommand_RemovedPollingCommands guards against a regression that
-// would silently re-introduce the old polling protocol. RR no longer
-// understands these names — they must come back as "undefined command".
+// Regression guard: the old polling commands must stay unknown ("undefined command").
 func TestInitCommand_RemovedPollingCommands(t *testing.T) {
 	for _, removed := range []string{"GetNexusOperationResult", "CancelNexusOperationResult"} {
 		t.Run(removed, func(t *testing.T) {
@@ -130,9 +124,7 @@ func TestInitCommand_RemovedPollingCommands(t *testing.T) {
 }
 
 func TestCancelNexusOperationMethod_JSONRoundTrip(t *testing.T) {
-	// InvocationID must NOT be omitempty — zero is a valid "no-op" id on the
-	// wire (PHP side treats 0 as "no invocation to cancel"), and losing it
-	// silently would hide a bug rather than surface it.
+	// InvocationID must NOT be omitempty — 0 is a valid id on the wire.
 	op := CancelNexusOperationMethod{
 		InvocationID: 7,
 		Reason:       "deadline",
@@ -147,9 +139,7 @@ func TestCancelNexusOperationMethod_JSONRoundTrip(t *testing.T) {
 	assert.Equal(t, op, back)
 }
 
-// TestNexusOperationStarted_SyncWireShape pins the PHP→Go reply JSON shape
-// for the sync-success case. Async=false, Token must be omitted, Links may
-// be empty/absent.
+// Sync reply: Async=false, Token omitted.
 func TestNexusOperationStarted_SyncWireShape(t *testing.T) {
 	out, err := json.Marshal(NexusOperationStarted{Async: false})
 	require.NoError(t, err)
@@ -163,8 +153,7 @@ func TestNexusOperationStarted_SyncWireShape(t *testing.T) {
 	assert.JSONEq(t, `{"async":false,"links":[{"url":"http://x/y","type":"t"}]}`, string(out))
 }
 
-// TestNexusOperationStarted_AsyncWireShape pins the PHP→Go reply JSON shape
-// for the async-success case. Async=true, Token populated.
+// Async reply: Async=true, Token populated.
 func TestNexusOperationStarted_AsyncWireShape(t *testing.T) {
 	out, err := json.Marshal(NexusOperationStarted{
 		Async: true,
@@ -174,9 +163,7 @@ func TestNexusOperationStarted_AsyncWireShape(t *testing.T) {
 	assert.JSONEq(t, `{"async":true,"token":"tok-abc"}`, string(out))
 }
 
-// TestNexusOperationStarted_DecodesPHPWireShape pins decode of the typed
-// reply emitted by the PHP route in place of the legacy _rr_nexus_*
-// payload-metadata markers.
+// Decodes the typed reply that replaced the legacy _rr_nexus_* markers.
 func TestNexusOperationStarted_DecodesPHPWireShape(t *testing.T) {
 	wire := []byte(`{"async":true,"token":"op-1","links":[{"url":"http://a/b","type":"x.y"}]}`)
 	var reply NexusOperationStarted
@@ -188,8 +175,7 @@ func TestNexusOperationStarted_DecodesPHPWireShape(t *testing.T) {
 	assert.Equal(t, "x.y", reply.Links[0].Type)
 }
 
-// InvocationID is the cooperative-cancel correlation key and must always
-// be present on the wire — PHP needs it for CancelNexusOperationMethod.
+// InvocationID is the cooperative-cancel correlation key; always on the wire.
 func TestInvokeNexusOperation_InvocationIDAlwaysPresent(t *testing.T) {
 	zero, err := json.Marshal(InvokeNexusOperation{Service: "S", Operation: "o"})
 	require.NoError(t, err)
@@ -200,10 +186,8 @@ func TestInvokeNexusOperation_InvocationIDAlwaysPresent(t *testing.T) {
 	assert.Contains(t, string(set), `"invocationId":99`)
 }
 
-// TestExecuteNexusOperation_OptionsEndpointServiceIgnored pins the contract:
-// PHP redundantly ships endpoint/service inside "options"; Go must silently
-// ignore both and trust top-level fields. Even mismatched values must not
-// affect the decoded top-level Endpoint/Service.
+// endpoint/service inside "options" are ignored even when they mismatch the
+// top-level fields, which are authoritative.
 func TestExecuteNexusOperation_OptionsEndpointServiceIgnored(t *testing.T) {
 	wire := []byte(`{
 		"endpoint":  "top-level-endpoint",
@@ -223,19 +207,7 @@ func TestExecuteNexusOperation_OptionsEndpointServiceIgnored(t *testing.T) {
 	assert.Equal(t, 5*time.Second, op.Options.ScheduleToCloseTimeout)
 }
 
-// TestExecuteNexusOperation_DecodesPHPWireShape pins the JSON contract with the
-// PHP side. Internal/Workflow/NexusOperationStub::start ships
-//
-//	{
-//	  "endpoint":  "...",
-//	  "service":   "...",
-//	  "operation": "...",
-//	  "options":   <marshalled NexusOperationOptions>
-//	}
-//
-// where the marshaller emits ScheduleToCloseTimeout as nanoseconds (the
-// DateIntervalType default), matching Go's time.Duration JSON encoding.
-// 10s ⇒ 10_000_000_000 ns.
+// PHP marshals timeouts as nanoseconds (matches Go time.Duration): 10s ⇒ 10e9 ns.
 func TestExecuteNexusOperation_DecodesPHPWireShape(t *testing.T) {
 	wire := []byte(`{
 		"endpoint":  "my-nexus-endpoint-name",
@@ -256,9 +228,7 @@ func TestExecuteNexusOperation_DecodesPHPWireShape(t *testing.T) {
 	assert.Equal(t, 10*time.Second, op.Options.ScheduleToCloseTimeout)
 }
 
-// TestExecuteNexusOperation_OmitsZeroOptions guards against accidentally
-// hard-coding non-zero defaults. A PHP request with all-zero options should
-// round-trip cleanly with no timeout enforced.
+// All-zero options must decode with no timeout enforced (no hard-coded defaults).
 func TestExecuteNexusOperation_OmitsZeroOptions(t *testing.T) {
 	wire := []byte(`{"endpoint":"e","service":"s","operation":"o"}`)
 	var op ExecuteNexusOperation
@@ -266,12 +236,7 @@ func TestExecuteNexusOperation_OmitsZeroOptions(t *testing.T) {
 	assert.Equal(t, time.Duration(0), op.Options.ScheduleToCloseTimeout)
 }
 
-// TestNexusOperationOptions_DecodesCancellationType pins the wire shape for
-// the cancellationType field. PHP marshals the
-// `Workflow\NexusOperationCancellationType` enum's int value under
-// `cancellationType`; the integer must round-trip into Options unchanged so
-// NexusOperationParams can cast it to workflow.NexusOperationCancellationType
-// without further translation.
+// cancellationType is PHP's enum int; it must round-trip unchanged (cast later).
 func TestNexusOperationOptions_DecodesCancellationType(t *testing.T) {
 	for name, tc := range map[string]struct {
 		wire string
@@ -292,20 +257,14 @@ func TestNexusOperationOptions_DecodesCancellationType(t *testing.T) {
 	}
 }
 
-// TestNexusOperationOptions_OmitsZeroCancellationType guards the
-// `omitempty` tag: we don't want zero-value cancellationType bloating
-// outbound JSON (we never marshal back to PHP, but inbound JSON noise
-// would still surface as test asymmetry).
+// omitempty: zero cancellationType stays off the wire.
 func TestNexusOperationOptions_OmitsZeroCancellationType(t *testing.T) {
 	out, err := json.Marshal(NexusOperationOptions{ScheduleToCloseTimeout: time.Second})
 	require.NoError(t, err)
 	assert.NotContains(t, string(out), "cancellationType")
 }
 
-// TestExecuteNexusOperation_DecodesNexusHeaders pins the top-level
-// `nexusHeaders` field — PHP ships the `x-nexus-*` raw header map alongside
-// `options`, and NexusOperationParams forwards it verbatim to the Go SDK so
-// it surfaces on the handler's OperationContext.
+// Top-level `nexusHeaders` (x-nexus-* map) decodes and is forwarded verbatim.
 func TestExecuteNexusOperation_DecodesNexusHeaders(t *testing.T) {
 	wire := []byte(`{
 		"endpoint": "e", "service": "s", "operation": "o",
@@ -323,9 +282,7 @@ func TestExecuteNexusOperation_DecodesNexusHeaders(t *testing.T) {
 	}, op.NexusHeaders)
 }
 
-// TestExecuteNexusOperation_OmitsEmptyNexusHeaders confirms an absent or
-// empty `nexusHeaders` field leaves the map nil (NewExecuteNexusOperationParams
-// accepts nil — wire shape stays compact).
+// Absent/empty nexusHeaders leaves the map nil and off the wire.
 func TestExecuteNexusOperation_OmitsEmptyNexusHeaders(t *testing.T) {
 	wire := []byte(`{"endpoint":"e","service":"s","operation":"o"}`)
 	var op ExecuteNexusOperation
@@ -347,10 +304,7 @@ func TestNexusOperationOptions_DecodesTimeouts(t *testing.T) {
 	assert.Equal(t, 45*time.Second, opts.StartToCloseTimeout)
 }
 
-// TestNexusOperationOptions_DecodesSummary pins the wire shape for the
-// `summary` field. PHP marshals NexusOperationOptions.summary as a plain
-// string; NexusOperationParams forwards it to workflow.NexusOperationOptions,
-// where the Go SDK carries it as command UserMetadata.
+// summary decodes as a plain string (forwarded as command UserMetadata).
 func TestNexusOperationOptions_DecodesSummary(t *testing.T) {
 	wire := []byte(`{"scheduleToCloseTimeout":10000000000,"summary":"charge the card"}`)
 	var opts NexusOperationOptions
@@ -358,8 +312,7 @@ func TestNexusOperationOptions_DecodesSummary(t *testing.T) {
 	assert.Equal(t, "charge the card", opts.Summary)
 }
 
-// TestNexusOperationOptions_OmitsEmptySummary guards the `omitempty` tag so a
-// zero-value summary doesn't bloat the wire shape.
+// omitempty: empty summary stays off the wire.
 func TestNexusOperationOptions_OmitsEmptySummary(t *testing.T) {
 	out, err := json.Marshal(NexusOperationOptions{ScheduleToCloseTimeout: time.Second})
 	require.NoError(t, err)
@@ -398,9 +351,7 @@ func TestCancelNexusOperation_MarshalsTaskQueue(t *testing.T) {
 	assert.NotContains(t, string(out), "taskQueue", "empty task queue must be omitted")
 }
 
-// TestCancelNexusOperation_MarshalsHeaders pins the Go→PHP wire shape: caller
-// cancel-request headers extracted from nexus.CancelOperationOptions.Header are
-// forwarded under `headers`, symmetric with ExecuteNexusOperation.nexusHeaders.
+// Cancel-request headers are forwarded under `headers` (symmetric with start).
 func TestCancelNexusOperation_MarshalsHeaders(t *testing.T) {
 	out, err := json.Marshal(CancelNexusOperation{
 		Service:        "s",
