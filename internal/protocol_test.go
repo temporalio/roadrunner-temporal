@@ -378,3 +378,82 @@ func TestExecuteNexusOperation_NexusOperationParams_AcceptsNexusHeaders(t *testi
 		})
 	})
 }
+
+// TestNexusOperationOptions_DecodesSummary pins the wire shape for the
+// `summary` field. PHP marshals NexusOperationOptions.summary as a plain
+// string; NexusOperationParams forwards it to workflow.NexusOperationOptions,
+// where the Go SDK carries it as command UserMetadata.
+func TestNexusOperationOptions_DecodesSummary(t *testing.T) {
+	wire := []byte(`{"scheduleToCloseTimeout":10000000000,"summary":"charge the card"}`)
+	var opts NexusOperationOptions
+	require.NoError(t, json.Unmarshal(wire, &opts))
+	assert.Equal(t, "charge the card", opts.Summary)
+}
+
+// TestNexusOperationOptions_OmitsEmptySummary guards the `omitempty` tag so a
+// zero-value summary doesn't bloat the wire shape.
+func TestNexusOperationOptions_OmitsEmptySummary(t *testing.T) {
+	out, err := json.Marshal(NexusOperationOptions{ScheduleToCloseTimeout: time.Second})
+	require.NoError(t, err)
+	assert.NotContains(t, string(out), "summary")
+}
+
+// TestExecuteNexusOperation_NexusOperationParams_AcceptsSummary guards that a
+// populated summary flows through NexusOperationParams without surprises.
+func TestExecuteNexusOperation_NexusOperationParams_AcceptsSummary(t *testing.T) {
+	cmd := ExecuteNexusOperation{
+		Endpoint:  "e",
+		Service:   "s",
+		Operation: "o",
+		Options:   NexusOperationOptions{Summary: "do the thing"},
+	}
+	assert.NotPanics(t, func() {
+		_ = cmd.NexusOperationParams(&commonpb.Payloads{}, nil)
+	})
+}
+
+// TestCancelNexusOperation_MarshalsHeaders pins the Go→PHP wire shape: caller
+// cancel-request headers extracted from nexus.CancelOperationOptions.Header are
+// forwarded under `headers`, symmetric with ExecuteNexusOperation.nexusHeaders.
+func TestCancelNexusOperation_MarshalsHeaders(t *testing.T) {
+	out, err := json.Marshal(CancelNexusOperation{
+		Service:        "s",
+		Operation:      "o",
+		OperationToken: "tok",
+		Headers:        map[string]string{"x-nexus-trace-id": "trace-1"},
+	})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"service":"s","operation":"o","operationToken":"tok","headers":{"x-nexus-trace-id":"trace-1"}}`, string(out))
+}
+
+// TestCancelNexusOperation_OmitsEmptyHeaders confirms an empty header map is
+// dropped from the wire shape (keeps the cancel command compact).
+func TestCancelNexusOperation_OmitsEmptyHeaders(t *testing.T) {
+	out, err := json.Marshal(CancelNexusOperation{Service: "s", Operation: "o", OperationToken: "tok"})
+	require.NoError(t, err)
+	assert.NotContains(t, string(out), "headers")
+}
+
+// Namespace is sourced from RR plugin config and forwarded on the start command
+// so PHP can read it as $options['namespace']. omitempty keeps it off the wire
+// when unset.
+func TestInvokeNexusOperation_MarshalsNamespace(t *testing.T) {
+	set, err := json.Marshal(InvokeNexusOperation{Service: "S", Operation: "o", Namespace: "my-ns"})
+	require.NoError(t, err)
+	assert.Contains(t, string(set), `"namespace":"my-ns"`)
+
+	zero, err := json.Marshal(InvokeNexusOperation{Service: "S", Operation: "o"})
+	require.NoError(t, err)
+	assert.NotContains(t, string(zero), "namespace")
+}
+
+// Cancel-side counterpart: namespace marshals when set, omitted when empty.
+func TestCancelNexusOperation_MarshalsNamespace(t *testing.T) {
+	set, err := json.Marshal(CancelNexusOperation{Service: "s", Operation: "o", OperationToken: "tok", Namespace: "my-ns"})
+	require.NoError(t, err)
+	assert.Contains(t, string(set), `"namespace":"my-ns"`)
+
+	zero, err := json.Marshal(CancelNexusOperation{Service: "s", Operation: "o", OperationToken: "tok"})
+	require.NoError(t, err)
+	assert.NotContains(t, string(zero), "namespace")
+}

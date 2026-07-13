@@ -22,7 +22,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 
-	nexus "github.com/nexus-rpc/sdk-go/nexus"
+	"github.com/nexus-rpc/sdk-go/nexus"
 )
 
 // ── Service registration ──────────────────────────────────────
@@ -30,7 +30,7 @@ import (
 // putPld must clear the payload before returning it to the pool — otherwise
 // stale Body/Context bytes leak into the next Encode call.
 func TestNexusHandler_PayloadPoolResetsOnPut(t *testing.T) {
-	handler := NewNexusHandler(nil, nil, zap.NewNop())
+	handler := NewNexusHandler(nil, nil, zap.NewNop(), "default")
 
 	pld := handler.getPld()
 	pld.Body = []byte("test")
@@ -44,7 +44,7 @@ func TestNexusHandler_PayloadPoolResetsOnPut(t *testing.T) {
 }
 
 func TestNexusHandler_CreateNexusService_RegistersOperations(t *testing.T) {
-	handler := NewNexusHandler(nil, nil, zap.NewNop())
+	handler := NewNexusHandler(nil, nil, zap.NewNop(), "default")
 	svc := handler.CreateNexusService("tq", "GreetingService", []string{"greet", "farewell"})
 
 	require.NotNil(t, svc.Operation("greet"))
@@ -53,13 +53,13 @@ func TestNexusHandler_CreateNexusService_RegistersOperations(t *testing.T) {
 }
 
 func TestNexusHandler_CreateNexusService_AcceptsEmptyAndNilOperations(t *testing.T) {
-	handler := NewNexusHandler(nil, nil, zap.NewNop())
+	handler := NewNexusHandler(nil, nil, zap.NewNop(), "default")
 	require.NotPanics(t, func() { handler.CreateNexusService("tq", "S", nil) })
 	require.NotPanics(t, func() { handler.CreateNexusService("tq", "S", []string{}) })
 }
 
 func TestNexusHandler_CreateNexusService_IsolatesOperationsBetweenServices(t *testing.T) {
-	handler := NewNexusHandler(nil, nil, zap.NewNop())
+	handler := NewNexusHandler(nil, nil, zap.NewNop(), "default")
 	a := handler.CreateNexusService("tq", "ServiceA", []string{"opA"})
 	b := handler.CreateNexusService("tq", "ServiceB", []string{"opB"})
 
@@ -79,7 +79,7 @@ var (
 // link the dispatch path follows when a task arrives.
 func TestNexusOperation_TaskQueuePropagation(t *testing.T) {
 	log := zap.NewNop()
-	handler := NewNexusHandler(nil, nil, log)
+	handler := NewNexusHandler(nil, nil, log, "default")
 
 	taskQueue := "my-special-queue"
 	svc := handler.CreateNexusService(taskQueue, "Svc", []string{"op1", "op2", "op3"})
@@ -160,7 +160,7 @@ func TestStartOperation_EncodesTaskQueue(t *testing.T) {
 	codec := &mockCodec{
 		encodeErr: errors.New("stop after encode"),
 	}
-	handler := NewNexusHandler(codec, nil, zap.NewNop())
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "default")
 
 	_, err := handler.startOperation(
 		context.Background(),
@@ -180,7 +180,7 @@ func TestStartOperation_EncodesAllFields(t *testing.T) {
 	codec := &mockCodec{
 		encodeErr: errors.New("stop after encode"),
 	}
-	handler := NewNexusHandler(codec, nil, zap.NewNop())
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "default")
 
 	_, _ = handler.startOperation(
 		context.Background(),
@@ -207,6 +207,8 @@ func TestStartOperation_EncodesAllFields(t *testing.T) {
 
 	assert.Equal(t, "MyService", cmd.Service)
 	assert.Equal(t, "myOp", cmd.Operation)
+	assert.Equal(t, "default", cmd.Namespace)
+	assert.Equal(t, "tq", cmd.TaskQueue)
 	assert.Equal(t, "req-123", cmd.RequestID)
 	assert.Equal(t, "http://callback.example.com", cmd.Callback)
 	assert.Equal(t, "application/json", cmd.Headers["Content-Type"])
@@ -218,7 +220,7 @@ func TestStartOperation_EncodesPayload(t *testing.T) {
 	codec := &mockCodec{
 		encodeErr: errors.New("stop after encode"),
 	}
-	handler := NewNexusHandler(codec, nil, zap.NewNop())
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "default")
 
 	input := &commonpb.Payload{
 		Data:     []byte("hello"),
@@ -244,7 +246,7 @@ func TestStartOperation_NilInputProducesNilPayloads(t *testing.T) {
 	codec := &mockCodec{
 		encodeErr: errors.New("stop after encode"),
 	}
-	handler := NewNexusHandler(codec, nil, zap.NewNop())
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "default")
 
 	_, _ = handler.startOperation(
 		context.Background(),
@@ -263,7 +265,7 @@ func TestStartOperation_EncodeErrorReturnsError(t *testing.T) {
 	codec := &mockCodec{
 		encodeErr: errors.New("boom"),
 	}
-	handler := NewNexusHandler(codec, nil, zap.NewNop())
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "default")
 
 	result, err := handler.startOperation(
 		context.Background(),
@@ -283,7 +285,7 @@ func TestStartOperation_IncrementsSeqID(t *testing.T) {
 	codec := &mockCodec{
 		encodeErr: errors.New("stop"),
 	}
-	handler := NewNexusHandler(codec, nil, zap.NewNop())
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "default")
 
 	_, _ = handler.startOperation(context.Background(), "tq", "S", "o", nil, nexus.StartOperationOptions{})
 	firstID := codec.encodedMsg.ID
@@ -296,7 +298,7 @@ func TestStartOperation_IncrementsSeqID(t *testing.T) {
 
 func TestStartOperation_EncodesCallerLinks(t *testing.T) {
 	codec := &mockCodec{encodeErr: errors.New("stop")}
-	handler := NewNexusHandler(codec, nil, zap.NewNop())
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "default")
 
 	u1, err := url.Parse("https://caller.example/res/1")
 	require.NoError(t, err)
@@ -322,7 +324,7 @@ func TestStartOperation_EncodesCallerLinks(t *testing.T) {
 
 func TestStartOperation_NoLinksOmitsField(t *testing.T) {
 	codec := &mockCodec{encodeErr: errors.New("stop")}
-	handler := NewNexusHandler(codec, nil, zap.NewNop())
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "default")
 
 	_, _ = handler.startOperation(context.Background(), "tq", "S", "op", nil, nexus.StartOperationOptions{})
 
@@ -338,7 +340,7 @@ func TestCancelOperation_EncodesTaskQueue(t *testing.T) {
 	codec := &mockCodec{
 		encodeErr: errors.New("stop after encode"),
 	}
-	handler := NewNexusHandler(codec, nil, zap.NewNop())
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "default")
 
 	err := handler.cancelOperation(
 		context.Background(),
@@ -358,7 +360,7 @@ func TestCancelOperation_EncodesAllFields(t *testing.T) {
 	codec := &mockCodec{
 		encodeErr: errors.New("stop"),
 	}
-	handler := NewNexusHandler(codec, nil, zap.NewNop())
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "default")
 
 	_ = handler.cancelOperation(
 		context.Background(),
@@ -375,14 +377,160 @@ func TestCancelOperation_EncodesAllFields(t *testing.T) {
 
 	assert.Equal(t, "GreetingService", cmd.Service)
 	assert.Equal(t, "greet", cmd.Operation)
+	assert.Equal(t, "default", cmd.Namespace)
+	assert.Equal(t, "tq", cmd.TaskQueue)
 	assert.Equal(t, "async-token-123", cmd.OperationToken)
+}
+
+// TestCancelOperation_ExtractsHeaders verifies the caller's cancel-request
+// headers are pulled off nexus.CancelOperationOptions.Header onto the command,
+// symmetric with startOperation. The PHP CancelNexusOperation router reads these
+// under `headers` and surfaces them on the handler's OperationContext.
+func TestCancelOperation_ExtractsHeaders(t *testing.T) {
+	codec := &mockCodec{
+		encodeErr: errors.New("stop"),
+	}
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "default")
+
+	_ = handler.cancelOperation(
+		context.Background(),
+		"tq",
+		"GreetingService",
+		"greet",
+		"async-token-123",
+		nexus.CancelOperationOptions{
+			Header: nexus.Header{
+				"X-Nexus-Trace-Id": "trace-1",
+				"Authorization":    "Bearer xyz",
+			},
+		},
+	)
+
+	require.NotNil(t, codec.encodedMsg)
+	cmd, ok := codec.encodedMsg.Command.(internal.CancelNexusOperation)
+	require.True(t, ok, "Command should be CancelNexusOperation, got %T", codec.encodedMsg.Command)
+
+	assert.Equal(t, "trace-1", cmd.Headers["X-Nexus-Trace-Id"])
+	assert.Equal(t, "Bearer xyz", cmd.Headers["Authorization"])
+}
+
+// TestStartOperation_EncodesNamespace verifies the handler's configured
+// namespace lands on the InvokeNexusOperation command, where PHP reads it as
+// $options['namespace']. Sourced from plugin config, not from internal.Context.
+func TestStartOperation_EncodesNamespace(t *testing.T) {
+	codec := &mockCodec{
+		encodeErr: errors.New("stop after encode"),
+	}
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "test-ns")
+
+	_, _ = handler.startOperation(
+		context.Background(),
+		"tq",
+		"MyService",
+		"myOp",
+		nil,
+		nexus.StartOperationOptions{},
+	)
+
+	require.NotNil(t, codec.encodedMsg)
+	cmd, ok := codec.encodedMsg.Command.(internal.InvokeNexusOperation)
+	require.True(t, ok, "Command should be InvokeNexusOperation, got %T", codec.encodedMsg.Command)
+	assert.Equal(t, "test-ns", cmd.Namespace)
+}
+
+// TestCancelOperation_EncodesNamespace is the cancel-side counterpart.
+func TestCancelOperation_EncodesNamespace(t *testing.T) {
+	codec := &mockCodec{
+		encodeErr: errors.New("stop"),
+	}
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "test-ns")
+
+	_ = handler.cancelOperation(
+		context.Background(),
+		"tq",
+		"GreetingService",
+		"greet",
+		"async-token-123",
+		nexus.CancelOperationOptions{},
+	)
+
+	require.NotNil(t, codec.encodedMsg)
+	cmd, ok := codec.encodedMsg.Command.(internal.CancelNexusOperation)
+	require.True(t, ok, "Command should be CancelNexusOperation, got %T", codec.encodedMsg.Command)
+	assert.Equal(t, "test-ns", cmd.Namespace)
+}
+
+// ── Cancel reply decoding ───────────────────────────────────────
+
+// A PHP-side rejection (e.g. HandlerException NOT_IMPLEMENTED for a manual-token
+// operation without an #[OperationCancel] routine) must surface as a handler
+// error instead of being swallowed as cancel success.
+func TestDecodeCancelReply_FailurePropagatesHandlerError(t *testing.T) {
+	codec := &mockCodec{
+		decodeMsgs: []*internal.Message{
+			{
+				Failure: &failurepb.Failure{
+					Message: "cancellation is not supported",
+					FailureInfo: &failurepb.Failure_NexusHandlerFailureInfo{
+						NexusHandlerFailureInfo: &failurepb.NexusHandlerFailureInfo{
+							Type:          "NOT_IMPLEMENTED",
+							RetryBehavior: enumspb.NEXUS_HANDLER_ERROR_RETRY_BEHAVIOR_NON_RETRYABLE,
+						},
+					},
+				},
+			},
+		},
+	}
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "default")
+
+	err := handler.decodeCancelReply(&payload.Payload{})
+
+	he, ok := err.(*nexus.HandlerError)
+	require.True(t, ok, "expected *nexus.HandlerError, got %T", err)
+	assert.Equal(t, nexus.HandlerErrorTypeNotImplemented, he.Type)
+	assert.Equal(t, nexus.HandlerErrorRetryBehaviorNonRetryable, he.RetryBehavior)
+	assert.Equal(t, "cancellation is not supported", he.Message)
+}
+
+func TestDecodeCancelReply_NoFailureMeansSuccess(t *testing.T) {
+	codec := &mockCodec{
+		decodeMsgs: []*internal.Message{{}},
+	}
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "default")
+
+	assert.NoError(t, handler.decodeCancelReply(&payload.Payload{}))
+}
+
+// PHP always replies with exactly one message; an empty reply is a protocol
+// fault, not cancel success.
+func TestDecodeCancelReply_EmptyReplyIsProtocolFault(t *testing.T) {
+	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop(), "default")
+
+	err := handler.decodeCancelReply(&payload.Payload{})
+
+	he, ok := err.(*nexus.HandlerError)
+	require.True(t, ok, "expected *nexus.HandlerError, got %T", err)
+	assert.Equal(t, nexus.HandlerErrorTypeInternal, he.Type)
+	assert.Equal(t, nexus.HandlerErrorRetryBehaviorNonRetryable, he.RetryBehavior)
+}
+
+func TestDecodeCancelReply_DecodeErrorIsInternalNonRetryable(t *testing.T) {
+	codec := &mockCodec{decodeErr: errors.New("bad frame")}
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "default")
+
+	err := handler.decodeCancelReply(&payload.Payload{})
+
+	he, ok := err.(*nexus.HandlerError)
+	require.True(t, ok, "expected *nexus.HandlerError, got %T", err)
+	assert.Equal(t, nexus.HandlerErrorTypeInternal, he.Type)
+	assert.Equal(t, nexus.HandlerErrorRetryBehaviorNonRetryable, he.RetryBehavior)
 }
 
 func TestCancelOperation_EncodeError(t *testing.T) {
 	codec := &mockCodec{
 		encodeErr: errors.New("encode failed"),
 	}
-	handler := NewNexusHandler(codec, nil, zap.NewNop())
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "default")
 
 	err := handler.cancelOperation(context.Background(), "tq", "S", "o", "t", nexus.CancelOperationOptions{})
 	require.Error(t, err)
@@ -396,7 +544,7 @@ func TestStartOperation_ConcurrentSeqIDIncrement(t *testing.T) {
 
 	idCh := make(chan uint64, goroutines)
 	codec := &recordingCodec{ids: idCh, stopErr: errors.New("stop")}
-	handler := NewNexusHandler(codec, nil, zap.NewNop())
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "default")
 
 	var wg sync.WaitGroup
 	for i := 0; i < goroutines; i++ {
@@ -419,11 +567,11 @@ func TestStartOperation_ConcurrentSeqIDIncrement(t *testing.T) {
 
 // ── Method cancellation tests ──────────────────────────────────
 
-// InvocationID must equal the wire envelope ID — that's the correlation key
-// CancelNexusOperationMethod uses to find the in-flight handler.
+// InvocationID is the correlation key CancelNexusOperationMethod uses to find
+// the in-flight handler; PHP correlates via this field only.
 func TestStartOperation_SetsInvocationID(t *testing.T) {
 	codec := &mockCodec{encodeErr: errors.New("stop")}
-	handler := NewNexusHandler(codec, nil, zap.NewNop())
+	handler := NewNexusHandler(codec, nil, zap.NewNop(), "default")
 
 	_, _ = handler.startOperation(
 		context.Background(), "tq", "S", "op",
@@ -434,8 +582,6 @@ func TestStartOperation_SetsInvocationID(t *testing.T) {
 	cmd, ok := codec.encodedMsg.Command.(internal.InvokeNexusOperation)
 	require.True(t, ok)
 	assert.NotZero(t, cmd.InvocationID)
-	assert.Equal(t, codec.encodedMsg.ID, cmd.InvocationID,
-		"InvocationID must match the wire message ID used for correlation")
 }
 
 // ── sendCancelMethod tests (requires a minimal Pool mock) ──────
@@ -457,6 +603,7 @@ func (p *recordingPool) Exec(ctx context.Context, pld *payload.Payload, _ chan s
 		<-p.execCh
 	}
 	ch := make(chan *staticPool.PExec, 1)
+	ch <- &staticPool.PExec{}
 	return ch, nil
 }
 
@@ -471,7 +618,7 @@ func (p *recordingPool) Reset(context.Context) error        { panic("not used") 
 func TestSendCancelMethod_EncodesCorrectCommand(t *testing.T) {
 	codec := &mockCodec{}
 	pool := &recordingPool{}
-	handler := NewNexusHandler(codec, pool, zap.NewNop())
+	handler := NewNexusHandler(codec, pool, zap.NewNop(), "default")
 
 	handler.sendCancelMethod(77, "deadline exceeded")
 
@@ -491,7 +638,7 @@ func TestSendCancelMethod_EncodesCorrectCommand(t *testing.T) {
 func TestStartOperation_CtxCancelTriggersMethodCancel(t *testing.T) {
 	codec := &mockCodec{}
 	pool := &recordingPool{}
-	handler := NewNexusHandler(codec, pool, zap.NewNop())
+	handler := NewNexusHandler(codec, pool, zap.NewNop(), "default")
 
 	handler.inFlight.Store(uint64(5), struct{}{})
 	defer handler.inFlight.Delete(uint64(5))
@@ -518,7 +665,7 @@ func TestStartOperation_CtxCancelTriggersMethodCancel(t *testing.T) {
 func TestStartOperation_DoneClosedSkipsMethodCancel(t *testing.T) {
 	codec := &mockCodec{}
 	pool := &recordingPool{}
-	handler := NewNexusHandler(codec, pool, zap.NewNop())
+	handler := NewNexusHandler(codec, pool, zap.NewNop(), "default")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -542,7 +689,7 @@ func TestStartOperation_DoneClosedSkipsMethodCancel(t *testing.T) {
 func TestStartOperation_CtxCancelAfterCompletionNoop(t *testing.T) {
 	codec := &mockCodec{}
 	pool := &recordingPool{}
-	handler := NewNexusHandler(codec, pool, zap.NewNop())
+	handler := NewNexusHandler(codec, pool, zap.NewNop(), "default")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -563,7 +710,7 @@ func TestStartOperation_CtxCancelAfterCompletionNoop(t *testing.T) {
 func TestSendCancelMethod_EncodeErrorSwallowed(t *testing.T) {
 	codec := &mockCodec{encodeErr: errors.New("encode boom")}
 	pool := &recordingPool{}
-	handler := NewNexusHandler(codec, pool, zap.NewNop())
+	handler := NewNexusHandler(codec, pool, zap.NewNop(), "default")
 
 	handler.sendCancelMethod(1, "x")
 
@@ -880,7 +1027,7 @@ func TestNexusLinksFromInternal_PreservesOrderingAndFields(t *testing.T) {
 // the result. Decoder must wrap it as HandlerStartOperationResultSync with
 // the payload preserved on the RawValue.
 func TestDecodeStartReply_SyncSuccessUnwrapsPayload(t *testing.T) {
-	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop())
+	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop(), "default")
 
 	resultPayload := &commonpb.Payload{
 		Data:     []byte(`{"ok":true}`),
@@ -904,7 +1051,7 @@ func TestDecodeStartReply_SyncSuccessUnwrapsPayload(t *testing.T) {
 // Sync reply with empty Payloads slice: still returns a sync result with
 // nil Value — matches the pre-refactor empty-payload contract.
 func TestDecodeStartReply_SyncSuccessEmptyPayloads(t *testing.T) {
-	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop())
+	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop(), "default")
 
 	msg := &internal.Message{
 		Command:  &internal.NexusOperationStarted{Async: false},
@@ -921,7 +1068,7 @@ func TestDecodeStartReply_SyncSuccessEmptyPayloads(t *testing.T) {
 // Async reply: Command=*NexusOperationStarted{Async:true, Token}, no Payloads.
 // Decoder returns HandlerStartOperationResultAsync with the token preserved.
 func TestDecodeStartReply_AsyncSuccessReturnsToken(t *testing.T) {
-	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop())
+	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop(), "default")
 
 	msg := &internal.Message{
 		Command: &internal.NexusOperationStarted{
@@ -942,7 +1089,7 @@ func TestDecodeStartReply_AsyncSuccessReturnsToken(t *testing.T) {
 // itself is exercised in ── Failure → Nexus error mapping ── above; here we
 // verify routing.
 func TestDecodeStartReply_NilCommandWithFailureRoutesToMapping(t *testing.T) {
-	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop())
+	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop(), "default")
 
 	msg := &internal.Message{
 		Failure: &failurepb.Failure{
@@ -963,7 +1110,7 @@ func TestDecodeStartReply_NilCommandWithFailureRoutesToMapping(t *testing.T) {
 
 // nil Command + nil Failure: malformed reply → HandlerError(Internal).
 func TestDecodeStartReply_EmptyReplyIsHandlerError(t *testing.T) {
-	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop())
+	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop(), "default")
 
 	res, err := handler.decodeStartReply(context.Background(), &internal.Message{})
 	assert.Nil(t, res)
@@ -977,7 +1124,7 @@ func TestDecodeStartReply_EmptyReplyIsHandlerError(t *testing.T) {
 // Unknown reply command → HandlerError(Internal). Defends against PHP
 // emitting a command name Go doesn't recognize.
 func TestDecodeStartReply_UnknownCommandIsHandlerError(t *testing.T) {
-	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop())
+	handler := NewNexusHandler(&mockCodec{}, nil, zap.NewNop(), "default")
 
 	msg := &internal.Message{Command: &internal.CancelNexusOperation{}}
 

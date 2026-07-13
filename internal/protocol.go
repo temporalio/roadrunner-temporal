@@ -380,6 +380,8 @@ type NexusLink struct {
 type InvokeNexusOperation struct {
 	Service         string            `json:"service"`
 	Operation       string            `json:"operation"`
+	Namespace       string            `json:"namespace,omitempty"`
+	TaskQueue       string            `json:"taskQueue,omitempty"`
 	RequestID       string            `json:"requestId"`
 	Callback        string            `json:"callback,omitempty"`
 	CallbackHeaders map[string]string `json:"callbackHeaders,omitempty"`
@@ -402,7 +404,12 @@ type CancelNexusOperationMethod struct {
 type CancelNexusOperation struct {
 	Service        string `json:"service"`
 	Operation      string `json:"operation"`
+	Namespace      string `json:"namespace,omitempty"`
+	TaskQueue      string `json:"taskQueue,omitempty"`
 	OperationToken string `json:"operationToken"`
+	// Raw HTTP-style headers from the caller's cancel request, propagated to the
+	// handler's OperationContext. Symmetric with ExecuteNexusOperation.NexusHeaders.
+	Headers map[string]string `json:"headers,omitempty"`
 }
 
 // NexusOperationStarted: PHP→Go reply to InvokeNexusOperation success.
@@ -420,8 +427,15 @@ type NexusOperationStarted struct {
 type NexusOperationOptions struct {
 	// nanoseconds (PHP DateIntervalType default; matches Go time.Duration encoding).
 	ScheduleToCloseTimeout time.Duration `json:"scheduleToCloseTimeout,omitempty"`
+	// Maximum time to wait for the operation to be started by the handler. Requires Temporal Server 1.31.0+.
+	ScheduleToStartTimeout time.Duration `json:"scheduleToStartTimeout,omitempty"`
+	// Maximum time an async operation may take to complete after starting. Requires Temporal Server 1.31.0+.
+	StartToCloseTimeout time.Duration `json:"startToCloseTimeout,omitempty"`
 	// 0=Unspecified, 1=Abandon, 2=TryCancel, 3=WaitRequested, 4=WaitCompleted.
 	CancellationType int `json:"cancellationType,omitempty"`
+	// Summary is a single-line fixed summary for this Nexus Operation that appears
+	// in UI/CLI. The SDK carries it as command UserMetadata, not in the attributes.
+	Summary string `json:"summary,omitempty"`
 }
 
 // GetNexusOperationStarted: PHP → Go, listen-and-wait for the start envelope of
@@ -461,7 +475,10 @@ func (cmd ExecuteNexusOperation) NexusOperationParams(payloads *commonpb.Payload
 	client := bindings.NewNexusClient(cmd.Endpoint, cmd.Service)
 	options := workflow.NexusOperationOptions{
 		ScheduleToCloseTimeout: cmd.Options.ScheduleToCloseTimeout,
+		ScheduleToStartTimeout: cmd.Options.ScheduleToStartTimeout,
+		StartToCloseTimeout:    cmd.Options.StartToCloseTimeout,
 		CancellationType:       workflow.NexusOperationCancellationType(cmd.Options.CancellationType),
+		Summary:                cmd.Options.Summary,
 	}
 
 	return bindings.NewExecuteNexusOperationParams(client, cmd.Operation, input, options, cmd.NexusHeaders)

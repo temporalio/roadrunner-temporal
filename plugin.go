@@ -378,7 +378,7 @@ func (p *Plugin) Reset() error {
 	workers, err := aggregatedpool.TemporalWorkers(
 		p.temporal.rrWorkflowDef,
 		p.temporal.rrActivityDef,
-		aggregatedpool.NewNexusHandler(p.codec, p.actP, p.log),
+		aggregatedpool.NewNexusHandler(p.codec, p.actP, p.log, p.config.Namespace),
 		wi,
 		p.log,
 		p.temporal.client,

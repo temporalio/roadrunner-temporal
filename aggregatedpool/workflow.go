@@ -383,9 +383,6 @@ func (wp *Workflow) Close() {
 		delete(wp.updateCompleteCb, k)
 	}
 
-	// nexusStarted registry is per-workflow-instance and GC'd with the Workflow
-	// struct itself; no manual cleanup needed (matches `ids` for child workflows).
-
 	// send destroy command
 	_, _ = wp.runCommand(internal.DestroyWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID}, nil, wp.header)
 	// flush queue
