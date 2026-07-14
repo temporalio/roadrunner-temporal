@@ -11,9 +11,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"net/http"
-
-	"github.com/roadrunner-server/api-go/v6/temporal/v1/temporalV1connect"
 	"github.com/roadrunner-server/endure/v2/dep"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/events"
@@ -421,8 +418,7 @@ func (p *Plugin) Name() string {
 	return pluginName
 }
 
-// RPC returns the TemporalService connect handler mounted on the rpc plugin's
-// server.
-func (p *Plugin) RPC() (string, http.Handler) {
-	return temporalV1connect.NewTemporalServiceHandler(&rpc{plugin: p})
+// RPC returns the net/rpc control API served over goridge by the rpc plugin.
+func (p *Plugin) RPC() any {
+	return &rpc{plugin: p, client: p.temporal.client}
 }

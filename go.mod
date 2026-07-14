@@ -15,7 +15,6 @@ require (
 	go.temporal.io/sdk v1.44.1
 	go.temporal.io/sdk/contrib/tally v0.2.0
 	go.temporal.io/server v1.31.1
-	go.uber.org/zap v1.28.0
 	google.golang.org/protobuf v1.36.11
 )
 
@@ -46,7 +45,6 @@ require (
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
@@ -59,10 +57,9 @@ require (
 )
 
 require (
-	connectrpc.com/connect v1.20.0
-	github.com/roadrunner-server/api-go/v6 v6.0.0-beta.12.0.20260610203904-09df89976edc
+	github.com/roadrunner-server/api-go/v6 v6.0.0-beta.12.0.20260714200341-93604e5012d4
 	github.com/roadrunner-server/api-plugins/v6 v6.0.0-beta.2
-	github.com/roadrunner-server/goridge/v4 v4.0.0-beta.2
+	github.com/roadrunner-server/goridge/v4 v4.0.0-beta.2.0.20260714195909-75e9ece43063
 	github.com/roadrunner-server/pool/v2 v2.0.0-beta.1
 )
 
