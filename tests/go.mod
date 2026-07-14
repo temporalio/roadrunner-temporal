@@ -3,16 +3,17 @@ module tests
 go 1.26.4
 
 require (
-	connectrpc.com/connect v1.20.0
 	github.com/fatih/color v1.19.0
 	github.com/pborman/uuid v1.2.1
-	github.com/roadrunner-server/api-go/v6 v6.0.0-beta.12.0.20260610203904-09df89976edc
+	github.com/roadrunner-server/api-go/v6 v6.0.0-beta.12.0.20260714200341-93604e5012d4
 	github.com/roadrunner-server/config/v6 v6.0.0-beta.3
 	github.com/roadrunner-server/endure/v2 v2.6.2
+	github.com/roadrunner-server/goridge/v4 v4.0.0-beta.2.0.20260714195909-75e9ece43063
 	github.com/roadrunner-server/informer/v6 v6.0.0-beta.2
 	github.com/roadrunner-server/logger/v6 v6.0.0-beta.3
+	github.com/roadrunner-server/pool/v2 v2.0.0-beta.1
 	github.com/roadrunner-server/resetter/v6 v6.0.0-beta.3
-	github.com/roadrunner-server/rpc/v6 v6.0.0-beta.4
+	github.com/roadrunner-server/rpc/v6 v6.0.0-beta.4.0.20260714200548-15b82bc47898
 	github.com/roadrunner-server/server/v6 v6.0.0-beta.6
 	github.com/roadrunner-server/status/v6 v6.0.0-beta.5
 	github.com/stretchr/testify v1.11.1
@@ -28,7 +29,6 @@ replace github.com/uber-go/tally/v4 => github.com/uber-go/tally/v4 v4.1.10
 replace github.com/temporalio/roadrunner-temporal/v6 => ../
 
 require (
-	connectrpc.com/grpcreflect v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cactus/go-statsd-client/v5 v5.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -61,8 +61,6 @@ require (
 	github.com/roadrunner-server/api-plugins/v6 v6.0.0-beta.2 // indirect
 	github.com/roadrunner-server/errors v1.5.0 // indirect
 	github.com/roadrunner-server/events v1.0.1 // indirect
-	github.com/roadrunner-server/goridge/v4 v4.0.0-beta.2 // indirect
-	github.com/roadrunner-server/pool/v2 v2.0.0-beta.1 // indirect
 	github.com/roadrunner-server/tcplisten v1.5.2 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect

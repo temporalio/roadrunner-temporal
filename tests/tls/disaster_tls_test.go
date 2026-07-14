@@ -10,7 +10,7 @@ import (
 
 	"tests/helpers"
 
-	informerV1 "github.com/roadrunner-server/api-go/v6/informer/v1"
+	"github.com/roadrunner-server/pool/v2/state/process"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -239,7 +239,7 @@ func Test_WorkerError_DisasterRecovery_Heavy(t *testing.T) {
 	list, err := helpers.Workers(t.Context())
 	require.NoError(t, err)
 
-	p, err := os.FindProcess(int(list[0].GetPid()))
+	p, err := os.FindProcess(int(list[0].Pid))
 	assert.NoError(t, err)
 
 	// must fully recover with new worker
@@ -284,7 +284,7 @@ func Test_WorkerError_DisasterRecovery_HeavyLA(t *testing.T) {
 	list, err := helpers.Workers(t.Context())
 	require.NoError(t, err)
 
-	p, err := os.FindProcess(int(list[0].GetPid()))
+	p, err := os.FindProcess(int(list[0].Pid))
 	assert.NoError(t, err)
 
 	// must fully recover with new worker
@@ -565,7 +565,7 @@ func Test_ActivityErrorLA_DisasterRecoveryProto(t *testing.T) {
 	wg.Wait()
 }
 
-func getWorkers(t *testing.T) []*informerV1.ProcessState {
+func getWorkers(t *testing.T) []*process.State {
 	list, err := helpers.Workers(t.Context())
 	assert.NoError(t, err)
 	assert.Len(t, list, 5)

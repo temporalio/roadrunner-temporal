@@ -8,7 +8,6 @@ import (
 	"tests/helpers"
 	"time"
 
-	"connectrpc.com/connect"
 	protoApi "github.com/roadrunner-server/api-go/v6/temporal/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -78,6 +77,9 @@ func TestUpdatesReplay(t *testing.T) {
 
 func downloadWFHistory(wid, rid, wname, path string) func(t *testing.T) {
 	return func(t *testing.T) {
+		c, err := helpers.RPCClient(t.Context())
+		require.NoError(t, err)
+
 		req := &protoApi.ReplayRequest{
 			SavePath: path,
 			WorkflowType: &common.WorkflowType{
@@ -88,22 +90,25 @@ func downloadWFHistory(wid, rid, wname, path string) func(t *testing.T) {
 				RunId:      rid,
 			},
 		}
-		resp, err := helpers.TemporalClient().DownloadWorkflowHistory(t.Context(), connect.NewRequest(req))
-		require.NoError(t, err)
-		require.Zero(t, resp.Msg.GetStatus().GetCode())
+		resp := &protoApi.ReplayResponse{}
+		require.NoError(t, c.Call("temporal.DownloadWorkflowHistory", req, resp))
+		require.Zero(t, resp.GetStatus().GetCode())
 	}
 }
 
 func replayFromJSON(path, wname string) func(t *testing.T) {
 	return func(t *testing.T) {
+		c, err := helpers.RPCClient(t.Context())
+		require.NoError(t, err)
+
 		req := &protoApi.ReplayRequest{
 			SavePath: path,
 			WorkflowType: &common.WorkflowType{
 				Name: wname,
 			},
 		}
-		resp, err := helpers.TemporalClient().ReplayFromJSON(t.Context(), connect.NewRequest(req))
-		require.NoError(t, err)
-		require.Zero(t, resp.Msg.GetStatus().GetCode())
+		resp := &protoApi.ReplayResponse{}
+		require.NoError(t, c.Call("temporal.ReplayFromJSON", req, resp))
+		require.Zero(t, resp.GetStatus().GetCode())
 	}
 }

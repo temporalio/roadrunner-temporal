@@ -11,9 +11,6 @@ import (
 
 	"tests/helpers"
 
-	protoApi "github.com/roadrunner-server/api-go/v6/temporal/v1"
-
-	"connectrpc.com/connect"
 	"github.com/fatih/color"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -824,15 +821,21 @@ func Test_SagaWorkflowLAProto(t *testing.T) {
 }
 
 func getActivities(t *testing.T) []string {
-	resp, err := helpers.TemporalClient().GetActivityNames(t.Context(), connect.NewRequest(&protoApi.GetNamesRequest{}))
+	c, err := helpers.RPCClient(t.Context())
 	assert.NoError(t, err)
 
-	return resp.Msg.GetNames()
+	var names []string
+	assert.NoError(t, c.Call("temporal.GetActivityNames", true, &names))
+
+	return names
 }
 
 func getWorkflows(t *testing.T) []string {
-	resp, err := helpers.TemporalClient().GetWorkflowNames(t.Context(), connect.NewRequest(&protoApi.GetNamesRequest{}))
+	c, err := helpers.RPCClient(t.Context())
 	assert.NoError(t, err)
 
-	return resp.Msg.GetNames()
+	var names []string
+	assert.NoError(t, c.Call("temporal.GetWorkflowNames", true, &names))
+
+	return names
 }
