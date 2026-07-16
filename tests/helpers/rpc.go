@@ -5,6 +5,8 @@ import (
 	"net"
 	"net/rpc"
 
+	informerV1 "github.com/roadrunner-server/api-go/v6/informer/v1"
+	resetterV1 "github.com/roadrunner-server/api-go/v6/resetter/v1"
 	goridgeRpc "github.com/roadrunner-server/goridge/v4/pkg/rpc"
 	"github.com/roadrunner-server/pool/v2/state/process"
 )
@@ -32,19 +34,24 @@ func Workers(ctx context.Context) ([]*process.State, error) {
 	}
 	defer func() { _ = c.Close() }()
 
-	list := struct {
-		// Workers is the list of workers.
-		Workers []process.State `json:"workers"`
-	}{}
-
-	err = c.Call("informer.Workers", "temporal", &list)
+	list := &informerV1.WorkersList{}
+	err = c.Call("informer.GetWorkers", &informerV1.GetWorkersRequest{Plugin: "temporal"}, list)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]*process.State, len(list.Workers))
-	for i := range list.Workers {
-		out[i] = &list.Workers[i]
+	out := make([]*process.State, 0, len(list.GetWorkers()))
+	for _, w := range list.GetWorkers() {
+		out = append(out, &process.State{
+			Pid:         int64(w.GetPid()),
+			Status:      w.GetStatus(),
+			NumExecs:    w.GetNumExecs(),
+			Created:     w.GetCreated(),
+			MemoryUsage: w.GetMemoryUsage(),
+			CPUPercent:  float64(w.GetCpuPercent()),
+			Command:     w.GetCommand(),
+			StatusStr:   w.GetStatusStr(),
+		})
 	}
 
 	return out, nil
@@ -58,6 +65,5 @@ func Reset(ctx context.Context) error {
 	}
 	defer func() { _ = c.Close() }()
 
-	var ret bool
-	return c.Call("resetter.Reset", "temporal", &ret)
+	return c.Call("resetter.Reset", &resetterV1.ResetRequest{Plugin: "temporal"}, &resetterV1.Response{})
 }
