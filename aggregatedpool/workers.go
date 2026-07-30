@@ -134,27 +134,6 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 			wi[i].TaskQueue = temporalClient.DefaultNamespace
 		}
 
-		dynamicWorkflow := -1
-		for j := range wi[i].Workflows {
-			if !wi[i].Workflows[j].Dynamic {
-				continue
-			}
-
-			if dynamicWorkflow >= 0 {
-				return nil, errors.E(
-					errors.Op("temporal_workers"),
-					errors.Errorf(
-						"multiple dynamic workflows %q and %q configured on task queue %q",
-						wi[i].Workflows[dynamicWorkflow].Name,
-						wi[i].Workflows[j].Name,
-						wi[i].TaskQueue,
-					),
-				)
-			}
-
-			dynamicWorkflow = j
-		}
-
 		if wi[i].Options.Identity == "" {
 			wi[i].Options.Identity = fmt.Sprintf(
 				"roadrunner:%s:%s",
@@ -166,6 +145,7 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 		wi[i].Options.Interceptors = append(wi[i].Options.Interceptors, resolved...)
 
 		wrk := worker.New(tc, wi[i].TaskQueue, wi[i].Options)
+		dynamicWorkflowRegistered := false
 
 		for j := 0; j < len(wi[i].Workflows); j++ {
 			wf := wi[i].Workflows[j]
@@ -176,12 +156,20 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 			// (wDef) is a WorkflowDefinitionFactory, which RegisterDynamicWorkflow
 			// accepts; it forwards the real workflow type name to PHP.
 			if wf.Dynamic {
+				if dynamicWorkflowRegistered {
+					return nil, errors.E(
+						errors.Op("temporal_workers"),
+						errors.Errorf("multiple dynamic workflows configured on task queue %q", wi[i].TaskQueue),
+					)
+				}
+
 				err := registerWorkflow(func() {
 					wrk.RegisterDynamicWorkflow(wDef, workflow.DynamicRegisterOptions{})
 				}, wf.Name, wi[i].TaskQueue)
 				if err != nil {
 					return nil, err
 				}
+				dynamicWorkflowRegistered = true
 
 				log.Debug("dynamic workflow registered", zap.String(tq, wi[i].TaskQueue), zap.Any("workflow name", wf.Name))
 

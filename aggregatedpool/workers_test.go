@@ -8,6 +8,7 @@ import (
 	"github.com/temporalio/roadrunner-temporal/v5/api"
 	"github.com/temporalio/roadrunner-temporal/v5/internal"
 	commonpb "go.temporal.io/api/common/v1"
+	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	sdkinterceptor "go.temporal.io/sdk/interceptor"
 	"go.uber.org/zap"
@@ -281,6 +282,10 @@ func TestRegisterWorkflow_NonStringPanic_Handled(t *testing.T) {
 }
 
 func TestTemporalWorkers_MultipleDynamicWorkflows_ReturnsError(t *testing.T) {
+	temporalClient, err := client.NewLazyClient(client.Options{})
+	require.NoError(t, err)
+	t.Cleanup(temporalClient.Close)
+
 	workers := []*internal.WorkerInfo{{
 		TaskQueue: "default",
 		Workflows: []internal.WorkflowInfo{
@@ -289,7 +294,7 @@ func TestTemporalWorkers_MultipleDynamicWorkflows_ReturnsError(t *testing.T) {
 		},
 	}}
 
-	_, err := TemporalWorkers(nil, nil, workers, zap.NewNop(), nil, nil, nil)
+	_, err = TemporalWorkers(nil, nil, workers, zap.NewNop(), temporalClient, nil, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "multiple dynamic workflows")
 	assert.Contains(t, err.Error(), "default")
