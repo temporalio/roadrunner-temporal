@@ -134,6 +134,27 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 			wi[i].TaskQueue = temporalClient.DefaultNamespace
 		}
 
+		dynamicWorkflow := -1
+		for j := range wi[i].Workflows {
+			if !wi[i].Workflows[j].Dynamic {
+				continue
+			}
+
+			if dynamicWorkflow >= 0 {
+				return nil, errors.E(
+					errors.Op("temporal_workers"),
+					errors.Errorf(
+						"multiple dynamic workflows %q and %q configured on task queue %q",
+						wi[i].Workflows[dynamicWorkflow].Name,
+						wi[i].Workflows[j].Name,
+						wi[i].TaskQueue,
+					),
+				)
+			}
+
+			dynamicWorkflow = j
+		}
+
 		if wi[i].Options.Identity == "" {
 			wi[i].Options.Identity = fmt.Sprintf(
 				"roadrunner:%s:%s",
