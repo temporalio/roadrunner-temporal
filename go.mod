@@ -13,7 +13,7 @@ require (
 	github.com/roadrunner-server/pool v1.1.3
 	github.com/stretchr/testify v1.11.1
 	github.com/uber-go/tally/v4 v4.1.17
-	go.temporal.io/api v1.62.14
+	go.temporal.io/api v1.63.4
 	go.temporal.io/sdk v1.47.0
 	go.temporal.io/sdk/contrib/tally v0.2.0
 	go.temporal.io/server v1.31.1
@@ -57,7 +57,7 @@ require (
 	golang.org/x/time v0.15.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
-	google.golang.org/grpc v1.81.1
+	google.golang.org/grpc v1.82.1
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
