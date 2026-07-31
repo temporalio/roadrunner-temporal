@@ -125,31 +125,30 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 	workers := make([]worker.Worker, 0, len(wi))
 
 	for i := range wi {
-		log.Debug("worker info", zap.Any("worker_info", wi[i]))
+		workerInfo := wi[i]
+		log.Debug("worker info", zap.Any("worker_info", workerInfo))
 
 		// Override to 0: RoadRunner manages worker lifecycle independently
-		wi[i].Options.WorkerStopTimeout = 0
+		workerInfo.Options.WorkerStopTimeout = 0
 
-		if wi[i].TaskQueue == "" {
-			wi[i].TaskQueue = temporalClient.DefaultNamespace
+		if workerInfo.TaskQueue == "" {
+			workerInfo.TaskQueue = temporalClient.DefaultNamespace
 		}
 
-		if wi[i].Options.Identity == "" {
-			wi[i].Options.Identity = fmt.Sprintf(
+		if workerInfo.Options.Identity == "" {
+			workerInfo.Options.Identity = fmt.Sprintf(
 				"roadrunner:%s:%s",
-				wi[i].TaskQueue,
+				workerInfo.TaskQueue,
 				uuid.NewString(),
 			)
 		}
 
-		wi[i].Options.Interceptors = append(wi[i].Options.Interceptors, resolved...)
+		workerInfo.Options.Interceptors = append(workerInfo.Options.Interceptors, resolved...)
 
-		wrk := worker.New(tc, wi[i].TaskQueue, wi[i].Options)
+		wrk := worker.New(tc, workerInfo.TaskQueue, workerInfo.Options)
 		dynamicWorkflowRegistered := false
 
-		for j := 0; j < len(wi[i].Workflows); j++ {
-			wf := wi[i].Workflows[j]
-
+		for _, wf := range workerInfo.Workflows {
 			// A dynamic workflow is the catch-all: register it via
 			// RegisterDynamicWorkflow (not by name) so it handles any workflow
 			// type that has no statically registered handler. The shared proxy
@@ -159,19 +158,19 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 				if dynamicWorkflowRegistered {
 					return nil, errors.E(
 						errors.Op("temporal_workers"),
-						errors.Errorf("multiple dynamic workflows configured on task queue %q", wi[i].TaskQueue),
+						errors.Errorf("multiple dynamic workflows configured on task queue %q", workerInfo.TaskQueue),
 					)
 				}
 
 				err := registerWorkflow(func() {
 					wrk.RegisterDynamicWorkflow(wDef, workflow.DynamicRegisterOptions{})
-				}, wf.Name, wi[i].TaskQueue)
+				}, wf.Name, workerInfo.TaskQueue)
 				if err != nil {
 					return nil, err
 				}
 				dynamicWorkflowRegistered = true
 
-				log.Debug("dynamic workflow registered", zap.String(tq, wi[i].TaskQueue), zap.Any("workflow name", wf.Name))
+				log.Debug("dynamic workflow registered", zap.String(tq, workerInfo.TaskQueue), zap.Any("workflow name", wf.Name))
 
 				continue
 			}
@@ -182,29 +181,29 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 					VersioningBehavior:            wf.VersioningBehavior,
 					DisableAlreadyRegisteredCheck: false,
 				})
-			}, wf.Name, wi[i].TaskQueue)
+			}, wf.Name, workerInfo.TaskQueue)
 			if err != nil {
 				return nil, err
 			}
 
-			log.Debug("workflow registered", zap.String(tq, wi[i].TaskQueue), zap.Any("workflow name", wf.Name), zap.Int("versioning_behavior", int(wf.VersioningBehavior)))
+			log.Debug("workflow registered", zap.String(tq, workerInfo.TaskQueue), zap.Any("workflow name", wf.Name), zap.Int("versioning_behavior", int(wf.VersioningBehavior)))
 		}
 
 		if actDef.disableActivityWorkers {
-			log.Debug("activity workers disabled", zap.String(tq, wi[i].TaskQueue))
+			log.Debug("activity workers disabled", zap.String(tq, workerInfo.TaskQueue))
 			// add worker to the pool without activities
 			workers = append(workers, wrk)
 			continue
 		}
 
-		for j := 0; j < len(wi[i].Activities); j++ {
+		for _, activity := range workerInfo.Activities {
 			wrk.RegisterActivityWithOptions(actDef.execute, tActivity.RegisterOptions{
-				Name:                          wi[i].Activities[j].Name,
+				Name:                          activity.Name,
 				DisableAlreadyRegisteredCheck: false,
 				SkipInvalidStructFunctions:    false,
 			})
 
-			log.Debug("activity registered", zap.String(tq, wi[i].TaskQueue), zap.Any("workflow name", wi[i].Activities[j].Name))
+			log.Debug("activity registered", zap.String(tq, workerInfo.TaskQueue), zap.Any("workflow name", activity.Name))
 		}
 		// add worker to the pool
 		workers = append(workers, wrk)
