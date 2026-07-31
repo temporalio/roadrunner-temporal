@@ -25,7 +25,7 @@ jobs:
         os: [ "ubuntu-latest" ]
     steps:
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ matrix.go }}
 
@@ -36,7 +36,7 @@ jobs:
           extensions: dom, sockets, grpc, curl, protobuf
 
       - name: Check out code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           submodules: true
 
@@ -46,7 +46,7 @@ jobs:
           working-directory: tests/acceptance/php-sdk
 
       - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -98,7 +98,7 @@ jobs:
         os: [ "ubuntu-latest" ]
     steps:
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ matrix.go }}
 
@@ -109,7 +109,7 @@ jobs:
           extensions: sockets
 
       - name: Check out code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Get Composer Cache Directory
         id: composer-cache
@@ -118,7 +118,7 @@ jobs:
           echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
       - name: Init Composer Cache # Docs: <https://git.io/JfAKn#php---composer>
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('**/composer.json') }}
@@ -128,7 +128,7 @@ jobs:
         run: cd tests/php_test_files && composer update --prefer-dist --no-progress --ansi
 
       - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -167,7 +167,7 @@ jobs:
         os: [ "ubuntu-latest" ]
     steps:
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ matrix.go }}
 
@@ -178,7 +178,7 @@ jobs:
           extensions: sockets
 
       - name: Check out code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Get Composer Cache Directory
         id: composer-cache
@@ -187,7 +187,7 @@ jobs:
           echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
       - name: Init Composer Cache # Docs: <https://git.io/JfAKn#php---composer>
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('**/composer.json') }}
@@ -197,7 +197,7 @@ jobs:
         run: cd tests/php_test_files && composer update --prefer-dist --no-progress --ansi
 
       - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -260,7 +260,7 @@ jobs:
         os: [ "ubuntu-latest" ]
     steps:
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ matrix.go }}
 
@@ -271,7 +271,7 @@ jobs:
           extensions: sockets
 
       - name: Check out code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Get Composer Cache Directory
         id: composer-cache
@@ -280,7 +280,7 @@ jobs:
           echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
       - name: Init Composer Cache # Docs: <https://git.io/JfAKn#php---composer>
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('**/composer.json') }}
@@ -290,7 +290,7 @@ jobs:
         run: cd tests/php_test_files && composer update --prefer-dist --no-progress --ansi
 
       - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
