@@ -178,6 +178,8 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 		Namespace:      p.config.Namespace,
 		Logger:         logger.NewZapAdapter(p.log),
 		DataConverter:  dc,
+		SdkName:        clientNameHeaderValue,
+		SdkVersion:     phpSdkVersion,
 		ConnectionOptions: tclient.ConnectionOptions{
 			TLS:         p.temporal.tlsCfg,
 			DialOptions: dialOpts,
