@@ -166,6 +166,17 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 	p.log.Debug("PHP-SDK version: " + phpSdkVersion)
 	worker.SetStickyWorkflowCacheSize(p.config.CacheSize)
 
+	// Clamp to sdk-go's accepted range so a bad value warns instead of panicking in Dial.
+	heartbeatInterval := p.config.WorkerHeartbeatInterval
+	switch {
+	case heartbeatInterval > 0 && heartbeatInterval < time.Second:
+		p.log.Warn("worker_heartbeat_interval below 1s, using 1s", zap.Duration("configured", heartbeatInterval))
+		heartbeatInterval = time.Second
+	case heartbeatInterval > 60*time.Second:
+		p.log.Warn("worker_heartbeat_interval above 60s, using 60s", zap.Duration("configured", heartbeatInterval))
+		heartbeatInterval = 60 * time.Second
+	}
+
 	dialOpts := make([]grpc.DialOption, 0, 2)
 	dialOpts = append(dialOpts, grpc.WithUnaryInterceptor(rewriteNameAndVersion(phpSdkVersion)))
 	if os.Getenv("NO_PROXY") != "" {
@@ -173,11 +184,12 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 	}
 
 	opts := tclient.Options{
-		HostPort:       p.config.Address,
-		MetricsHandler: p.temporal.mh,
-		Namespace:      p.config.Namespace,
-		Logger:         logger.NewZapAdapter(p.log),
-		DataConverter:  dc,
+		HostPort:                p.config.Address,
+		MetricsHandler:          p.temporal.mh,
+		Namespace:               p.config.Namespace,
+		Logger:                  logger.NewZapAdapter(p.log),
+		DataConverter:           dc,
+		WorkerHeartbeatInterval: heartbeatInterval,
 		ConnectionOptions: tclient.ConnectionOptions{
 			TLS:         p.temporal.tlsCfg,
 			DialOptions: dialOpts,
