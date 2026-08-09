@@ -45,37 +45,49 @@ func Test_WorkerHeartbeat_ReportsRunningWorker(t *testing.T) {
 	wg.Wait()
 }
 
-// defaultQueueHeartbeat returns the heartbeat this test process reported for the "default"
-// task queue, or nil if the server has not seen one yet. ListWorkers returns only limited
-// worker info, so the full heartbeat is fetched via DescribeWorker. RR runs in-process here,
-// so the PID filter keeps stale heartbeats from earlier runs against a long-lived server out.
 func defaultQueueHeartbeat(c temporalClient.Client) *workerpb.WorkerHeartbeat {
-	resp, err := c.WorkflowService().ListWorkers(context.Background(), &workflowservice.ListWorkersRequest{
-		Namespace: "default",
-		PageSize:  100,
-	})
-	if err != nil {
-		return nil
-	}
-
 	pid := strconv.Itoa(os.Getpid())
-	for _, w := range resp.GetWorkers() {
-		if w.GetTaskQueue() != "default" || w.GetProcessId() != pid {
-			continue
-		}
 
-		desc, err := c.WorkflowService().DescribeWorker(context.Background(), &workflowservice.DescribeWorkerRequest{
-			Namespace:         "default",
-			WorkerInstanceKey: w.GetWorkerInstanceKey(),
+	var newest *workerpb.WorkerListInfo
+	var pageToken []byte
+	for {
+		resp, err := c.WorkflowService().ListWorkers(context.Background(), &workflowservice.ListWorkersRequest{
+			Namespace:     "default",
+			PageSize:      100,
+			NextPageToken: pageToken,
 		})
 		if err != nil {
 			return nil
 		}
 
-		return desc.GetWorkerInfo().GetWorkerHeartbeat()
+		for _, w := range resp.GetWorkers() {
+			if w.GetTaskQueue() != "default" || w.GetProcessId() != pid {
+				continue
+			}
+			if newest == nil || w.GetStartTime().AsTime().After(newest.GetStartTime().AsTime()) {
+				newest = w
+			}
+		}
+
+		pageToken = resp.GetNextPageToken()
+		if len(pageToken) == 0 {
+			break
+		}
 	}
 
-	return nil
+	if newest == nil {
+		return nil
+	}
+
+	desc, err := c.WorkflowService().DescribeWorker(context.Background(), &workflowservice.DescribeWorkerRequest{
+		Namespace:         "default",
+		WorkerInstanceKey: newest.GetWorkerInstanceKey(),
+	})
+	if err != nil {
+		return nil
+	}
+
+	return desc.GetWorkerInfo().GetWorkerHeartbeat()
 }
 
 // End-to-end: heartbeats carry host CPU/memory usage via WorkerOptions.SysInfoProvider.
