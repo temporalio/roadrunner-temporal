@@ -1,42 +1,15 @@
 version: "3.8"
 services:
-  cockroach:
-    cap_drop:
-      - ALL
-    command:
-      - start-single-node
-      - --insecure
-    container_name: temporal-cockroach
-    hostname: cockroach
-    image: cockroachdb/cockroach
-    networks:
-      - temporal-network
-    restart: on-failure:5
-    security_opt:
-      - no-new-privileges
-    tty: false
-
+  # CLI dev server (bundles server 1.31.2): in-memory SQLite, auto-created "default"
+  # namespace, no schema setup. auto-setup images are frozen at 1.29.x and never got 1.3x.
   temporal:
     container_name: temporal
-    depends_on:
-      - cockroach
-    environment:
-      - DB=postgresql
-      - DB_PORT=26257
-      - POSTGRES_USER=root
-      - POSTGRES_PWD=
-      - POSTGRES_SEEDS=postgres
-    image: temporalio/auto-setup:1
-    volumes:
-      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
-    links:
-      - cockroach:postgres
+    image: temporalio/temporal:1.8.2
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--port", "7233", "--headless"]
     networks:
       - temporal-network
     ports:
       - 7233:7233
-    labels:
-      kompose.volume.type: configMap
 
   temporal-admin-tools:
     container_name: temporal-admin-tools

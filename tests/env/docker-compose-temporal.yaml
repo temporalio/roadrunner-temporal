@@ -22,13 +22,6 @@ services:
       - ./temporal_tls/certs/client.key:/etc/envoy/client.key
       - ./temporal_tls/certs/ca.cert:/etc/envoy/ca.cert
 
-  postgresql:
-    container_name: temporal-postgresql
-    image: postgres:latest
-    environment:
-      POSTGRES_PASSWORD: temporal
-      POSTGRES_USER: temporal
-
   temporal-ui:
     container_name: temporal-ui
     image: temporalio/ui:latest
@@ -40,20 +33,12 @@ services:
     ports:
       - "8080:8080"
 
+  # CLI dev server (bundles server 1.31.2): in-memory SQLite, auto-created "default"
+  # namespace, no schema setup. auto-setup images are frozen at 1.29.x and never got 1.3x.
   temporal:
     container_name: temporal
-    image: temporalio/auto-setup:latest
-    depends_on:
-      - postgresql
-    environment:
-      - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
-      - LOG_LEVEL=debug
-      - DB=postgres12
-      - DB_PORT=5432
-      - POSTGRES_USER=temporal
-      - POSTGRES_PWD=temporal
-      - POSTGRES_SEEDS=postgresql
+    image: temporalio/temporal:1.8.2
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--port", "7233", "--headless"]
     ports:
       - "7233:7233"
 
