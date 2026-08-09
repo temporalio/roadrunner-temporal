@@ -17,6 +17,11 @@
       "type": "integer",
       "default": 10000
     },
+    "worker_heartbeat_interval": {
+      "description": "How often each worker sends a heartbeat to the server, used for worker debugging and observability. If omitted, the SDK default of 60s is used. Values below 1s or above 60s are clamped to that range with a warning.",
+      "$ref": "https://raw.githubusercontent.com/roadrunner-server/roadrunner/refs/heads/master/schemas/config/3.0.schema.json#/definitions/Duration",
+      "default": "60s"
+    },
     "interceptors": {
       "description": "Ordered list of enabled worker interceptor plugin names. When set, only these interceptors are active and applied in the specified order. When omitted, all registered interceptors are applied.",
       "type": "array",

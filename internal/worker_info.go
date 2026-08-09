@@ -33,6 +33,9 @@ type WorkflowInfo struct {
 	Signals []string `json:"signals"`
 	// VersioningBehavior for the workflow.
 	VersioningBehavior workflow.VersioningBehavior `json:"versioning_behavior,omitempty"`
+	// Dynamic marks this as the catch-all workflow, registered via
+	// RegisterDynamicWorkflow so it handles any otherwise-unregistered type.
+	Dynamic bool `json:"dynamic,omitempty"`
 }
 
 // ActivityInfo describes single worker activity.
