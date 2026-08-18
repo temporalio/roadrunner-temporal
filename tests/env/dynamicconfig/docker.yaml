@@ -4,3 +4,9 @@ frontend.enableUpdateWorkflowExecution:
 frontend.enableUpdateWorkflowExecutionAsyncAccepted:
   - value: true
     constraints: {}
+frontend.ListWorkersEnabled:
+  - value: true
+    constraints: {}
+frontend.workerHeartbeatsEnabled:
+  - value: true
+    constraints: {}
