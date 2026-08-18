@@ -201,11 +201,11 @@ func TestMakeNexusCompletionResponseCallback_DiscardsCancellerSlot(t *testing.T)
 	wp := newCallerWorkflow(t)
 	atomic.StoreUint32(&wp.inLoop, 1)
 
-	var cancelled bool
-	wp.canceller.Register(909, func() error { cancelled = true; return nil })
+	var canceled bool
+	wp.canceller.Register(909, func() error { canceled = true; return nil })
 
 	wp.makeNexusCompletionResponseCallback(909)(nil, nil)
 	require.NoError(t, wp.canceller.Cancel(909))
 
-	assert.False(t, cancelled, "completion must discard the canceller slot")
+	assert.False(t, canceled, "completion must discard the canceller slot")
 }

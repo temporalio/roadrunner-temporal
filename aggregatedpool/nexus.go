@@ -318,6 +318,8 @@ func mapNexusRetryBehavior(b enumspb.NexusHandlerErrorRetryBehavior) nexus.Handl
 		return nexus.HandlerErrorRetryBehaviorRetryable
 	case enumspb.NEXUS_HANDLER_ERROR_RETRY_BEHAVIOR_NON_RETRYABLE:
 		return nexus.HandlerErrorRetryBehaviorNonRetryable
+	case enumspb.NEXUS_HANDLER_ERROR_RETRY_BEHAVIOR_UNSPECIFIED:
+		return nexus.HandlerErrorRetryBehaviorUnspecified
 	default:
 		return nexus.HandlerErrorRetryBehaviorUnspecified
 	}
@@ -420,7 +422,7 @@ func (h *NexusHandler) sendCancelMethod(invocationID uint64, reason string) {
 		return
 	}
 
-	// Original ctx is already cancelled; use a fresh one with timeout so we don't
+	// Original ctx is already canceled; use a fresh one with timeout so we don't
 	// hang forever if the pool is shutting down.
 	ctx, cancel := context.WithTimeout(context.Background(), nexusCancelMethodTimeout)
 	defer cancel()
