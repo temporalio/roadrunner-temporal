@@ -1,8 +1,6 @@
 package aggregatedpool
 
 import (
-	"sync/atomic"
-
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/temporal"
 )
@@ -17,7 +15,7 @@ type NexusStartEnvelope struct {
 
 func (wp *Workflow) makeNexusStartedRegistryCallback(startMsgID uint64) func(string, error) {
 	return func(token string, err error) {
-		if atomic.LoadUint32(&wp.inLoop) == 1 {
+		if wp.deliverInline() {
 			wp.nexusStarted.Push(startMsgID, token, err)
 			return
 		}
@@ -42,7 +40,7 @@ func (wp *Workflow) makeNexusCompletionResponseCallback(startMsgID uint64) func(
 		wp.mq.PushResponse(startMsgID, payloads, wp.getWorkflowWorkerPid())
 	}
 	return func(result *commonpb.Payload, err error) {
-		if atomic.LoadUint32(&wp.inLoop) == 1 {
+		if wp.deliverInline() {
 			deliver(result, err)
 			return
 		}
