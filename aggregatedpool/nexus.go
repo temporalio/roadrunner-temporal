@@ -27,6 +27,9 @@ import (
 // Wire contract with PHP — must match FailureConverter::NEXUS_OPERATION_ERROR_TYPE_PREFIX.
 const nexusOperationErrorTypePrefix = "nexus.OperationError."
 
+// Type Go and Java handlers put on a failed operation error.
+const nexusOperationErrorType = "OperationError"
+
 // Timeout for the fire-and-forget CancelNexusOperationMethod RPC.
 const nexusCancelMethodTimeout = 5 * time.Second
 
@@ -289,7 +292,23 @@ func nexusErrorFromFailure(f *failurepb.Failure) error {
 		}
 	}
 
+	if f.GetCanceledFailureInfo() != nil {
+		return &nexus.OperationError{
+			State:   nexus.OperationStateCanceled,
+			Message: f.GetMessage(),
+			Cause:   cause,
+		}
+	}
+
 	if app := f.GetApplicationFailureInfo(); app != nil {
+		if app.GetType() == nexusOperationErrorType {
+			return &nexus.OperationError{
+				State:   nexus.OperationStateFailed,
+				Message: f.GetMessage(),
+				Cause:   cause,
+			}
+		}
+
 		if t := app.GetType(); strings.HasPrefix(t, nexusOperationErrorTypePrefix) {
 			stateStr := strings.TrimPrefix(t, nexusOperationErrorTypePrefix)
 			state := nexus.OperationState(stateStr)

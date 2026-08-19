@@ -823,6 +823,37 @@ func TestNexusErrorFromFailure_OperationErrorFailed(t *testing.T) {
 	assert.Equal(t, "user rejected", oe.Message)
 }
 
+func TestNexusErrorFromFailure_ApplicationFailureNamedOperationErrorIsFailedState(t *testing.T) {
+	f := &failurepb.Failure{
+		Message: "user rejected",
+		FailureInfo: &failurepb.Failure_ApplicationFailureInfo{
+			ApplicationFailureInfo: &failurepb.ApplicationFailureInfo{
+				Type:         nexusOperationErrorType,
+				NonRetryable: true,
+			},
+		},
+	}
+
+	var oe *nexus.OperationError
+	require.ErrorAs(t, nexusErrorFromFailure(f), &oe)
+	assert.Equal(t, nexus.OperationStateFailed, oe.State)
+	assert.Equal(t, "user rejected", oe.Message)
+}
+
+func TestNexusErrorFromFailure_CanceledFailureIsCanceledState(t *testing.T) {
+	f := &failurepb.Failure{
+		Message: "user canceled",
+		FailureInfo: &failurepb.Failure_CanceledFailureInfo{
+			CanceledFailureInfo: &failurepb.CanceledFailureInfo{},
+		},
+	}
+
+	var oe *nexus.OperationError
+	require.ErrorAs(t, nexusErrorFromFailure(f), &oe)
+	assert.Equal(t, nexus.OperationStateCanceled, oe.State)
+	assert.Equal(t, "user canceled", oe.Message)
+}
+
 func TestNexusErrorFromFailure_OperationErrorCanceled(t *testing.T) {
 	f := &failurepb.Failure{
 		Message: "user canceled",
