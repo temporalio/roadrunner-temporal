@@ -10,6 +10,7 @@ import (
 	"github.com/temporalio/roadrunner-temporal/v5/internal"
 	tActivity "go.temporal.io/sdk/activity"
 	temporalClient "go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/contrib/sysinfo"
 	"go.temporal.io/sdk/converter"
 	sdkinterceptor "go.temporal.io/sdk/interceptor"
 	"go.temporal.io/sdk/worker"
@@ -161,15 +162,18 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, nexusHandler *NexusHandle
 
 		workerInfo.Options.Interceptors = append(workerInfo.Options.Interceptors, resolved...)
 
+		// CPU/memory source for worker heartbeats (Temporal UI "Resource Utilization").
+		// The provider is a process-wide singleton shared by all task queues and is only
+		// queried when a heartbeat fires.
+		workerInfo.Options.SysInfoProvider = sysinfo.SysInfoProvider()
+
 		wrk := worker.New(tc, workerInfo.TaskQueue, workerInfo.Options)
 		dynamicWorkflowRegistered := false
 
 		for _, wf := range workerInfo.Workflows {
 			// A dynamic workflow is the catch-all: register it via
 			// RegisterDynamicWorkflow (not by name) so it handles any workflow
-			// type that has no statically registered handler. The shared proxy
-			// (wDef) is a WorkflowDefinitionFactory, which RegisterDynamicWorkflow
-			// accepts; it forwards the real workflow type name to PHP.
+			// type that has no statically registered handler.
 			if wf.Dynamic {
 				if dynamicWorkflowRegistered {
 					return nil, errors.E(
