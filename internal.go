@@ -190,6 +190,8 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 		Logger:                  logger.NewZapAdapter(p.log),
 		DataConverter:           dc,
 		WorkerHeartbeatInterval: heartbeatInterval,
+		SdkName:                 clientNameHeaderValue,
+		SdkVersion:              phpSdkVersion,
 		ConnectionOptions: tclient.ConnectionOptions{
 			TLS:         p.temporal.tlsCfg,
 			DialOptions: dialOpts,
