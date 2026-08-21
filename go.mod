@@ -11,7 +11,7 @@ require (
 	github.com/roadrunner-server/errors v1.5.0
 	github.com/roadrunner-server/events v1.0.1
 	github.com/roadrunner-server/pool v1.1.3
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.1
 	github.com/uber-go/tally/v4 v4.1.17
 	go.temporal.io/api v1.63.5
 	go.temporal.io/sdk v1.48.0
@@ -19,7 +19,7 @@ require (
 	go.temporal.io/sdk/contrib/tally v0.2.0
 	go.temporal.io/server v1.31.2
 	go.uber.org/zap v1.28.0
-	google.golang.org/protobuf v1.36.11
+	google.golang.org/protobuf v1.36.12
 )
 
 require (
@@ -30,7 +30,6 @@ require (
 	github.com/containerd/cgroups/v3 v3.1.3 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
-	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/ebitengine/purego v0.10.2 // indirect
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
@@ -44,7 +43,6 @@ require (
 	github.com/nexus-rpc/sdk-go v0.7.0 // indirect
 	github.com/opencontainers/runtime-spec v1.3.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20260805114148-88456608a4f6 // indirect
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/client_model v0.6.2 // indirect
@@ -73,5 +71,14 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20260807164820-c8921c73eeea // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260807164820-c8921c73eeea // indirect
 	google.golang.org/grpc v1.83.0
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+
+require (
+	go.opentelemetry.io/otel/sdk/metric v1.45.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
+)
+
+require (
+	go.opentelemetry.io/otel/sdk/metric v1.45.0 // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
