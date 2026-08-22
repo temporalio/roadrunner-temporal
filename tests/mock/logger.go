@@ -1,64 +1,64 @@
 package mocklogger
 
 import (
+	"log/slog"
+
 	"github.com/roadrunner-server/endure/v2/dep"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
-type ZapLoggerMock struct {
-	l *zap.Logger
+type SlogLoggerMock struct {
+	l *slog.Logger
 }
 
 type Logger interface {
-	NamedLogger(string) *zap.Logger
+	NamedLogger(string) *slog.Logger
 }
 
-func ZapTestLogger(enab zapcore.LevelEnabler) (*ZapLoggerMock, *ObservedLogs) {
-	core, logs := New(enab)
-	obsLog := zap.New(core, zap.Development())
+func SlogTestLogger(level slog.Level) (*SlogLoggerMock, *ObservedLogs) {
+	handler, logs := NewObserverHandler(level)
+	obsLog := slog.New(handler)
 
-	return &ZapLoggerMock{
+	return &SlogLoggerMock{
 		l: obsLog,
 	}, logs
 }
 
-func (z *ZapLoggerMock) Init() error {
+func (z *SlogLoggerMock) Init() error {
 	return nil
 }
 
-func (z *ZapLoggerMock) Serve() chan error {
+func (z *SlogLoggerMock) Serve() chan error {
 	return make(chan error, 1)
 }
 
-func (z *ZapLoggerMock) Stop() error {
-	return z.l.Sync()
+func (z *SlogLoggerMock) Stop() error {
+	return nil
 }
 
-func (z *ZapLoggerMock) Provides() []*dep.Out {
+func (z *SlogLoggerMock) Provides() []*dep.Out {
 	return []*dep.Out{
 		dep.Bind((*Logger)(nil), z.ProvideLogger),
 	}
 }
 
-func (z *ZapLoggerMock) Weight() uint {
+func (z *SlogLoggerMock) Weight() uint {
 	return 100
 }
 
-func (z *ZapLoggerMock) ProvideLogger() *Log {
+func (z *SlogLoggerMock) ProvideLogger() *Log {
 	return NewLogger(z.l)
 }
 
 type Log struct {
-	base *zap.Logger
+	base *slog.Logger
 }
 
-func NewLogger(log *zap.Logger) *Log {
+func NewLogger(log *slog.Logger) *Log {
 	return &Log{
 		base: log,
 	}
 }
 
-func (l *Log) NamedLogger(string) *zap.Logger {
+func (l *Log) NamedLogger(string) *slog.Logger {
 	return l.base
 }

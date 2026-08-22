@@ -11,20 +11,21 @@ import (
 	"sync/atomic"
 	"time"
 
+	"log/slog"
+
 	"github.com/roadrunner-server/endure/v2/dep"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/events"
-	"github.com/roadrunner-server/pool/state/process"
-	"github.com/temporalio/roadrunner-temporal/v5/aggregatedpool"
-	"github.com/temporalio/roadrunner-temporal/v5/api"
-	"github.com/temporalio/roadrunner-temporal/v5/internal"
-	"github.com/temporalio/roadrunner-temporal/v5/internal/codec/proto"
+	"github.com/roadrunner-server/pool/v2/state/process"
+	"github.com/temporalio/roadrunner-temporal/v6/aggregatedpool"
+	"github.com/temporalio/roadrunner-temporal/v6/api"
+	"github.com/temporalio/roadrunner-temporal/v6/internal"
+	"github.com/temporalio/roadrunner-temporal/v6/internal/codec/proto"
 	tclient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
-	"go.uber.org/zap"
 
-	"github.com/roadrunner-server/pool/pool/static_pool"
+	"github.com/roadrunner-server/pool/v2/pool/static_pool"
 )
 
 const (
@@ -47,7 +48,7 @@ const (
 )
 
 type Logger interface {
-	NamedLogger(name string) *zap.Logger
+	NamedLogger(name string) *slog.Logger
 }
 
 // temporal structure contains temporal specific structures
@@ -70,7 +71,7 @@ type Plugin struct {
 	mu sync.RWMutex
 
 	server        api.Server
-	log           *zap.Logger
+	log           *slog.Logger
 	config        *Config
 	statsExporter *StatsExporter
 	codec         *proto.Codec
@@ -206,7 +207,7 @@ func (p *Plugin) Serve() chan error {
 				switch strings.Contains(ev.Message(), strconv.Itoa(p.wwPID)) {
 				// stopped workflow worker -> full reset
 				case true:
-					p.log.Debug("workflow worker stopped, resetting", zap.String("message", ev.Message()))
+					p.log.Debug("workflow worker stopped, resetting", "message", ev.Message())
 					errR := p.Reset()
 					if errR != nil {
 						errCh <- errors.E(op, errors.Errorf("error during reset: %#v, event: %s", errR, ev.Message()))
@@ -214,7 +215,7 @@ func (p *Plugin) Serve() chan error {
 					}
 				// stopped one of the activity workers -> already replaced by the pool, nothing to do
 				case false:
-					p.log.Debug("activity worker stopped, replaced by the pool", zap.String("message", ev.Message()))
+					p.log.Debug("activity worker stopped, replaced by the pool", "message", ev.Message())
 				}
 
 			case <-p.stopCh:
@@ -238,6 +239,12 @@ func (p *Plugin) Stop(ctx context.Context) error {
 		p.stopCh <- struct{}{}
 		p.eventBus = nil
 
+		// stop receiving tasks: polling must stop before the pools are destroyed,
+		// otherwise a retiring worker can accept a queued task while the pools are draining
+		for i := 0; i < len(p.temporal.workers); i++ {
+			p.temporal.workers[i].Stop()
+		}
+
 		// destroy worker pools
 		// WP
 		if p.wfP != nil {
@@ -249,15 +256,10 @@ func (p *Plugin) Stop(ctx context.Context) error {
 			p.actP.Destroy(ctx)
 		}
 
-		// stop receiving tasks
-		for i := 0; i < len(p.temporal.workers); i++ {
-			p.temporal.workers[i].Stop()
-		}
-
 		// might be nil if the user didn't set the metrics
 		if p.temporal.tallyCloser != nil {
 			if err := p.temporal.tallyCloser.Close(); err != nil {
-				p.log.Error("failed to close tally metrics", zap.Error(err))
+				p.log.Error("failed to close tally metrics", "error", err)
 			}
 		}
 
@@ -290,7 +292,7 @@ func (p *Plugin) Workers() []*process.State {
 		st, err := process.WorkerProcessState(wfPw[i])
 		if err != nil {
 			// log the error and continue
-			p.log.Error("worker process state error", zap.Error(err))
+			p.log.Error("worker process state error", "error", err)
 			continue
 		}
 
@@ -301,7 +303,7 @@ func (p *Plugin) Workers() []*process.State {
 		st, err := process.WorkerProcessState(actPw[i])
 		if err != nil {
 			// log the error and continue
-			p.log.Error("worker process state error", zap.Error(err))
+			p.log.Error("worker process state error", "error", err)
 			continue
 		}
 
@@ -393,7 +395,7 @@ func (p *Plugin) Collects() []*dep.In {
 			p.mu.Lock()
 			if _, exists := p.temporal.interceptors[mdw.Name()]; exists {
 				p.log.Warn("interceptor with this name is already registered, overwriting",
-					zap.String("name", mdw.Name()),
+					"name", mdw.Name(),
 				)
 			}
 			p.temporal.interceptors[mdw.Name()] = mdw
@@ -404,7 +406,7 @@ func (p *Plugin) Collects() []*dep.In {
 			p.mu.Lock()
 			if _, exists := p.temporal.dataConverters[pc.Encoding()]; exists {
 				p.log.Warn("data converter with this encoding is already registered, overwriting",
-					zap.String("encoding", pc.Encoding()),
+					"encoding", pc.Encoding(),
 				)
 			}
 			p.temporal.dataConverters[pc.Encoding()] = pc
