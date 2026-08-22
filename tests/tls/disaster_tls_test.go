@@ -12,8 +12,8 @@ import (
 
 	"tests/helpers"
 
-	goridgeRpc "github.com/roadrunner-server/goridge/v3/pkg/rpc"
-	"github.com/roadrunner-server/pool/state/process"
+	goridgeRpc "github.com/roadrunner-server/goridge/v4/pkg/rpc"
+	"github.com/roadrunner-server/pool/v2/state/process"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/client"

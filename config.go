@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/pool/pool"
+	"github.com/roadrunner-server/pool/v2/pool"
 )
 
 // Config of the temporal client and dependent services.

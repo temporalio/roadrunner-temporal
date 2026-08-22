@@ -8,14 +8,13 @@ import (
 	"time"
 
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/goridge/v3/pkg/frame"
-	"github.com/roadrunner-server/pool/payload"
-	"github.com/temporalio/roadrunner-temporal/v5/internal"
+	"github.com/roadrunner-server/goridge/v4/pkg/frame"
+	"github.com/roadrunner-server/pool/v2/payload"
+	"github.com/temporalio/roadrunner-temporal/v6/internal"
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
-	"go.uber.org/zap"
 )
 
 const (
@@ -38,7 +37,7 @@ func (wp *Workflow) getContext() *internal.Context {
 }
 
 func (wp *Workflow) handleUpdate(name string, id string, input *commonpb.Payloads, header *commonpb.Header, callbacks bindings.UpdateCallbacks) {
-	wp.log.Debug("update request received", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID), zap.String("name", name), zap.String("id", id))
+	wp.log.Debug("update request received", "RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID, "name", name, "id", id)
 
 	// save update name
 	wp.updatesQueue[name] = struct{}{}
@@ -48,7 +47,7 @@ func (wp *Workflow) handleUpdate(name string, id string, input *commonpb.Payload
 	updatesQueueCb := func() {
 		// validate callback
 		wp.updateValidateCb[id] = func(msg *internal.Message) {
-			wp.log.Debug("validate request callback", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID), zap.String("name", name), zap.String("id", id), zap.Bool("is_replaying", wp.env.IsReplaying()), zap.Any("result", msg))
+			wp.log.Debug("validate request callback", "RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID, "name", name, "id", id, "is_replaying", wp.env.IsReplaying(), "result", msg)
 			if !wp.env.IsReplaying() {
 				// before acceptance, we have only one option - reject
 				if msg.Failure != nil {
@@ -63,7 +62,7 @@ func (wp *Workflow) handleUpdate(name string, id string, input *commonpb.Payload
 
 		// execute callback
 		wp.updateCompleteCb[id] = func(msg *internal.Message) {
-			wp.log.Debug("update request callback", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID), zap.String("name", name), zap.String("id", id), zap.Any("result", msg))
+			wp.log.Debug("update request callback", "RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID, "name", name, "id", id, "result", msg)
 			if msg.Failure != nil {
 				callbacks.Complete(nil, temporal.GetDefaultFailureConverter().FailureToError(msg.Failure))
 				return
@@ -101,7 +100,7 @@ func (wp *Workflow) handleCancel() {
 
 // schedule the signal processing
 func (wp *Workflow) handleSignal(name string, input *commonpb.Payloads, header *commonpb.Header) error {
-	wp.log.Debug("signal request", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID), zap.String("name", name))
+	wp.log.Debug("signal request", "RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID, "name", name)
 	wp.mq.PushCommand(
 		internal.InvokeSignal{
 			RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
@@ -119,7 +118,7 @@ func (wp *Workflow) handleSignal(name string, input *commonpb.Payloads, header *
 func (wp *Workflow) handleQuery(queryType string, queryArgs *commonpb.Payloads, header *commonpb.Header) (*commonpb.Payloads, error) {
 	const op = errors.Op("workflow_process_handle_query")
 
-	wp.log.Debug("query request", zap.String("RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID), zap.String("name", queryType))
+	wp.log.Debug("query request", "RunID", wp.env.WorkflowInfo().WorkflowExecution.RunID, "name", queryType)
 
 	result, err := wp.runCommand(internal.InvokeQuery{
 		RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID,
@@ -143,28 +142,28 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 
 	switch command := msg.Command.(type) {
 	case *internal.ExecuteActivity:
-		wp.log.Debug("activity request", zap.Uint64("ID", msg.ID))
+		wp.log.Debug("activity request", "ID", msg.ID)
 		params := command.ActivityParams(wp.env, msg.Payloads, msg.Header)
 		activityID := wp.env.ExecuteActivity(params, wp.createCallback(msg.ID, "activity"))
 
 		wp.canceller.Register(msg.ID, func() error {
-			wp.log.Debug("registering activity canceller", zap.String("activityID", activityID.String()))
+			wp.log.Debug("registering activity canceller", "activityID", activityID.String())
 			wp.env.RequestCancelActivity(activityID)
 			return nil
 		})
 
 	case *internal.ExecuteLocalActivity:
-		wp.log.Debug("local activity request", zap.Uint64("ID", msg.ID))
+		wp.log.Debug("local activity request", "ID", msg.ID)
 		params := command.LocalActivityParams(wp.env, wp.la, msg.Payloads, msg.Header)
 		activityID := wp.env.ExecuteLocalActivity(params, wp.createLocalActivityCallback(msg.ID))
 		wp.canceller.Register(msg.ID, func() error {
-			wp.log.Debug("registering local activity canceller", zap.String("activityID", activityID.String()))
+			wp.log.Debug("registering local activity canceller", "activityID", activityID.String())
 			wp.env.RequestCancelLocalActivity(activityID)
 			return nil
 		})
 
 	case *internal.ExecuteChildWorkflow:
-		wp.log.Debug("execute child workflow request", zap.Uint64("ID", msg.ID))
+		wp.log.Debug("execute child workflow request", "ID", msg.ID)
 		params := command.WorkflowParams(wp.env, msg.Payloads, msg.Header)
 
 		// always use deterministic id
@@ -183,7 +182,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		})
 
 	case *internal.GetChildWorkflowExecution:
-		wp.log.Debug("get child workflow execution request", zap.Uint64("ID", msg.ID))
+		wp.log.Debug("get child workflow execution request", "ID", msg.ID)
 		wp.ids.Listen(command.ID, func(w bindings.WorkflowExecution, err error) {
 			cl := wp.createCallback(msg.ID, "GetChildWorkflow")
 
@@ -201,20 +200,20 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		})
 
 	case *internal.NewTimer:
-		wp.log.Debug("timer request", zap.Uint64("ID", msg.ID))
+		wp.log.Debug("timer request", "ID", msg.ID)
 		timerID := wp.env.NewTimer(command.ToDuration(), workflow.TimerOptions{
 			Summary: command.Summary,
 		}, wp.createCallback(msg.ID, "NewTimer"))
 		wp.canceller.Register(msg.ID, func() error {
 			if timerID != nil {
-				wp.log.Debug("cancel timer request", zap.String("timerID", timerID.String()))
+				wp.log.Debug("cancel timer request", "timerID", timerID.String())
 				wp.env.RequestCancelTimer(*timerID)
 			}
 			return nil
 		})
 
 	case *internal.GetVersion:
-		wp.log.Debug("get version request", zap.Uint64("ID", msg.ID))
+		wp.log.Debug("get version request", "ID", msg.ID)
 		version := wp.env.GetVersion(
 			command.ChangeID,
 			workflow.Version(command.MinSupported),
@@ -233,7 +232,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		}
 
 	case *internal.SideEffect:
-		wp.log.Debug("side-effect request", zap.Uint64("ID", msg.ID))
+		wp.log.Debug("side-effect request", "ID", msg.ID)
 		wp.env.SideEffect(
 			func() (*commonpb.Payloads, error) {
 				return msg.Payloads, nil
@@ -243,15 +242,15 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		)
 
 	case *internal.UpdateCompleted:
-		wp.log.Debug("complete update request", zap.String("update id", command.ID))
+		wp.log.Debug("complete update request", "update id", command.ID)
 
 		if command.ID == "" {
-			wp.log.Error("update id is empty, can't complete update", zap.String("workflow id", wp.env.WorkflowInfo().WorkflowExecution.ID), zap.String("run id", wp.env.WorkflowInfo().WorkflowExecution.RunID))
+			wp.log.Error("update id is empty, can't complete update", "workflow id", wp.env.WorkflowInfo().WorkflowExecution.ID, "run id", wp.env.WorkflowInfo().WorkflowExecution.RunID)
 			return errors.Str("update id is empty, can't complete update")
 		}
 
 		if _, ok := wp.updateCompleteCb[command.ID]; !ok {
-			wp.log.Warn("no such update ID, can't complete update", zap.String("requested id", command.ID))
+			wp.log.Warn("no such update ID, can't complete update", "requested id", command.ID)
 			// TODO(rustatian): error here?
 			return nil
 		}
@@ -260,15 +259,15 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		delete(wp.updateCompleteCb, command.ID)
 
 	case *internal.UpdateValidated:
-		wp.log.Debug("validate update request", zap.String("update id", command.ID))
+		wp.log.Debug("validate update request", "update id", command.ID)
 
 		if command.ID == "" {
-			wp.log.Error("update id is empty, can't validate update", zap.String("workflow id", wp.env.WorkflowInfo().WorkflowExecution.ID), zap.String("run id", wp.env.WorkflowInfo().WorkflowExecution.RunID))
+			wp.log.Error("update id is empty, can't validate update", "workflow id", wp.env.WorkflowInfo().WorkflowExecution.ID, "run id", wp.env.WorkflowInfo().WorkflowExecution.RunID)
 			return errors.Str("update id is empty, can't validate update")
 		}
 
 		if _, ok := wp.updateValidateCb[command.ID]; !ok {
-			wp.log.Warn("no such update ID, can't validate update", zap.String("requested id", command.ID))
+			wp.log.Warn("no such update ID, can't validate update", "requested id", command.ID)
 			// TODO(rustatian): error here?
 			return nil
 		}
@@ -281,7 +280,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		}
 
 	case *internal.CompleteWorkflow:
-		wp.log.Debug("complete workflow request", zap.Uint64("ID", msg.ID))
+		wp.log.Debug("complete workflow request", "ID", msg.ID)
 		result, _ := wp.env.GetDataConverter().ToPayloads(completed)
 		wp.mq.PushResponse(msg.ID, result, wp.getWorkflowWorkerPid())
 
@@ -293,7 +292,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		wp.env.Complete(nil, temporal.GetDefaultFailureConverter().FailureToError(msg.Failure))
 
 	case *internal.ContinueAsNew:
-		wp.log.Debug("continue-as-new request", zap.Uint64("ID", msg.ID), zap.String("name", command.Name))
+		wp.log.Debug("continue-as-new request", "ID", msg.ID, "name", command.Name)
 		result, _ := wp.env.GetDataConverter().ToPayloads(completed)
 		wp.mq.PushResponse(msg.ID, result, wp.getWorkflowWorkerPid())
 
@@ -309,14 +308,14 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		})
 
 	case *internal.UpsertWorkflowSearchAttributes:
-		wp.log.Debug("upsert search attributes request", zap.Uint64("ID", msg.ID))
+		wp.log.Debug("upsert search attributes request", "ID", msg.ID)
 		err := wp.env.UpsertSearchAttributes(command.SearchAttributes)
 		if err != nil {
 			return errors.E(op, err)
 		}
 
 	case *internal.UpsertWorkflowTypedSearchAttributes:
-		wp.log.Debug("upsert typed search attributes request", zap.Uint64("ID", msg.ID), zap.Any("search_attributes", command.SearchAttributes))
+		wp.log.Debug("upsert typed search attributes request", "ID", msg.ID, "search_attributes", command.SearchAttributes)
 		var sau []temporal.SearchAttributeUpdate
 
 		for k, v := range command.SearchAttributes {
@@ -327,14 +326,14 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 					continue
 				}
 				if v.Value == nil {
-					wp.log.Warn("field value is not set", zap.String("key", k))
+					wp.log.Warn("field value is not set", "key", k)
 					continue
 				}
 
 				if tt, ok := v.Value.(bool); ok {
 					sau = append(sau, temporal.NewSearchAttributeKeyBool(k).ValueSet(tt))
 				} else {
-					wp.log.Warn("field value is not a bool type", zap.String("key", k), zap.Any("value", v.Value))
+					wp.log.Warn("field value is not a bool type", "key", k, "value", v.Value)
 				}
 
 			case internal.FloatType:
@@ -344,14 +343,14 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 				}
 
 				if v.Value == nil {
-					wp.log.Warn("field value is not set", zap.String("key", k))
+					wp.log.Warn("field value is not set", "key", k)
 					continue
 				}
 
 				if tt, ok := v.Value.(float64); ok {
 					sau = append(sau, temporal.NewSearchAttributeKeyFloat64(k).ValueSet(tt))
 				} else {
-					wp.log.Warn("field value is not a float64 type", zap.String("key", k), zap.Any("value", v.Value))
+					wp.log.Warn("field value is not a float64 type", "key", k, "value", v.Value)
 				}
 
 			case internal.IntType:
@@ -361,7 +360,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 				}
 
 				if v.Value == nil {
-					wp.log.Warn("field value is not set", zap.String("key", k))
+					wp.log.Warn("field value is not set", "key", k)
 					continue
 				}
 
@@ -381,12 +380,12 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 				case string:
 					i, err := strconv.ParseInt(ti, 10, 64)
 					if err != nil {
-						wp.log.Warn("failed to parse int", zap.Error(err))
+						wp.log.Warn("failed to parse int", "error", err)
 						continue
 					}
 					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueSet(i))
 				default:
-					wp.log.Warn("field value is not an int type", zap.String("key", k), zap.Any("value", v.Value))
+					wp.log.Warn("field value is not an int type", "key", k, "value", v.Value)
 				}
 
 			case internal.KeywordType:
@@ -396,14 +395,14 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 				}
 
 				if v.Value == nil {
-					wp.log.Warn("field value is not set", zap.String("key", k))
+					wp.log.Warn("field value is not set", "key", k)
 					continue
 				}
 
 				if tt, ok := v.Value.(string); ok {
 					sau = append(sau, temporal.NewSearchAttributeKeyKeyword(k).ValueSet(tt))
 				} else {
-					wp.log.Warn("field value is not a string type", zap.String("key", k), zap.Any("value", v.Value))
+					wp.log.Warn("field value is not a string type", "key", k, "value", v.Value)
 				}
 			case internal.KeywordListType:
 				if v.Operation == internal.TypedSearchAttributeOperationUnset {
@@ -412,7 +411,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 				}
 
 				if v.Value == nil {
-					wp.log.Warn("field value is not set", zap.String("key", k))
+					wp.log.Warn("field value is not set", "key", k)
 					continue
 				}
 
@@ -428,7 +427,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 					}
 					sau = append(sau, temporal.NewSearchAttributeKeyKeywordList(k).ValueSet(res))
 				default:
-					wp.log.Warn("field value is not a []string (strings array) type", zap.String("key", k), zap.Any("value", v.Value))
+					wp.log.Warn("field value is not a []string (strings array) type", "key", k, "value", v.Value)
 				}
 
 			case internal.StringType:
@@ -438,14 +437,14 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 				}
 
 				if v.Value == nil {
-					wp.log.Warn("field value is not set", zap.String("key", k))
+					wp.log.Warn("field value is not set", "key", k)
 					continue
 				}
 
 				if tt, ok := v.Value.(string); ok {
 					sau = append(sau, temporal.NewSearchAttributeKeyString(k).ValueSet(tt))
 				} else {
-					wp.log.Warn("field value is not a string type", zap.String("key", k), zap.Any("value", v.Value))
+					wp.log.Warn("field value is not a string type", "key", k, "value", v.Value)
 				}
 			case internal.DatetimeType:
 				if v.Operation == internal.TypedSearchAttributeOperationUnset {
@@ -454,7 +453,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 				}
 
 				if v.Value == nil {
-					wp.log.Warn("field value is not set", zap.String("key", k))
+					wp.log.Warn("field value is not set", "key", k)
 					continue
 				}
 
@@ -466,7 +465,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 
 					sau = append(sau, temporal.NewSearchAttributeKeyTime(k).ValueSet(tm))
 				} else {
-					wp.log.Warn("bool field value is not a bool type", zap.String("key", k), zap.Any("value", v.Value))
+					wp.log.Warn("bool field value is not a bool type", "key", k, "value", v.Value)
 				}
 			}
 		}
@@ -482,7 +481,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		}
 
 	case *internal.SignalExternalWorkflow:
-		wp.log.Debug("signal external workflow request", zap.Uint64("ID", msg.ID))
+		wp.log.Debug("signal external workflow request", "ID", msg.ID)
 		wp.env.SignalExternalWorkflow(
 			command.Namespace,
 			command.WorkflowID,
@@ -496,11 +495,11 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		)
 
 	case *internal.CancelExternalWorkflow:
-		wp.log.Debug("cancel external workflow request", zap.Uint64("ID", msg.ID))
+		wp.log.Debug("cancel external workflow request", "ID", msg.ID)
 		wp.env.RequestCancelExternalWorkflow(command.Namespace, command.WorkflowID, command.RunID, wp.createCallback(msg.ID, "CancelExternalWorkflow"))
 
 	case *internal.Cancel:
-		wp.log.Debug("cancel request", zap.Uint64("ID", msg.ID))
+		wp.log.Debug("cancel request", "ID", msg.ID)
 		err := wp.canceller.Cancel(command.CommandIDs...)
 		if err != nil {
 			return errors.E(op, err)
@@ -515,12 +514,12 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		}
 
 	case *internal.Panic:
-		wp.log.Debug("panic", zap.String("failure", msg.Failure.String()))
+		wp.log.Debug("panic", "failure", msg.Failure.String())
 		// do not wrap error to pass it directly to Temporal
 		return temporal.GetDefaultFailureConverter().FailureToError(msg.Failure)
 
 	case *internal.UpsertMemo:
-		wp.log.Debug("upsert memo request", zap.Uint64("ID", msg.ID), zap.Any("memos", command.Memo))
+		wp.log.Debug("upsert memo request", "ID", msg.ID, "memos", command.Memo)
 		if len(command.Memo) == 0 {
 			return nil
 		}
@@ -539,29 +538,29 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 
 func (wp *Workflow) createLocalActivityCallback(id uint64) bindings.LocalActivityResultHandler {
 	callback := func(lar *bindings.LocalActivityResultWrapper) {
-		wp.log.Debug("executing local activity callback", zap.Uint64("ID", id))
+		wp.log.Debug("executing local activity callback", "ID", id)
 		wp.canceller.Discard(id)
 
 		if lar.Err != nil {
-			wp.log.Debug("error", zap.Error(lar.Err), zap.Int32("attempt", lar.Attempt), zap.Duration("backoff", lar.Backoff))
+			wp.log.Debug("error", "error", lar.Err, "attempt", lar.Attempt, "backoff", lar.Backoff)
 			wp.mq.PushError(id, temporal.GetDefaultFailureConverter().ErrorToFailure(lar.Err), wp.getWorkflowWorkerPid())
 			return
 		}
 
-		wp.log.Debug("pushing local activity response", zap.Uint64("ID", id))
+		wp.log.Debug("pushing local activity response", "ID", id)
 		wp.mq.PushResponse(id, lar.Result, wp.getWorkflowWorkerPid())
 	}
 
 	return func(lar *bindings.LocalActivityResultWrapper) {
 		// timer cancel callback can happen inside the loop
 		if atomic.LoadUint32(&wp.inLoop) == 1 {
-			wp.log.Debug("calling local activity callback IN LOOP", zap.Uint64("ID", id))
+			wp.log.Debug("calling local activity callback IN LOOP", "ID", id)
 			callback(lar)
 			return
 		}
 
 		wp.callbacks = append(wp.callbacks, func() error {
-			wp.log.Debug("appending local activity callback", zap.Uint64("ID", id))
+			wp.log.Debug("appending local activity callback", "ID", id)
 			callback(lar)
 			return nil
 		})
@@ -570,16 +569,16 @@ func (wp *Workflow) createLocalActivityCallback(id uint64) bindings.LocalActivit
 
 func (wp *Workflow) createCallback(id uint64, t string) bindings.ResultHandler {
 	callback := func(result *commonpb.Payloads, err error) {
-		wp.log.Debug("executing callback", zap.Uint64("ID", id), zap.String("type", t))
+		wp.log.Debug("executing callback", "ID", id, "type", t)
 		wp.canceller.Discard(id)
 
 		if err != nil {
-			wp.log.Debug("error", zap.Error(err), zap.String("type", t))
+			wp.log.Debug("error", "error", err, "type", t)
 			wp.mq.PushError(id, temporal.GetDefaultFailureConverter().ErrorToFailure(err), wp.getWorkflowWorkerPid())
 			return
 		}
 
-		wp.log.Debug("pushing response", zap.Uint64("ID", id), zap.String("type", t))
+		wp.log.Debug("pushing response", "ID", id, "type", t)
 		// fetch original payload
 		wp.mq.PushResponse(id, result, wp.getWorkflowWorkerPid())
 	}
@@ -587,13 +586,13 @@ func (wp *Workflow) createCallback(id uint64, t string) bindings.ResultHandler {
 	return func(result *commonpb.Payloads, err error) {
 		// timer cancel callback can happen inside the loop
 		if atomic.LoadUint32(&wp.inLoop) == 1 {
-			wp.log.Debug("calling callback IN LOOP", zap.Uint64("ID", id), zap.String("type", t))
+			wp.log.Debug("calling callback IN LOOP", "ID", id, "type", t)
 			callback(result, err)
 			return
 		}
 
 		wp.callbacks = append(wp.callbacks, func() error {
-			wp.log.Debug("appending callback", zap.Uint64("ID", id), zap.String("type", t))
+			wp.log.Debug("appending callback", "ID", id, "type", t)
 			callback(result, err)
 			return nil
 		})
@@ -603,7 +602,7 @@ func (wp *Workflow) createCallback(id uint64, t string) bindings.ResultHandler {
 // callback to be called inside the queue processing, adds new messages at the end of the queue
 func (wp *Workflow) createContinuableCallback(id uint64, t string) bindings.ResultHandler {
 	callback := func(result *commonpb.Payloads, err error) {
-		wp.log.Debug("executing continuable callback", zap.Uint64("ID", id), zap.String("type", t))
+		wp.log.Debug("executing continuable callback", "ID", id, "type", t)
 		wp.canceller.Discard(id)
 
 		if err != nil {
@@ -744,7 +743,7 @@ func (wp *Workflow) getWorkflowWorkerPid() int {
 	wp.log.Debug("fetching workflow worker pid")
 	wfw := wp.pool.Workers()
 	if len(wfw) > 0 {
-		wp.log.Debug("workflow worker pid found", zap.Int("pid", int(wfw[0].Pid())))
+		wp.log.Debug("workflow worker pid found", "pid", int(wfw[0].Pid()))
 		return int(wfw[0].Pid())
 	}
 	wp.log.Debug("workflow worker pid not found")

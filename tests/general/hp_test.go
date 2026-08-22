@@ -13,7 +13,7 @@ import (
 	"tests/helpers"
 	"time"
 
-	goridgeRpc "github.com/roadrunner-server/goridge/v3/pkg/rpc"
+	goridgeRpc "github.com/roadrunner-server/goridge/v4/pkg/rpc"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/api/common/v1"
 
