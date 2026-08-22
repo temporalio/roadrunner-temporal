@@ -1,3 +1,4 @@
-// Package mocklogger provides test logging infrastructure including an in-memory
-// slog.Handler observer and a logger plugin compatible with the Endure container lifecycle.
+// Package mocklogger provides a slog logger that captures records in memory for
+// assertion. It implements the RoadRunner Logger interface and registers with
+// the endure dependency injection container in place of the logger plugin.
 package mocklogger
