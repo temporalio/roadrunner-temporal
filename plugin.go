@@ -239,6 +239,12 @@ func (p *Plugin) Stop(ctx context.Context) error {
 		p.stopCh <- struct{}{}
 		p.eventBus = nil
 
+		// stop receiving tasks: polling must stop before the pools are destroyed,
+		// otherwise a retiring worker can accept a queued task while the pools are draining
+		for i := 0; i < len(p.temporal.workers); i++ {
+			p.temporal.workers[i].Stop()
+		}
+
 		// destroy worker pools
 		// WP
 		if p.wfP != nil {
@@ -248,11 +254,6 @@ func (p *Plugin) Stop(ctx context.Context) error {
 		// ACT pool
 		if p.actP != nil {
 			p.actP.Destroy(ctx)
-		}
-
-		// stop receiving tasks
-		for i := 0; i < len(p.temporal.workers); i++ {
-			p.temporal.workers[i].Stop()
 		}
 
 		// might be nil if the user didn't set the metrics
