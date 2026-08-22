@@ -126,8 +126,8 @@ func (p *Plugin) initPool() error {
 		}
 	}
 
-	p.temporal.rrWorkflowDef = wfDef
-	p.temporal.rrActivityDef = actDef
+	p.temporal.rrWorkflowDef.Store(wfDef)
+	p.temporal.rrActivityDef.Store(actDef)
 	p.temporal.workers = workers
 	p.codec = codec
 
@@ -140,15 +140,11 @@ func (p *Plugin) initPool() error {
 }
 
 func (p *Plugin) getWfDef() *aggregatedpool.Workflow {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.temporal.rrWorkflowDef
+	return p.temporal.rrWorkflowDef.Load()
 }
 
 func (p *Plugin) getActDef() *aggregatedpool.Activity {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.temporal.rrActivityDef
+	return p.temporal.rrActivityDef.Load()
 }
 
 func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]string, dc converter.DataConverter) error {

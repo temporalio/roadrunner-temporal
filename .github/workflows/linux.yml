@@ -222,6 +222,10 @@ jobs:
 
           sudo update-ca-certificates
 
+      - name: Run Temporal plugin tests
+        run: |
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=github.com/temporalio/roadrunner-temporal/v5/... -coverprofile=./tests/coverage-ci/rrt_p.out -covermode=atomic .
+
       - name: Run Temporal canceller module tests
         run: |
           go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=github.com/temporalio/roadrunner-temporal/v6/... -coverprofile=./tests/coverage-ci/rrt_c.out -covermode=atomic ./canceller/...

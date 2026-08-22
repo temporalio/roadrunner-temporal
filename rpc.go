@@ -67,13 +67,10 @@ func (r *rpc) RecordActivityHeartbeat(in RecordHeartbeatRequest, out *RecordHear
 	}
 
 	// find running activity
-	r.plugin.mu.RLock()
-	ctx, err := r.plugin.temporal.rrActivityDef.GetActivityContext(in.TaskToken)
+	ctx, err := r.plugin.getActDef().GetActivityContext(in.TaskToken)
 	if err != nil {
-		r.plugin.mu.RUnlock()
 		return err
 	}
-	r.plugin.mu.RUnlock()
 
 	activity.RecordHeartbeat(ctx, details)
 
