@@ -13,7 +13,7 @@
       "minLength": 1
     },
     "cache_size": {
-      "description": "Sticky cache size. Sticky workflow execution is the affinity between workflow tasks of a specific workflow execution to a specific worker. The benefit of sticky execution is that the workflow does not have to reconstruct state by replaying history from the beginning. The cache is shared between workers running within same process. This must be called before any worker is started. If not called, the default size of 10K (which may change) will be used.",
+      "description": "Sticky cache size. Sticky workflow execution is the affinity between workflow tasks of a specific workflow execution to a specific worker. The benefit of sticky execution is that the workflow does not have to reconstruct state by replaying history from the beginning. The cache is shared between workers running within same process. Zero means the default of 10K, so the cache cannot be turned off that way - pass a negative value to disable sticky execution entirely.",
       "type": "integer",
       "default": 10000
     },

@@ -20,7 +20,9 @@ type Config struct {
 
 	Address   string `mapstructure:"address"`
 	Namespace string `mapstructure:"namespace"`
-	CacheSize int    `mapstructure:"cache_size"`
+
+	// 0 = sdk-go default (10000); the sticky cache is only disabled by a negative value.
+	CacheSize int `mapstructure:"cache_size"`
 
 	// 0 = sdk-go default (60s); out-of-range values are clamped to 1s–60s (see initTemporalClient).
 	WorkerHeartbeatInterval time.Duration `mapstructure:"worker_heartbeat_interval"`
