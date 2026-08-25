@@ -1,6 +1,6 @@
 module tests
 
-go 1.26.5
+go 1.27
 
 require (
 	github.com/fatih/color v1.19.0
@@ -14,7 +14,7 @@ require (
 	github.com/roadrunner-server/pool/v2 v2.0.0-beta.1
 	github.com/roadrunner-server/resetter/v6 v6.0.0-beta.5
 	github.com/roadrunner-server/rpc/v6 v6.0.0-beta.5
-	github.com/roadrunner-server/server/v6 v6.0.0-beta.6
+	github.com/roadrunner-server/server/v6 v6.0.0-beta.7
 	github.com/roadrunner-server/status/v6 v6.0.0-beta.7
 	github.com/stretchr/testify v1.12.1
 	github.com/temporalio/roadrunner-temporal/v6 v6.0.0
@@ -99,7 +99,7 @@ require (
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260807164820-c8921c73eeea // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260807164820-c8921c73eeea // indirect
