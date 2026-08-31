@@ -53,8 +53,8 @@ type Logger interface {
 
 // temporal structure contains temporal specific structures
 type temporal struct {
-	rrActivityDef *aggregatedpool.Activity
-	rrWorkflowDef *aggregatedpool.Workflow
+	rrActivityDef atomic.Pointer[aggregatedpool.Activity]
+	rrWorkflowDef atomic.Pointer[aggregatedpool.Workflow]
 	workflows     map[string]*internal.WorkflowInfo
 	activities    map[string]*internal.ActivityInfo
 	mh            tclient.MetricsHandler
@@ -360,8 +360,8 @@ func (p *Plugin) Reset() error {
 
 	// based on the worker info -> initialize workers
 	workers, err := aggregatedpool.TemporalWorkers(
-		p.temporal.rrWorkflowDef,
-		p.temporal.rrActivityDef,
+		p.temporal.rrWorkflowDef.Load(),
+		p.temporal.rrActivityDef.Load(),
 		wi,
 		p.log,
 		p.temporal.client,
