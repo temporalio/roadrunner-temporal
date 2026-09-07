@@ -6,14 +6,15 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"log/slog"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/temporalio/roadrunner-temporal/v5/canceller"
-	"github.com/temporalio/roadrunner-temporal/v5/queue"
-	"github.com/temporalio/roadrunner-temporal/v5/registry"
+	"github.com/temporalio/roadrunner-temporal/v6/canceller"
+	"github.com/temporalio/roadrunner-temporal/v6/queue"
+	"github.com/temporalio/roadrunner-temporal/v6/registry"
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/converter"
-	"go.uber.org/zap"
 )
 
 // ── NexusStartEnvelope JSON wire shape ────────────────────────────────
@@ -52,7 +53,7 @@ func TestNexusStartEnvelope_RoundTripViaTemporalConverter(t *testing.T) {
 func newCallerWorkflow(t *testing.T) *Workflow {
 	t.Helper()
 	return &Workflow{
-		log:          zap.NewNop(),
+		log:          slog.New(slog.DiscardHandler),
 		mq:           queue.NewMessageQueue(func() uint64 { return 0 }),
 		canceller:    new(canceller.Canceller),
 		nexusStarted: new(registry.NexusStartedRegistry),

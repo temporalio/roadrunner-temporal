@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/goridge/v3/pkg/frame"
-	"github.com/roadrunner-server/pool/payload"
-	"github.com/temporalio/roadrunner-temporal/v5/api"
-	"github.com/temporalio/roadrunner-temporal/v5/internal"
+	"github.com/roadrunner-server/goridge/v4/pkg/frame"
+	"github.com/roadrunner-server/pool/v2/payload"
+	"github.com/temporalio/roadrunner-temporal/v6/api"
+	"github.com/temporalio/roadrunner-temporal/v6/internal"
 )
 
 func WorkerInfo(c api.Codec, p api.Pool, rrVersion string, wwPID int) ([]*internal.WorkerInfo, error) {
