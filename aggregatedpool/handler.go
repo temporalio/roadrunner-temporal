@@ -204,6 +204,11 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		timerID := wp.env.NewTimer(command.ToDuration(), workflow.TimerOptions{
 			Summary: command.Summary,
 		}, wp.createCallback(msg.ID, "NewTimer"))
+		// A non-positive duration is resolved by the SDK inside NewTimer: the callback
+		// already ran, no timer exists, nothing to cancel.
+		if timerID == nil {
+			break
+		}
 		wp.canceller.Register(msg.ID, func() error {
 			if timerID != nil {
 				wp.log.Debug("cancel timer request", "timerID", timerID.String())
@@ -529,6 +534,44 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 			return errors.E(op, err)
 		}
 
+	case *internal.ExecuteNexusOperation:
+		wp.log.Debug("nexus operation request",
+			"ID", msg.ID,
+			"endpoint", command.Endpoint,
+			"service", command.Service,
+			"operation", command.Operation,
+		)
+
+		params := command.NexusOperationParams(msg.Payloads, msg.Header)
+
+		nexusSeq := wp.env.ExecuteNexusOperation(
+			params,
+			wp.makeNexusCompletionResponseCallback(msg.ID),
+			wp.makeNexusStartedRegistryCallback(msg.ID),
+		)
+
+		wp.canceller.Register(msg.ID, func() error {
+			wp.log.Debug("cancel nexus operation request", "seq", nexusSeq)
+			wp.env.RequestCancelNexusOperation(nexusSeq)
+			return nil
+		})
+
+	case *internal.GetNexusOperationStarted:
+		wp.log.Debug("get nexus operation started", "ID", msg.ID, "startID", command.ID)
+
+		// Drop the slot on consume, not on completion: a fast op can complete
+		// before PHP asks, and discarding early would hang this Listen forever.
+		wp.nexusStarted.Listen(command.ID, func(token string, err error) {
+			defer wp.nexusStarted.Discard(command.ID)
+			// May fire inline when the token was already pushed.
+			wp.pendingFlush = true
+			if err != nil {
+				wp.mq.PushError(msg.ID, temporal.GetDefaultFailureConverter().ErrorToFailure(err), wp.getWorkflowWorkerPid())
+				return
+			}
+			wp.pushStartEnvelope(msg.ID, NexusStartEnvelope{Async: token != "", Token: token})
+		})
+
 	default:
 		return errors.E(op, errors.Str("undefined command"))
 	}
@@ -553,7 +596,7 @@ func (wp *Workflow) createLocalActivityCallback(id uint64) bindings.LocalActivit
 
 	return func(lar *bindings.LocalActivityResultWrapper) {
 		// timer cancel callback can happen inside the loop
-		if atomic.LoadUint32(&wp.inLoop) == 1 {
+		if wp.deliverInline() {
 			wp.log.Debug("calling local activity callback IN LOOP", "ID", id)
 			callback(lar)
 			return
@@ -585,7 +628,7 @@ func (wp *Workflow) createCallback(id uint64, t string) bindings.ResultHandler {
 
 	return func(result *commonpb.Payloads, err error) {
 		// timer cancel callback can happen inside the loop
-		if atomic.LoadUint32(&wp.inLoop) == 1 {
+		if wp.deliverInline() {
 			wp.log.Debug("calling callback IN LOOP", "ID", id, "type", t)
 			callback(result, err)
 			return

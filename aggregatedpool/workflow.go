@@ -63,10 +63,16 @@ type Workflow struct {
 	callbacks    []Callback
 	canceller    *canceller.Canceller
 	inLoop       uint32
+	// set when a response was queued from a callback that fired inline during
+	// dispatch; such a response is flushed once the current batch is drained.
+	pendingFlush bool
 
 	// updates
 	updateCompleteCb map[string]func(res *internal.Message)
 	updateValidateCb map[string]func(res *internal.Message)
+
+	// caller-side: ExecuteNexusOperation message ID → (token, err) start ack.
+	nexusStarted *registry.NexusStartedRegistry
 
 	log *slog.Logger
 	mh  temporalClient.MetricsHandler
@@ -103,6 +109,7 @@ func (wp *Workflow) NewWorkflowDefinition() bindings.WorkflowDefinition {
 		updateCompleteCb: make(map[string]func(res *internal.Message)),
 		updateValidateCb: make(map[string]func(res *internal.Message)),
 		updatesQueue:     map[string]struct{}{},
+		nexusStarted:     new(registry.NexusStartedRegistry),
 		// -- updates
 		pool:  wp.pool,
 		codec: wp.codec,
@@ -314,22 +321,59 @@ func (wp *Workflow) OnWorkflowTaskStarted(t time.Duration) {
 		panic(err)
 	}
 
-	for len(wp.pipeline) > 0 {
-		msg := wp.pipeline[0]
-		wp.pipeline = wp.pipeline[1:]
+	err = wp.drainPipeline()
+	if err != nil {
+		wp.pipeline = nil
+		panic(err)
+	}
+}
 
-		if msg.IsCommand() {
-			if msg.UndefinedResponse() {
-				wp.pipeline = nil
-				panic(fmt.Sprintf("undefined response: %s", msg.Command.(*internal.UndefinedResponse).Message))
+// deliverInline reports whether a callback may push its response right now
+// instead of deferring it to the next workflow task. A response pushed inline
+// during dispatch has no flush of its own, so it is marked as pending here and
+// flushed by drainPipeline once the whole batch is handled.
+func (wp *Workflow) deliverInline() bool {
+	if atomic.LoadUint32(&wp.inLoop) != 1 {
+		return false
+	}
+
+	wp.pendingFlush = true
+
+	return true
+}
+
+// drainPipeline handles every queued message, then flushes any response that a
+// callback queued inline during that dispatch, which in turn may bring new
+// messages to handle.
+func (wp *Workflow) drainPipeline() error {
+	for {
+		for len(wp.pipeline) > 0 {
+			msg := wp.pipeline[0]
+			wp.pipeline = wp.pipeline[1:]
+
+			if !msg.IsCommand() {
+				continue
 			}
 
-			err = wp.handleMessage(msg)
+			if msg.UndefinedResponse() {
+				return fmt.Errorf("undefined response: %s", msg.Command.(*internal.UndefinedResponse).Message)
+			}
+
+			err := wp.handleMessage(msg)
+			if err != nil {
+				return err
+			}
 		}
 
+		if !wp.pendingFlush {
+			return nil
+		}
+
+		wp.pendingFlush = false
+
+		err := wp.flushQueue()
 		if err != nil {
-			wp.pipeline = nil
-			panic(err)
+			return err
 		}
 	}
 }

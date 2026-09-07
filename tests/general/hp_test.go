@@ -50,6 +50,10 @@ func Test_VerifyRegistrationProto(t *testing.T) {
 	assert.Contains(t, activities, "HeartBeatActivity.doSomething")
 
 	assert.Contains(t, activities, "SimpleActivity.lower")
+
+	nexusServices := getNexusServices(t)
+	assert.Empty(t, nexusServices)
+
 	stopCh <- struct{}{}
 	wg.Wait()
 }
@@ -889,6 +893,19 @@ func getWorkflows(t *testing.T) []string {
 	res := make([]string, 0, 10)
 
 	err = c.Call("temporal.GetWorkflowNames", true, &res)
+	assert.NoError(t, err)
+
+	return res
+}
+
+func getNexusServices(t *testing.T) []string {
+	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
+	assert.NoError(t, err)
+	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
+
+	var res []string
+
+	err = c.Call("temporal.GetNexusServiceNames", true, &res)
 	assert.NoError(t, err)
 
 	return res

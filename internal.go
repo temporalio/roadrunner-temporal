@@ -114,7 +114,7 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	workers, err := aggregatedpool.TemporalWorkers(wfDef, actDef, wi, p.log, p.temporal.client, p.temporal.interceptors, p.config.Interceptors)
+	workers, err := aggregatedpool.TemporalWorkers(wfDef, actDef, aggregatedpool.NewNexusHandler(codec, ap, p.log, p.config.Namespace), wi, p.log, p.temporal.client, p.temporal.interceptors, p.config.Interceptors)
 	if err != nil {
 		return err
 	}
@@ -133,6 +133,7 @@ func (p *Plugin) initPool() error {
 
 	p.temporal.activities = ActivitiesInfo(wi)
 	p.temporal.workflows = WorkflowsInfo(wi)
+	p.temporal.nexusServices = NexusServicesInfo(wi)
 	p.actP = ap
 	p.wfP = wp
 

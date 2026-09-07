@@ -112,6 +112,17 @@ func (r *rpc) GetWorkflowNames(_ bool, out *[]string) error {
 	return nil
 }
 
+func (r *rpc) GetNexusServiceNames(_ bool, out *[]string) error {
+	r.plugin.mu.RLock()
+	defer r.plugin.mu.RUnlock()
+
+	for k := range r.plugin.temporal.nexusServices {
+		*out = append(*out, k)
+	}
+
+	return nil
+}
+
 func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayResponse) error {
 	r.plugin.log.Debug("replay workflow request",
 		"run_id", in.GetWorkflowExecution().GetRunId(),

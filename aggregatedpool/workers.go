@@ -118,7 +118,23 @@ func registerWorkflow(register func(), name, taskQueue string) (err error) {
 	return nil
 }
 
-func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo, log *slog.Logger, tc temporalClient.Client, interceptors map[string]api.Interceptor, configuredInterceptors []string) ([]worker.Worker, error) {
+// registerNexusService converts a panic from the SDK's Nexus registration (invalid
+// or duplicate names supplied by the PHP worker at runtime) into a clean init error.
+func registerNexusService(register func(), service, taskQueue string) (err error) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+
+		err = errors.E(errors.Op("temporal_register_nexus_service"), errors.Errorf("failed to register nexus service %q on task queue %q: %v", service, taskQueue, r))
+	}()
+
+	register()
+	return nil
+}
+
+func TemporalWorkers(wDef *Workflow, actDef *Activity, nexusHandler *NexusHandler, wi []*internal.WorkerInfo, log *slog.Logger, tc temporalClient.Client, interceptors map[string]api.Interceptor, configuredInterceptors []string) ([]worker.Worker, error) {
 	resolved, err := ResolveInterceptors(interceptors, configuredInterceptors)
 	if err != nil {
 		return nil, err
@@ -210,6 +226,22 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 
 			log.Debug("activity registered", tq, workerInfo.TaskQueue, "workflow name", activity.Name)
 		}
+		if nexusHandler != nil && len(wi[i].NexusServices) > 0 {
+			// Cooperative method-cancel is always wired: every PHP-SDK that
+			// ships Nexus services also handles CancelNexusOperationMethod
+			// (both arrived in the same release).
+			for _, ns := range wi[i].NexusServices {
+				err := registerNexusService(func() {
+					wrk.RegisterNexusService(nexusHandler.CreateNexusService(wi[i].TaskQueue, ns.Name, ns.Operations))
+				}, ns.Name, wi[i].TaskQueue)
+				if err != nil {
+					return nil, err
+				}
+
+				log.Debug("nexus service registered", tq, wi[i].TaskQueue, "service", ns.Name, "ops", ns.Operations)
+			}
+		}
+
 		// add worker to the pool
 		workers = append(workers, wrk)
 	}

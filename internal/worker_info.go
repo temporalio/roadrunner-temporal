@@ -21,6 +21,8 @@ type WorkerInfo struct {
 	Workflows []WorkflowInfo
 	// Activities provided by the worker.
 	Activities []ActivityInfo
+	// NexusServices provided by the worker.
+	NexusServices []NexusServiceInfo `json:"NexusServices,omitempty"`
 }
 
 // WorkflowInfo describes a single worker workflow.
@@ -42,4 +44,12 @@ type WorkflowInfo struct {
 type ActivityInfo struct {
 	// Name describes public activity name.
 	Name string `json:"name"`
+}
+
+// NexusServiceInfo describes a single Nexus service registered on the worker.
+type NexusServiceInfo struct {
+	// Name is the Nexus service name.
+	Name string `json:"name"`
+	// Operations lists all operation names in this service.
+	Operations []string `json:"operations"`
 }
