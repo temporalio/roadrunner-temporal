@@ -3,15 +3,16 @@ package aggregatedpool
 import (
 	"testing"
 
+	"log/slog"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/temporalio/roadrunner-temporal/v5/api"
-	"github.com/temporalio/roadrunner-temporal/v5/internal"
+	"github.com/temporalio/roadrunner-temporal/v6/api"
+	"github.com/temporalio/roadrunner-temporal/v6/internal"
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	sdkinterceptor "go.temporal.io/sdk/interceptor"
-	"go.uber.org/zap"
 )
 
 // mockPayloadConverter implements converter.PayloadConverter for testing.
@@ -312,7 +313,7 @@ func TestTemporalWorkers_MultipleDynamicWorkflows_ReturnsError(t *testing.T) {
 		},
 	}}
 
-	_, err = TemporalWorkers(nil, nil, nil, workers, zap.NewNop(), temporalClient, nil, nil)
+	_, err = TemporalWorkers(nil, nil, nil, workers, slog.New(slog.DiscardHandler), temporalClient, nil, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "multiple dynamic workflows")
 	assert.Contains(t, err.Error(), "default")

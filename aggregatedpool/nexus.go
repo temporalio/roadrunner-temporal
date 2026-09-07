@@ -10,16 +10,17 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/roadrunner-server/goridge/v3/pkg/frame"
-	"github.com/roadrunner-server/pool/payload"
-	"github.com/temporalio/roadrunner-temporal/v5/api"
-	"github.com/temporalio/roadrunner-temporal/v5/internal"
+	"log/slog"
+
+	"github.com/roadrunner-server/goridge/v4/pkg/frame"
+	"github.com/roadrunner-server/pool/v2/payload"
+	"github.com/temporalio/roadrunner-temporal/v6/api"
+	"github.com/temporalio/roadrunner-temporal/v6/internal"
 	commonpb "go.temporal.io/api/common/v1"
 	enumspb "go.temporal.io/api/enums/v1"
 	failurepb "go.temporal.io/api/failure/v1"
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/temporal"
-	"go.uber.org/zap"
 
 	"github.com/nexus-rpc/sdk-go/nexus"
 )
@@ -37,7 +38,7 @@ const nexusCancelMethodTimeout = 5 * time.Second
 type NexusHandler struct {
 	codec     api.Codec
 	pool      api.Pool
-	log       *zap.Logger
+	log       *slog.Logger
 	namespace string
 	// seqID is the wire envelope ID; invocationSeq is the InvocationID seen by
 	// PHP and used by CancelNexusOperationMethod. Kept separate so wire format
@@ -50,7 +51,7 @@ type NexusHandler struct {
 	inFlight sync.Map
 }
 
-func NewNexusHandler(codec api.Codec, pool api.Pool, log *zap.Logger, namespace string) *NexusHandler {
+func NewNexusHandler(codec api.Codec, pool api.Pool, log *slog.Logger, namespace string) *NexusHandler {
 	return &NexusHandler{
 		codec:     codec,
 		pool:      pool,
@@ -108,7 +109,7 @@ func (h *NexusHandler) startOperation(
 	input *commonpb.Payload,
 	options nexus.StartOperationOptions,
 ) (nexus.HandlerStartOperationResult[converter.RawValue], error) {
-	h.log.Debug("nexus start operation", zap.String("service", serviceName), zap.String("operation", operationName), zap.String(tq, taskQueue))
+	h.log.Debug("nexus start operation", "service", serviceName, "operation", operationName, tq, taskQueue)
 
 	links := nexusLinksToInternal(options.Links)
 
@@ -246,7 +247,7 @@ func nexusLinksToInternal(links []nexus.Link) []internal.NexusLink {
 }
 
 // nexusLinksFromInternal: drop entries with empty url/type or unparseable URL.
-func nexusLinksFromInternal(links []internal.NexusLink, log *zap.Logger) []nexus.Link {
+func nexusLinksFromInternal(links []internal.NexusLink, log *slog.Logger) []nexus.Link {
 	if len(links) == 0 {
 		return nil
 	}
@@ -257,7 +258,7 @@ func nexusLinksFromInternal(links []internal.NexusLink, log *zap.Logger) []nexus
 		}
 		u, err := url.Parse(l.URL)
 		if err != nil {
-			log.Warn("nexus link URL is malformed; skipping", zap.String("url", l.URL), zap.Error(err))
+			log.Warn("nexus link URL is malformed; skipping", "url", l.URL, "error", err)
 			continue
 		}
 		out = append(out, nexus.Link{URL: u, Type: l.Type})
@@ -266,13 +267,13 @@ func nexusLinksFromInternal(links []internal.NexusLink, log *zap.Logger) []nexus
 }
 
 // forwardNexusLinks ships valid links to handler ctx; bare ctx → warn+drop.
-func forwardNexusLinks(ctx context.Context, links []internal.NexusLink, log *zap.Logger) {
+func forwardNexusLinks(ctx context.Context, links []internal.NexusLink, log *slog.Logger) {
 	out := nexusLinksFromInternal(links, log)
 	if len(out) == 0 {
 		return
 	}
 	if !nexus.IsHandlerContext(ctx) {
-		log.Warn("nexus handler ctx missing; response links dropped", zap.Int("links", len(out)))
+		log.Warn("nexus handler ctx missing; response links dropped", "links", len(out))
 		return
 	}
 	nexus.AddHandlerLinks(ctx, out...)
@@ -352,7 +353,7 @@ func (h *NexusHandler) cancelOperation(
 	token string,
 	options nexus.CancelOperationOptions,
 ) error {
-	h.log.Debug("nexus cancel operation", zap.String("service", serviceName), zap.String("operation", operationName), zap.String("token", token), zap.String(tq, taskQueue))
+	h.log.Debug("nexus cancel operation", "service", serviceName, "operation", operationName, "token", token, tq, taskQueue)
 
 	msg := &internal.Message{
 		ID: atomic.AddUint64(&h.seqID, 1),
@@ -437,7 +438,7 @@ func (h *NexusHandler) sendCancelMethod(invocationID uint64, reason string) {
 	defer h.putPld(pl)
 
 	if err := h.codec.Encode(&internal.Context{}, pl, msg); err != nil {
-		h.log.Warn("nexus cancel method encode failed", zap.Uint64("invocationID", invocationID), zap.Error(err))
+		h.log.Warn("nexus cancel method encode failed", "invocationID", invocationID, "error", err)
 		return
 	}
 
@@ -448,17 +449,17 @@ func (h *NexusHandler) sendCancelMethod(invocationID uint64, reason string) {
 	ch := make(chan struct{}, 1)
 	result, err := h.pool.Exec(ctx, pl, ch)
 	if err != nil {
-		h.log.Warn("nexus cancel method exec failed", zap.Uint64("invocationID", invocationID), zap.Error(err))
+		h.log.Warn("nexus cancel method exec failed", "invocationID", invocationID, "error", err)
 		return
 	}
 
 	select {
 	case pld := <-result:
 		if pld != nil && pld.Error() != nil {
-			h.log.Warn("nexus method cancel delivery failed", zap.Uint64("invocationID", invocationID), zap.Error(pld.Error()))
+			h.log.Warn("nexus method cancel delivery failed", "invocationID", invocationID, "error", pld.Error())
 		}
 	case <-ctx.Done():
-		h.log.Warn("nexus method cancel delivery failed", zap.Uint64("invocationID", invocationID), zap.Error(ctx.Err()))
+		h.log.Warn("nexus method cancel delivery failed", "invocationID", invocationID, "error", ctx.Err())
 	}
 }
 

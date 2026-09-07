@@ -7,19 +7,18 @@ import (
 	"time"
 
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/pool/pool"
-	"github.com/temporalio/roadrunner-temporal/v5/aggregatedpool"
-	"github.com/temporalio/roadrunner-temporal/v5/dataconverter"
-	"github.com/temporalio/roadrunner-temporal/v5/internal/codec/proto"
-	"github.com/temporalio/roadrunner-temporal/v5/internal/logger"
+	"github.com/roadrunner-server/pool/v2/pool"
+	"github.com/temporalio/roadrunner-temporal/v6/aggregatedpool"
+	"github.com/temporalio/roadrunner-temporal/v6/dataconverter"
+	"github.com/temporalio/roadrunner-temporal/v6/internal/codec/proto"
+	"github.com/temporalio/roadrunner-temporal/v6/internal/logger"
 	tclient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/worker"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	staticPool "github.com/roadrunner-server/pool/pool/static_pool"
+	staticPool "github.com/roadrunner-server/pool/v2/pool/static_pool"
 )
 
 const (
@@ -127,8 +126,8 @@ func (p *Plugin) initPool() error {
 		}
 	}
 
-	p.temporal.rrWorkflowDef = wfDef
-	p.temporal.rrActivityDef = actDef
+	p.temporal.rrWorkflowDef.Store(wfDef)
+	p.temporal.rrActivityDef.Store(actDef)
 	p.temporal.workers = workers
 	p.codec = codec
 
@@ -142,15 +141,11 @@ func (p *Plugin) initPool() error {
 }
 
 func (p *Plugin) getWfDef() *aggregatedpool.Workflow {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.temporal.rrWorkflowDef
+	return p.temporal.rrWorkflowDef.Load()
 }
 
 func (p *Plugin) getActDef() *aggregatedpool.Activity {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.temporal.rrActivityDef
+	return p.temporal.rrActivityDef.Load()
 }
 
 func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]string, dc converter.DataConverter) error {
@@ -171,10 +166,10 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 	heartbeatInterval := p.config.WorkerHeartbeatInterval
 	switch {
 	case heartbeatInterval > 0 && heartbeatInterval < time.Second:
-		p.log.Warn("worker_heartbeat_interval below 1s, using 1s", zap.Duration("configured", heartbeatInterval))
+		p.log.Warn("worker_heartbeat_interval below 1s, using 1s", "configured", heartbeatInterval)
 		heartbeatInterval = time.Second
 	case heartbeatInterval > 60*time.Second:
-		p.log.Warn("worker_heartbeat_interval above 60s, using 60s", zap.Duration("configured", heartbeatInterval))
+		p.log.Warn("worker_heartbeat_interval above 60s, using 60s", "configured", heartbeatInterval)
 		heartbeatInterval = 60 * time.Second
 	}
 
@@ -188,9 +183,11 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 		HostPort:                p.config.Address,
 		MetricsHandler:          p.temporal.mh,
 		Namespace:               p.config.Namespace,
-		Logger:                  logger.NewZapAdapter(p.log),
+		Logger:                  logger.NewSlogAdapter(p.log),
 		DataConverter:           dc,
 		WorkerHeartbeatInterval: heartbeatInterval,
+		SdkName:                 clientNameHeaderValue,
+		SdkVersion:              phpSdkVersion,
 		ConnectionOptions: tclient.ConnectionOptions{
 			TLS:         p.temporal.tlsCfg,
 			DialOptions: dialOpts,
@@ -213,7 +210,7 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 		return connectError(p.config.Address, err)
 	}
 
-	p.log.Info("connected to temporal server", zap.String("address", p.config.Address))
+	p.log.Info("connected to temporal server", "address", p.config.Address)
 
 	return nil
 }

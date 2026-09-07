@@ -19,6 +19,11 @@ jobs:
     name: Analyze
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      # required to upload SARIF results to code scanning
+      security-events: write
+
     strategy:
       fail-fast: false
       matrix:

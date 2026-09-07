@@ -12,8 +12,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	goridgeRpc "github.com/roadrunner-server/goridge/v3/pkg/rpc"
-	"github.com/roadrunner-server/pool/state/process"
+	goridgeRpc "github.com/roadrunner-server/goridge/v4/pkg/rpc"
+	"github.com/roadrunner-server/pool/v2/state/process"
 
 	"tests/helpers"
 

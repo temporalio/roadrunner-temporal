@@ -10,8 +10,8 @@ import (
 	"tests/helpers"
 	"time"
 
-	protoApi "github.com/roadrunner-server/api/v4/build/temporal/v1"
-	goridgeRpc "github.com/roadrunner-server/goridge/v3/pkg/rpc"
+	protoApi "github.com/roadrunner-server/api-go/v6/temporal/v1"
+	goridgeRpc "github.com/roadrunner-server/goridge/v4/pkg/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/api/common/v1"

@@ -3,7 +3,7 @@ package aggregatedpool
 import (
 	"context"
 
-	"github.com/temporalio/roadrunner-temporal/v5/api"
+	"github.com/temporalio/roadrunner-temporal/v6/api"
 	"go.temporal.io/sdk/interceptor"
 )
 

@@ -6,16 +6,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/roadrunner-server/pool/payload"
+	"log/slog"
+
+	"github.com/roadrunner-server/pool/v2/payload"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/temporalio/roadrunner-temporal/v5/canceller"
-	"github.com/temporalio/roadrunner-temporal/v5/internal"
-	"github.com/temporalio/roadrunner-temporal/v5/queue"
-	"github.com/temporalio/roadrunner-temporal/v5/registry"
+	"github.com/temporalio/roadrunner-temporal/v6/canceller"
+	"github.com/temporalio/roadrunner-temporal/v6/internal"
+	"github.com/temporalio/roadrunner-temporal/v6/queue"
+	"github.com/temporalio/roadrunner-temporal/v6/registry"
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/workflow"
-	"go.uber.org/zap"
 )
 
 // timerEnv reproduces the sdk-go NewTimer contract: a non-positive duration is
@@ -69,7 +70,7 @@ func TestDrainPipeline_ZeroDurationTimerResponseIsFlushed(t *testing.T) {
 	codec := &capturingCodec{err: stop}
 
 	wp := &Workflow{
-		log:          zap.NewNop(),
+		log:          slog.New(slog.DiscardHandler),
 		env:          &timerEnv{},
 		codec:        codec,
 		pool:         &recordingPool{},
@@ -96,7 +97,7 @@ func TestDrainPipeline_PositiveDurationTimerQueuesNothing(t *testing.T) {
 	codec := &capturingCodec{}
 
 	wp := &Workflow{
-		log:          zap.NewNop(),
+		log:          slog.New(slog.DiscardHandler),
 		env:          &timerEnv{},
 		codec:        codec,
 		pool:         &recordingPool{},

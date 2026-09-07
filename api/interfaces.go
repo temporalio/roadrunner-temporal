@@ -2,17 +2,17 @@ package api
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
-	"github.com/roadrunner-server/pool/payload"
-	"github.com/roadrunner-server/pool/pool"
-	"github.com/roadrunner-server/pool/state/process"
-	"github.com/roadrunner-server/pool/worker"
-	"github.com/temporalio/roadrunner-temporal/v5/internal"
+	"github.com/roadrunner-server/pool/v2/payload"
+	"github.com/roadrunner-server/pool/v2/pool"
+	"github.com/roadrunner-server/pool/v2/state/process"
+	"github.com/roadrunner-server/pool/v2/worker"
+	"github.com/temporalio/roadrunner-temporal/v6/internal"
 	"go.temporal.io/sdk/interceptor"
-	"go.uber.org/zap"
 
-	staticPool "github.com/roadrunner-server/pool/pool/static_pool"
+	staticPool "github.com/roadrunner-server/pool/v2/pool/static_pool"
 )
 
 type Interceptor interface {
@@ -64,6 +64,6 @@ type Configurer interface {
 
 // Server creates workers for the application.
 type Server interface {
-	NewPool(ctx context.Context, cfg *pool.Config, env map[string]string, _ *zap.Logger) (*staticPool.Pool, error)
-	NewPoolWithOptions(ctx context.Context, cfg *pool.Config, env map[string]string, _ *zap.Logger, options ...staticPool.Options) (*staticPool.Pool, error)
+	NewPool(ctx context.Context, cfg *pool.Config, env map[string]string, _ *slog.Logger) (*staticPool.Pool, error)
+	NewPoolWithOptions(ctx context.Context, cfg *pool.Config, env map[string]string, _ *slog.Logger, options ...staticPool.Options) (*staticPool.Pool, error)
 }

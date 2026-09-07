@@ -6,10 +6,10 @@ import (
 	"os"
 	"time"
 
-	commonV1 "github.com/roadrunner-server/api/v4/build/common/v1"
-	protoApi "github.com/roadrunner-server/api/v4/build/temporal/v1"
+	commonV1 "github.com/roadrunner-server/api-go/v6/common/v1"
+	protoApi "github.com/roadrunner-server/api-go/v6/temporal/v1"
 	"github.com/roadrunner-server/errors"
-	"github.com/temporalio/roadrunner-temporal/v5/internal/logger"
+	"github.com/temporalio/roadrunner-temporal/v6/internal/logger"
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
@@ -17,7 +17,6 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
-	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -68,13 +67,10 @@ func (r *rpc) RecordActivityHeartbeat(in RecordHeartbeatRequest, out *RecordHear
 	}
 
 	// find running activity
-	r.plugin.mu.RLock()
-	ctx, err := r.plugin.temporal.rrActivityDef.GetActivityContext(in.TaskToken)
+	ctx, err := r.plugin.getActDef().GetActivityContext(in.TaskToken)
 	if err != nil {
-		r.plugin.mu.RUnlock()
 		return err
 	}
-	r.plugin.mu.RUnlock()
 
 	activity.RecordHeartbeat(ctx, details)
 
@@ -129,9 +125,9 @@ func (r *rpc) GetNexusServiceNames(_ bool, out *[]string) error {
 
 func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayResponse) error {
 	r.plugin.log.Debug("replay workflow request",
-		zap.String("run_id", in.GetWorkflowExecution().GetRunId()),
-		zap.String("workflow_id", in.GetWorkflowExecution().GetWorkflowId()),
-		zap.String("workflow_name", in.GetWorkflowType().GetName()))
+		"run_id", in.GetWorkflowExecution().GetRunId(),
+		"workflow_id", in.GetWorkflowExecution().GetWorkflowId(),
+		"workflow_name", in.GetWorkflowType().GetName())
 
 	if in.GetWorkflowExecution() == nil || in.GetWorkflowType() == nil {
 		out.Status = &commonV1.Status{
@@ -139,7 +135,7 @@ func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 			Message: "run_id, workflow_id or workflow_name should not be empty",
 		}
 
-		r.plugin.log.Error("replay workflow request", zap.String("error", "run_id, workflow_id or workflow_name should not be empty"))
+		r.plugin.log.Error("replay workflow request", "error", "run_id, workflow_id or workflow_name should not be empty")
 		return nil
 	}
 
@@ -149,7 +145,7 @@ func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 			Message: "run_id, workflow_id or workflow_name should not be empty",
 		}
 
-		r.plugin.log.Error("replay workflow request", zap.String("error", "run_id, workflow_id or workflow_name should not be empty"))
+		r.plugin.log.Error("replay workflow request", "error", "run_id, workflow_id or workflow_name should not be empty")
 		return nil
 	}
 
@@ -166,7 +162,7 @@ func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 				Message: err.Error(),
 			}
 
-			r.plugin.log.Error("history iteration error", zap.Error(err))
+			r.plugin.log.Error("history iteration error", "error", err)
 			return nil
 		}
 		hist.Events = append(hist.Events, event)
@@ -187,14 +183,14 @@ func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 		DisableAlreadyRegisteredCheck: false,
 	})
 
-	err := replayer.ReplayWorkflowHistory(logger.NewZapAdapter(r.plugin.log), &hist)
+	err := replayer.ReplayWorkflowHistory(logger.NewSlogAdapter(r.plugin.log), &hist)
 	if err != nil {
 		out.Status = &commonV1.Status{
 			Code:    int32(codes.FailedPrecondition),
 			Message: err.Error(),
 		}
 
-		r.plugin.log.Error("replay error", zap.Error(err))
+		r.plugin.log.Error("replay error", "error", err)
 		return nil
 	}
 
@@ -209,9 +205,9 @@ func (r *rpc) ReplayWorkflow(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 
 func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.ReplayResponse) error {
 	r.plugin.log.Debug("replay workflow request",
-		zap.String("run_id", in.GetWorkflowExecution().GetRunId()),
-		zap.String("workflow_id", in.GetWorkflowExecution().GetWorkflowId()),
-		zap.String("save_path", in.GetSavePath()))
+		"run_id", in.GetWorkflowExecution().GetRunId(),
+		"workflow_id", in.GetWorkflowExecution().GetWorkflowId(),
+		"save_path", in.GetSavePath())
 
 	if in.GetWorkflowExecution() == nil || in.GetWorkflowType() == nil || in.GetSavePath() == "" {
 		out.Status = &commonV1.Status{
@@ -228,7 +224,7 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 			Message: "run_id, workflow_id or save_path should not be empty",
 		}
 
-		r.plugin.log.Error("replay workflow request", zap.String("error", "run_id, workflow_id or save_path should not be empty"))
+		r.plugin.log.Error("replay workflow request", "error", "run_id, workflow_id or save_path should not be empty")
 		return nil
 	}
 
@@ -239,14 +235,14 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 			Message: err.Error(),
 		}
 
-		r.plugin.log.Error("failed to create the file", zap.Error(err))
+		r.plugin.log.Error("failed to create the file", "error", err)
 		return nil
 	}
 
 	defer func() {
 		err = file.Close()
 		if err != nil {
-			r.plugin.log.Error("failed to close the file", zap.Error(err))
+			r.plugin.log.Error("failed to close the file", "error", err)
 		}
 	}()
 
@@ -264,7 +260,7 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 				Message: errn.Error(),
 			}
 
-			r.plugin.log.Error("history iteration error", zap.Error(errn))
+			r.plugin.log.Error("history iteration error", "error", errn)
 			return nil
 		}
 
@@ -278,7 +274,7 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 			Message: err.Error(),
 		}
 
-		r.plugin.log.Error("history marshal error", zap.Error(err))
+		r.plugin.log.Error("history marshal error", "error", err)
 		return nil
 	}
 
@@ -289,7 +285,7 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 			Message: err.Error(),
 		}
 
-		r.plugin.log.Error("history marshal error", zap.Error(err))
+		r.plugin.log.Error("history marshal error", "error", err)
 		return nil
 	}
 
@@ -297,16 +293,16 @@ func (r *rpc) DownloadWorkflowHistory(in *protoApi.ReplayRequest, out *protoApi.
 		Code: int32(codes.OK),
 	}
 
-	r.plugin.log.Debug("history saved", zap.String("location", in.GetSavePath()))
+	r.plugin.log.Debug("history saved", "location", in.GetSavePath())
 
 	return nil
 }
 
 func (r *rpc) ReplayFromJSON(in *protoApi.ReplayRequest, out *protoApi.ReplayResponse) error {
 	r.plugin.log.Debug("replay from JSON request",
-		zap.String("workflow_name", in.GetWorkflowType().GetName()),
-		zap.String("save_path", in.GetSavePath()),
-		zap.Int64("last_event_id", in.GetLastEventId()),
+		"workflow_name", in.GetWorkflowType().GetName(),
+		"save_path", in.GetSavePath(),
+		"last_event_id", in.GetLastEventId(),
 	)
 
 	if in.GetWorkflowType() == nil || in.GetSavePath() == "" {
@@ -315,7 +311,7 @@ func (r *rpc) ReplayFromJSON(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 			Message: "workflow_name and save_path should not be empty",
 		}
 
-		r.plugin.log.Error("replay from JSON request", zap.String("error", "workflow_name and save_path should not be empty"))
+		r.plugin.log.Error("replay from JSON request", "error", "workflow_name and save_path should not be empty")
 		return nil
 	}
 
@@ -325,7 +321,7 @@ func (r *rpc) ReplayFromJSON(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 			Message: "workflow_name should not be empty",
 		}
 
-		r.plugin.log.Error("replay from JSON request", zap.String("error", "workflow_name should not be empty"))
+		r.plugin.log.Error("replay from JSON request", "error", "workflow_name should not be empty")
 		return nil
 	}
 
@@ -347,26 +343,26 @@ func (r *rpc) ReplayFromJSON(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 	switch in.GetLastEventId() {
 	// we don't have last event ID
 	case 0:
-		err := replayer.ReplayWorkflowHistoryFromJSONFile(logger.NewZapAdapter(r.plugin.log), in.GetSavePath())
+		err := replayer.ReplayWorkflowHistoryFromJSONFile(logger.NewSlogAdapter(r.plugin.log), in.GetSavePath())
 		if err != nil {
 			out.Status = &commonV1.Status{
 				Code:    int32(codes.FailedPrecondition),
 				Message: err.Error(),
 			}
 
-			r.plugin.log.Error("replay from JSON request", zap.Error(err))
+			r.plugin.log.Error("replay from JSON request", "error", err)
 			return nil
 		}
 	default:
 		// we have last event ID
-		err := replayer.ReplayPartialWorkflowHistoryFromJSONFile(logger.NewZapAdapter(r.plugin.log), in.GetSavePath(), in.GetLastEventId())
+		err := replayer.ReplayPartialWorkflowHistoryFromJSONFile(logger.NewSlogAdapter(r.plugin.log), in.GetSavePath(), in.GetLastEventId())
 		if err != nil {
 			out.Status = &commonV1.Status{
 				Code:    int32(codes.FailedPrecondition),
 				Message: err.Error(),
 			}
 
-			r.plugin.log.Error("replay from JSON request (partial workflow history)", zap.Int64("id", in.GetLastEventId()), zap.Error(err))
+			r.plugin.log.Error("replay from JSON request (partial workflow history)", "id", in.GetLastEventId(), "error", err)
 			return nil
 		}
 	}
@@ -382,7 +378,7 @@ func (r *rpc) ReplayFromJSON(in *protoApi.ReplayRequest, out *protoApi.ReplayRes
 
 func (r *rpc) ReplayWorkflowHistory(in *protoApi.History, out *protoApi.ReplayResponse) error {
 	r.plugin.log.Debug("replay from workflow history request",
-		zap.String("workflow_name", in.GetWorkflowType().GetName()),
+		"workflow_name", in.GetWorkflowType().GetName(),
 	)
 
 	if in.GetHistory() == nil || in.GetWorkflowType().GetName() == "" {
@@ -410,14 +406,14 @@ func (r *rpc) ReplayWorkflowHistory(in *protoApi.History, out *protoApi.ReplayRe
 		DisableAlreadyRegisteredCheck: false,
 	})
 
-	err := replayer.ReplayWorkflowHistory(logger.NewZapAdapter(r.plugin.log), in.GetHistory())
+	err := replayer.ReplayWorkflowHistory(logger.NewSlogAdapter(r.plugin.log), in.GetHistory())
 	if err != nil {
 		out.Status = &commonV1.Status{
 			Code:    int32(codes.FailedPrecondition),
 			Message: err.Error(),
 		}
 
-		r.plugin.log.Error("replay workflow history", zap.Error(err))
+		r.plugin.log.Error("replay workflow history", "error", err)
 		return nil
 	}
 
