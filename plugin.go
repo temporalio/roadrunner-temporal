@@ -57,6 +57,7 @@ type temporal struct {
 	rrWorkflowDef atomic.Pointer[aggregatedpool.Workflow]
 	workflows     map[string]*internal.WorkflowInfo
 	activities    map[string]*internal.ActivityInfo
+	nexusServices map[string]*internal.NexusServiceInfo
 	mh            tclient.MetricsHandler
 	tallyCloser   io.Closer
 	tlsCfg        *tls.Config
@@ -362,6 +363,7 @@ func (p *Plugin) Reset() error {
 	workers, err := aggregatedpool.TemporalWorkers(
 		p.temporal.rrWorkflowDef.Load(),
 		p.temporal.rrActivityDef.Load(),
+		aggregatedpool.NewNexusHandler(p.codec, p.actP, p.log, p.config.Namespace),
 		wi,
 		p.log,
 		p.temporal.client,

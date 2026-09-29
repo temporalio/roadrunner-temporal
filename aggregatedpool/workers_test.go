@@ -282,6 +282,24 @@ func TestRegisterWorkflow_NonStringPanic_Handled(t *testing.T) {
 	assert.Contains(t, err.Error(), "42", "should preserve a non-string panic value")
 }
 
+func TestRegisterNexusService_NoPanic_OK(t *testing.T) {
+	require.NoError(t, registerNexusService(func() {}, "billing", "my-task-queue"))
+}
+
+func TestRegisterNexusService_DuplicateOperation_ReturnsError(t *testing.T) {
+	h := &NexusHandler{}
+
+	// CreateNexusService -> svc.MustRegister panics on a duplicate operation name;
+	// the guard must turn that runtime (PHP-supplied) panic into a clean error.
+	err := registerNexusService(func() {
+		h.CreateNexusService("my-task-queue", "billing", []string{"charge", "charge"})
+	}, "billing", "my-task-queue")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "billing", "should name the offending service")
+	assert.Contains(t, err.Error(), "my-task-queue", "should name the task queue")
+}
+
 func TestTemporalWorkers_MultipleDynamicWorkflows_ReturnsError(t *testing.T) {
 	temporalClient, err := client.NewLazyClient(client.Options{})
 	require.NoError(t, err)
@@ -295,7 +313,7 @@ func TestTemporalWorkers_MultipleDynamicWorkflows_ReturnsError(t *testing.T) {
 		},
 	}}
 
-	_, err = TemporalWorkers(nil, nil, workers, slog.New(slog.DiscardHandler), temporalClient, nil, nil)
+	_, err = TemporalWorkers(nil, nil, nil, workers, slog.New(slog.DiscardHandler), temporalClient, nil, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "multiple dynamic workflows")
 	assert.Contains(t, err.Error(), "default")

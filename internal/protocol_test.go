@@ -1,9 +1,12 @@
 package internal
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/converter"
@@ -41,4 +44,349 @@ func TestLocalActivityParams_FailureConverterDoesNotPanic(t *testing.T) {
 	require.NotPanics(t, func() {
 		_ = params.FailureConverter.ErrorToFailure(errors.New("boom"))
 	})
+}
+func TestCommandName_Nexus(t *testing.T) {
+	tests := []struct {
+		name    string
+		command any
+		want    string
+	}{
+		{"InvokeNexusOperation value", InvokeNexusOperation{}, "InvokeNexusOperation"},
+		{"InvokeNexusOperation ptr", &InvokeNexusOperation{}, "InvokeNexusOperation"},
+		{"CancelNexusOperation value", CancelNexusOperation{}, "CancelNexusOperation"},
+		{"CancelNexusOperation ptr", &CancelNexusOperation{}, "CancelNexusOperation"},
+		{"CancelNexusOperationMethod value", CancelNexusOperationMethod{}, "CancelNexusOperationMethod"},
+		{"CancelNexusOperationMethod ptr", &CancelNexusOperationMethod{}, "CancelNexusOperationMethod"},
+		{"ExecuteNexusOperation value", ExecuteNexusOperation{}, "ExecuteNexusOperation"},
+		{"ExecuteNexusOperation ptr", &ExecuteNexusOperation{}, "ExecuteNexusOperation"},
+		{"GetNexusOperationStarted value", GetNexusOperationStarted{}, "GetNexusOperationStarted"},
+		{"GetNexusOperationStarted ptr", &GetNexusOperationStarted{}, "GetNexusOperationStarted"},
+		{"NexusOperationStarted value", NexusOperationStarted{}, "NexusOperationStarted"},
+		{"NexusOperationStarted ptr", &NexusOperationStarted{}, "NexusOperationStarted"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := CommandName(tt.command)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestInitCommand_Nexus(t *testing.T) {
+	tests := []struct {
+		name     string
+		typeName string
+		wantType any
+	}{
+		{"InvokeNexusOperation", "InvokeNexusOperation", &InvokeNexusOperation{}},
+		{"CancelNexusOperation", "CancelNexusOperation", &CancelNexusOperation{}},
+		{"CancelNexusOperationMethod", "CancelNexusOperationMethod", &CancelNexusOperationMethod{}},
+		{"ExecuteNexusOperation", "ExecuteNexusOperation", &ExecuteNexusOperation{}},
+		{"GetNexusOperationStarted", "GetNexusOperationStarted", &GetNexusOperationStarted{}},
+		{"NexusOperationStarted", "NexusOperationStarted", &NexusOperationStarted{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := InitCommand(tt.typeName)
+			require.NoError(t, err)
+			assert.IsType(t, tt.wantType, got)
+		})
+	}
+}
+
+// Wire contract: a single `id` = the original ExecuteNexusOperation message ID.
+func TestGetNexusOperationStarted_DecodesPHPWireShape(t *testing.T) {
+	wire := []byte(`{"id":42}`)
+	var cmd GetNexusOperationStarted
+	require.NoError(t, json.Unmarshal(wire, &cmd))
+	assert.Equal(t, uint64(42), cmd.ID)
+}
+
+func TestGetNexusOperationStarted_RoundTrip(t *testing.T) {
+	cmd := GetNexusOperationStarted{ID: 77}
+	data, err := json.Marshal(cmd)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"id":77}`, string(data))
+}
+
+// Regression guard: the old polling commands must stay unknown ("undefined command").
+func TestInitCommand_RemovedPollingCommands(t *testing.T) {
+	for _, removed := range []string{"GetNexusOperationResult", "CancelNexusOperationResult"} {
+		t.Run(removed, func(t *testing.T) {
+			got, err := InitCommand(removed)
+			assert.Error(t, err, "removed command %q must not decode anymore", removed)
+			assert.Nil(t, got)
+		})
+	}
+}
+
+func TestCancelNexusOperationMethod_JSONRoundTrip(t *testing.T) {
+	// InvocationID must NOT be omitempty — 0 is a valid id on the wire.
+	op := CancelNexusOperationMethod{
+		InvocationID: 7,
+		Reason:       "deadline",
+	}
+	data, err := json.Marshal(op)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"invocationId":7`)
+	assert.Contains(t, string(data), `"reason":"deadline"`)
+
+	var back CancelNexusOperationMethod
+	require.NoError(t, json.Unmarshal(data, &back))
+	assert.Equal(t, op, back)
+}
+
+// Sync reply: Async=false, Token omitted.
+func TestNexusOperationStarted_SyncWireShape(t *testing.T) {
+	out, err := json.Marshal(NexusOperationStarted{Async: false})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"async":false}`, string(out))
+
+	out, err = json.Marshal(NexusOperationStarted{
+		Async: false,
+		Links: []NexusLink{{URL: "http://x/y", Type: "t"}},
+	})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"async":false,"links":[{"url":"http://x/y","type":"t"}]}`, string(out))
+}
+
+// Async reply: Async=true, Token populated.
+func TestNexusOperationStarted_AsyncWireShape(t *testing.T) {
+	out, err := json.Marshal(NexusOperationStarted{
+		Async: true,
+		Token: "tok-abc",
+	})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"async":true,"token":"tok-abc"}`, string(out))
+}
+
+// Decodes the typed reply that replaced the legacy _rr_nexus_* markers.
+func TestNexusOperationStarted_DecodesPHPWireShape(t *testing.T) {
+	wire := []byte(`{"async":true,"token":"op-1","links":[{"url":"http://a/b","type":"x.y"}]}`)
+	var reply NexusOperationStarted
+	require.NoError(t, json.Unmarshal(wire, &reply))
+	assert.True(t, reply.Async)
+	assert.Equal(t, "op-1", reply.Token)
+	require.Len(t, reply.Links, 1)
+	assert.Equal(t, "http://a/b", reply.Links[0].URL)
+	assert.Equal(t, "x.y", reply.Links[0].Type)
+}
+
+// InvocationID is the cooperative-cancel correlation key; always on the wire.
+func TestInvokeNexusOperation_InvocationIDAlwaysPresent(t *testing.T) {
+	zero, err := json.Marshal(InvokeNexusOperation{Service: "S", Operation: "o"})
+	require.NoError(t, err)
+	assert.Contains(t, string(zero), `"invocationId":0`)
+
+	set, err := json.Marshal(InvokeNexusOperation{Service: "S", Operation: "o", InvocationID: 99})
+	require.NoError(t, err)
+	assert.Contains(t, string(set), `"invocationId":99`)
+}
+
+// endpoint/service inside "options" are ignored even when they mismatch the
+// top-level fields, which are authoritative.
+func TestExecuteNexusOperation_OptionsEndpointServiceIgnored(t *testing.T) {
+	wire := []byte(`{
+		"endpoint":  "top-level-endpoint",
+		"service":   "TopLevelService",
+		"operation": "echo",
+		"options": {
+			"endpoint":               "WRONG-ENDPOINT",
+			"service":                "WrongService",
+			"scheduleToCloseTimeout": 5000000000
+		}
+	}`)
+
+	var op ExecuteNexusOperation
+	require.NoError(t, json.Unmarshal(wire, &op))
+	assert.Equal(t, "top-level-endpoint", op.Endpoint, "top-level endpoint must win")
+	assert.Equal(t, "TopLevelService", op.Service, "top-level service must win")
+	assert.Equal(t, 5*time.Second, op.Options.ScheduleToCloseTimeout)
+}
+
+// PHP marshals timeouts as nanoseconds (matches Go time.Duration): 10s ⇒ 10e9 ns.
+func TestExecuteNexusOperation_DecodesPHPWireShape(t *testing.T) {
+	wire := []byte(`{
+		"endpoint":  "my-nexus-endpoint-name",
+		"service":   "SampleNexusService",
+		"operation": "echo",
+		"options": {
+			"endpoint":               "my-nexus-endpoint-name",
+			"service":                "SampleNexusService",
+			"scheduleToCloseTimeout": 10000000000
+		}
+	}`)
+
+	var op ExecuteNexusOperation
+	require.NoError(t, json.Unmarshal(wire, &op))
+	assert.Equal(t, "my-nexus-endpoint-name", op.Endpoint)
+	assert.Equal(t, "SampleNexusService", op.Service)
+	assert.Equal(t, "echo", op.Operation)
+	assert.Equal(t, 10*time.Second, op.Options.ScheduleToCloseTimeout)
+}
+
+// All-zero options must decode with no timeout enforced (no hard-coded defaults).
+func TestExecuteNexusOperation_OmitsZeroOptions(t *testing.T) {
+	wire := []byte(`{"endpoint":"e","service":"s","operation":"o"}`)
+	var op ExecuteNexusOperation
+	require.NoError(t, json.Unmarshal(wire, &op))
+	assert.Equal(t, time.Duration(0), op.Options.ScheduleToCloseTimeout)
+}
+
+// cancellationType is PHP's enum int; it must round-trip unchanged (cast later).
+func TestNexusOperationOptions_DecodesCancellationType(t *testing.T) {
+	for name, tc := range map[string]struct {
+		wire string
+		want int
+	}{
+		"unspecified missing":       {`{}`, 0},
+		"unspecified explicit zero": {`{"cancellationType":0}`, 0},
+		"abandon":                   {`{"cancellationType":1}`, 1},
+		"try-cancel":                {`{"cancellationType":2}`, 2},
+		"wait-requested":            {`{"cancellationType":3}`, 3},
+		"wait-completed":            {`{"cancellationType":4}`, 4},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var opts NexusOperationOptions
+			require.NoError(t, json.Unmarshal([]byte(tc.wire), &opts))
+			assert.Equal(t, tc.want, opts.CancellationType)
+		})
+	}
+}
+
+// omitempty: zero cancellationType stays off the wire.
+func TestNexusOperationOptions_OmitsZeroCancellationType(t *testing.T) {
+	out, err := json.Marshal(NexusOperationOptions{ScheduleToCloseTimeout: time.Second})
+	require.NoError(t, err)
+	assert.NotContains(t, string(out), "cancellationType")
+}
+
+// Top-level `nexusHeaders` (x-nexus-* map) decodes and is forwarded verbatim.
+func TestExecuteNexusOperation_DecodesNexusHeaders(t *testing.T) {
+	wire := []byte(`{
+		"endpoint": "e", "service": "s", "operation": "o",
+		"nexusHeaders": {
+			"x-nexus-caller-workflow-id": "wf-abc",
+			"x-nexus-trace-id": "trace-1"
+		}
+	}`)
+
+	var op ExecuteNexusOperation
+	require.NoError(t, json.Unmarshal(wire, &op))
+	assert.Equal(t, map[string]string{
+		"x-nexus-caller-workflow-id": "wf-abc",
+		"x-nexus-trace-id":           "trace-1",
+	}, op.NexusHeaders)
+}
+
+// Absent/empty nexusHeaders leaves the map nil and off the wire.
+func TestExecuteNexusOperation_OmitsEmptyNexusHeaders(t *testing.T) {
+	wire := []byte(`{"endpoint":"e","service":"s","operation":"o"}`)
+	var op ExecuteNexusOperation
+	require.NoError(t, json.Unmarshal(wire, &op))
+	assert.Nil(t, op.NexusHeaders)
+
+	out, err := json.Marshal(ExecuteNexusOperation{Endpoint: "e", Service: "s", Operation: "o"})
+	require.NoError(t, err)
+	assert.NotContains(t, string(out), "nexusHeaders")
+}
+
+// TestNexusOperationOptions_DecodesTimeouts pins the nanosecond decode of the two
+// Server-1.31 timeout fields (scheduleToClose is covered separately).
+func TestNexusOperationOptions_DecodesTimeouts(t *testing.T) {
+	wire := []byte(`{"scheduleToStartTimeout":3000000000,"startToCloseTimeout":45000000000}`)
+	var opts NexusOperationOptions
+	require.NoError(t, json.Unmarshal(wire, &opts))
+	assert.Equal(t, 3*time.Second, opts.ScheduleToStartTimeout)
+	assert.Equal(t, 45*time.Second, opts.StartToCloseTimeout)
+}
+
+// summary decodes as a plain string (forwarded as command UserMetadata).
+func TestNexusOperationOptions_DecodesSummary(t *testing.T) {
+	wire := []byte(`{"scheduleToCloseTimeout":10000000000,"summary":"charge the card"}`)
+	var opts NexusOperationOptions
+	require.NoError(t, json.Unmarshal(wire, &opts))
+	assert.Equal(t, "charge the card", opts.Summary)
+}
+
+// omitempty: empty summary stays off the wire.
+func TestNexusOperationOptions_OmitsEmptySummary(t *testing.T) {
+	out, err := json.Marshal(NexusOperationOptions{ScheduleToCloseTimeout: time.Second})
+	require.NoError(t, err)
+	assert.NotContains(t, string(out), "summary")
+}
+
+// TestInvokeNexusOperation_MarshalsTaskQueue pins that the Go→PHP envelope
+// carries the handler task queue so the PHP OperationContext is complete.
+func TestInvokeNexusOperation_MarshalsTaskQueue(t *testing.T) {
+	out, err := json.Marshal(InvokeNexusOperation{
+		Service:   "billing",
+		Operation: "charge",
+		TaskQueue: "nexus-tq",
+	})
+	require.NoError(t, err)
+	assert.Contains(t, string(out), `"taskQueue":"nexus-tq"`)
+
+	out, err = json.Marshal(InvokeNexusOperation{Service: "s", Operation: "o"})
+	require.NoError(t, err)
+	assert.NotContains(t, string(out), "taskQueue", "empty task queue must be omitted")
+}
+
+// TestCancelNexusOperation_MarshalsTaskQueue pins the same for the cancel
+// envelope — symmetric with the start path.
+func TestCancelNexusOperation_MarshalsTaskQueue(t *testing.T) {
+	out, err := json.Marshal(CancelNexusOperation{
+		Service:   "billing",
+		Operation: "charge",
+		TaskQueue: "nexus-tq",
+	})
+	require.NoError(t, err)
+	assert.Contains(t, string(out), `"taskQueue":"nexus-tq"`)
+
+	out, err = json.Marshal(CancelNexusOperation{Service: "s", Operation: "o"})
+	require.NoError(t, err)
+	assert.NotContains(t, string(out), "taskQueue", "empty task queue must be omitted")
+}
+
+// Cancel-request headers are forwarded under `headers` (symmetric with start).
+func TestCancelNexusOperation_MarshalsHeaders(t *testing.T) {
+	out, err := json.Marshal(CancelNexusOperation{
+		Service:        "s",
+		Operation:      "o",
+		OperationToken: "tok",
+		Headers:        map[string]string{"x-nexus-trace-id": "trace-1"},
+	})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"service":"s","operation":"o","operationToken":"tok","headers":{"x-nexus-trace-id":"trace-1"}}`, string(out))
+}
+
+func TestCancelNexusOperation_OmitsEmptyHeaders(t *testing.T) {
+	out, err := json.Marshal(CancelNexusOperation{Service: "s", Operation: "o", OperationToken: "tok"})
+	require.NoError(t, err)
+	assert.NotContains(t, string(out), "headers")
+}
+
+// Namespace marshals when set, omitted when empty (PHP reads $options['namespace']).
+func TestInvokeNexusOperation_MarshalsNamespace(t *testing.T) {
+	set, err := json.Marshal(InvokeNexusOperation{Service: "S", Operation: "o", Namespace: "my-ns"})
+	require.NoError(t, err)
+	assert.Contains(t, string(set), `"namespace":"my-ns"`)
+
+	zero, err := json.Marshal(InvokeNexusOperation{Service: "S", Operation: "o"})
+	require.NoError(t, err)
+	assert.NotContains(t, string(zero), "namespace")
+}
+
+// Cancel-side counterpart: namespace marshals when set, omitted when empty.
+func TestCancelNexusOperation_MarshalsNamespace(t *testing.T) {
+	set, err := json.Marshal(CancelNexusOperation{Service: "s", Operation: "o", OperationToken: "tok", Namespace: "my-ns"})
+	require.NoError(t, err)
+	assert.Contains(t, string(set), `"namespace":"my-ns"`)
+
+	zero, err := json.Marshal(CancelNexusOperation{Service: "s", Operation: "o", OperationToken: "tok"})
+	require.NoError(t, err)
+	assert.NotContains(t, string(zero), "namespace")
 }
