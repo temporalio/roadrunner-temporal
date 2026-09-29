@@ -130,9 +130,6 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 		workerInfo := wi[i]
 		log.Debug("worker info", "worker_info", workerInfo)
 
-		// Override to 0: RoadRunner manages worker lifecycle independently
-		workerInfo.Options.WorkerStopTimeout = 0
-
 		if workerInfo.TaskQueue == "" {
 			workerInfo.TaskQueue = temporalClient.DefaultNamespace
 		}

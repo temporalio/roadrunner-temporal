@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	mocklogger "tests/mock"
+
 	"github.com/roadrunner-server/status/v6"
 
 	configImpl "github.com/roadrunner-server/config/v6"
@@ -402,6 +404,51 @@ func NewTestServerWithOtelInterceptor(t *testing.T, stopCh chan struct{}, wg *sy
 	return &TestServer{
 		Client: client,
 	}, otelPlugin
+}
+
+func NewTestServerWithLogObserver(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, configPath string) *mocklogger.ObservedLogs {
+	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
+
+	cfg := &configImpl.Plugin{
+		Timeout: time.Minute,
+		Path:    configPath,
+		Version: rrVersion,
+	}
+
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
+
+	err := container.RegisterAll(
+		cfg,
+		&roadrunnerTemporal.Plugin{},
+		l,
+		&resetter.Plugin{},
+		&informer.Plugin{},
+		&server.Plugin{},
+		&rpc.Plugin{},
+	)
+
+	require.NoError(t, err)
+	require.NoError(t, container.Init())
+
+	errCh, err := container.Serve()
+	require.NoError(t, err)
+
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case er := <-errCh:
+				assert.Fail(t, fmt.Sprintf("got error from vertex: %s, error: %v", er.VertexID, er.Error))
+				assert.NoError(t, container.Stop())
+				return
+			case <-stopCh:
+				assert.NoError(t, container.Stop())
+				return
+			}
+		}
+	}()
+
+	return oLogger
 }
 
 func (s *TestServer) AssertContainsEvent(client temporalClient.Client, t *testing.T, w temporalClient.WorkflowRun, assert func(*history.HistoryEvent) bool) {
