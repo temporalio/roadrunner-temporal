@@ -191,13 +191,9 @@ func (p *Plugin) Serve() chan error {
 		return errCh
 	}
 
-	if host := os.Getenv(lambdaRuntimeAPIEnv); host != "" {
-		p.log.Info("lambda runtime detected, polling per invocation",
-			"shutdown_buffer", p.config.Lambda.ShutdownBuffer.String(),
-			"graceful_timeout", p.config.Lambda.GracefulTimeout.String(),
-		)
+	if os.Getenv(lambdaRuntimeAPIEnv) != "" {
+		p.log.Info("lambda runtime detected, the workers are cycled per invocation")
 		p.stopTemporalWorkersLocked()
-		p.serveLambda(errCh, host)
 
 		return errCh
 	}

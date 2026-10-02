@@ -11,9 +11,6 @@ temporal:
   cache_size: 10
   activities:
     num_workers: 2
-  lambda:
-    shutdown_buffer: 3s
-    graceful_timeout: 1s
 
 logs:
   mode: development
