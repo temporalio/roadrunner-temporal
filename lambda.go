@@ -2,6 +2,7 @@ package rrtemporal
 
 import (
 	"context"
+	"time"
 
 	"github.com/temporalio/roadrunner-temporal/v6/aggregatedpool"
 	"github.com/temporalio/roadrunner-temporal/v6/internal"
@@ -13,11 +14,11 @@ const lambdaRuntimeAPIEnv = "AWS_LAMBDA_RUNTIME_API"
 // StartInvocation and StopInvocation let the lambda plugin drive this one per
 // AWS Lambda invocation: only the Temporal workers are cycled, the PHP pools
 // stay up for the whole lifetime of the execution environment.
-func (p *Plugin) StartInvocation(context.Context) error {
+func (p *Plugin) StartInvocation(_ context.Context, graceful time.Duration) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	return p.startTemporalWorkersLocked()
+	return p.startTemporalWorkersLocked(graceful)
 }
 
 func (p *Plugin) StopInvocation(context.Context) error {
@@ -30,11 +31,11 @@ func (p *Plugin) StopInvocation(context.Context) error {
 }
 
 // startTemporalWorkersLocked requires p.mu to be held.
-func (p *Plugin) startTemporalWorkersLocked() error {
+func (p *Plugin) startTemporalWorkersLocked(graceful time.Duration) error {
 	workers, err := aggregatedpool.TemporalWorkers(
 		p.getWfDef(),
 		p.getActDef(),
-		cloneWorkerInfo(p.temporal.workerInfo),
+		cloneWorkerInfo(p.temporal.workerInfo, graceful),
 		p.log,
 		p.temporal.client,
 		p.temporal.interceptors,
@@ -71,11 +72,21 @@ func (p *Plugin) stopTemporalWorkersLocked() {
 // cloneWorkerInfo keeps the stored worker info pristine: TemporalWorkers appends
 // the resolved interceptors into Options, so reusing the same value for every
 // invocation would stack them up.
-func cloneWorkerInfo(source []*internal.WorkerInfo) []*internal.WorkerInfo {
+//
+// It also supplies WorkerStopTimeout when the PHP worker left it unset: Stop()
+// is the only thing that waits for a task still executing in PHP, and with a
+// zero timeout it waits for nothing, so the invocation would be acknowledged
+// while an activity is suspended mid-call.
+func cloneWorkerInfo(source []*internal.WorkerInfo, graceful time.Duration) []*internal.WorkerInfo {
 	cloned := make([]*internal.WorkerInfo, 0, len(source))
 	for i := range source {
 		copied := *source[i]
 		copied.Options.Interceptors = nil
+
+		if copied.Options.WorkerStopTimeout == 0 {
+			copied.Options.WorkerStopTimeout = graceful
+		}
+
 		cloned = append(cloned, &copied)
 	}
 
