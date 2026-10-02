@@ -53,12 +53,12 @@ func Test_LambdaAdapterKeepsThePhpPool(t *testing.T) {
 	require.NotEmpty(t, bootsAtStart, "no PHP worker was started at all")
 
 	for range 3 {
-		require.NoError(t, plugin.StartInvocation(context.Background()))
+		require.NoError(t, plugin.StartInvocation(context.Background(), gracefulBudget))
 		time.Sleep(time.Millisecond * 200)
 		require.NoError(t, plugin.StopInvocation(context.Background()))
 	}
 
-	require.NoError(t, plugin.StartInvocation(context.Background()))
+	require.NoError(t, plugin.StartInvocation(context.Background(), gracefulBudget))
 	require.NoError(t, plugin.StopInvocation(context.Background()))
 
 	assert.Equal(
