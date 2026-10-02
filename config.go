@@ -24,7 +24,44 @@ type Config struct {
 
 	// 0 = sdk-go default (60s); out-of-range values are clamped to 1s–60s (see initTemporalClient).
 	WorkerHeartbeatInterval time.Duration `mapstructure:"worker_heartbeat_interval"`
+
+	Lambda *Lambda `mapstructure:"lambda"`
 }
+
+// Lambda tunes the AWS Lambda invocation loop. It only takes effect when
+// AWS_LAMBDA_RUNTIME_API is present in the environment.
+type Lambda struct {
+	// ShutdownBuffer is reserved before the invocation deadline to stop the
+	// Temporal workers and answer the Runtime API.
+	ShutdownBuffer time.Duration `mapstructure:"shutdown_buffer"`
+	// GracefulTimeout is how long the workers may drain in-flight tasks.
+	GracefulTimeout time.Duration `mapstructure:"graceful_timeout"`
+}
+
+func (l *Lambda) InitDefault() error {
+	const op = errors.Op("init_defaults_temporal_lambda")
+
+	if l.GracefulTimeout == 0 {
+		l.GracefulTimeout = time.Second * 5
+	}
+
+	if l.ShutdownBuffer == 0 {
+		l.ShutdownBuffer = l.GracefulTimeout + lambdaResponseReserve
+	}
+
+	if l.ShutdownBuffer <= l.GracefulTimeout {
+		return errors.E(op, errors.Errorf(
+			"lambda.shutdown_buffer (%s) must exceed lambda.graceful_timeout (%s) to leave room for the Runtime API response",
+			l.ShutdownBuffer, l.GracefulTimeout,
+		))
+	}
+
+	return nil
+}
+
+// lambdaResponseReserve is the time kept aside for the Runtime API response
+// once the workers have stopped.
+const lambdaResponseReserve = time.Second
 
 const (
 	MetricsTypeSummary string = "summary"
@@ -107,6 +144,14 @@ func (c *Config) InitDefault() error {
 
 	if c.CacheSize == 0 {
 		c.CacheSize = 10000
+	}
+
+	if c.Lambda == nil {
+		c.Lambda = &Lambda{}
+	}
+
+	if err := c.Lambda.InitDefault(); err != nil {
+		return err
 	}
 
 	if c.Namespace == "" {

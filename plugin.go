@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"log/slog"
+	"os"
 
 	"github.com/roadrunner-server/endure/v2/dep"
 	"github.com/roadrunner-server/errors"
@@ -62,6 +63,7 @@ type temporal struct {
 	tlsCfg        *tls.Config
 	client        tclient.Client
 	workers       []worker.Worker
+	workerInfo    []*internal.WorkerInfo
 
 	interceptors   map[string]api.Interceptor
 	dataConverters map[string]converter.PayloadConverter
@@ -186,6 +188,17 @@ func (p *Plugin) Serve() chan error {
 	err = p.eventBus.SubscribeP(p.id, fmt.Sprintf("*.%s", events.EventWorkerStopped.String()), p.events)
 	if err != nil {
 		errCh <- errors.E(op, err)
+		return errCh
+	}
+
+	if host := os.Getenv(lambdaRuntimeAPIEnv); host != "" {
+		p.log.Info("lambda runtime detected, polling per invocation",
+			"shutdown_buffer", p.config.Lambda.ShutdownBuffer.String(),
+			"graceful_timeout", p.config.Lambda.GracefulTimeout.String(),
+		)
+		p.stopTemporalWorkersLocked()
+		p.serveLambda(errCh, host)
+
 		return errCh
 	}
 

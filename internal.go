@@ -133,6 +133,7 @@ func (p *Plugin) initPool() error {
 
 	p.temporal.activities = ActivitiesInfo(wi)
 	p.temporal.workflows = WorkflowsInfo(wi)
+	p.temporal.workerInfo = wi
 	p.actP = ap
 	p.wfP = wp
 
