@@ -61,8 +61,11 @@ func (p *Plugin) stopTemporalWorkersLocked() {
 		p.temporal.workers[i].Stop()
 	}
 
-	p.temporal.workers = nil
+	// Purge before dropping the references: the cache refcount falls on a GC
+	// finalizer, and at zero the purge silently becomes a no-op, so the cached
+	// workflows would never be destroyed on the PHP side.
 	worker.PurgeStickyWorkflowCache()
+	p.temporal.workers = nil
 }
 
 // cloneWorkerInfo keeps the stored worker info pristine: TemporalWorkers appends
