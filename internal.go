@@ -122,6 +122,7 @@ func (p *Plugin) initPool() error {
 	p.temporal.rrWorkflowDef.Store(wfDef)
 	p.temporal.rrActivityDef.Store(actDef)
 	p.codec = codec
+	p.temporal.workerInfo = wi
 	p.actP = ap
 	p.wfP = wp
 

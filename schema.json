@@ -109,6 +109,24 @@
           "type": "string"
         }
       }
+    },
+    "lambda": {
+      "type": "object",
+      "title": "AWS Lambda invocation loop",
+      "description": "Takes effect only when AWS_LAMBDA_RUNTIME_API is present in the environment. The Temporal workers then poll for one invocation at a time while the PHP pools stay up.",
+      "additionalProperties": false,
+      "properties": {
+        "shutdown_buffer": {
+          "type": "string",
+          "description": "Time reserved before the invocation deadline to stop the Temporal workers and answer the Runtime API. Must exceed graceful_timeout.",
+          "default": "6s"
+        },
+        "graceful_timeout": {
+          "type": "string",
+          "description": "How long the Temporal workers may drain in-flight tasks before the invocation is acknowledged.",
+          "default": "5s"
+        }
+      }
     }
   },
   "$defs": {
