@@ -11,9 +11,9 @@ import (
 
 const lambdaRuntimeAPIEnv = "AWS_LAMBDA_RUNTIME_API"
 
-// StartInvocation and StopInvocation let the lambda plugin drive this one per
-// AWS Lambda invocation: only the Temporal workers are cycled, the PHP pools
-// stay up for the whole lifetime of the execution environment.
+// StartInvocation and StopInvocation let the lambda plugin cycle the Temporal
+// workers per invocation while the PHP pools stay up for the whole lifetime of
+// the execution environment.
 func (p *Plugin) StartInvocation(_ context.Context, graceful time.Duration) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -70,13 +70,10 @@ func (p *Plugin) stopTemporalWorkersLocked() {
 }
 
 // cloneWorkerInfo keeps the stored worker info pristine: TemporalWorkers appends
-// the resolved interceptors into Options, so reusing the same value for every
-// invocation would stack them up.
-//
-// It also supplies WorkerStopTimeout when the PHP worker left it unset: Stop()
-// is the only thing that waits for a task still executing in PHP, and with a
-// zero timeout it waits for nothing, so the invocation would be acknowledged
-// while an activity is suspended mid-call.
+// the resolved interceptors into Options, so reusing the same value every
+// invocation would stack them up. It also supplies WorkerStopTimeout when the
+// PHP worker left it unset, because at zero Stop() waits for nothing and the
+// invocation would be acknowledged while an activity is suspended mid-call.
 func cloneWorkerInfo(source []*internal.WorkerInfo, graceful time.Duration) []*internal.WorkerInfo {
 	cloned := make([]*internal.WorkerInfo, 0, len(source))
 	for i := range source {
