@@ -5,7 +5,6 @@ import (
 	"sync"
 	"testing"
 	"tests/helpers"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,20 +40,10 @@ func Test_OtlpInterceptor(t *testing.T) {
 	stopCh <- struct{}{}
 	wg.Wait()
 
-	// Allow spans to be flushed
-	time.Sleep(time.Second)
-
 	spans := otelInterceptor.Exp.GetSpans()
 	require.NotEmpty(t, spans, "expected OTEL spans to be captured")
 
-	var found bool
-	for _, span := range spans {
-		if span.Name == "RunActivity:SimpleActivity.echo" {
-			found = true
-			break
-		}
-	}
-	require.True(t, found, "expected span RunActivity:SimpleActivity.echo, got spans: %v", spanNames(spans))
+	require.Contains(t, spanNames(spans), "RunActivity:SimpleActivity.echo")
 }
 
 func spanNames(spans tracetest.SpanStubs) []string {

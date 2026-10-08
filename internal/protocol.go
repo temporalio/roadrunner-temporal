@@ -10,7 +10,6 @@ import (
 	bindings "go.temporal.io/sdk/internalbindings"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
-	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 const (
@@ -106,30 +105,14 @@ type Message struct {
 	Header *commonpb.Header `json:"header,omitempty"`
 }
 
-// IsEmpty only check if task queue set.
-func (ctx Context) IsEmpty() bool {
-	return ctx.TaskQueue == ""
-}
-
 // IsCommand returns true if message carries request.
 func (msg *Message) IsCommand() bool {
 	return msg.Command != nil
 }
 
 func (msg *Message) UndefinedResponse() bool {
-	if _, ok := msg.Command.(*UndefinedResponse); ok {
-		return true
-	}
-
-	return false
-}
-
-func (msg *Message) Reset() {
-	msg.ID = 0
-	msg.Command = nil
-	msg.Failure = nil
-	msg.Payloads = nil
-	msg.Header = nil
+	_, ok := msg.Command.(*UndefinedResponse)
+	return ok
 }
 
 // GetWorkerInfo reads worker information.
@@ -391,9 +374,9 @@ func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnviron
 
 	if cmd.Options.RetryPolicy != nil {
 		rp := &temporal.RetryPolicy{
-			InitialInterval:        ifNotNil(cmd.Options.RetryPolicy.InitialInterval),
+			InitialInterval:        cmd.Options.RetryPolicy.InitialInterval.AsDuration(),
 			BackoffCoefficient:     cmd.Options.RetryPolicy.BackoffCoefficient,
-			MaximumInterval:        ifNotNil(cmd.Options.RetryPolicy.MaximumInterval),
+			MaximumInterval:        cmd.Options.RetryPolicy.MaximumInterval.AsDuration(),
 			MaximumAttempts:        cmd.Options.RetryPolicy.MaximumAttempts,
 			NonRetryableErrorTypes: cmd.Options.RetryPolicy.NonRetryableErrorTypes,
 		}
@@ -414,13 +397,6 @@ func (cmd ExecuteLocalActivity) LocalActivityParams(env bindings.WorkflowEnviron
 	}
 
 	return params
-}
-
-func ifNotNil(val *durationpb.Duration) time.Duration {
-	if val != nil {
-		return val.AsDuration()
-	}
-	return 0
 }
 
 // WorkflowParams maps workflow command to workflow params.
@@ -464,44 +440,8 @@ func CommandName(cmd any) (string, error) {
 		return getStackTraceCommand, nil
 	case InvokeActivity, *InvokeActivity:
 		return invokeActivityCommand, nil
-	case ExecuteActivity, *ExecuteActivity:
-		return executeActivityCommand, nil
 	case InvokeLocalActivity, *InvokeLocalActivity:
 		return invokeLocalActivityCommand, nil
-	case ExecuteLocalActivity, *ExecuteLocalActivity:
-		return executeLocalActivityCommand, nil
-	case ExecuteChildWorkflow, *ExecuteChildWorkflow:
-		return executeChildWorkflowCommand, nil
-	case GetChildWorkflowExecution, *GetChildWorkflowExecution:
-		return getChildWorkflowExecutionCommand, nil
-	case NewTimer, *NewTimer:
-		return newTimerCommand, nil
-	case GetVersion, *GetVersion:
-		return getVersionCommand, nil
-	case SideEffect, *SideEffect:
-		return sideEffectCommand, nil
-	case CompleteWorkflow, *CompleteWorkflow:
-		return completeWorkflowCommand, nil
-	case UpdateCompleted, *UpdateCompleted:
-		return completeUpdateCommand, nil
-	case UpdateValidated, *UpdateValidated:
-		return validateUpdateCommand, nil
-	case ContinueAsNew, *ContinueAsNew:
-		return continueAsNewCommand, nil
-	case UpsertWorkflowSearchAttributes, *UpsertWorkflowSearchAttributes:
-		return upsertWorkflowSearchAttributesCommand, nil
-	case UpsertWorkflowTypedSearchAttributes, *UpsertWorkflowTypedSearchAttributes:
-		return upsertWorkflowTypedSearchAttributesCommand, nil
-	case SignalExternalWorkflow, *SignalExternalWorkflow:
-		return signalExternalWorkflowCommand, nil
-	case CancelExternalWorkflow, *CancelExternalWorkflow:
-		return cancelExternalWorkflowCommand, nil
-	case Cancel, *Cancel:
-		return cancelCommand, nil
-	case Panic, *Panic:
-		return panicCommand, nil
-	case UpsertMemo, *UpsertMemo:
-		return upsertMemo, nil
 	case InvokeUpdate, *InvokeUpdate:
 		return invokeUpdateCommand, nil
 	default:

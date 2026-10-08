@@ -11,7 +11,7 @@ import (
 	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/pool/v2/fsm"
-	"github.com/roadrunner-server/pool/v2/state/process"
+	"github.com/temporalio/roadrunner-temporal/v6/api"
 	"github.com/uber-go/tally/v4"
 	"github.com/uber-go/tally/v4/prometheus"
 	tclient "go.temporal.io/sdk/client"
@@ -29,12 +29,7 @@ func (p *Plugin) MetricsCollector() []prom.Collector {
 	return []prom.Collector{p.statsExporter}
 }
 
-// Informer used to get workers from a particular plugin or set of plugins
-type Informer interface {
-	Workers() []*process.State
-}
-
-func newStatsExporter(stats Informer) *StatsExporter {
+func newStatsExporter(stats api.Informer) *StatsExporter {
 	return &StatsExporter{
 		TotalMemoryDesc:  prom.NewDesc(prom.BuildFQName(namespace, "", "workers_memory_bytes"), "Memory usage by workers", nil, nil),
 		StateDesc:        prom.NewDesc(prom.BuildFQName(namespace, "", "worker_state"), "Worker current state", []string{"state", "pid"}, nil),
@@ -60,30 +55,11 @@ func newPrometheusScope(c prometheus.Configuration, prefix string, log *slog.Log
 		return nil, nil, err
 	}
 
-	// tally sanitizer options that satisfy Prometheus restrictions.
-	// This will rename metrics at the tally emission level, so the metrics name we use is
-	//  maybe different from what gets emitted. In the current implementation
-	// it will replace - and . with _
-	sanitizeOptions := tally.SanitizeOptions{
-		NameCharacters: tally.ValidCharacters{
-			Ranges:     tally.AlphanumericRange,
-			Characters: []rune{'_'},
-		},
-		KeyCharacters: tally.ValidCharacters{
-			Ranges:     tally.AlphanumericRange,
-			Characters: []rune{'_'},
-		},
-		ValueCharacters: tally.ValidCharacters{
-			Ranges:     tally.AlphanumericRange,
-			Characters: []rune{'_'},
-		},
-		ReplacementCharacter: tally.DefaultReplacementCharacter,
-	}
-
+	// the Prometheus sanitizer replaces - and . in metric names with _
 	scopeOpts := tally.ScopeOptions{
 		CachedReporter:  reporter,
 		Separator:       prometheus.DefaultSeparator,
-		SanitizeOptions: &sanitizeOptions,
+		SanitizeOptions: &prometheus.DefaultSanitizerOpts,
 		Prefix:          prefix,
 	}
 	scope, closer := tally.NewRootScope(scopeOpts, time.Second)
@@ -157,7 +133,7 @@ type StatsExporter struct {
 	WorkersWorking *prom.Desc
 	WorkersInvalid *prom.Desc
 
-	Workers Informer
+	Workers api.Informer
 }
 
 func (s *StatsExporter) Describe(d chan<- *prom.Desc) {

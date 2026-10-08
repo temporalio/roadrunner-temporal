@@ -5,8 +5,6 @@ import (
 	"crypto/rand"
 	"crypto/sha512"
 	"fmt"
-	"net"
-	"net/rpc"
 	"sync"
 	"testing"
 	"time"
@@ -14,7 +12,6 @@ import (
 	"tests/helpers"
 
 	"github.com/fatih/color"
-	goridgeRpc "github.com/roadrunner-server/goridge/v4/pkg/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/api/common/v1"
@@ -39,8 +36,8 @@ func Test_VerifyRegistrationProto(t *testing.T) {
 
 	_ = helpers.NewTestServerTLS(t, stopCh, wg, ".rr-proto.yaml")
 
-	activities := getActivities(t)
-	workflows := getWorkflows(t)
+	activities := helpers.GetActivities(t)
+	workflows := helpers.GetWorkflows(t)
 
 	assert.Contains(t, workflows, "SimpleWorkflow")
 
@@ -538,8 +535,6 @@ func Test_ActivityHeartbeatProto(t *testing.T) {
 
 	we, err := s.Client.DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
 	assert.NoError(t, err)
-	assert.Len(t, we.PendingActivities, 1)
-
 	require.Len(t, we.PendingActivities, 1)
 	act := we.PendingActivities[0]
 	require.Len(t, act.HeartbeatDetails.Payloads, 1)
@@ -818,30 +813,4 @@ func Test_SagaWorkflowLAProto(t *testing.T) {
 	assert.Error(t, w.Get(context.Background(), &result))
 	stopCh <- struct{}{}
 	wg.Wait()
-}
-
-func getActivities(t *testing.T) []string {
-	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
-	assert.NoError(t, err)
-	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-
-	res := make([]string, 0, 10)
-
-	err = c.Call("temporal.GetActivityNames", true, &res)
-	assert.NoError(t, err)
-
-	return res
-}
-
-func getWorkflows(t *testing.T) []string {
-	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
-	assert.NoError(t, err)
-	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-
-	res := make([]string, 0, 10)
-
-	err = c.Call("temporal.GetWorkflowNames", true, &res)
-	assert.NoError(t, err)
-
-	return res
 }

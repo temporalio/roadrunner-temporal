@@ -7,9 +7,8 @@ import (
 	"tests/helpers"
 	"time"
 
-	"github.com/pborman/uuid"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
 	"go.temporal.io/sdk/client"
 )
@@ -50,7 +49,7 @@ func Test_SendSignalDuringTimerProto(t *testing.T) {
 
 	w, err := s.Client.SignalWithStartWorkflow(
 		context.Background(),
-		signalStr+uuid.New(),
+		signalStr+uuid.NewString(),
 		addStr,
 		10,
 		client.StartWorkflowOptions{
@@ -67,14 +66,7 @@ func Test_SendSignalDuringTimerProto(t *testing.T) {
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, 9, result)
 
-	s.AssertContainsEvent(s.Client, t, w, func(event *history.HistoryEvent) bool {
-		if event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED {
-			attr := event.Attributes.(*history.HistoryEvent_WorkflowExecutionSignaledEventAttributes)
-			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == addStr
-		}
-
-		return false
-	})
+	s.AssertContainsEvent(s.Client, t, w, isAddSignal)
 	stopCh <- struct{}{}
 	wg.Wait()
 }
@@ -104,14 +96,7 @@ func Test_SendSignalBeforeCompletingWorkflowProto(t *testing.T) {
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, -1, result)
 
-	s.AssertContainsEvent(s.Client, t, w, func(event *history.HistoryEvent) bool {
-		if event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED {
-			attr := event.Attributes.(*history.HistoryEvent_WorkflowExecutionSignaledEventAttributes)
-			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == addStr
-		}
-
-		return false
-	})
+	s.AssertContainsEvent(s.Client, t, w, isAddSignal)
 	stopCh <- struct{}{}
 	wg.Wait()
 }
@@ -124,7 +109,7 @@ func Test_RuntimeSignalProto(t *testing.T) {
 
 	w, err := s.Client.SignalWithStartWorkflow(
 		context.Background(),
-		signalStr+uuid.New(),
+		signalStr+uuid.NewString(),
 		addStr,
 		-1,
 		client.StartWorkflowOptions{
@@ -138,14 +123,7 @@ func Test_RuntimeSignalProto(t *testing.T) {
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, -1, result)
 
-	s.AssertContainsEvent(s.Client, t, w, func(event *history.HistoryEvent) bool {
-		if event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED {
-			attr := event.Attributes.(*history.HistoryEvent_WorkflowExecutionSignaledEventAttributes)
-			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == addStr
-		}
-
-		return false
-	})
+	s.AssertContainsEvent(s.Client, t, w, isAddSignal)
 	stopCh <- struct{}{}
 	wg.Wait()
 }
@@ -231,7 +209,7 @@ func Test_SendSignalDuringTimerLAProto(t *testing.T) {
 
 	w, err := s.Client.SignalWithStartWorkflow(
 		context.Background(),
-		signalStr+uuid.New(),
+		signalStr+uuid.NewString(),
 		addStr,
 		10,
 		client.StartWorkflowOptions{
@@ -248,14 +226,7 @@ func Test_SendSignalDuringTimerLAProto(t *testing.T) {
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, 9, result)
 
-	s.AssertContainsEvent(s.Client, t, w, func(event *history.HistoryEvent) bool {
-		if event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED {
-			attr := event.Attributes.(*history.HistoryEvent_WorkflowExecutionSignaledEventAttributes)
-			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == addStr
-		}
-
-		return false
-	})
+	s.AssertContainsEvent(s.Client, t, w, isAddSignal)
 	stopCh <- struct{}{}
 	wg.Wait()
 }
@@ -285,14 +256,7 @@ func Test_SendSignalBeforeCompletingWorkflowLAProto(t *testing.T) {
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, -1, result)
 
-	s.AssertContainsEvent(s.Client, t, w, func(event *history.HistoryEvent) bool {
-		if event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED {
-			attr := event.Attributes.(*history.HistoryEvent_WorkflowExecutionSignaledEventAttributes)
-			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == addStr
-		}
-
-		return false
-	})
+	s.AssertContainsEvent(s.Client, t, w, isAddSignal)
 	stopCh <- struct{}{}
 	wg.Wait()
 }
@@ -305,7 +269,7 @@ func Test_RuntimeSignalLAProto(t *testing.T) {
 
 	w, err := s.Client.SignalWithStartWorkflow(
 		context.Background(),
-		signalStr+uuid.New(),
+		signalStr+uuid.NewString(),
 		addStr,
 		-1,
 		client.StartWorkflowOptions{
@@ -319,14 +283,7 @@ func Test_RuntimeSignalLAProto(t *testing.T) {
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, -1, result)
 
-	s.AssertContainsEvent(s.Client, t, w, func(event *history.HistoryEvent) bool {
-		if event.EventType == enums.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED {
-			attr := event.Attributes.(*history.HistoryEvent_WorkflowExecutionSignaledEventAttributes)
-			return attr.WorkflowExecutionSignaledEventAttributes.SignalName == addStr
-		}
-
-		return false
-	})
+	s.AssertContainsEvent(s.Client, t, w, isAddSignal)
 	stopCh <- struct{}{}
 	wg.Wait()
 }
@@ -375,4 +332,9 @@ func Test_SignalStepsLAProto(t *testing.T) {
 	assert.Equal(t, 3, result)
 	stopCh <- struct{}{}
 	wg.Wait()
+}
+
+func isAddSignal(e *history.HistoryEvent) bool {
+	a, ok := e.Attributes.(*history.HistoryEvent_WorkflowExecutionSignaledEventAttributes)
+	return ok && a.WorkflowExecutionSignaledEventAttributes.GetSignalName() == addStr
 }

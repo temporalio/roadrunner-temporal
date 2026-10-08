@@ -54,8 +54,7 @@ func startDraining(t *testing.T) *drainingPlugin {
 	}
 	p.eventBus, p.id = events.NewEventBus()
 
-	var once sync.Once
-	release := func() { once.Do(func() { close(w.release) }) }
+	release := sync.OnceFunc(func() { close(w.release) })
 	t.Cleanup(release)
 
 	stopped := make(chan error, 1)

@@ -21,3 +21,6 @@ openssl x509 -req -in "$CERTS_DIR"/client.csr -CA "$CERTS_DIR"/ca.cert -CAkey "$
 # Export to .pfx
 # "-keypbe NONE -certpbe NONE -passout pass:" specifies an unencrypted archive
 openssl pkcs12 -export -out "$CERTS_DIR"/client.pfx -inkey "$CERTS_DIR"/client.key -in "$CERTS_DIR"/client.pem -keypbe NONE -certpbe NONE -passout pass:
+
+# The Temporal container runs as another user and must read the keys.
+chmod 644 "$CERTS_DIR"/*.key

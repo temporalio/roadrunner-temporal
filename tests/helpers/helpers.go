@@ -30,6 +30,7 @@ import (
 	"go.temporal.io/api/history/v1"
 	temporalClient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
+	sdklog "go.temporal.io/sdk/log"
 )
 
 const (
@@ -47,147 +48,13 @@ type TestServer struct {
 	Client temporalClient.Client
 }
 
-type log struct {
-	sl *slog.Logger
-}
-
-// newSlogAdapter wraps an slog.Logger into the Temporal SDK log interface.
-func newSlogAdapter(l *slog.Logger) *log {
-	return &log{
-		sl: l,
-	}
-}
-
-func (l *log) Debug(msg string, keyvals ...any) {
-	l.sl.Debug(msg, l.args(keyvals)...)
-}
-
-func (l *log) Info(msg string, keyvals ...any) {
-	l.sl.Info(msg, l.args(keyvals)...)
-}
-
-func (l *log) Warn(msg string, keyvals ...any) {
-	l.sl.Warn(msg, l.args(keyvals)...)
-}
-
-func (l *log) Error(msg string, keyvals ...any) {
-	l.sl.Error(msg, l.args(keyvals)...)
-}
-
-func (l *log) args(keyvals []any) []any {
-	// we should have an even number of keys and values
-	if len(keyvals)%2 != 0 {
-		return []any{"error", fmt.Errorf("odd number of keyvals pairs: %v", keyvals)}
-	}
-
-	// slog consumes a single element for a non-string key, which would shift every pair after it
-	for i := 0; i < len(keyvals); i += 2 {
-		if _, ok := keyvals[i].(string); !ok {
-			keyvals[i] = fmt.Sprintf("%v", keyvals[i])
-		}
-	}
-
-	return keyvals
-}
-
 func NewTestServer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, configPath string) *TestServer {
-	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
-
-	cfg := &configImpl.Plugin{
-		Timeout: time.Minute,
-		Path:    configPath,
-		Version: rrVersion,
-	}
-
-	err := container.RegisterAll(
-		cfg,
-		&roadrunnerTemporal.Plugin{},
-		&logger.Plugin{},
-		&resetter.Plugin{},
-		&informer.Plugin{},
-		&server.Plugin{},
-		&rpc.Plugin{},
-		&status.Plugin{},
-	)
-
-	require.NoError(t, err)
-	require.NoError(t, container.Init())
-
-	errCh, err := container.Serve()
-	require.NoError(t, err)
-
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case er := <-errCh:
-				assert.Fail(t, fmt.Sprintf("got error from vertex: %s, error: %v", er.VertexID, er.Error))
-				require.NoError(t, container.Stop())
-				return
-			case <-stopCh:
-				require.NoError(t, container.Stop())
-				return
-			}
-		}
-	}()
-
-	dc := dataconverter.NewDataConverter(converter.GetDefaultDataConverter())
-	client, err := temporalClient.Dial(temporalClient.Options{
-		HostPort:      "127.0.0.1:7233",
-		Namespace:     "default",
-		DataConverter: dc,
-		Logger:        newSlogAdapter(initLogger()),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return &TestServer{
-		Client: client,
-	}
+	startContainer(t, stopCh, wg, configPath, &logger.Plugin{}, &status.Plugin{})
+	return dial(t, temporalClient.ConnectionOptions{})
 }
 
 func NewTestServerTLS(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, configName string) *TestServer {
-	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
-
-	cfg := &configImpl.Plugin{
-		Timeout: time.Minute,
-		Path:    "../configs/tls/" + configName,
-		Version: rrVersion,
-	}
-
-	err := container.RegisterAll(
-		cfg,
-		&roadrunnerTemporal.Plugin{},
-		&logger.Plugin{},
-		&resetter.Plugin{},
-		&informer.Plugin{},
-		&server.Plugin{},
-		&rpc.Plugin{},
-	)
-
-	assert.NoError(t, err)
-	assert.NoError(t, container.Init())
-
-	errCh, err := container.Serve()
-	require.NoError(t, err)
-
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case er := <-errCh:
-				assert.Fail(t, fmt.Sprintf("got error from vertex: %s, error: %v", er.VertexID, er.Error))
-				assert.NoError(t, container.Stop())
-				return
-			case <-stopCh:
-				assert.NoError(t, container.Stop())
-				return
-			}
-		}
-	}()
-
-	dc := dataconverter.NewDataConverter(converter.GetDefaultDataConverter())
+	startContainer(t, stopCh, wg, "../configs/tls/"+configName, &logger.Plugin{})
 
 	cert, err := tls.LoadX509KeyPair("../env/temporal_tls/certs/client.pem", "../env/temporal_tls/certs/client.key")
 	require.NoError(t, err)
@@ -206,171 +73,57 @@ func NewTestServerTLS(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, co
 		t.Fatal("appendCertsFromPEM")
 	}
 
-	client, err := temporalClient.Dial(temporalClient.Options{
-		HostPort:      "127.0.0.1:7233",
-		Namespace:     "default",
-		DataConverter: dc,
-		Logger:        newSlogAdapter(initLogger()),
-		ConnectionOptions: temporalClient.ConnectionOptions{
-			TLS: &tls.Config{
-				MinVersion:   tls.VersionTLS12,
-				ClientAuth:   tls.RequireAndVerifyClientCert,
-				Certificates: []tls.Certificate{cert},
-				ClientCAs:    certPool,
-				RootCAs:      certPool,
-				ServerName:   "tls-sample",
-			},
+	return dial(t, temporalClient.ConnectionOptions{
+		TLS: &tls.Config{
+			MinVersion:   tls.VersionTLS12,
+			Certificates: []tls.Certificate{cert},
+			RootCAs:      certPool,
+			ServerName:   "tls-sample",
 		},
 	})
-	require.NoError(t, err)
-
-	return &TestServer{
-		Client: client,
-	}
 }
 
-func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, configPaths ...string) *TestServer {
-	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
-
-	cfgPath := "../configs/.rr-proto.yaml"
-	if len(configPaths) > 0 {
-		cfgPath = configPaths[0]
-	}
-
-	cfg := &configImpl.Plugin{
-		Timeout: time.Minute,
-		Path:    cfgPath,
-		Version: rrVersion,
-	}
-
-	err := container.RegisterAll(
-		cfg,
-		&roadrunnerTemporal.Plugin{},
-		&logger.Plugin{},
-		&resetter.Plugin{},
-		&informer.Plugin{},
-		&server.Plugin{},
-		&rpc.Plugin{},
-		&TemporalInterceptorPlugin{},
-	)
-
-	require.NoError(t, err)
-	require.NoError(t, container.Init())
-
-	errCh, err := container.Serve()
-	require.NoError(t, err)
-
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case er := <-errCh:
-				assert.Fail(t, fmt.Sprintf("got error from vertex: %s, error: %v", er.VertexID, er.Error))
-				assert.NoError(t, container.Stop())
-				return
-			case <-stopCh:
-				assert.NoError(t, container.Stop())
-				return
-			}
-		}
-	}()
-
-	dc := dataconverter.NewDataConverter(converter.GetDefaultDataConverter())
-	client, err := temporalClient.Dial(temporalClient.Options{
-		HostPort:      "127.0.0.1:7233",
-		Namespace:     "default",
-		DataConverter: dc,
-		Logger:        newSlogAdapter(initLogger()),
-	})
-	require.NoError(t, err)
-
-	return &TestServer{
-		Client: client,
-	}
+func NewTestServerWithInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, configPath string) *TestServer {
+	startContainer(t, stopCh, wg, configPath, &logger.Plugin{}, &TemporalInterceptorPlugin{})
+	return dial(t, temporalClient.ConnectionOptions{})
 }
 
-func NewTestServerWithDataConverter(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, configPaths ...string) *TestServer {
-	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
-
-	cfgPath := "../configs/.rr-data-converter.yaml"
-	if len(configPaths) > 0 {
-		cfgPath = configPaths[0]
-	}
-
-	cfg := &configImpl.Plugin{
-		Timeout: time.Minute,
-		Path:    cfgPath,
-		Version: rrVersion,
-	}
-
-	err := container.RegisterAll(
-		cfg,
-		&roadrunnerTemporal.Plugin{},
-		&logger.Plugin{},
-		&resetter.Plugin{},
-		&informer.Plugin{},
-		&server.Plugin{},
-		&rpc.Plugin{},
-		&TestDataConverterPlugin{},
-	)
-
-	require.NoError(t, err)
-	require.NoError(t, container.Init())
-
-	errCh, err := container.Serve()
-	require.NoError(t, err)
-
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case er := <-errCh:
-				assert.Fail(t, fmt.Sprintf("got error from vertex: %s, error: %v", er.VertexID, er.Error))
-				assert.NoError(t, container.Stop())
-				return
-			case <-stopCh:
-				assert.NoError(t, container.Stop())
-				return
-			}
-		}
-	}()
-
-	dc := dataconverter.NewDataConverter(converter.GetDefaultDataConverter())
-	client, err := temporalClient.Dial(temporalClient.Options{
-		HostPort:      "127.0.0.1:7233",
-		Namespace:     "default",
-		DataConverter: dc,
-		Logger:        newSlogAdapter(initLogger()),
-	})
-	require.NoError(t, err)
-
-	return &TestServer{
-		Client: client,
-	}
+func NewTestServerWithDataConverter(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) *TestServer {
+	startContainer(t, stopCh, wg, "../configs/.rr-data-converter.yaml", &logger.Plugin{}, &TestDataConverterPlugin{})
+	return dial(t, temporalClient.ConnectionOptions{})
 }
 
 func NewTestServerWithOtelInterceptor(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup) (*TestServer, *InMemoryOtelInterceptorPlugin) {
-	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
-
 	otelPlugin := NewInMemoryOtelInterceptorPlugin(t)
+	startContainer(t, stopCh, wg, "../configs/.rr-proto.yaml", &logger.Plugin{}, otelPlugin)
+	return dial(t, temporalClient.ConnectionOptions{}), otelPlugin
+}
+
+func NewTestServerWithLogObserver(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, configPath string) *mocklogger.ObservedLogs {
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
+	startContainer(t, stopCh, wg, configPath, l)
+	return oLogger
+}
+
+// startContainer registers, initializes and serves the base plugins and the extra plugins.
+// It calls wg.Done after the container stops on a vertex error or on stopCh.
+func startContainer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, cfgPath string, plugins ...any) {
+	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
 
 	cfg := &configImpl.Plugin{
 		Timeout: time.Minute,
-		Path:    "../configs/.rr-proto.yaml",
+		Path:    cfgPath,
 		Version: rrVersion,
 	}
 
-	err := container.RegisterAll(
+	err := container.RegisterAll(append([]any{
 		cfg,
 		&roadrunnerTemporal.Plugin{},
-		&logger.Plugin{},
 		&resetter.Plugin{},
 		&informer.Plugin{},
 		&server.Plugin{},
 		&rpc.Plugin{},
-		otelPlugin,
-	)
-
+	}, plugins...)...)
 	require.NoError(t, err)
 	require.NoError(t, container.Init())
 
@@ -379,76 +132,28 @@ func NewTestServerWithOtelInterceptor(t *testing.T, stopCh chan struct{}, wg *sy
 
 	go func() {
 		defer wg.Done()
-		for {
-			select {
-			case er := <-errCh:
-				assert.Fail(t, fmt.Sprintf("got error from vertex: %s, error: %v", er.VertexID, er.Error))
-				assert.NoError(t, container.Stop())
-				return
-			case <-stopCh:
-				assert.NoError(t, container.Stop())
-				return
-			}
+		select {
+		case er := <-errCh:
+			assert.Fail(t, fmt.Sprintf("got error from vertex: %s, error: %v", er.VertexID, er.Error))
+		case <-stopCh:
 		}
+		assert.NoError(t, container.Stop())
 	}()
+}
 
-	dc := dataconverter.NewDataConverter(converter.GetDefaultDataConverter())
+func dial(t *testing.T, co temporalClient.ConnectionOptions) *TestServer {
 	client, err := temporalClient.Dial(temporalClient.Options{
-		HostPort:      "127.0.0.1:7233",
-		Namespace:     "default",
-		DataConverter: dc,
-		Logger:        newSlogAdapter(initLogger()),
+		HostPort:          "127.0.0.1:7233",
+		Namespace:         "default",
+		DataConverter:     dataconverter.NewDataConverter(converter.GetDefaultDataConverter()),
+		Logger:            sdklog.NewStructuredLogger(initLogger()),
+		ConnectionOptions: co,
 	})
 	require.NoError(t, err)
 
 	return &TestServer{
 		Client: client,
-	}, otelPlugin
-}
-
-func NewTestServerWithLogObserver(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, configPath string) *mocklogger.ObservedLogs {
-	container := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute))
-
-	cfg := &configImpl.Plugin{
-		Timeout: time.Minute,
-		Path:    configPath,
-		Version: rrVersion,
 	}
-
-	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
-
-	err := container.RegisterAll(
-		cfg,
-		&roadrunnerTemporal.Plugin{},
-		l,
-		&resetter.Plugin{},
-		&informer.Plugin{},
-		&server.Plugin{},
-		&rpc.Plugin{},
-	)
-
-	require.NoError(t, err)
-	require.NoError(t, container.Init())
-
-	errCh, err := container.Serve()
-	require.NoError(t, err)
-
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case er := <-errCh:
-				assert.Fail(t, fmt.Sprintf("got error from vertex: %s, error: %v", er.VertexID, er.Error))
-				assert.NoError(t, container.Stop())
-				return
-			case <-stopCh:
-				assert.NoError(t, container.Stop())
-				return
-			}
-		}
-	}()
-
-	return oLogger
 }
 
 func (s *TestServer) AssertContainsEvent(client temporalClient.Client, t *testing.T, w temporalClient.WorkflowRun, assert func(*history.HistoryEvent) bool) {

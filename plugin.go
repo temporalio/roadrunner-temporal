@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -108,11 +109,6 @@ func (p *Plugin) Init(cfg api.Configurer, log Logger, server api.Server) error {
 	*/
 	if p.config.Metrics != nil {
 		switch p.config.Metrics.Driver {
-		case driverPrometheus:
-			err = cfg.UnmarshalKey(metricsKey, &p.config.Metrics.Prometheus)
-			if err != nil {
-				return errors.E(op, err)
-			}
 		case driverStatsd:
 			err = cfg.UnmarshalKey(metricsKey, &p.config.Metrics.Statsd)
 			if err != nil {
@@ -164,8 +160,6 @@ func (p *Plugin) Init(cfg api.Configurer, log Logger, server api.Server) error {
 	// initialize interceptors and data converters
 	p.temporal.interceptors = make(map[string]api.Interceptor)
 	p.temporal.dataConverters = make(map[string]converter.PayloadConverter)
-	// Initialize with empty API key; populated from PHP SDK flags during pool init.
-	p.apiKey.Store(ptr(""))
 
 	return nil
 }
@@ -283,24 +277,11 @@ func (p *Plugin) Workers() []*process.State {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	wfPw := p.wfP.Workers()
-	actPw := p.actP.Workers()
+	workers := slices.Concat(p.wfP.Workers(), p.actP.Workers())
+	states := make([]*process.State, 0, len(workers))
 
-	states := make([]*process.State, 0, len(wfPw)+len(actPw))
-
-	for i := range wfPw {
-		st, err := process.WorkerProcessState(wfPw[i])
-		if err != nil {
-			// log the error and continue
-			p.log.Error("worker process state error", "error", err)
-			continue
-		}
-
-		states = append(states, st)
-	}
-
-	for i := range actPw {
-		st, err := process.WorkerProcessState(actPw[i])
+	for _, w := range workers {
+		st, err := process.WorkerProcessState(w)
 		if err != nil {
 			// log the error and continue
 			p.log.Error("worker process state error", "error", err)
@@ -358,21 +339,17 @@ func (p *Plugin) Reset() error {
 		return err
 	}
 
-	// based on the worker info -> initialize workers
-	workers, err := aggregatedpool.TemporalWorkers(
-		p.temporal.rrWorkflowDef.Load(),
-		p.temporal.rrActivityDef.Load(),
-		wi,
-		p.log,
-		p.temporal.client,
-		p.temporal.interceptors,
-		p.config.Interceptors,
-	)
+	return p.startWorkers(p.getWfDef(), p.getActDef(), wi)
+}
+
+// startWorkers creates and starts the Temporal workers from the worker info.
+// The caller must hold p.mu.
+func (p *Plugin) startWorkers(wfDef *aggregatedpool.Workflow, actDef *aggregatedpool.Activity, wi []*internal.WorkerInfo) error {
+	workers, err := aggregatedpool.TemporalWorkers(wfDef, actDef, wi, p.log, p.temporal.client, p.temporal.interceptors, p.config.Interceptors)
 	if err != nil {
 		return err
 	}
 
-	// start workers
 	for i := range workers {
 		err = workers[i].Start()
 		if err != nil {
@@ -380,9 +357,9 @@ func (p *Plugin) Reset() error {
 		}
 	}
 
+	p.temporal.workers = workers
 	p.temporal.activities = ActivitiesInfo(wi)
 	p.temporal.workflows = WorkflowsInfo(wi)
-	p.temporal.workers = workers
 
 	return nil
 }
@@ -420,9 +397,5 @@ func (p *Plugin) Name() string {
 }
 
 func (p *Plugin) RPC() any {
-	return &rpc{plugin: p, client: p.temporal.client}
-}
-
-func ptr[T any](v T) *T {
-	return &v
+	return &rpc{plugin: p}
 }

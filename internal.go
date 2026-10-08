@@ -114,25 +114,14 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	workers, err := aggregatedpool.TemporalWorkers(wfDef, actDef, wi, p.log, p.temporal.client, p.temporal.interceptors, p.config.Interceptors)
+	err = p.startWorkers(wfDef, actDef, wi)
 	if err != nil {
 		return err
 	}
 
-	for i := range workers {
-		err = workers[i].Start()
-		if err != nil {
-			return err
-		}
-	}
-
 	p.temporal.rrWorkflowDef.Store(wfDef)
 	p.temporal.rrActivityDef.Store(actDef)
-	p.temporal.workers = workers
 	p.codec = codec
-
-	p.temporal.activities = ActivitiesInfo(wi)
-	p.temporal.workflows = WorkflowsInfo(wi)
 	p.actP = ap
 	p.wfP = wp
 
@@ -152,10 +141,8 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 		phpSdkVersion = clientBaselineVersion
 	}
 
-	if val, ok := flags[APIKey]; ok {
-		if val != "" {
-			p.apiKey.Store(ptr(val))
-		}
+	if val := flags[APIKey]; val != "" {
+		p.apiKey.Store(&val)
 	}
 
 	p.log.Debug("PHP-SDK version: " + phpSdkVersion)
