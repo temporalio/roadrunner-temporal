@@ -6,11 +6,9 @@ version: 2
 
 updates:
   - package-ecosystem: gomod # See documentation for possible values
-    directory: "/" # Location of package manifests
+    directories: [ "/", "/tests" ] # Location of package manifests
     schedule:
       interval: daily
-    reviewers:
-      - "rustatian"
     assignees:
       - "rustatian"
 
@@ -18,7 +16,5 @@ updates:
     directory: "/"
     schedule:
       interval: daily
-    reviewers:
-      - "rustatian"
     assignees:
       - "rustatian"

@@ -20,19 +20,9 @@ var (
 )
 
 func ActivityHeadersFromCtx(ctx context.Context) *commonpb.Header {
-	hdr := ctx.Value(HeaderContextKey)
-	if hdr == nil {
+	val, _ := ctx.Value(HeaderContextKey).(map[string]*commonpb.Payload)
+	if len(val) == 0 {
 		return nil
 	}
-
-	if val, ok := hdr.(map[string]*commonpb.Payload); ok {
-		if len(val) == 0 {
-			return nil
-		}
-		return &commonpb.Header{
-			Fields: val,
-		}
-	}
-
-	return nil
+	return &commonpb.Header{Fields: val}
 }

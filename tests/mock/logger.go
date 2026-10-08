@@ -27,14 +27,6 @@ func (z *SlogLoggerMock) Init() error {
 	return nil
 }
 
-func (z *SlogLoggerMock) Serve() chan error {
-	return make(chan error, 1)
-}
-
-func (z *SlogLoggerMock) Stop() error {
-	return nil
-}
-
 func (z *SlogLoggerMock) Provides() []*dep.Out {
 	return []*dep.Out{
 		dep.Bind((*Logger)(nil), z.ProvideLogger),

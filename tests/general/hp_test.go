@@ -5,15 +5,12 @@ import (
 	"crypto/rand"
 	"crypto/sha512"
 	"fmt"
-	"net"
-	"net/rpc"
 	"strconv"
 	"sync"
 	"testing"
 	"tests/helpers"
 	"time"
 
-	goridgeRpc "github.com/roadrunner-server/goridge/v4/pkg/rpc"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/api/common/v1"
 
@@ -41,8 +38,8 @@ func Test_VerifyRegistrationProto(t *testing.T) {
 
 	_ = helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
 
-	activities := getActivities(t)
-	workflows := getWorkflows(t)
+	activities := helpers.GetActivities(t)
+	workflows := helpers.GetWorkflows(t)
 
 	assert.Contains(t, workflows, "SimpleWorkflow")
 
@@ -81,7 +78,7 @@ func Test_ExecuteSimpleWorkflowLA_1Proto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -130,7 +127,7 @@ func Test_ExecuteSimpleDTOWorkflowLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -179,7 +176,7 @@ func Test_ExecuteSimpleWorkflowWithSequenceInBatchLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -238,7 +235,7 @@ func Test_MultipleWorkflowsInSingleWorkerLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -297,7 +294,7 @@ func Test_ExecuteWorkflowWithParallelScopesLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -349,7 +346,7 @@ func Test_TimerLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	start := time.Now()
 	w, err := s.Client.ExecuteWorkflow(
@@ -405,7 +402,7 @@ func Test_SideEffectLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -455,7 +452,7 @@ func Test_EmptyWorkflowLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -540,8 +537,6 @@ func Test_ActivityHeartbeatProto(t *testing.T) {
 
 	we, err := s.Client.DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
 	assert.NoError(t, err)
-	assert.Len(t, we.PendingActivities, 1)
-
 	require.Len(t, we.PendingActivities, 1)
 	act := we.PendingActivities[0]
 	require.Len(t, act.HeartbeatDetails.Payloads, 1)
@@ -587,7 +582,7 @@ func Test_BinaryPayloadLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	rnd := make([]byte, 2500)
 
@@ -649,7 +644,7 @@ func Test_ContinueAsNewLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -710,7 +705,7 @@ func Test_ActivityStubWorkflowLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -761,7 +756,7 @@ func Test_ExecuteProtoWorkflowLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -851,7 +846,7 @@ func Test_SagaWorkflowLAProto(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto-la.yaml")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -866,30 +861,4 @@ func Test_SagaWorkflowLAProto(t *testing.T) {
 	assert.Error(t, w.Get(context.Background(), &result))
 	stopCh <- struct{}{}
 	wg.Wait()
-}
-
-func getActivities(t *testing.T) []string {
-	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
-	assert.NoError(t, err)
-	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-
-	res := make([]string, 0, 10)
-
-	err = c.Call("temporal.GetActivityNames", true, &res)
-	assert.NoError(t, err)
-
-	return res
-}
-
-func getWorkflows(t *testing.T) []string {
-	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
-	assert.NoError(t, err)
-	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-
-	res := make([]string, 0, 10)
-
-	err = c.Call("temporal.GetWorkflowNames", true, &res)
-	assert.NoError(t, err)
-
-	return res
 }

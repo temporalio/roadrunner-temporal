@@ -47,7 +47,7 @@ func Test_ListQueriesProto(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	workers := getWorkers(t)
+	workers := helpers.GetWorkers(t)
 
 	for i := 0; i < len(workers); i++ {
 		proc, errF := os.FindProcess(int(workers[i].Pid))
