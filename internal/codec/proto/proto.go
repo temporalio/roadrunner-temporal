@@ -2,9 +2,10 @@ package proto
 
 import (
 	"context"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"log/slog"
 
-	"github.com/goccy/go-json"
 	protocolV1 "github.com/roadrunner-server/api-go/v6/temporal/v1"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/pool/v2/payload"
@@ -17,13 +18,17 @@ import (
 type Codec struct {
 	log *slog.Logger
 	dc  converter.DataConverter
+	// jsonOpts keeps the v1 semantics that the PHP SDK wire format depends on:
+	// durations as nanoseconds, case-insensitive field names and legacy omitempty.
+	jsonOpts json.Options
 }
 
 // NewCodec creates new Proto communication Codec.
 func NewCodec(log *slog.Logger, dc converter.DataConverter) *Codec {
 	return &Codec{
-		log: log,
-		dc:  dc,
+		log:      log,
+		dc:       dc,
+		jsonOpts: jsonv1.DefaultOptionsV1(),
 	}
 }
 
@@ -46,7 +51,7 @@ func (c *Codec) Encode(ctx *internal.Context, p *payload.Payload, msg ...*intern
 
 	// context is always in JSON format
 	var err error
-	p.Context, err = json.Marshal(ctx)
+	p.Context, err = json.Marshal(ctx, c.jsonOpts)
 	if err != nil {
 		return errors.E(errors.Op("encode_context"), err)
 	}
@@ -152,7 +157,7 @@ func (c *Codec) packMessage(msg *internal.Message, ctx *internal.Context, protoM
 			return err
 		}
 
-		protoMsg.Options, err = json.Marshal(msg.Command)
+		protoMsg.Options, err = json.Marshal(msg.Command, c.jsonOpts)
 		if err != nil {
 			return err
 		}
@@ -178,7 +183,7 @@ func (c *Codec) parseMessage(frame *protocolV1.Message) (*internal.Message, erro
 			return nil, errors.E(op, err)
 		}
 
-		err = json.Unmarshal(frame.Options, &msg.Command)
+		err = json.Unmarshal(frame.Options, &msg.Command, c.jsonOpts)
 		if err != nil {
 			return nil, errors.E(op, err)
 		}
