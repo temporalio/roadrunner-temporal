@@ -59,12 +59,22 @@ jobs:
           cd tests/acceptance/php-sdk
           composer get:binaries
 
+      - name: Check out RoadRunner
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: roadrunner-server/roadrunner
+          ref: master
+          path: roadrunner
+
       - name: Build RoadRunner
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOWORK: off
+          CGO_ENABLED: 0
         run: |
-          cd tests/acceptance
-          php-sdk/vendor/bin/dload build -vv
+          cd roadrunner
+          go mod edit -replace github.com/temporalio/roadrunner-temporal/v6=../
+          go mod tidy
+          go build -o ../tests/acceptance/php-sdk/rr ./cmd/rr
 
       - name: Run Acceptance Fast tests
         env:
