@@ -4,7 +4,7 @@ go 1.27
 
 require (
 	github.com/cactus/go-statsd-client/v5 v5.1.0
-	github.com/goccy/go-json v0.11.1
+	github.com/goccy/go-json v0.11.2
 	github.com/google/uuid v1.6.0
 	github.com/prometheus/client_golang v1.24.1
 	github.com/roadrunner-server/api-go/v6 v6.0.0-beta.15
@@ -55,7 +55,7 @@ require (
 	// gopsutil v4.25+ is required: it adds cgo-free darwin CPU sampling, which SysInfoProvider
 	// heartbeat metrics need in CGO_ENABLED=0 builds. Do not let this fall back to the
 	// contrib/sysinfo minimum (v4.24.8).
-	github.com/shirou/gopsutil/v4 v4.26.8 // indirect
+	github.com/shirou/gopsutil/v4 v4.26.9 // indirect
 	github.com/sirupsen/logrus v1.10.2 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
@@ -69,6 +69,6 @@ require (
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260928230214-8a89bd6388cc // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260928230214-8a89bd6388cc // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20261005182115-fad411399dd8 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20261005182115-fad411399dd8 // indirect
 )
