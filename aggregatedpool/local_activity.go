@@ -11,6 +11,7 @@ import (
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/goridge/v4/pkg/frame"
 	"github.com/roadrunner-server/pool/v2/payload"
+	staticPool "github.com/roadrunner-server/pool/v2/pool/static_pool"
 	"github.com/temporalio/roadrunner-temporal/v6/api"
 	"github.com/temporalio/roadrunner-temporal/v6/internal"
 	commonpb "go.temporal.io/api/common/v1"
@@ -74,22 +75,9 @@ func (la *LocalActivityFn) ExecuteLA(ctx context.Context, hdr *commonpb.Header, 
 		return nil, errors.E(op, err)
 	}
 
-	var r *payload.Payload
-	select {
-	case pld := <-result:
-		if pld.Error() != nil {
-			return nil, errors.E(op, pld.Error())
-		}
-		// streaming is not supported
-		if pld.Payload().Flags&frame.STREAM != 0 {
-			ch <- struct{}{}
-			return nil, errors.E(op, errors.Str("streaming is not supported"))
-		}
-
-		// assign the payload
-		r = pld.Payload()
-	default:
-		return nil, errors.E(op, errors.Str("worker empty response"))
+	r, err := readResponse(result, ch, "worker empty response")
+	if err != nil {
+		return nil, errors.E(op, err)
 	}
 
 	out := make([]*internal.Message, 0, 2)
@@ -129,4 +117,23 @@ func putPld(pld *payload.Payload) {
 	pld.Context = nil
 	pld.Body = nil
 	pldP.Put(pld)
+}
+
+// readResponse reads the pool.Exec result. It sends a stop signal to stopCh for a stream response.
+func readResponse(result chan *staticPool.PExec, stopCh chan struct{}, emptyMsg string) (*payload.Payload, error) {
+	select {
+	case pld := <-result:
+		if pld.Error() != nil {
+			return nil, pld.Error()
+		}
+		// streaming is not supported
+		if pld.Payload().Flags&frame.STREAM != 0 {
+			stopCh <- struct{}{}
+			return nil, errors.Str("streaming is not supported")
+		}
+
+		return pld.Payload(), nil
+	default:
+		return nil, errors.Str(emptyMsg)
+	}
 }

@@ -23,6 +23,7 @@ func NewMessageQueue(sedID func() uint64) *MessageQueue {
 
 func (mq *MessageQueue) Flush() {
 	mq.mu.Lock()
+	clear(mq.queue)
 	mq.queue = mq.queue[0:0]
 	mq.mu.Unlock()
 }

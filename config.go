@@ -67,12 +67,6 @@ type Statsd struct {
 	TagSeparator string `mapstructure:"tag_separator"`
 }
 
-type StatsdReporterConfig struct {
-	// TagSeparator allows tags to be appended with a separator. If not specified tag keys and values
-	// are embedded to the stat name directly.
-	TagSeparator string `yaml:"tag_separator"`
-}
-
 type Prometheus struct {
 	Address string `mapstructure:"address"`
 	Type    string `mapstructure:"type"`

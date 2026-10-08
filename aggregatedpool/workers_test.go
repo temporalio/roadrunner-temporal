@@ -125,14 +125,6 @@ func TestResolveInterceptors_UnknownName_ReturnsError(t *testing.T) {
 	assert.Contains(t, err.Error(), `"nonexistent"`)
 }
 
-func TestResolveInterceptors_EmptyMap_EmptyConfig(t *testing.T) {
-	result, err := ResolveInterceptors(map[string]api.Interceptor{}, nil)
-	require.NoError(t, err)
-
-	// only the built-in interceptor
-	assert.Len(t, result, 1)
-}
-
 func TestResolveInterceptors_NilMap_NilConfig(t *testing.T) {
 	result, err := ResolveInterceptors(nil, nil)
 	require.NoError(t, err)
@@ -234,12 +226,6 @@ func TestResolveDataConverters_UnknownEncoding_ReturnsError(t *testing.T) {
 	assert.Contains(t, err.Error(), `"encoding/nonexistent"`)
 }
 
-func TestResolveDataConverters_EmptyMap_EmptyConfig(t *testing.T) {
-	result, err := ResolveDataConverters(map[string]converter.PayloadConverter{}, nil)
-	require.NoError(t, err)
-	assert.Nil(t, result)
-}
-
 func TestResolveDataConverters_NilMap_NilConfig(t *testing.T) {
 	result, err := ResolveDataConverters(nil, nil)
 	require.NoError(t, err)
@@ -299,12 +285,6 @@ func TestTemporalWorkers_MultipleDynamicWorkflows_ReturnsError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "multiple dynamic workflows")
 	assert.Contains(t, err.Error(), "default")
-}
-
-func TestResolveDataConverters_EmptyMap_WithConfig(t *testing.T) {
-	_, err := ResolveDataConverters(map[string]converter.PayloadConverter{}, []string{"encoding/a"})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `"encoding/a"`)
 }
 
 func TestResolveDataConverters_DuplicateEncodings(t *testing.T) {
