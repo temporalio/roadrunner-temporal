@@ -1,8 +1,6 @@
 package helpers
 
 import (
-	"context"
-
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/converter"
 )
@@ -16,14 +14,6 @@ type TestDataConverterPlugin struct {
 
 func (p *TestDataConverterPlugin) Init(Configurer) error {
 	p.delegate = converter.NewJSONPayloadConverter()
-	return nil
-}
-
-func (p *TestDataConverterPlugin) Serve() chan error {
-	return make(chan error, 1)
-}
-
-func (p *TestDataConverterPlugin) Stop(context.Context) error {
 	return nil
 }
 

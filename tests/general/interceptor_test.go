@@ -12,71 +12,48 @@ import (
 )
 
 func Test_CustomInterceptor(t *testing.T) {
-	stopCh := make(chan struct{}, 1)
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	s := helpers.NewTestServerWithInterceptor(t, stopCh, wg)
+	tests := []struct {
+		name   string
+		config string
+	}{
+		{name: "default config", config: "../configs/.rr-proto.yaml"},
+		{name: "interceptor order config", config: "../configs/.rr-interceptor-order.yaml"},
+	}
 
-	w, err := s.Client.ExecuteWorkflow(
-		context.Background(),
-		client.StartWorkflowOptions{
-			TaskQueue: "default",
-		},
-		"SimpleWorkflow",
-		"test-input",
-	)
-	assert.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stopCh := make(chan struct{}, 1)
+			wg := &sync.WaitGroup{}
+			wg.Add(1)
+			s := helpers.NewTestServerWithInterceptor(t, stopCh, wg, tt.config)
 
-	var result string
-	assert.NoError(t, w.Get(context.Background(), &result))
-	assert.Equal(t, "TEST-INPUT", result)
+			w, err := s.Client.ExecuteWorkflow(
+				context.Background(),
+				client.StartWorkflowOptions{
+					TaskQueue: "default",
+				},
+				"SimpleWorkflow",
+				"test-input",
+			)
+			assert.NoError(t, err)
 
-	_, err = os.Stat("./interceptor_test")
-	assert.NoError(t, err)
+			var result string
+			assert.NoError(t, w.Get(context.Background(), &result))
+			assert.Equal(t, "TEST-INPUT", result)
 
-	we, err := s.Client.DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
-	assert.NoError(t, err)
+			_, err = os.Stat("./interceptor_test")
+			assert.NoError(t, err)
 
-	assert.Equal(t, "Completed", we.WorkflowExecutionInfo.Status.String())
-	stopCh <- struct{}{}
-	wg.Wait()
+			we, err := s.Client.DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
+			assert.NoError(t, err)
 
-	t.Cleanup(func() {
-		_ = os.Remove("interceptor_test")
-	})
-}
+			assert.Equal(t, "Completed", we.WorkflowExecutionInfo.Status.String())
+			stopCh <- struct{}{}
+			wg.Wait()
 
-func Test_ConfiguredInterceptor(t *testing.T) {
-	stopCh := make(chan struct{}, 1)
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	s := helpers.NewTestServerWithInterceptor(t, stopCh, wg, "../configs/.rr-interceptor-order.yaml")
-
-	w, err := s.Client.ExecuteWorkflow(
-		context.Background(),
-		client.StartWorkflowOptions{
-			TaskQueue: "default",
-		},
-		"SimpleWorkflow",
-		"test-input",
-	)
-	assert.NoError(t, err)
-
-	var result string
-	assert.NoError(t, w.Get(context.Background(), &result))
-	assert.Equal(t, "TEST-INPUT", result)
-
-	_, err = os.Stat("./interceptor_test")
-	assert.NoError(t, err)
-
-	we, err := s.Client.DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
-	assert.NoError(t, err)
-
-	assert.Equal(t, "Completed", we.WorkflowExecutionInfo.Status.String())
-	stopCh <- struct{}{}
-	wg.Wait()
-
-	t.Cleanup(func() {
-		_ = os.Remove("interceptor_test")
-	})
+			t.Cleanup(func() {
+				_ = os.Remove("interceptor_test")
+			})
+		})
+	}
 }

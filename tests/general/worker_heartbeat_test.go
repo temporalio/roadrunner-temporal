@@ -26,19 +26,7 @@ func Test_WorkerHeartbeat_ReportsRunningWorker(t *testing.T) {
 
 	// Interval is 1s; poll ListWorkers until our task queue's worker shows up.
 	require.Eventually(t, func() bool {
-		resp, err := s.Client.WorkflowService().ListWorkers(context.Background(), &workflowservice.ListWorkersRequest{
-			Namespace: "default",
-			PageSize:  100,
-		})
-		if err != nil {
-			return false
-		}
-		for _, w := range resp.GetWorkers() {
-			if w.GetTaskQueue() == "default" {
-				return true
-			}
-		}
-		return false
+		return defaultQueueHeartbeat(s.Client) != nil
 	}, 15*time.Second, time.Second, "server should report a heartbeating worker on the default task queue")
 
 	stopCh <- struct{}{}

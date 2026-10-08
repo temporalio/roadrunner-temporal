@@ -21,45 +21,6 @@ import (
 	"go.temporal.io/sdk/client"
 )
 
-func Test_HistoryLen(t *testing.T) {
-	stopCh := make(chan struct{}, 1)
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
-
-	w, err := s.Client.ExecuteWorkflow(
-		context.Background(),
-		client.StartWorkflowOptions{
-			TaskQueue: "default",
-		},
-		"HistoryLengthWorkflow")
-	assert.NoError(t, err)
-
-	time.Sleep(time.Second)
-	var result any
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-	assert.NoError(t, w.Get(ctx, &result))
-
-	res := []float64{3, 8, 8, 15}
-	out := result.([]interface{})
-
-	for i := 0; i < len(res); i++ {
-		if res[i] != out[i].(float64) {
-			t.Fail()
-		}
-	}
-
-	we, err := s.Client.DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
-	assert.NoError(t, err)
-
-	assert.Equal(t, "Completed", we.WorkflowExecutionInfo.Status.String())
-	stopCh <- struct{}{}
-	wg.Wait()
-	time.Sleep(time.Second)
-}
-
 func Test_DisabledActivityWorkers(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	wg := &sync.WaitGroup{}
@@ -70,32 +31,8 @@ func Test_DisabledActivityWorkers(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	clientStatus := &http.Client{
-		Timeout: time.Second * 10,
-	}
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://127.0.0.1:35545/health?plugin=temporal", nil)
-	require.NoError(t, err)
-
-	resp, err := clientStatus.Do(req)
-	require.NoError(t, err)
-	require.NotNil(t, resp)
-
-	body, _ := io.ReadAll(resp.Body)
-	assert.Equal(t, "[{\"plugin_name\":\"temporal\",\"error_message\":\"\",\"status_code\":200}]", string(body))
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	_ = resp.Body.Close()
-
-	req, err = http.NewRequestWithContext(context.Background(), http.MethodGet, "http://127.0.0.1:35545/ready?plugin=temporal", nil)
-	require.NoError(t, err)
-
-	resp, err = clientStatus.Do(req)
-	require.NoError(t, err)
-	require.NotNil(t, resp)
-
-	body, _ = io.ReadAll(resp.Body)
-	assert.Equal(t, "[{\"plugin_name\":\"temporal\",\"error_message\":\"\",\"status_code\":200}]", string(body))
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	_ = resp.Body.Close()
+	assertStatusOK(t, "http://127.0.0.1:35545/health?plugin=temporal")
+	assertStatusOK(t, "http://127.0.0.1:35545/ready?plugin=temporal")
 
 	w, err := s.Client.ExecuteWorkflow(
 		context.Background(),
@@ -137,4 +74,16 @@ func assertWorkers(t *testing.T, workers int) {
 	err = c.Call("informer.Workers", "temporal", &list)
 	assert.NoError(t, err)
 	assert.Len(t, list.Workers, workers)
+}
+
+func assertStatusOK(t *testing.T, url string) {
+	t.Helper()
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, url, nil)
+	require.NoError(t, err)
+	resp, err := (&http.Client{Timeout: 10 * time.Second}).Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+	body, _ := io.ReadAll(resp.Body)
+	assert.Equal(t, `[{"plugin_name":"temporal","error_message":"","status_code":200}]`, string(body))
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }

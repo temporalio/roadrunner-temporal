@@ -20,14 +20,6 @@ type ObservedLogs struct {
 	logs []LoggedEntry
 }
 
-// Len returns the number of items in the collection.
-func (o *ObservedLogs) Len() int {
-	o.mu.RLock()
-	n := len(o.logs)
-	o.mu.RUnlock()
-	return n
-}
-
 // All returns a copy of all the observed logs.
 func (o *ObservedLogs) All() []LoggedEntry {
 	o.mu.RLock()

@@ -4,7 +4,7 @@ go 1.27
 
 require (
 	github.com/fatih/color v1.19.0
-	github.com/pborman/uuid v1.2.1
+	github.com/google/uuid v1.6.0
 	github.com/roadrunner-server/api-go/v6 v6.0.0-beta.15
 	github.com/roadrunner-server/config/v6 v6.0.0-beta.4
 	github.com/roadrunner-server/endure/v2 v2.6.2
@@ -23,8 +23,6 @@ require (
 	go.temporal.io/sdk v1.49.0
 	go.temporal.io/sdk/contrib/opentelemetry v0.8.1
 )
-
-replace github.com/uber-go/tally/v4 => github.com/uber-go/tally/v4 v4.1.10
 
 replace github.com/temporalio/roadrunner-temporal/v6 => ../
 
@@ -47,7 +45,6 @@ require (
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/mock v1.7.0-rc.1 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.4 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.31.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
