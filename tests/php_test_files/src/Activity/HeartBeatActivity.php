@@ -5,6 +5,7 @@ namespace Temporal\Tests\Activity;
 use Temporal\Activity;
 use Temporal\Activity\ActivityInterface;
 use Temporal\Activity\ActivityMethod;
+use Temporal\Exception\Client\ActivityCompletionException;
 use Temporal\Roadrunner\Internal\Error;
 
 #[ActivityInterface(prefix: "HeartBeatActivity.")]
@@ -54,5 +55,20 @@ class HeartBeatActivity
         }
 
         return 'OK!';
+    }
+
+    #[ActivityMethod]
+    public function untilReset(): string
+    {
+        try {
+            for ($i = 0; $i < 20; $i++) {
+                Activity::heartbeat(['value' => $i]);
+                sleep(1);
+            }
+        } catch (ActivityCompletionException $e) {
+            return $e::class;
+        }
+
+        return 'NOT_RESET';
     }
 }
