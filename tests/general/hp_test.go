@@ -19,6 +19,7 @@ import (
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
 	"go.temporal.io/api/operatorservice/v1"
+	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
 )
 
@@ -545,6 +546,44 @@ func Test_ActivityHeartbeatProto(t *testing.T) {
 	var result string
 	assert.NoError(t, w.Get(context.Background(), &result))
 	assert.Equal(t, "OK", result)
+	stopCh <- struct{}{}
+	wg.Wait()
+}
+
+func Test_ActivityResetProto(t *testing.T) {
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
+
+	w, err := s.Client.ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"ActivityResetWorkflow",
+	)
+	assert.NoError(t, err)
+
+	// let the activity start and record its first heartbeat
+	time.Sleep(time.Second * 2)
+
+	_, err = s.Client.WorkflowService().ResetActivity(context.Background(), &workflowservice.ResetActivityRequest{
+		Namespace: "default",
+		Execution: &common.WorkflowExecution{
+			WorkflowId: w.GetID(),
+			RunId:      w.GetRunID(),
+		},
+		Activity: &workflowservice.ResetActivityRequest_Type{
+			Type: "HeartBeatActivity.untilReset",
+		},
+	})
+	require.NoError(t, err)
+
+	var result string
+	require.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, `Temporal\Exception\Client\ActivityResetException`, result)
+
 	stopCh <- struct{}{}
 	wg.Wait()
 }
