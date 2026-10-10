@@ -21,6 +21,7 @@ import (
 	"go.temporal.io/api/operatorservice/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/converter"
 )
 
 func init() { //nolint:gochecknoinits
@@ -338,6 +339,39 @@ func Test_TimerProto(t *testing.T) {
 
 	s.AssertContainsEvent(s.Client, t, w, func(event *history.HistoryEvent) bool {
 		return event.EventType == enums.EVENT_TYPE_TIMER_STARTED
+	})
+	stopCh <- struct{}{}
+	wg.Wait()
+}
+
+func Test_TimerSummaryProto(t *testing.T) {
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	s := helpers.NewTestServer(t, stopCh, wg, "../configs/.rr-proto.yaml")
+
+	w, err := s.Client.ExecuteWorkflow(
+		context.Background(),
+		client.StartWorkflowOptions{
+			TaskQueue: "default",
+		},
+		"TimerSummaryWorkflow",
+		"Hello World",
+	)
+	assert.NoError(t, err)
+
+	var result string
+	assert.NoError(t, w.Get(context.Background(), &result))
+	assert.Equal(t, "hello world", result)
+
+	s.AssertContainsEvent(s.Client, t, w, func(event *history.HistoryEvent) bool {
+		if event.EventType != enums.EVENT_TYPE_TIMER_STARTED {
+			return false
+		}
+
+		var summary string
+		assert.NoError(t, converter.GetDefaultDataConverter().FromPayload(event.GetUserMetadata().GetSummary(), &summary))
+		return assert.Equal(t, "rr-timer-summary", summary)
 	})
 	stopCh <- struct{}{}
 	wg.Wait()
