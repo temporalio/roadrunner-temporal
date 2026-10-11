@@ -51,6 +51,42 @@ func TestDecodeCommandOptions(t *testing.T) {
 	}
 }
 
+// The PHP SDK sends `{"ms": N}` and adds `summary` only when TimerOptions are set.
+func TestDecodeNewTimerOptions(t *testing.T) {
+	tests := []struct {
+		name    string
+		options string
+		want    internal.NewTimer
+	}{
+		{
+			name:    "with summary",
+			options: `{"ms":1500,"summary":"rr-timer-summary"}`,
+			want:    internal.NewTimer{Milliseconds: 1500, Summary: "rr-timer-summary"},
+		},
+		{
+			name:    "without summary",
+			options: `{"ms":1500}`,
+			want:    internal.NewTimer{Milliseconds: 1500},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body, err := proto.Marshal(&protocolV1.Frame{Messages: []*protocolV1.Message{
+				{Command: "NewTimer", Options: []byte(tt.options)},
+			}})
+			require.NoError(t, err)
+
+			var out []*internal.Message
+			c := NewCodec(slog.Default(), converter.GetDefaultDataConverter())
+			require.NoError(t, c.Decode(&payload.Payload{Body: body}, &out))
+			require.Len(t, out, 1)
+			require.Equal(t, &tt.want, out[0].Command)
+			require.Equal(t, 1500*time.Millisecond, out[0].Command.(*internal.NewTimer).ToDuration())
+		})
+	}
+}
+
 func TestEncodeContextOmitsEmptyFields(t *testing.T) {
 	p := &payload.Payload{}
 	c := NewCodec(slog.Default(), converter.GetDefaultDataConverter())

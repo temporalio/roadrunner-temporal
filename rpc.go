@@ -38,10 +38,11 @@ type RecordHeartbeatRequest struct {
 	Details   []byte `json:"details"`
 }
 
-// RecordHeartbeatResponse sent back to the worker to indicate that activity was canceled.
+// RecordHeartbeatResponse sent back to the worker to indicate that the activity was canceled, paused or reset.
 type RecordHeartbeatResponse struct {
 	Canceled bool `json:"canceled"`
 	Paused   bool `json:"paused"`
+	Reset    bool `json:"reset"`
 }
 
 // RecordActivityHeartbeat records heartbeat for an activity.
@@ -73,12 +74,16 @@ func (r *rpc) RecordActivityHeartbeat(in RecordHeartbeatRequest, out *RecordHear
 
 	activity.RecordHeartbeat(ctx, details)
 
-	if stderr.Is(context.Cause(ctx), activity.ErrActivityPaused) {
+	cause := context.Cause(ctx)
+	switch {
+	case stderr.Is(cause, activity.ErrActivityPaused):
 		*out = RecordHeartbeatResponse{Paused: true}
-		return nil
+	case stderr.Is(cause, activity.ErrActivityReset):
+		*out = RecordHeartbeatResponse{Reset: true}
+	default:
+		*out = RecordHeartbeatResponse{Canceled: ctx.Err() != nil}
 	}
 
-	*out = RecordHeartbeatResponse{Canceled: ctx.Err() != nil}
 	return nil
 }
 
