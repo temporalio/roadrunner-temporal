@@ -5,11 +5,15 @@ import (
 	"crypto/rand"
 	"crypto/sha512"
 	"fmt"
+	"net"
+	"net/rpc"
 	"strconv"
 	"sync"
 	"testing"
 	"tests/helpers"
 	"time"
+
+	goridgeRpc "github.com/roadrunner-server/goridge/v4/pkg/rpc"
 
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/api/common/v1"
