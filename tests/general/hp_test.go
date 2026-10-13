@@ -5,11 +5,15 @@ import (
 	"crypto/rand"
 	"crypto/sha512"
 	"fmt"
+	"net"
+	"net/rpc"
 	"strconv"
 	"sync"
 	"testing"
 	"tests/helpers"
 	"time"
+
+	goridgeRpc "github.com/roadrunner-server/goridge/v4/pkg/rpc"
 
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/api/common/v1"
@@ -49,6 +53,10 @@ func Test_VerifyRegistrationProto(t *testing.T) {
 	assert.Contains(t, activities, "HeartBeatActivity.doSomething")
 
 	assert.Contains(t, activities, "SimpleActivity.lower")
+
+	nexusServices := getNexusServices(t)
+	assert.Empty(t, nexusServices)
+
 	stopCh <- struct{}{}
 	wg.Wait()
 }
@@ -934,4 +942,17 @@ func Test_SagaWorkflowLAProto(t *testing.T) {
 	assert.Error(t, w.Get(context.Background(), &result))
 	stopCh <- struct{}{}
 	wg.Wait()
+}
+
+func getNexusServices(t *testing.T) []string {
+	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", "127.0.0.1:6001")
+	assert.NoError(t, err)
+	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
+
+	var res []string
+
+	err = c.Call("temporal.GetNexusServiceNames", true, &res)
+	assert.NoError(t, err)
+
+	return res
 }
