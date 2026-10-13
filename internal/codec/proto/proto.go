@@ -2,10 +2,10 @@ package proto
 
 import (
 	"context"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"log/slog"
-	"sync"
 
-	"github.com/goccy/go-json"
 	protocolV1 "github.com/roadrunner-server/api-go/v6/temporal/v1"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/pool/v2/payload"
@@ -16,34 +16,24 @@ import (
 
 // Codec uses protobuf to exchange messages with underlying workers.
 type Codec struct {
-	log    *slog.Logger
-	dc     converter.DataConverter
-	frPool sync.Pool
+	log *slog.Logger
+	dc  converter.DataConverter
+	// jsonOpts keeps the v1 semantics that the PHP SDK wire format depends on:
+	// durations as nanoseconds, case-insensitive field names and legacy omitempty.
+	jsonOpts json.Options
 }
 
 // NewCodec creates new Proto communication Codec.
 func NewCodec(log *slog.Logger, dc converter.DataConverter) *Codec {
 	return &Codec{
-		log: log,
-		dc:  dc,
-		frPool: sync.Pool{
-			New: func() any {
-				return &protocolV1.Frame{}
-			},
-		},
+		log:      log,
+		dc:       dc,
+		jsonOpts: jsonv1.DefaultOptionsV1(),
 	}
 }
 
 func (c *Codec) Encode(ctx *internal.Context, p *payload.Payload, msg ...*internal.Message) error {
-	if len(msg) == 0 {
-		c.log.Debug("nil message")
-		return nil
-	}
-
-	request := c.getFrame()
-	defer c.putFrame(request)
-
-	request.Messages = make([]*protocolV1.Message, len(msg))
+	request := &protocolV1.Frame{Messages: make([]*protocolV1.Message, len(msg))}
 
 	for i := range msg {
 		pm := &protocolV1.Message{}
@@ -60,12 +50,8 @@ func (c *Codec) Encode(ctx *internal.Context, p *payload.Payload, msg ...*intern
 	}
 
 	// context is always in JSON format
-	if ctx.IsEmpty() {
-		p.Context = []byte("null")
-	}
-
 	var err error
-	p.Context, err = json.Marshal(ctx)
+	p.Context, err = json.Marshal(ctx, c.jsonOpts)
 	if err != nil {
 		return errors.E(errors.Op("encode_context"), err)
 	}
@@ -84,8 +70,7 @@ func (c *Codec) Decode(pld *payload.Payload, result *[]*internal.Message) error 
 		return nil
 	}
 
-	response := c.getFrame()
-	defer c.putFrame(response)
+	response := &protocolV1.Frame{}
 
 	err := proto.Unmarshal(pld.Body, response)
 	if err != nil {
@@ -172,7 +157,7 @@ func (c *Codec) packMessage(msg *internal.Message, ctx *internal.Context, protoM
 			return err
 		}
 
-		protoMsg.Options, err = json.Marshal(msg.Command)
+		protoMsg.Options, err = json.Marshal(msg.Command, c.jsonOpts)
 		if err != nil {
 			return err
 		}
@@ -198,20 +183,11 @@ func (c *Codec) parseMessage(frame *protocolV1.Message) (*internal.Message, erro
 			return nil, errors.E(op, err)
 		}
 
-		err = json.Unmarshal(frame.Options, &msg.Command)
+		err = json.Unmarshal(frame.Options, &msg.Command, c.jsonOpts)
 		if err != nil {
 			return nil, errors.E(op, err)
 		}
 	}
 
 	return msg, nil
-}
-
-func (c *Codec) getFrame() *protocolV1.Frame {
-	return c.frPool.Get().(*protocolV1.Frame)
-}
-
-func (c *Codec) putFrame(fr *protocolV1.Frame) {
-	fr.Reset()
-	c.frPool.Put(fr)
 }

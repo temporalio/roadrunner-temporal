@@ -92,7 +92,7 @@ func TestMakeNexusStartedRegistryCallback_OutOfLoopDefers(t *testing.T) {
 	wp.nexusStarted.Listen(202, func(string, error) { fired = true })
 	assert.False(t, fired)
 
-	require.NoError(t, wp.callbacks[0]())
+	wp.callbacks[0]()
 	assert.True(t, fired, "registry listener must fire once the deferred callback runs")
 }
 
@@ -177,7 +177,7 @@ func TestMakeNexusCompletionResponseCallback_OutOfLoopDefers(t *testing.T) {
 	assert.Empty(t, wp.mq.Messages(), "deferred completion must not produce a message yet")
 	require.Len(t, wp.callbacks, 1)
 
-	require.NoError(t, wp.callbacks[0]())
+	wp.callbacks[0]()
 	assert.Len(t, wp.mq.Messages(), 1, "deferred callback run produces one queued message")
 }
 

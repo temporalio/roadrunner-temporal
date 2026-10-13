@@ -30,24 +30,22 @@ Download the binaries with the following command: (from `tests/acceptance/php-sd
 composer get:binaries
 ```
 
-To build RoadRunner with the Temporal plugin, we also use DLoad. 
-It fetches the plugin version numbers from build.roadrunner.dev, generates the Velox configuration, and runs Velox to build RoadRunner with the current codebase.
-
-Run the following command to build RoadRunner: (from `tests/acceptance`)
-
-> **Note:** Before building, you must generate a GitHub Personal Access Token at https://github.com/settings/personal-access-tokens and use it as the `GITHUB_TOKEN` environment variable.
+The `composer get:binaries` command also downloads a released `rr` binary. Replace it with a RoadRunner `master` build that uses the current plugin code. Run these commands from the repository root:
 
 ```bash
-cd ..
-CGO_ENABLED=0 GITHUB_TOKEN=YOUR_TOKEN_HER php-sdk/vendor/bin/dload build
+git clone https://github.com/roadrunner-server/roadrunner.git
+cd roadrunner
+go mod edit -replace github.com/temporalio/roadrunner-temporal/v6=../
+GOWORK=off go mod tidy
+GOWORK=off CGO_ENABLED=0 go build -o ../tests/acceptance/php-sdk/rr ./cmd/rr
 ```
 
 ### Running Tests
 
-Navigate to the php-sdk directory and run the Acceptance or Functional tests using Composer: (from `tests/acceptance/php-sdk`)
+Navigate to the php-sdk directory and run the Acceptance or Functional tests using Composer:
 
 ```bash
-cd php-sdk
+cd ../tests/acceptance/php-sdk
 ROADRUNNER_BINARY='./rr' composer test:accept-fast
 ROADRUNNER_BINARY='./rr' composer test:accept-slow
 ROADRUNNER_BINARY='./rr' composer test:func

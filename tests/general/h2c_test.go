@@ -33,14 +33,7 @@ func Test_H2CWithoutCerts(t *testing.T) {
 	defer cancel()
 	assert.NoError(t, w.Get(ctx, &result))
 
-	res := []float64{3, 8, 8, 15}
-	out := result.([]interface{})
-
-	for i := 0; i < len(res); i++ {
-		if res[i] != out[i].(float64) {
-			t.Fail()
-		}
-	}
+	assert.Equal(t, []any{3.0, 8.0, 8.0, 15.0}, result)
 
 	we, err := s.Client.DescribeWorkflowExecution(context.Background(), w.GetID(), w.GetRunID())
 	assert.NoError(t, err)

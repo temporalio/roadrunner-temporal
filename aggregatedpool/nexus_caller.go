@@ -19,9 +19,8 @@ func (wp *Workflow) makeNexusStartedRegistryCallback(startMsgID uint64) func(str
 			wp.nexusStarted.Push(startMsgID, token, err)
 			return
 		}
-		wp.callbacks = append(wp.callbacks, func() error {
+		wp.callbacks = append(wp.callbacks, func() {
 			wp.nexusStarted.Push(startMsgID, token, err)
-			return nil
 		})
 	}
 }
@@ -44,9 +43,8 @@ func (wp *Workflow) makeNexusCompletionResponseCallback(startMsgID uint64) func(
 			deliver(result, err)
 			return
 		}
-		wp.callbacks = append(wp.callbacks, func() error {
+		wp.callbacks = append(wp.callbacks, func() {
 			deliver(result, err)
-			return nil
 		})
 	}
 }

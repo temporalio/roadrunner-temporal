@@ -4,13 +4,10 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
-	"unsafe"
 
 	"log/slog"
 
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/goridge/v4/pkg/frame"
-	"github.com/roadrunner-server/pool/v2/payload"
 	"github.com/temporalio/roadrunner-temporal/v6/api"
 	"github.com/temporalio/roadrunner-temporal/v6/internal"
 	commonpb "go.temporal.io/api/common/v1"
@@ -31,27 +28,21 @@ type Activity struct {
 	seqID   uint64
 	running sync.Map
 
-	pldPool                *sync.Pool
 	disableActivityWorkers bool
 }
 
 func NewActivityDefinition(ac api.Codec, p api.Pool, log *slog.Logger, disableActivityWorkers bool) *Activity {
 	return &Activity{
-		log:   log,
-		codec: ac,
-		pool:  p,
-		pldPool: &sync.Pool{
-			New: func() any {
-				return new(payload.Payload)
-			},
-		},
+		log:                    log,
+		codec:                  ac,
+		pool:                   p,
 		disableActivityWorkers: disableActivityWorkers,
 	}
 }
 
 func (a *Activity) GetActivityContext(taskToken []byte) (context.Context, error) {
 	const op = errors.Op("activity_pool_get_activity_context")
-	c, ok := a.running.Load(bytesToStr(taskToken))
+	c, ok := a.running.Load(string(taskToken))
 	if !ok {
 		return nil, errors.E(op, errors.Str("heartbeat on non running activity"))
 	}
@@ -71,7 +62,8 @@ func (a *Activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 	}
 
 	var info = tActivity.GetInfo(ctx)
-	a.running.Store(bytesToStr(info.TaskToken), ctx)
+	key := string(info.TaskToken)
+	a.running.Store(key, ctx)
 	mh := tActivity.GetMetricsHandler(ctx)
 	// if the mh is not nil, record the RR metric
 	if mh != nil {
@@ -94,8 +86,8 @@ func (a *Activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 		msg.Payloads.Payloads = append(msg.Payloads.Payloads, heartbeatDetails.Payloads...)
 	}
 
-	pl := a.getPld()
-	defer a.putPld(pl)
+	pl := getPld()
+	defer putPld(pl)
 
 	err := a.codec.Encode(
 		&internal.Context{
@@ -107,29 +99,14 @@ func (a *Activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 
 	ch := make(chan struct{}, 1)
 	result, err := a.pool.Exec(ctx, pl, ch)
+	a.running.Delete(key)
 	if err != nil {
-		a.running.Delete(bytesToStr(info.TaskToken))
 		return nil, errors.E(op, err)
 	}
 
-	a.running.Delete(bytesToStr(info.TaskToken))
-	var r *payload.Payload
-
-	select {
-	case pld := <-result:
-		if pld.Error() != nil {
-			return nil, errors.E(op, pld.Error())
-		}
-		// streaming is not supported
-		if pld.Payload().Flags&frame.STREAM != 0 {
-			ch <- struct{}{}
-			return nil, errors.E(op, errors.Str("streaming is not supported"))
-		}
-
-		// assign the payload
-		r = pld.Payload()
-	default:
-		return nil, errors.E(op, errors.Str("activity worker empty response"))
+	r, err := readResponse(result, ch, "activity worker empty response")
+	if err != nil {
+		return nil, errors.E(op, err)
 	}
 
 	out := make([]*internal.Message, 0, 2)
@@ -152,23 +129,4 @@ func (a *Activity) execute(ctx context.Context, args *commonpb.Payloads) (*commo
 	}
 
 	return retPld.Payloads, nil
-}
-
-func (a *Activity) getPld() *payload.Payload {
-	return a.pldPool.Get().(*payload.Payload)
-}
-
-func (a *Activity) putPld(pld *payload.Payload) {
-	pld.Codec = 0
-	pld.Context = nil
-	pld.Body = nil
-	a.pldPool.Put(pld)
-}
-
-func bytesToStr(data []byte) string {
-	if len(data) == 0 {
-		return ""
-	}
-
-	return unsafe.String(unsafe.SliceData(data), len(data))
 }

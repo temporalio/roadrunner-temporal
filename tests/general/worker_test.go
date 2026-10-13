@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -68,6 +69,21 @@ func Test_ResetWorkerWorkflow(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, enums.WORKFLOW_EXECUTION_STATUS_CANCELED, we.WorkflowExecutionInfo.Status)
 	cancel()
+
+	stopCh <- struct{}{}
+	wg.Wait()
+}
+
+// The PHP worker sets WorkerStopTimeout to 10s. The Temporal worker must get this value.
+func Test_WorkerStopTimeoutFromPHP(t *testing.T) {
+	stopCh := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	oLogger := helpers.NewTestServerWithLogObserver(t, stopCh, wg, "../configs/.rr-worker-stop-timeout.yaml")
+
+	entries := oLogger.FilterMessageSnippet("worker info").All()
+	require.Len(t, entries, 1)
+	assert.Contains(t, fmt.Sprintf("%+v", entries[0].Attrs["worker_info"]), "WorkerStopTimeout:10s")
 
 	stopCh <- struct{}{}
 	wg.Wait()

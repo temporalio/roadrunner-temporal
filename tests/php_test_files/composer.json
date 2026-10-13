@@ -2,8 +2,8 @@
 	"minimum-stability": "dev",
 	"prefer-stable": true,
 	"require": {
-		"temporal/sdk": "^2.16.0",
-		"spiral/roadrunner-kv": "^4.0"
+		"temporal/sdk": "^2.19",
+		"spiral/roadrunner-kv": "^4.3"
 	},
 	"name": "test/test",
 	"autoload": {

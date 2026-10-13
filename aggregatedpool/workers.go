@@ -2,6 +2,8 @@ package aggregatedpool
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"log/slog"
@@ -64,10 +66,6 @@ func ResolveDataConverters(
 	converters map[string]converter.PayloadConverter,
 	enabledOrder []string,
 ) ([]converter.PayloadConverter, error) {
-	if len(converters) == 0 && len(enabledOrder) == 0 {
-		return nil, nil
-	}
-
 	if len(enabledOrder) > 0 {
 		result := make([]converter.PayloadConverter, 0, len(enabledOrder))
 		for _, encoding := range enabledOrder {
@@ -83,11 +81,7 @@ func ResolveDataConverters(
 		return result, nil
 	}
 
-	result := make([]converter.PayloadConverter, 0, len(converters))
-	for _, dc := range converters {
-		result = append(result, dc)
-	}
-	return result, nil
+	return slices.Collect(maps.Values(converters)), nil
 }
 
 // registerWorkflow runs the SDK workflow registration and converts any panic it raises
@@ -145,9 +139,6 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, nexusHandler *NexusHandle
 	for i := range wi {
 		workerInfo := wi[i]
 		log.Debug("worker info", "worker_info", workerInfo)
-
-		// Override to 0: RoadRunner manages worker lifecycle independently
-		workerInfo.Options.WorkerStopTimeout = 0
 
 		if workerInfo.TaskQueue == "" {
 			workerInfo.TaskQueue = temporalClient.DefaultNamespace

@@ -8,7 +8,7 @@ import (
 
 	"tests/helpers"
 
-	"github.com/pborman/uuid"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
@@ -51,7 +51,7 @@ func Test_SendSignalDuringTimerProto(t *testing.T) {
 
 	w, err := s.Client.SignalWithStartWorkflow(
 		context.Background(),
-		signalStr+uuid.New(),
+		signalStr+uuid.NewString(),
 		addStr,
 		10,
 		client.StartWorkflowOptions{
@@ -127,7 +127,7 @@ func Test_RuntimeSignalProto(t *testing.T) {
 
 	w, err := s.Client.SignalWithStartWorkflow(
 		context.Background(),
-		signalStr+uuid.New(),
+		signalStr+uuid.NewString(),
 		addStr,
 		-1,
 		client.StartWorkflowOptions{
@@ -234,7 +234,7 @@ func Test_SendSignalDuringTimerLAProto(t *testing.T) {
 
 	w, err := s.Client.SignalWithStartWorkflow(
 		context.Background(),
-		signalStr+uuid.New(),
+		signalStr+uuid.NewString(),
 		addStr,
 		10,
 		client.StartWorkflowOptions{
@@ -308,7 +308,7 @@ func Test_RuntimeSignalLAProto(t *testing.T) {
 
 	w, err := s.Client.SignalWithStartWorkflow(
 		context.Background(),
-		signalStr+uuid.New(),
+		signalStr+uuid.NewString(),
 		addStr,
 		-1,
 		client.StartWorkflowOptions{

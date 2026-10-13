@@ -31,15 +31,6 @@ linters:
     - unused
     - whitespace
   settings:
-    dupl:
-      threshold: 100
-    gocyclo:
-      min-complexity: 15
-    godot:
-      scope: declarations
-      capital: true
-    lll:
-      line-length: 120
     misspell:
       locale: US
     nolintlint:
@@ -48,8 +39,6 @@ linters:
       simple: true
       range-loops: true
       for-loops: true
-    wsl:
-      allow-assign-and-anything: true
     revive:
       rules:
         - name: var-naming
@@ -62,28 +51,7 @@ linters:
       - common-false-positives
       - legacy
       - std-error-handling
-    rules:
-      - linters:
-          - dupl
-          - funlen
-          - gocognit
-          - scopelint
-        path: _test\.go
-    paths:
-      - .github
-      - .git
-      - third_party$
-      - builtin$
-      - examples$
 formatters:
   enable:
     - gofmt
     - goimports
-  exclusions:
-    generated: lax
-    paths:
-      - .github
-      - .git
-      - third_party$
-      - builtin$
-      - examples$

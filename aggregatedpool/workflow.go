@@ -3,15 +3,12 @@ package aggregatedpool
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	"log/slog"
 
 	"github.com/google/uuid"
-	"github.com/roadrunner-server/pool/v2/payload"
 	"github.com/temporalio/roadrunner-temporal/v6/api"
 	"github.com/temporalio/roadrunner-temporal/v6/canceller"
 	"github.com/temporalio/roadrunner-temporal/v6/internal"
@@ -35,7 +32,6 @@ import (
 	}
 */
 
-type Callback func() error
 type LaFn func(ctx context.Context, hdr *commonpb.Header, args *commonpb.Payloads) (*commonpb.Payloads, error)
 
 // seqID is global sequence ID
@@ -60,7 +56,7 @@ type Workflow struct {
 	seqID        uint64
 	pipeline     []*internal.Message
 	updatesQueue map[string]struct{}
-	callbacks    []Callback
+	callbacks    []func()
 	canceller    *canceller.Canceller
 	inLoop       uint32
 	// set when a response was queued from a callback that fired inline during
@@ -76,9 +72,6 @@ type Workflow struct {
 
 	log *slog.Logger
 	mh  temporalClient.MetricsHandler
-
-	// objects pool
-	pldPool *sync.Pool
 }
 
 // NewWorkflowDefinition ... WorkflowDefinition Constructor
@@ -89,11 +82,6 @@ func NewWorkflowDefinition(codec api.Codec, la LaFn, pool api.Pool, log *slog.Lo
 		la:    la,
 		codec: codec,
 		pool:  pool,
-		pldPool: &sync.Pool{
-			New: func() any {
-				return new(payload.Payload)
-			},
-		},
 	}
 }
 
@@ -114,11 +102,6 @@ func (wp *Workflow) NewWorkflowDefinition() bindings.WorkflowDefinition {
 		pool:  wp.pool,
 		codec: wp.codec,
 		log:   wp.log,
-		pldPool: &sync.Pool{
-			New: func() any {
-				return new(payload.Payload)
-			},
-		},
 	}
 }
 
@@ -190,30 +173,14 @@ func (wp *Workflow) Execute(env bindings.WorkflowEnvironment, header *commonpb.H
 					Value: str,
 				}
 			case enumspb.INDEXED_VALUE_TYPE_INT:
-				switch tt := v.(type) {
-				case int:
-					tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
-						Type:  internal.IntType,
-						Value: tt,
-					}
-				case int64:
-					tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
-						Type:  internal.IntType,
-						Value: tt,
-					}
-				case string:
-					res, err := strconv.Atoi(tt)
-					if err != nil {
-						wp.log.Warn("typed search attribute found, but it is not an int", "error", err, "key", k.GetName())
-						continue
-					}
-					tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
-						Type:  internal.IntType,
-						Value: res,
-					}
-				default:
+				i, ok := v.(int64)
+				if !ok {
 					wp.log.Warn("typed search attribute found, but it is not an int", "key", k.GetName())
 					continue
+				}
+				tsaParsed[k.GetName()] = &internal.TypedSearchAttribute{
+					Type:  internal.IntType,
+					Value: i,
 				}
 			case enumspb.INDEXED_VALUE_TYPE_DOUBLE:
 				str, ok := v.(float64)
@@ -294,29 +261,21 @@ func (wp *Workflow) OnWorkflowTaskStarted(t time.Duration) {
 
 	wp.log.Debug("workflow task started", "time", t)
 
-	var err error
 	// do not copy
 	for i := 0; i < len(wp.callbacks); i++ {
-		err = wp.callbacks[i]()
-		if err != nil {
-			panic(err)
-		}
+		wp.callbacks[i]()
 	}
 
 	wp.callbacks = nil
 
 	// handle updates
-	if len(wp.updatesQueue) > 0 {
-		for k := range wp.updatesQueue {
-			wp.env.HandleQueuedUpdates(k)
-			delete(wp.updatesQueue, k)
-		}
+	for k := range wp.updatesQueue {
+		wp.env.HandleQueuedUpdates(k)
 	}
-	// clean
-	wp.updatesQueue = map[string]struct{}{}
+	clear(wp.updatesQueue)
 
 	// at first, we should flush our queue with command, e.g.: startWorkflow
-	err = wp.flushQueue()
+	err := wp.flushQueue()
 	if err != nil {
 		panic(err)
 	}
@@ -412,14 +371,8 @@ func (wp *Workflow) Close() {
 		wp.log.Info("drained unhandled updates")
 	}
 
-	// clean the map
-	for k := range wp.updatesQueue {
-		delete(wp.updatesQueue, k)
-	}
-
-	for k := range wp.updateCompleteCb {
-		delete(wp.updateCompleteCb, k)
-	}
+	clear(wp.updatesQueue)
+	clear(wp.updateCompleteCb)
 
 	// send destroy command
 	_, _ = wp.runCommand(internal.DestroyWorkflow{RunID: wp.env.WorkflowInfo().WorkflowExecution.RunID}, nil, wp.header)

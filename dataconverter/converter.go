@@ -7,13 +7,12 @@ import (
 
 // DataConverter wraps Temporal data converter to enable direct access to the payloads.
 type DataConverter struct {
-	// dc is the RR data converter
-	dc converter.DataConverter
+	converter.DataConverter
 }
 
 // NewDataConverter creates new data converter.
 func NewDataConverter(fallback converter.DataConverter) converter.DataConverter {
-	return &DataConverter{dc: fallback}
+	return &DataConverter{DataConverter: fallback}
 }
 
 // ToPayloads converts a list of values.
@@ -25,12 +24,7 @@ func (r *DataConverter) ToPayloads(values ...any) (*commonpb.Payloads, error) {
 		}
 	}
 
-	return r.dc.ToPayloads(values...)
-}
-
-// ToPayload converts single value to payload.
-func (r *DataConverter) ToPayload(value any) (*commonpb.Payload, error) {
-	return r.dc.ToPayload(value)
+	return r.DataConverter.ToPayloads(values...)
 }
 
 // FromPayloads converts to a list of values of different types.
@@ -57,19 +51,4 @@ func (r *DataConverter) FromPayloads(payloads *commonpb.Payloads, valuePtrs ...a
 	}
 
 	return nil
-}
-
-// FromPayload converts single value from payload.
-func (r *DataConverter) FromPayload(payload *commonpb.Payload, valuePtr any) error {
-	return r.dc.FromPayload(payload, valuePtr)
-}
-
-// ToString converts payload object into human-readable string.
-func (r *DataConverter) ToString(input *commonpb.Payload) string {
-	return r.dc.ToString(input)
-}
-
-// ToStrings converts payloads object into human-readable strings.
-func (r *DataConverter) ToStrings(input *commonpb.Payloads) []string {
-	return r.dc.ToStrings(input)
 }

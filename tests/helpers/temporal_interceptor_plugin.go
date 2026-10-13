@@ -8,21 +8,9 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-type TemporalInterceptorPlugin struct {
-	config Configurer
-}
+type TemporalInterceptorPlugin struct{}
 
-func (pt *TemporalInterceptorPlugin) Init(cfg Configurer) error {
-	pt.config = cfg
-	return nil
-}
-
-func (pt *TemporalInterceptorPlugin) Serve() chan error {
-	errCh := make(chan error, 1)
-	return errCh
-}
-
-func (pt *TemporalInterceptorPlugin) Stop(context.Context) error {
+func (pt *TemporalInterceptorPlugin) Init(Configurer) error {
 	return nil
 }
 

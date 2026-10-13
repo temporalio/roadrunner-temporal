@@ -11,6 +11,7 @@ import (
 type LoggedEntry struct {
 	Level   slog.Level
 	Message string
+	Attrs   map[string]any
 }
 
 // ObservedLogs is a concurrency-safe, ordered collection of observed logs.
@@ -19,12 +20,13 @@ type ObservedLogs struct {
 	logs []LoggedEntry
 }
 
-// Len returns the number of items in the collection.
-func (o *ObservedLogs) Len() int {
+// All returns a copy of all the observed logs.
+func (o *ObservedLogs) All() []LoggedEntry {
 	o.mu.RLock()
-	n := len(o.logs)
+	ret := make([]LoggedEntry, len(o.logs))
+	copy(ret, o.logs)
 	o.mu.RUnlock()
-	return n
+	return ret
 }
 
 // FilterMessageSnippet returns the entries whose message contains the snippet.
@@ -48,8 +50,8 @@ func (o *ObservedLogs) add(entry LoggedEntry) {
 	o.mu.Unlock()
 }
 
-// observerHandler is an slog.Handler that captures the level and the message of
-// every record. Attributes are not recorded, nothing asserts on them.
+// observerHandler is an slog.Handler that captures the level, the message, and
+// the attributes of every record. Attributes added with WithAttrs are not recorded.
 type observerHandler struct {
 	level slog.Level
 	logs  *ObservedLogs
@@ -69,9 +71,16 @@ func (h *observerHandler) Enabled(_ context.Context, level slog.Level) bool {
 }
 
 func (h *observerHandler) Handle(_ context.Context, r slog.Record) error {
+	attrs := make(map[string]any, r.NumAttrs())
+	r.Attrs(func(a slog.Attr) bool {
+		attrs[a.Key] = a.Value.Any()
+		return true
+	})
+
 	h.logs.add(LoggedEntry{
 		Level:   r.Level,
 		Message: r.Message,
+		Attrs:   attrs,
 	})
 	return nil
 }

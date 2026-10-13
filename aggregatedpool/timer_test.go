@@ -2,7 +2,6 @@ package aggregatedpool
 
 import (
 	"errors"
-	"sync"
 	"testing"
 	"time"
 
@@ -77,7 +76,6 @@ func TestDrainPipeline_ZeroDurationTimerResponseIsFlushed(t *testing.T) {
 		mq:           queue.NewMessageQueue(func() uint64 { return 0 }),
 		canceller:    new(canceller.Canceller),
 		nexusStarted: new(registry.NexusStartedRegistry),
-		pldPool:      &sync.Pool{New: func() any { return new(payload.Payload) }},
 		pipeline: []*internal.Message{{
 			ID:      42,
 			Command: &internal.NewTimer{Milliseconds: 0},
@@ -104,7 +102,6 @@ func TestDrainPipeline_PositiveDurationTimerQueuesNothing(t *testing.T) {
 		mq:           queue.NewMessageQueue(func() uint64 { return 0 }),
 		canceller:    new(canceller.Canceller),
 		nexusStarted: new(registry.NexusStartedRegistry),
-		pldPool:      &sync.Pool{New: func() any { return new(payload.Payload) }},
 		pipeline: []*internal.Message{{
 			ID:      43,
 			Command: &internal.NewTimer{Milliseconds: 100},

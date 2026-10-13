@@ -21,8 +21,6 @@ const (
 	awaitWithTimeoutM = "awaitWithTimeout"
 	awaitM            = "await"
 	resolveValueM     = "resolveValue"
-	// signal
-	exitSignal = "exit"
 	// queryResult
 	getValueQuery = "getValue"
 	// WF names
@@ -63,7 +61,7 @@ func Test_Updates_9(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "fallback", result.(string))
 
-	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), exitSignal, nil)
+	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), exitSig, nil)
 	require.NoError(t, err)
 	time.Sleep(time.Second)
 
@@ -164,7 +162,7 @@ func Test_Updates_10(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "resolved", queryRes2)
 
-	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), exitSignal, nil)
+	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), exitSig, nil)
 	require.NoError(t, err)
 	time.Sleep(time.Second)
 
@@ -256,7 +254,7 @@ func Test_Updates_11(t *testing.T) {
 
 	time.Sleep(time.Second * 3)
 
-	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), exitSignal, nil)
+	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), exitSig, nil)
 	require.NoError(t, err)
 
 	time.Sleep(time.Second)
@@ -353,7 +351,7 @@ func Test_Updates_12(t *testing.T) {
 
 	time.Sleep(time.Second * 3)
 
-	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), exitSignal, nil)
+	err = s.Client.SignalWorkflow(context.Background(), w.GetID(), w.GetRunID(), exitSig, nil)
 	require.NoError(t, err)
 	time.Sleep(time.Second * 5)
 

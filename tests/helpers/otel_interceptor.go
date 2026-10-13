@@ -16,7 +16,6 @@ import (
 // OpenTelemetry tracer provider. This allows tests to assert on captured spans
 // without needing an external collector or stderr capture.
 type InMemoryOtelInterceptorPlugin struct {
-	tp  *sdktrace.TracerProvider
 	Exp *tracetest.InMemoryExporter
 	wi  sdkinterceptor.WorkerInterceptor
 }
@@ -36,18 +35,10 @@ func NewInMemoryOtelInterceptorPlugin(t *testing.T) *InMemoryOtelInterceptorPlug
 	ti, err := otelinterceptor.NewTracingInterceptor(otelinterceptor.TracerOptions{Tracer: tracer})
 	require.NoError(t, err)
 
-	return &InMemoryOtelInterceptorPlugin{tp: tp, Exp: exp, wi: ti}
+	return &InMemoryOtelInterceptorPlugin{Exp: exp, wi: ti}
 }
 
 func (i *InMemoryOtelInterceptorPlugin) Init(_ Configurer) error {
-	return nil
-}
-
-func (i *InMemoryOtelInterceptorPlugin) Serve() chan error {
-	return make(chan error, 1)
-}
-
-func (i *InMemoryOtelInterceptorPlugin) Stop(context.Context) error {
 	return nil
 }
 

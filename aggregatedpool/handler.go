@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/goridge/v4/pkg/frame"
-	"github.com/roadrunner-server/pool/v2/payload"
 	"github.com/temporalio/roadrunner-temporal/v6/internal"
 	commonpb "go.temporal.io/api/common/v1"
 	bindings "go.temporal.io/sdk/internalbindings"
@@ -169,7 +167,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		// always use deterministic id
 		if params.WorkflowID == "" {
 			nextID := atomic.AddUint64(&wp.seqID, 1)
-			params.WorkflowID = wp.env.WorkflowInfo().WorkflowExecution.RunID + "_" + strconv.Itoa(int(nextID)) //nolint:gosec
+			params.WorkflowID = wp.env.WorkflowInfo().WorkflowExecution.RunID + "_" + strconv.FormatUint(nextID, 10)
 		}
 
 		wp.env.ExecuteChildWorkflow(params, wp.createCallback(msg.ID, "ExecuteChildWorkflow"), func(r bindings.WorkflowExecution, e error) {
@@ -324,14 +322,15 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		var sau []temporal.SearchAttributeUpdate
 
 		for k, v := range command.SearchAttributes {
+			if v.Operation != internal.TypedSearchAttributeOperationUnset && v.Value == nil {
+				wp.log.Warn("field value is not set", "key", k)
+				continue
+			}
+
 			switch v.Type {
 			case internal.BoolType:
 				if v.Operation == internal.TypedSearchAttributeOperationUnset {
 					sau = append(sau, temporal.NewSearchAttributeKeyBool(k).ValueUnset())
-					continue
-				}
-				if v.Value == nil {
-					wp.log.Warn("field value is not set", "key", k)
 					continue
 				}
 
@@ -347,11 +346,6 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 					continue
 				}
 
-				if v.Value == nil {
-					wp.log.Warn("field value is not set", "key", k)
-					continue
-				}
-
 				if tt, ok := v.Value.(float64); ok {
 					sau = append(sau, temporal.NewSearchAttributeKeyFloat64(k).ValueSet(tt))
 				} else {
@@ -364,23 +358,8 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 					continue
 				}
 
-				if v.Value == nil {
-					wp.log.Warn("field value is not set", "key", k)
-					continue
-				}
-
 				switch ti := v.Value.(type) {
 				case float64:
-					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueSet(int64(ti)))
-				case int:
-					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueSet(int64(ti)))
-				case int64:
-					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueSet(ti))
-				case int32:
-					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueSet(int64(ti)))
-				case int16:
-					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueSet(int64(ti)))
-				case int8:
 					sau = append(sau, temporal.NewSearchAttributeKeyInt64(k).ValueSet(int64(ti)))
 				case string:
 					i, err := strconv.ParseInt(ti, 10, 64)
@@ -399,11 +378,6 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 					continue
 				}
 
-				if v.Value == nil {
-					wp.log.Warn("field value is not set", "key", k)
-					continue
-				}
-
 				if tt, ok := v.Value.(string); ok {
 					sau = append(sau, temporal.NewSearchAttributeKeyKeyword(k).ValueSet(tt))
 				} else {
@@ -415,14 +389,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 					continue
 				}
 
-				if v.Value == nil {
-					wp.log.Warn("field value is not set", "key", k)
-					continue
-				}
-
 				switch tt := v.Value.(type) {
-				case []string:
-					sau = append(sau, temporal.NewSearchAttributeKeyKeywordList(k).ValueSet(tt))
 				case []any:
 					var res []string
 					for _, v := range tt {
@@ -441,11 +408,6 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 					continue
 				}
 
-				if v.Value == nil {
-					wp.log.Warn("field value is not set", "key", k)
-					continue
-				}
-
 				if tt, ok := v.Value.(string); ok {
 					sau = append(sau, temporal.NewSearchAttributeKeyString(k).ValueSet(tt))
 				} else {
@@ -454,11 +416,6 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 			case internal.DatetimeType:
 				if v.Operation == internal.TypedSearchAttributeOperationUnset {
 					sau = append(sau, temporal.NewSearchAttributeKeyTime(k).ValueUnset())
-					continue
-				}
-
-				if v.Value == nil {
-					wp.log.Warn("field value is not set", "key", k)
 					continue
 				}
 
@@ -602,10 +559,9 @@ func (wp *Workflow) createLocalActivityCallback(id uint64) bindings.LocalActivit
 			return
 		}
 
-		wp.callbacks = append(wp.callbacks, func() error {
+		wp.callbacks = append(wp.callbacks, func() {
 			wp.log.Debug("appending local activity callback", "ID", id)
 			callback(lar)
-			return nil
 		})
 	}
 }
@@ -634,17 +590,16 @@ func (wp *Workflow) createCallback(id uint64, t string) bindings.ResultHandler {
 			return
 		}
 
-		wp.callbacks = append(wp.callbacks, func() error {
+		wp.callbacks = append(wp.callbacks, func() {
 			wp.log.Debug("appending callback", "ID", id, "type", t)
 			callback(result, err)
-			return nil
 		})
 	}
 }
 
 // callback to be called inside the queue processing, adds new messages at the end of the queue
 func (wp *Workflow) createContinuableCallback(id uint64, t string) bindings.ResultHandler {
-	callback := func(result *commonpb.Payloads, err error) {
+	return func(result *commonpb.Payloads, err error) {
 		wp.log.Debug("executing continuable callback", "ID", id, "type", t)
 		wp.canceller.Discard(id)
 
@@ -658,10 +613,6 @@ func (wp *Workflow) createContinuableCallback(id uint64, t string) bindings.Resu
 		if err != nil {
 			panic(err)
 		}
-	}
-
-	return func(result *commonpb.Payloads, err error) {
-		callback(result, err)
 	}
 }
 
@@ -678,8 +629,8 @@ func (wp *Workflow) flushQueue() error {
 		defer wp.mh.Gauge(RrWorkflowsMetricName).Update(float64(wp.pool.QueueSize()))
 	}
 
-	pl := wp.getPld()
-	defer wp.putPld(pl)
+	pl := getPld()
+	defer putPld(pl)
 	err := wp.codec.Encode(wp.getContext(), pl, wp.mq.Messages()...)
 	if err != nil {
 		return err
@@ -691,22 +642,9 @@ func (wp *Workflow) flushQueue() error {
 		return err
 	}
 
-	var r *payload.Payload
-	select {
-	case pld := <-result:
-		if pld.Error() != nil {
-			return errors.E(op, pld.Error())
-		}
-		// streaming is not supported
-		if pld.Payload().Flags&frame.STREAM != 0 {
-			ch <- struct{}{}
-			return errors.E(op, errors.Str("streaming is not supported"))
-		}
-
-		// assign the payload
-		r = pld.Payload()
-	default:
-		return errors.E(op, errors.Str("worker empty response"))
+	r, err := readResponse(result, ch, "worker empty response")
+	if err != nil {
+		return errors.E(op, err)
 	}
 
 	msgs := make([]*internal.Message, 0, 2)
@@ -733,10 +671,10 @@ func (wp *Workflow) runCommand(cmd any, payloads *commonpb.Payloads, header *com
 		defer wp.mh.Gauge(RrMetricName).Update(float64(wp.pool.QueueSize()))
 	}
 
-	pl := wp.getPld()
+	pl := getPld()
+	defer putPld(pl)
 	err := wp.codec.Encode(wp.getContext(), pl, msg)
 	if err != nil {
-		wp.putPld(pl)
 		return nil, err
 	}
 
@@ -744,41 +682,24 @@ func (wp *Workflow) runCommand(cmd any, payloads *commonpb.Payloads, header *com
 	ch := make(chan struct{}, 1)
 	result, err := wp.pool.Exec(context.Background(), pl, ch)
 	if err != nil {
-		wp.putPld(pl)
 		return nil, err
 	}
 
-	var r *payload.Payload
-	select {
-	case pld := <-result:
-		if pld.Error() != nil {
-			return nil, errors.E(op, pld.Error())
-		}
-		// streaming is not supported
-		if pld.Payload().Flags&frame.STREAM != 0 {
-			ch <- struct{}{}
-			return nil, errors.E(op, errors.Str("streaming is not supported"))
-		}
-
-		// assign the payload
-		r = pld.Payload()
-	default:
-		return nil, errors.E(op, errors.Str("worker empty response"))
+	r, err := readResponse(result, ch, "worker empty response")
+	if err != nil {
+		return nil, errors.E(op, err)
 	}
 
 	msgs := make([]*internal.Message, 0, 2)
 	err = wp.codec.Decode(r, &msgs)
 	if err != nil {
-		wp.putPld(pl)
 		return nil, err
 	}
 
 	if len(msgs) != 1 {
-		wp.putPld(pl)
 		return nil, errors.E(op, errors.Str("unexpected pool response"))
 	}
 
-	wp.putPld(pl)
 	return msgs[0], nil
 }
 
@@ -791,15 +712,4 @@ func (wp *Workflow) getWorkflowWorkerPid() int {
 	}
 	wp.log.Debug("workflow worker pid not found")
 	return 0
-}
-
-func (wp *Workflow) getPld() *payload.Payload {
-	return wp.pldPool.Get().(*payload.Payload)
-}
-
-func (wp *Workflow) putPld(pld *payload.Payload) {
-	pld.Codec = 0
-	pld.Context = nil
-	pld.Body = nil
-	wp.pldPool.Put(pld)
 }

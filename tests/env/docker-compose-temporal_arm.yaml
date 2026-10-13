@@ -1,10 +1,10 @@
 version: "3.8"
 services:
-  # CLI dev server (bundles server 1.31.2): in-memory SQLite, auto-created "default"
+  # CLI dev server (bundles server 1.32.0): in-memory SQLite, auto-created "default"
   # namespace, no schema setup. auto-setup images are frozen at 1.29.x and never got 1.3x.
   temporal:
     container_name: temporal
-    image: temporalio/temporal:1.8.2
+    image: temporalio/temporal:1.9.1
     command: ["server", "start-dev", "--ip", "0.0.0.0", "--port", "7233", "--headless"]
     networks:
       - temporal-network
