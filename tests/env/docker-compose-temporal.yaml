@@ -38,18 +38,7 @@ services:
   temporal:
     container_name: temporal
     image: temporalio/temporal:1.9.1
-    command:
-      - server
-      - start-dev
-      - --ip
-      - 0.0.0.0
-      - --port
-      - "7233"
-      - --headless
-      - --dynamic-config-value
-      - frontend.ListWorkersEnabled=true
-      - --dynamic-config-value
-      - frontend.workerHeartbeatsEnabled=true
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--port", "7233", "--headless"]
     ports:
       - "7233:7233"
 

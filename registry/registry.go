@@ -60,3 +60,7 @@ type IDRegistry = Registry[bindings.WorkflowExecution]
 
 // Listener is the listener type for IDRegistry.
 type Listener = ListenerFunc[bindings.WorkflowExecution]
+
+// NexusStartedRegistry maps an ExecuteNexusOperation message ID to the started-callback
+// result (token, err). The token is non-empty for an async start and empty for a sync one.
+type NexusStartedRegistry = Registry[string]
