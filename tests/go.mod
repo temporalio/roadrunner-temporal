@@ -20,7 +20,7 @@ require (
 	github.com/temporalio/roadrunner-temporal/v6 v6.0.0
 	go.opentelemetry.io/otel/sdk v1.47.0
 	go.temporal.io/api v1.63.7
-	go.temporal.io/sdk v1.49.0
+	go.temporal.io/sdk v1.50.0
 	go.temporal.io/sdk/contrib/opentelemetry v0.8.1
 )
 
