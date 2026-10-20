@@ -15,8 +15,8 @@ require (
 	github.com/roadrunner-server/pool/v2 v2.0.0
 	github.com/stretchr/testify v1.12.1
 	github.com/uber-go/tally/v4 v4.1.17
-	go.temporal.io/api v1.63.7
-	go.temporal.io/sdk v1.49.0
+	go.temporal.io/api v1.64.0
+	go.temporal.io/sdk v1.50.0
 	go.temporal.io/sdk/contrib/sysinfo v0.1.1
 	go.temporal.io/sdk/contrib/tally v0.2.0
 	go.temporal.io/server v1.32.1
@@ -31,14 +31,14 @@ require (
 	github.com/containerd/cgroups/v3 v3.1.3 // indirect
 	github.com/containerd/log v0.2.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
-	github.com/ebitengine/purego v0.11.1 // indirect
+	github.com/ebitengine/purego v0.11.2 // indirect
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/godbus/dbus/v5 v5.2.3 // indirect
+	github.com/godbus/dbus/v5 v5.2.4 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/mock v1.7.0-rc.1 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.4 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.31.0 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.32.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20260802145828-341c2f0c90b5 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nexus-rpc/nexus-proto-annotations v0.1.0 // indirect
@@ -56,7 +56,7 @@ require (
 	// contrib/sysinfo minimum (v4.24.8).
 	github.com/shirou/gopsutil/v4 v4.26.9 // indirect
 	github.com/sirupsen/logrus v1.10.2 // indirect
-	github.com/stretchr/objx v0.7.0 // indirect
+	github.com/stretchr/objx v0.8.0 // indirect
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
 	github.com/tklauser/numcpus v0.12.0 // indirect
 	github.com/twmb/murmur3 v1.2.1 // indirect
@@ -68,6 +68,6 @@ require (
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20261012220534-4341edf3f941 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20261012220534-4341edf3f941 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20261019180522-ce908d29299b // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20261019180522-ce908d29299b // indirect
 )
