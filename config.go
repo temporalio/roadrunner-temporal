@@ -17,6 +17,7 @@ type Config struct {
 	Interceptors           []string     `mapstructure:"interceptors"`
 	DataConverters         []string     `mapstructure:"data_converters"`
 	DisableActivityWorkers bool         `mapstructure:"disable_activity_workers"`
+	Lambda                 Lambda       `mapstructure:"lambda"`
 
 	Address   string `mapstructure:"address"`
 	Namespace string `mapstructure:"namespace"`
@@ -88,6 +89,34 @@ type TLS struct {
 	UseH2C     bool           `mapstructure:"use_h2c"`
 	// auth type
 	auth tls.ClientAuthType
+}
+
+type Lambda struct {
+	ShutdownBuffer  time.Duration `mapstructure:"shutdown_buffer"`
+	GracefulTimeout time.Duration `mapstructure:"graceful_timeout"`
+}
+
+const lambdaResponseReserve = time.Second
+
+func (l *Lambda) InitDefaults() error {
+	const op = errors.Op("init_defaults_temporal_lambda")
+
+	if l.GracefulTimeout == 0 {
+		l.GracefulTimeout = time.Second * 5
+	}
+
+	if l.ShutdownBuffer == 0 {
+		l.ShutdownBuffer = l.GracefulTimeout + lambdaResponseReserve
+	}
+
+	if l.ShutdownBuffer <= l.GracefulTimeout {
+		return errors.E(op, errors.Errorf(
+			"temporal.lambda.shutdown_buffer (%s) must exceed temporal.lambda.graceful_timeout (%s) to leave room for the Runtime API response",
+			l.ShutdownBuffer, l.GracefulTimeout,
+		))
+	}
+
+	return nil
 }
 
 func (c *Config) InitDefault() error {
