@@ -130,5 +130,6 @@ func ReplayFromJSON(address, path, wname string) func(t *testing.T) {
 		resp := &protoApi.ReplayResponse{}
 		err = client.Call(replay, req, resp)
 		require.NoError(t, err)
+		require.Zero(t, resp.GetStatus().GetCode(), resp.GetStatus().GetMessage())
 	}
 }
