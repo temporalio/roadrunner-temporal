@@ -132,3 +132,20 @@ func ReplayFromJSON(address, path, wname string) func(t *testing.T) {
 		require.NoError(t, err)
 	}
 }
+
+func ReplayFromJSONResponse(t *testing.T, address, path, wname string) *protoApi.ReplayResponse {
+	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", address)
+	require.NoError(t, err)
+	client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
+
+	req := &protoApi.ReplayRequest{
+		SavePath: path,
+		WorkflowType: &common.WorkflowType{
+			Name: wname,
+		},
+	}
+	resp := &protoApi.ReplayResponse{}
+	require.NoError(t, client.Call(replay, req, resp))
+
+	return resp
+}

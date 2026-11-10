@@ -189,8 +189,33 @@ func (c *Config) InitDefault() error {
 	}
 
 	if c.ExternalStorage != nil {
-		if err := c.ExternalStorage.validate(); err != nil {
-			return errors.E(op, err)
+		if c.ExternalStorage.Driver == "" {
+			c.ExternalStorage.Driver = externalStorageDriverS3
+		}
+
+		if c.ExternalStorage.PayloadSizeThreshold < 0 {
+			return errors.E(op, errors.Str("external_storage.payload_size_threshold must not be negative"))
+		}
+
+		s3cfg := c.ExternalStorage.S3
+		if c.ExternalStorage.Driver != externalStorageDriverS3 {
+			if s3cfg != nil {
+				return errors.E(op, errors.Errorf("external_storage.s3 is set, but the driver is %q", c.ExternalStorage.Driver))
+			}
+		} else {
+			if s3cfg == nil || s3cfg.Bucket == "" {
+				return errors.E(op, errors.Str("external_storage.s3.bucket must be set for the s3 driver"))
+			}
+
+			if s3cfg.Endpoint != "" {
+				if err := validateEndpoint(s3cfg.Endpoint); err != nil {
+					return errors.E(op, err)
+				}
+			}
+
+			if (s3cfg.Key == "") != (s3cfg.Secret == "") {
+				return errors.E(op, errors.Str("external_storage.s3.key and external_storage.s3.secret must be set together"))
+			}
 		}
 	}
 

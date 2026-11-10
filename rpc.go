@@ -384,7 +384,16 @@ func (r *rpc) newReplayer(name string) (worker.WorkflowReplayer, *commonV1.Statu
 		}
 	}
 
-	replayer := worker.NewWorkflowReplayer()
+	replayer, err := worker.NewWorkflowReplayerWithOptions(worker.WorkflowReplayerOptions{
+		ExternalStorage: r.plugin.temporal.externalStorage,
+	})
+	if err != nil {
+		return nil, &commonV1.Status{
+			Code:    int32(codes.InvalidArgument),
+			Message: err.Error(),
+		}
+	}
+
 	replayer.RegisterWorkflowWithOptions(wfDef, workflow.RegisterOptions{Name: name})
 	return replayer, nil
 }

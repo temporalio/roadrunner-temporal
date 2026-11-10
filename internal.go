@@ -171,6 +171,7 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 		Namespace:               p.config.Namespace,
 		Logger:                  logger.NewSlogAdapter(p.log),
 		DataConverter:           dc,
+		ExternalStorage:         p.temporal.externalStorage,
 		WorkerHeartbeatInterval: heartbeatInterval,
 		SdkName:                 clientNameHeaderValue,
 		SdkVersion:              phpSdkVersion,
@@ -188,14 +189,6 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 
 			return "", nil
 		}),
-	}
-
-	if p.config.ExternalStorage != nil {
-		storage, err := newExternalStorage(context.Background(), p.config.ExternalStorage)
-		if err != nil {
-			return err
-		}
-		opts.ExternalStorage = storage
 	}
 
 	var err error
