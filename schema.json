@@ -84,6 +84,53 @@
     "activities": {
       "$ref": "https://raw.githubusercontent.com/roadrunner-server/pool/refs/heads/master/schema.json"
     },
+    "external_storage": {
+      "description": "Offloads large payloads to an external store and keeps only references in the workflow history. The worker resolves the references before payloads reach PHP. Use the same driver name and bucket as the PHP client.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bucket"
+      ],
+      "properties": {
+        "driver": {
+          "description": "Storage driver. Only `s3` is supported.",
+          "type": "string",
+          "enum": [
+            "s3"
+          ],
+          "default": "s3"
+        },
+        "name": {
+          "description": "Driver name that is written into each reference. Changing it breaks the retrieval of payloads that are already stored.",
+          "type": "string",
+          "default": "aws.s3driver"
+        },
+        "payload_size_threshold": {
+          "description": "Minimum serialized payload size in bytes that is stored externally. 0 uses the sdk-go default of 256 KiB.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 262144
+        },
+        "bucket": {
+          "description": "S3 bucket for the payloads.",
+          "type": "string",
+          "minLength": 1
+        },
+        "region": {
+          "description": "AWS region. If omitted, the default AWS configuration chain is used.",
+          "type": "string"
+        },
+        "endpoint": {
+          "description": "Custom S3 endpoint, for example MinIO or LocalStack.",
+          "type": "string"
+        },
+        "force_path_style": {
+          "description": "Use path-style addressing. MinIO requires it.",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
     "tls": {
       "description": "Temporal TLS configuration.",
       "type": "object",

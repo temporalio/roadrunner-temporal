@@ -190,6 +190,14 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 		}),
 	}
 
+	if p.config.ExternalStorage != nil {
+		storage, err := newExternalStorage(context.Background(), p.config.ExternalStorage)
+		if err != nil {
+			return err
+		}
+		opts.ExternalStorage = storage
+	}
+
 	var err error
 	p.temporal.client, err = tclient.Dial(opts)
 	if err != nil {

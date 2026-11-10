@@ -24,6 +24,8 @@ type Config struct {
 
 	// 0 = sdk-go default (60s); out-of-range values are clamped to 1s–60s (see initTemporalClient).
 	WorkerHeartbeatInterval time.Duration `mapstructure:"worker_heartbeat_interval"`
+
+	ExternalStorage *ExternalStorage `mapstructure:"external_storage"`
 }
 
 const (
@@ -183,6 +185,12 @@ func (c *Config) InitDefault() error {
 			default:
 				c.TLS.auth = tls.NoClientCert
 			}
+		}
+	}
+
+	if c.ExternalStorage != nil {
+		if err := c.ExternalStorage.validate(); err != nil {
+			return errors.E(op, err)
 		}
 	}
 
