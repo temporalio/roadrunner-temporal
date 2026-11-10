@@ -98,8 +98,7 @@
         "payload_size_threshold": {
           "description": "Minimum serialized payload size in bytes that is stored externally. 0 uses the sdk-go default of 256 KiB.",
           "type": "integer",
-          "minimum": 0,
-          "default": 262144
+          "minimum": 0
         },
         "s3": {
           "$ref": "#/$defs/S3"
@@ -245,10 +244,6 @@
         },
         "secret": {
           "description": "Secret access key. Set it together with `key`.",
-          "type": "string"
-        },
-        "session_token": {
-          "description": "Optional session token for temporary credentials.",
           "type": "string"
         }
       }

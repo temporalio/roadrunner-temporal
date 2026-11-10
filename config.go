@@ -2,6 +2,7 @@ package rrtemporal
 
 import (
 	"crypto/tls"
+	"net/url"
 	"os"
 	"time"
 
@@ -208,8 +209,9 @@ func (c *Config) InitDefault() error {
 			}
 
 			if s3cfg.Endpoint != "" {
-				if err := validateEndpoint(s3cfg.Endpoint); err != nil {
-					return errors.E(op, err)
+				u, err := url.Parse(s3cfg.Endpoint)
+				if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+					return errors.E(op, errors.Errorf("external_storage.s3.endpoint must be an absolute http or https URL, got %q", s3cfg.Endpoint))
 				}
 			}
 

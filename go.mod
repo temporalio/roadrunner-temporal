@@ -8,7 +8,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.6
 	github.com/cactus/go-statsd-client/v5 v5.1.0
 	github.com/google/uuid v1.6.0
-	github.com/johannesboyne/gofakes3 v1.2.0
 	github.com/prometheus/client_golang v1.25.0
 	github.com/roadrunner-server/api-go/v6 v6.1.0
 	github.com/roadrunner-server/api-plugins/v6 v6.0.0
@@ -60,6 +59,7 @@ require (
 	github.com/golang/mock v1.7.0-rc.1 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.4 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.31.0 // indirect
+	github.com/johannesboyne/gofakes3 v1.2.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20260802145828-341c2f0c90b5 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nexus-rpc/nexus-proto-annotations v0.1.0 // indirect
@@ -71,7 +71,6 @@ require (
 	github.com/prometheus/common v0.72.1 // indirect
 	github.com/prometheus/procfs v0.22.0 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
-	github.com/ryszard/goskiplist v0.0.0-20150312221310-2dfbae5fcf46 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	// gopsutil v4.25+ is required: it adds cgo-free darwin CPU sampling, which SysInfoProvider
 	// heartbeat metrics need in CGO_ENABLED=0 builds. Do not let this fall back to the
@@ -83,7 +82,6 @@ require (
 	github.com/tklauser/numcpus v0.12.0 // indirect
 	github.com/twmb/murmur3 v1.2.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	go.shabbyrobe.org/gocovmerge v0.0.0-20230507111327-fa4f82cfbf4d // indirect
 	go.uber.org/atomic v1.12.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/net v0.61.0 // indirect
@@ -91,7 +89,6 @@ require (
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
-	golang.org/x/tools v0.51.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20261012220534-4341edf3f941 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261012220534-4341edf3f941 // indirect
 )

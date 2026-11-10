@@ -389,7 +389,7 @@ func (r *rpc) newReplayer(name string) (worker.WorkflowReplayer, *commonV1.Statu
 	})
 	if err != nil {
 		return nil, &commonV1.Status{
-			Code:    int32(codes.InvalidArgument),
+			Code:    int32(codes.Internal),
 			Message: err.Error(),
 		}
 	}

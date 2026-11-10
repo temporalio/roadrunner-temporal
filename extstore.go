@@ -2,7 +2,6 @@ package rrtemporal
 
 import (
 	"context"
-	"net/url"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -29,7 +28,6 @@ type S3Storage struct {
 	ForcePathStyle bool   `mapstructure:"force_path_style"`
 	Key            string `mapstructure:"key"`
 	Secret         string `mapstructure:"secret"`
-	SessionToken   string `mapstructure:"session_token"`
 }
 
 func newS3StorageDriver(cfg *S3Storage) (converter.StorageDriver, error) {
@@ -40,7 +38,7 @@ func newS3StorageDriver(cfg *S3Storage) (converter.StorageDriver, error) {
 		opts = append(opts, awsconfig.WithRegion(cfg.Region))
 	}
 	if cfg.Key != "" && cfg.Secret != "" {
-		opts = append(opts, awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(cfg.Key, cfg.Secret, cfg.SessionToken)))
+		opts = append(opts, awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(cfg.Key, cfg.Secret, "")))
 	}
 	if cfg.Endpoint != "" {
 		opts = append(opts, awsconfig.WithBaseEndpoint(cfg.Endpoint))
@@ -70,15 +68,6 @@ func newS3StorageDriver(cfg *S3Storage) (converter.StorageDriver, error) {
 	return driver, nil
 }
 
-func validateEndpoint(endpoint string) error {
-	u, err := url.Parse(endpoint)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return errors.Errorf("external_storage.s3.endpoint must be an absolute http or https URL, got %q", endpoint)
-	}
-
-	return nil
-}
-
 func (p *Plugin) initExternalStorage() error {
 	const op = errors.Op("temporal_external_storage_init")
 
@@ -100,12 +89,6 @@ func (p *Plugin) initExternalStorage() error {
 		Drivers:              []converter.StorageDriver{driver},
 		PayloadSizeThreshold: cfg.PayloadSizeThreshold,
 	}
-
-	attrs := []any{"driver", cfg.Driver, "driver_name", driver.Name(), "payload_size_threshold", cfg.PayloadSizeThreshold}
-	if cfg.S3 != nil {
-		attrs = append(attrs, "bucket", cfg.S3.Bucket, "endpoint", cfg.S3.Endpoint)
-	}
-	p.log.Info("external storage enabled", attrs...)
 
 	return nil
 }

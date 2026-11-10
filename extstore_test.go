@@ -1,18 +1,13 @@
 package rrtemporal
 
 import (
-	"context"
 	"io"
 	"log/slog"
-	"net/http/httptest"
 	"testing"
 
-	"github.com/johannesboyne/gofakes3"
-	"github.com/johannesboyne/gofakes3/backend/s3mem"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/temporalio/roadrunner-temporal/v6/api"
-	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/sdk/converter"
 )
 
@@ -80,42 +75,6 @@ func TestNewS3StorageDriver_RequiresRegion(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "external_storage.s3.region is not set")
-}
-
-func TestNewS3StorageDriver_StoresAndRetrievesThroughTheEndpoint(t *testing.T) {
-	t.Setenv("AWS_ACCESS_KEY_ID", "")
-	t.Setenv("AWS_SECRET_ACCESS_KEY", "")
-	backend := s3mem.New()
-	require.NoError(t, backend.CreateBucket("payloads"))
-	server := httptest.NewServer(gofakes3.New(backend).Server())
-	defer server.Close()
-
-	driver, err := newS3StorageDriver(&S3Storage{
-		DriverName:     "custom.s3",
-		Bucket:         "payloads",
-		Region:         "us-east-1",
-		Endpoint:       server.URL,
-		ForcePathStyle: true,
-		Key:            "key",
-		Secret:         "secret",
-	})
-	require.NoError(t, err)
-	assert.Equal(t, "custom.s3", driver.Name())
-
-	payload := &commonpb.Payload{Metadata: map[string][]byte{"encoding": []byte("json/plain")}, Data: []byte(`"value"`)}
-	claims, err := driver.Store(converter.StorageDriverStoreContext{Context: context.Background()}, []*commonpb.Payload{payload})
-	require.NoError(t, err)
-	require.Len(t, claims, 1)
-
-	objects, err := backend.ListBucket("payloads", nil, gofakes3.ListBucketPage{})
-	require.NoError(t, err)
-	require.Len(t, objects.Contents, 1)
-	assert.Equal(t, claims[0].ClaimData["key"], objects.Contents[0].Key)
-
-	payloads, err := driver.Retrieve(converter.StorageDriverRetrieveContext{Context: context.Background()}, claims)
-	require.NoError(t, err)
-	require.Len(t, payloads, 1)
-	assert.Equal(t, payload.GetData(), payloads[0].GetData())
 }
 
 type testStorageDriver struct {

@@ -3,7 +3,6 @@ package tests
 import (
 	"context"
 	"net/http/httptest"
-	"os"
 	"path"
 	"strings"
 	"sync"
@@ -25,7 +24,6 @@ import (
 	"go.temporal.io/sdk/contrib/aws/s3driver"
 	"go.temporal.io/sdk/contrib/aws/s3driver/awssdkv2"
 	"go.temporal.io/sdk/converter"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 const externalStorageReferenceType = "temporal.api.sdk.v1.ExternalStorageReference"
@@ -83,12 +81,9 @@ func Test_ExternalStorage_OffloadsAndResolvesPayloads(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, objects.Contents)
 
-	rawHistory, err := protojson.Marshal(resp.GetHistory())
-	require.NoError(t, err)
-	historyPath := path.Join(t.TempDir(), "raw-history.json")
-	require.NoError(t, os.WriteFile(historyPath, rawHistory, 0o600))
-	replay := helpers.ReplayFromJSONResponse(t, "127.0.0.1:6001", historyPath, "ExternalStorageWorkflow")
-	assert.Zero(t, replay.GetStatus().GetCode(), replay.GetStatus().GetMessage())
+	historyPath := path.Join(t.TempDir(), "history.json")
+	t.Run("downloadWFHistory", helpers.DownloadWFHistory("127.0.0.1:6001", w.GetID(), w.GetRunID(), "ExternalStorageWorkflow", historyPath))
+	t.Run("replayFromJSON", helpers.ReplayFromJSON("127.0.0.1:6001", historyPath, "ExternalStorageWorkflow"))
 
 	stopCh <- struct{}{}
 	wg.Wait()

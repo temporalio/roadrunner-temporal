@@ -28,7 +28,6 @@ require (
 	go.temporal.io/sdk/contrib/aws/s3driver v0.3.0
 	go.temporal.io/sdk/contrib/aws/s3driver/awssdkv2 v0.3.0
 	go.temporal.io/sdk/contrib/opentelemetry v0.8.1
-	google.golang.org/protobuf v1.36.12
 )
 
 replace github.com/temporalio/roadrunner-temporal/v6 => ../
@@ -126,4 +125,5 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20261012220534-4341edf3f941 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261012220534-4341edf3f941 // indirect
 	google.golang.org/grpc v1.84.0 // indirect
+	google.golang.org/protobuf v1.36.12 // indirect
 )
