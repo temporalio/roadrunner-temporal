@@ -296,8 +296,7 @@ func TestTemporalWorkers_VersionedDynamicWorkflow_Registers(t *testing.T) {
 
 func TestTemporalWorkers_UnversionedDynamicWorkflow_ReturnsError(t *testing.T) {
 	_, err := temporalWorkersWithDynamicWorkflow(t, workflow.VersioningBehaviorUnspecified)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "versioning behavior")
+	require.EqualError(t, err, `temporal_register_workflow: workflow "Dynamic" on task queue "default" has no versioning behavior set while worker versioning is enabled; set a VersioningBehavior on the workflow or a DefaultVersioningBehavior on the worker`)
 }
 
 func temporalWorkersWithDynamicWorkflow(t *testing.T, behavior workflow.VersioningBehavior) ([]worker.Worker, error) {
