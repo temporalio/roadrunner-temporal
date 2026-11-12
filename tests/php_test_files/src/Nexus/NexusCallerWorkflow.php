@@ -13,7 +13,7 @@ use Temporal\Workflow\WorkflowMethod;
 class NexusCallerWorkflow
 {
     #[WorkflowMethod(name: 'NexusCallerWorkflow')]
-    public function run(string $endpoint, string $name, bool $async): iterable
+    public function run(string $endpoint, string $operation, string $name): iterable
     {
         $greeting = Workflow::newNexusServiceStub(
             GreetingService::class,
@@ -22,6 +22,6 @@ class NexusCallerWorkflow
                 ->withScheduleToCloseTimeout(30),
         );
 
-        return yield $async ? $greeting->greetAsync($name) : $greeting->greet($name);
+        return yield $greeting->{$operation}($name);
     }
 }
