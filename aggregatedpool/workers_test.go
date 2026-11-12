@@ -13,6 +13,8 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	sdkinterceptor "go.temporal.io/sdk/interceptor"
+	"go.temporal.io/sdk/worker"
+	"go.temporal.io/sdk/workflow"
 )
 
 // mockPayloadConverter implements converter.PayloadConverter for testing.
@@ -285,6 +287,38 @@ func TestTemporalWorkers_MultipleDynamicWorkflows_ReturnsError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "multiple dynamic workflows")
 	assert.Contains(t, err.Error(), "default")
+}
+
+func TestTemporalWorkers_VersionedDynamicWorkflow_Registers(t *testing.T) {
+	_, err := temporalWorkersWithDynamicWorkflow(t, workflow.VersioningBehaviorPinned)
+	require.NoError(t, err)
+}
+
+func TestTemporalWorkers_UnversionedDynamicWorkflow_ReturnsError(t *testing.T) {
+	_, err := temporalWorkersWithDynamicWorkflow(t, workflow.VersioningBehaviorUnspecified)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "versioning behavior")
+}
+
+func temporalWorkersWithDynamicWorkflow(t *testing.T, behavior workflow.VersioningBehavior) ([]worker.Worker, error) {
+	temporalClient, err := client.NewLazyClient(client.Options{})
+	require.NoError(t, err)
+	t.Cleanup(temporalClient.Close)
+
+	workers := []*internal.WorkerInfo{{
+		TaskQueue: "default",
+		Options: worker.Options{
+			DeploymentOptions: worker.DeploymentOptions{
+				UseVersioning: true,
+				Version:       worker.WorkerDeploymentVersion{DeploymentName: "foo", BuildID: "baz"},
+			},
+		},
+		Workflows: []internal.WorkflowInfo{
+			{Name: "Dynamic", Dynamic: true, VersioningBehavior: behavior},
+		},
+	}}
+
+	return TemporalWorkers(nil, &Activity{disableActivityWorkers: true}, workers, slog.New(slog.DiscardHandler), temporalClient, nil, nil)
 }
 
 func TestResolveDataConverters_DuplicateEncodings(t *testing.T) {
