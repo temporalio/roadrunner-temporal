@@ -158,8 +158,15 @@ func TemporalWorkers(wDef *Workflow, actDef *Activity, wi []*internal.WorkerInfo
 					)
 				}
 
+				options := workflow.DynamicRegisterOptions{}
+				if wf.VersioningBehavior != workflow.VersioningBehaviorUnspecified {
+					options.LoadDynamicRuntimeOptions = func(workflow.LoadDynamicRuntimeOptionsDetails) (workflow.DynamicRuntimeOptions, error) {
+						return workflow.DynamicRuntimeOptions{VersioningBehavior: wf.VersioningBehavior}, nil
+					}
+				}
+
 				err := registerWorkflow(func() {
-					wrk.RegisterDynamicWorkflow(wDef, workflow.DynamicRegisterOptions{})
+					wrk.RegisterDynamicWorkflow(wDef, options)
 				}, wf.Name, workerInfo.TaskQueue)
 				if err != nil {
 					return nil, err
