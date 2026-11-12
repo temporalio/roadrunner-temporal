@@ -114,7 +114,7 @@ func (p *Plugin) initPool() error {
 		return err
 	}
 
-	err = p.startWorkers(wfDef, actDef, wi)
+	err = p.startWorkers(wfDef, actDef, aggregatedpool.NewNexusHandler(codec, ap, p.log, p.config.Namespace), wi)
 	if err != nil {
 		return err
 	}

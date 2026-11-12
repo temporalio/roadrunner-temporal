@@ -2,7 +2,7 @@
 	"minimum-stability": "dev",
 	"prefer-stable": true,
 	"require": {
-		"temporal/sdk": "^2.19",
+		"temporal/sdk": "dev-nexus-new as 2.20.0",
 		"spiral/roadrunner-kv": "^4.3"
 	},
 	"name": "test/test",
