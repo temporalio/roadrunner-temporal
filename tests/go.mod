@@ -27,6 +27,7 @@ require (
 replace github.com/temporalio/roadrunner-temporal/v6 => ../
 
 require (
+	github.com/aws/aws-lambda-go v1.55.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cactus/go-statsd-client/v5 v5.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

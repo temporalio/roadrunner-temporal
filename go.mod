@@ -3,6 +3,7 @@ module github.com/temporalio/roadrunner-temporal/v6
 go 1.27
 
 require (
+	github.com/aws/aws-lambda-go v1.55.1
 	github.com/cactus/go-statsd-client/v5 v5.1.0
 	github.com/google/uuid v1.6.0
 	github.com/prometheus/client_golang v1.25.0
