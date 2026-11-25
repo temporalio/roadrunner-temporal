@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"log/slog"
+	"os"
 
 	"github.com/roadrunner-server/endure/v2/dep"
 	"github.com/roadrunner-server/errors"
@@ -63,6 +64,7 @@ type temporal struct {
 	tlsCfg        *tls.Config
 	client        tclient.Client
 	workers       []worker.Worker
+	workerInfo    []*internal.WorkerInfo
 
 	interceptors   map[string]api.Interceptor
 	dataConverters map[string]converter.PayloadConverter
@@ -183,6 +185,19 @@ func (p *Plugin) Serve() chan error {
 		return errCh
 	}
 
+	lambdaMode := os.Getenv(lambdaRuntimeAPIEnv) != ""
+	if lambdaMode {
+		if err := p.config.Lambda.InitDefaults(); err != nil {
+			errCh <- errors.E(op, err)
+			return errCh
+		}
+
+		p.log.Info("lambda runtime detected, the workers are cycled per invocation")
+		p.stopTemporalWorkersLocked()
+
+		go p.serveLambda()
+	}
+
 	go func() {
 		for {
 			select {
@@ -201,6 +216,16 @@ func (p *Plugin) Serve() chan error {
 				switch strings.Contains(ev.Message(), strconv.Itoa(p.wwPID)) {
 				// stopped workflow worker -> full reset
 				case true:
+					if lambdaMode {
+						p.log.Debug("workflow worker stopped between invocations, purging the sticky cache",
+							"message", ev.Message())
+						p.mu.Lock()
+						p.stopTemporalWorkersLocked()
+						p.mu.Unlock()
+
+						continue
+					}
+
 					p.log.Debug("workflow worker stopped, resetting", "message", ev.Message())
 					errR := p.Reset()
 					if errR != nil {
