@@ -171,6 +171,7 @@ func (p *Plugin) initTemporalClient(phpSdkVersion string, flags map[string]strin
 		Namespace:               p.config.Namespace,
 		Logger:                  logger.NewSlogAdapter(p.log),
 		DataConverter:           dc,
+		ExternalStorage:         p.temporal.externalStorage,
 		WorkerHeartbeatInterval: heartbeatInterval,
 		SdkName:                 clientNameHeaderValue,
 		SdkVersion:              phpSdkVersion,

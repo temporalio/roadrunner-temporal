@@ -66,6 +66,10 @@ type temporal struct {
 
 	interceptors   map[string]api.Interceptor
 	dataConverters map[string]converter.PayloadConverter
+
+	storageDrivers  map[string]api.StorageDriver
+	s3Driver        converter.StorageDriver
+	externalStorage converter.ExternalStorage
 }
 
 type Plugin struct {
@@ -160,6 +164,14 @@ func (p *Plugin) Init(cfg api.Configurer, log Logger, server api.Server) error {
 	// initialize interceptors and data converters
 	p.temporal.interceptors = make(map[string]api.Interceptor)
 	p.temporal.dataConverters = make(map[string]converter.PayloadConverter)
+	p.temporal.storageDrivers = make(map[string]api.StorageDriver)
+
+	if p.config.ExternalStorage != nil && p.config.ExternalStorage.Driver == externalStorageDriverS3 {
+		p.temporal.s3Driver, err = newS3StorageDriver(p.config.ExternalStorage.S3)
+		if err != nil {
+			return errors.E(op, err)
+		}
+	}
 
 	return nil
 }
@@ -171,7 +183,13 @@ func (p *Plugin) Serve() chan error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	err := p.initPool()
+	err := p.initExternalStorage()
+	if err != nil {
+		errCh <- errors.E(op, err)
+		return errCh
+	}
+
+	err = p.initPool()
 	if err != nil {
 		errCh <- errors.E(op, err)
 		return errCh
@@ -389,6 +407,17 @@ func (p *Plugin) Collects() []*dep.In {
 			p.temporal.dataConverters[pc.Encoding()] = pc
 			p.mu.Unlock()
 		}, (*converter.PayloadConverter)(nil)),
+		dep.Fits(func(pp any) {
+			sd := pp.(api.StorageDriver)
+			p.mu.Lock()
+			if _, exists := p.temporal.storageDrivers[sd.Name()]; exists {
+				p.log.Warn("storage driver with this name is already registered, overwriting",
+					"name", sd.Name(),
+				)
+			}
+			p.temporal.storageDrivers[sd.Name()] = sd
+			p.mu.Unlock()
+		}, (*api.StorageDriver)(nil)),
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/roadrunner-server/pool/v2/state/process"
 	"github.com/roadrunner-server/pool/v2/worker"
 	"github.com/temporalio/roadrunner-temporal/v6/internal"
+	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/interceptor"
 
 	staticPool "github.com/roadrunner-server/pool/v2/pool/static_pool"
@@ -17,6 +18,11 @@ import (
 
 type Interceptor interface {
 	WorkerInterceptor() interceptor.WorkerInterceptor
+	Name() string
+}
+
+type StorageDriver interface {
+	StorageDriver() converter.StorageDriver
 	Name() string
 }
 

@@ -2,6 +2,7 @@ package rrtemporal
 
 import (
 	"crypto/tls"
+	"net/url"
 	"os"
 	"time"
 
@@ -24,6 +25,8 @@ type Config struct {
 
 	// 0 = sdk-go default (60s); out-of-range values are clamped to 1s–60s (see initTemporalClient).
 	WorkerHeartbeatInterval time.Duration `mapstructure:"worker_heartbeat_interval"`
+
+	ExternalStorage *ExternalStorage `mapstructure:"external_storage"`
 }
 
 const (
@@ -182,6 +185,38 @@ func (c *Config) InitDefault() error {
 				c.TLS.auth = tls.RequireAndVerifyClientCert
 			default:
 				c.TLS.auth = tls.NoClientCert
+			}
+		}
+	}
+
+	if c.ExternalStorage != nil {
+		if c.ExternalStorage.Driver == "" {
+			c.ExternalStorage.Driver = externalStorageDriverS3
+		}
+
+		if c.ExternalStorage.PayloadSizeThreshold < 0 {
+			return errors.E(op, errors.Str("external_storage.payload_size_threshold must not be negative"))
+		}
+
+		s3cfg := c.ExternalStorage.S3
+		if c.ExternalStorage.Driver != externalStorageDriverS3 {
+			if s3cfg != nil {
+				return errors.E(op, errors.Errorf("external_storage.s3 is set, but the driver is %q", c.ExternalStorage.Driver))
+			}
+		} else {
+			if s3cfg == nil || s3cfg.Bucket == "" {
+				return errors.E(op, errors.Str("external_storage.s3.bucket must be set for the s3 driver"))
+			}
+
+			if s3cfg.Endpoint != "" {
+				u, err := url.Parse(s3cfg.Endpoint)
+				if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+					return errors.E(op, errors.Errorf("external_storage.s3.endpoint must be an absolute http or https URL, got %q", s3cfg.Endpoint))
+				}
+			}
+
+			if (s3cfg.Key == "") != (s3cfg.Secret == "") {
+				return errors.E(op, errors.Str("external_storage.s3.key and external_storage.s3.secret must be set together"))
 			}
 		}
 	}

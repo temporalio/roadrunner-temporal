@@ -84,6 +84,27 @@
     "activities": {
       "$ref": "https://raw.githubusercontent.com/roadrunner-server/pool/refs/heads/master/schema.json"
     },
+    "external_storage": {
+      "description": "Offloads large payloads to an external store and keeps only references in the workflow history. The worker resolves the references before payloads reach PHP, and the replay RPC uses the same storage.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "driver": {
+          "description": "Storage driver: `s3` for the built-in S3 driver, or the name of a RoadRunner plugin that provides a storage driver.",
+          "type": "string",
+          "minLength": 1,
+          "default": "s3"
+        },
+        "payload_size_threshold": {
+          "description": "Minimum serialized payload size in bytes that is stored externally. 0 uses the sdk-go default of 256 KiB.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "s3": {
+          "$ref": "#/$defs/S3"
+        }
+      }
+    },
     "tls": {
       "description": "Temporal TLS configuration.",
       "type": "object",
@@ -181,6 +202,48 @@
         },
         "prefix": {
           "description": "Temporal metrics prefix.",
+          "type": "string"
+        }
+      }
+    },
+    "S3": {
+      "description": "Settings of the built-in S3 driver.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bucket"
+      ],
+      "properties": {
+        "driver_name": {
+          "description": "Driver name that is written into each reference. Use the same name in every client and worker. Changing it breaks the retrieval of payloads that are already stored.",
+          "type": "string",
+          "default": "aws.s3driver"
+        },
+        "bucket": {
+          "description": "S3 bucket for the payloads.",
+          "type": "string",
+          "minLength": 1
+        },
+        "region": {
+          "description": "AWS region. If omitted, the default AWS configuration chain is used. Startup fails when no region is found.",
+          "type": "string"
+        },
+        "endpoint": {
+          "description": "Custom S3 endpoint, for example MinIO or LocalStack. Must be an absolute http or https URL.",
+          "type": "string",
+          "format": "uri"
+        },
+        "force_path_style": {
+          "description": "Use path-style addressing. MinIO requires it.",
+          "type": "boolean",
+          "default": false
+        },
+        "key": {
+          "description": "Access key ID. Set it together with `secret`; otherwise the default AWS credentials chain is used.",
+          "type": "string"
+        },
+        "secret": {
+          "description": "Secret access key. Set it together with `key`.",
           "type": "string"
         }
       }

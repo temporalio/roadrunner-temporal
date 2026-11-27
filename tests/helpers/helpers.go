@@ -141,13 +141,23 @@ func startContainer(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, cfgP
 	}()
 }
 
+func NewTestServerWithExternalStorage(t *testing.T, stopCh chan struct{}, wg *sync.WaitGroup, configPath string, storage converter.ExternalStorage) *TestServer {
+	startContainer(t, stopCh, wg, configPath, &logger.Plugin{})
+	return dialWithExternalStorage(t, temporalClient.ConnectionOptions{}, storage)
+}
+
 func dial(t *testing.T, co temporalClient.ConnectionOptions) *TestServer {
+	return dialWithExternalStorage(t, co, converter.ExternalStorage{})
+}
+
+func dialWithExternalStorage(t *testing.T, co temporalClient.ConnectionOptions, storage converter.ExternalStorage) *TestServer {
 	client, err := temporalClient.Dial(temporalClient.Options{
 		HostPort:          "127.0.0.1:7233",
 		Namespace:         "default",
 		DataConverter:     dataconverter.NewDataConverter(converter.GetDefaultDataConverter()),
 		Logger:            sdklog.NewStructuredLogger(initLogger()),
 		ConnectionOptions: co,
+		ExternalStorage:   storage,
 	})
 	require.NoError(t, err)
 
