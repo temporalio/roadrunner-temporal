@@ -5,6 +5,7 @@ go 1.27
 require (
 	github.com/cactus/go-statsd-client/v5 v5.1.0
 	github.com/google/uuid v1.6.0
+	github.com/nexus-rpc/sdk-go v0.8.0
 	github.com/prometheus/client_golang v1.25.0
 	github.com/roadrunner-server/api-go/v6 v6.1.0
 	github.com/roadrunner-server/api-plugins/v6 v6.0.0
@@ -42,7 +43,6 @@ require (
 	github.com/lufia/plan9stats v0.0.0-20261101121723-be84dd9509a0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nexus-rpc/nexus-proto-annotations v0.1.0 // indirect
-	github.com/nexus-rpc/sdk-go v0.8.0 // indirect
 	github.com/opencontainers/runtime-spec v1.3.0 // indirect
 	github.com/pandatix/go-abnf v0.5.5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect

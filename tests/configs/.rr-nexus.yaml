@@ -1,0 +1,14 @@
+version: '3'
+
+rpc:
+  listen: tcp://127.0.0.1:6001
+
+server:
+  command: "php ../php_test_files/worker-nexus.php"
+
+temporal:
+  address: "127.0.0.1:7233"
+
+logs:
+  mode: development
+  level: debug

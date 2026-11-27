@@ -58,6 +58,7 @@ type temporal struct {
 	rrWorkflowDef atomic.Pointer[aggregatedpool.Workflow]
 	workflows     map[string]*internal.WorkflowInfo
 	activities    map[string]*internal.ActivityInfo
+	nexusServices map[string]*internal.NexusServiceInfo
 	mh            tclient.MetricsHandler
 	tallyCloser   io.Closer
 	tlsCfg        *tls.Config
@@ -339,13 +340,13 @@ func (p *Plugin) Reset() error {
 		return err
 	}
 
-	return p.startWorkers(p.getWfDef(), p.getActDef(), wi)
+	return p.startWorkers(p.getWfDef(), p.getActDef(), aggregatedpool.NewNexusHandler(p.codec, p.actP, p.log, p.config.Namespace), wi)
 }
 
 // startWorkers creates and starts the Temporal workers from the worker info.
 // The caller must hold p.mu.
-func (p *Plugin) startWorkers(wfDef *aggregatedpool.Workflow, actDef *aggregatedpool.Activity, wi []*internal.WorkerInfo) error {
-	workers, err := aggregatedpool.TemporalWorkers(wfDef, actDef, wi, p.log, p.temporal.client, p.temporal.interceptors, p.config.Interceptors)
+func (p *Plugin) startWorkers(wfDef *aggregatedpool.Workflow, actDef *aggregatedpool.Activity, nexusHandler *aggregatedpool.NexusHandler, wi []*internal.WorkerInfo) error {
+	workers, err := aggregatedpool.TemporalWorkers(wfDef, actDef, nexusHandler, wi, p.log, p.temporal.client, p.temporal.interceptors, p.config.Interceptors)
 	if err != nil {
 		return err
 	}
@@ -360,6 +361,7 @@ func (p *Plugin) startWorkers(wfDef *aggregatedpool.Workflow, actDef *aggregated
 	p.temporal.workers = workers
 	p.temporal.activities = ActivitiesInfo(wi)
 	p.temporal.workflows = WorkflowsInfo(wi)
+	p.temporal.nexusServices = NexusServicesInfo(wi)
 
 	return nil
 }
