@@ -175,7 +175,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		})
 
 		wp.canceller.Register(msg.ID, func() error {
-			wp.env.RequestCancelChildWorkflow(params.Namespace, params.WorkflowID)
+			wp.env.RequestCancelChildWorkflow(params.Namespace, params.WorkflowID, "")
 			return nil
 		})
 
@@ -201,7 +201,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 		wp.log.Debug("timer request", "ID", msg.ID)
 		timerID := wp.env.NewTimer(command.ToDuration(), workflow.TimerOptions{
 			Summary: command.Summary,
-		}, wp.createCallback(msg.ID, "NewTimer"))
+		}, nil, wp.createCallback(msg.ID, "NewTimer"))
 		// A non-positive duration is resolved by the SDK inside NewTimer: the callback
 		// already ran, no timer exists, nothing to cancel.
 		if timerID == nil {
@@ -221,6 +221,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 			command.ChangeID,
 			workflow.Version(command.MinSupported),
 			workflow.Version(command.MaxSupported),
+			nil,
 		)
 
 		result, err := wp.env.GetDataConverter().ToPayloads(version)
@@ -242,6 +243,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 			},
 			wp.createContinuableCallback(msg.ID, "SideEffect"),
 			command.Summary,
+			nil,
 		)
 
 	case *internal.UpdateCompleted:
@@ -312,7 +314,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 
 	case *internal.UpsertWorkflowSearchAttributes:
 		wp.log.Debug("upsert search attributes request", "ID", msg.ID)
-		err := wp.env.UpsertSearchAttributes(command.SearchAttributes)
+		err := wp.env.UpsertSearchAttributes(command.SearchAttributes, nil)
 		if err != nil {
 			return errors.E(op, err)
 		}
@@ -437,7 +439,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 			return nil
 		}
 
-		err := wp.env.UpsertTypedSearchAttributes(temporal.NewSearchAttributes(sau...))
+		err := wp.env.UpsertTypedSearchAttributes(temporal.NewSearchAttributes(sau...), nil)
 		if err != nil {
 			return errors.E(op, err)
 		}
@@ -453,12 +455,20 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 			nil,
 			msg.Header,
 			command.ChildWorkflowOnly,
+			nil,
 			wp.createCallback(msg.ID, "SignalExternalWorkflow"),
 		)
 
 	case *internal.CancelExternalWorkflow:
 		wp.log.Debug("cancel external workflow request", "ID", msg.ID)
-		wp.env.RequestCancelExternalWorkflow(command.Namespace, command.WorkflowID, command.RunID, wp.createCallback(msg.ID, "CancelExternalWorkflow"))
+		wp.env.RequestCancelExternalWorkflow(
+			command.Namespace,
+			command.WorkflowID,
+			command.RunID,
+			"",
+			nil,
+			wp.createCallback(msg.ID, "CancelExternalWorkflow"),
+		)
 
 	case *internal.Cancel:
 		wp.log.Debug("cancel request", "ID", msg.ID)
@@ -486,7 +496,7 @@ func (wp *Workflow) handleMessage(msg *internal.Message) error {
 			return nil
 		}
 
-		err := wp.env.UpsertMemo(command.Memo)
+		err := wp.env.UpsertMemo(command.Memo, nil)
 		if err != nil {
 			return errors.E(op, err)
 		}
